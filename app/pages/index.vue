@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <p class="font-medium">
-      Welcome to Atidone.
+      Welcome to Noetic.
     </p>
     <p>
       A <a
