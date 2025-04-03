@@ -1,8 +1,70 @@
-# Manage your Todos with Atidone ☑️
+# Noetic (NGI frontend)
 
-A demonstration using [Nuxt](https://nuxt.com) with server-side rendering on the edge, authentication and database querying using [Cloudflare D1](https://developers.cloudflare.com/d1/) with [Drizzle ORM](https://orm.drizzle.team/).
+## Namesake
 
-[![Deploy to NuxtHub](https://hub.nuxt.com/button.svg)](https://admin.hub.nuxt.com/new?template=todos)
+The adjective [_noetic_](https://www.merriam-webster.com/dictionary/noetic) means “of, relating to, or based on the intellect” and can be considered a synonym for “thoughtful”. It is derived from the Greek word _noesis_, meaning “purely intellectual knowledge” and can also refer to “an act of thinking.”
+
+## Technology stack
+
+This project is built using those major technologies:
+
+- **[Vue.js](https://vuejs.org/)**: A progressive JavaScript framework for building user interfaces, known for its reactivity system and component-based architecture
+- **[Nuxt](https://nuxt.com/)**: A web development framwork based on Vue to create performant and production-grade full-stack web apps and websites. It provides features like server-side rendering, automatic routing, and enhanced performance optimizations.
+- **[UnoCSS](https://unocss.dev/)**: An atomic CSS engine that offers instant on-demand atomic CSS generation. It is heavily inspired by Tailwind CSS, but ships with [several improvements](https://unocss.dev/guide/why#tailwind-css) like an [Attributify mode](https://unocss.dev/presets/attributify#attributify-mode) or better handling of icons and webfonts. We load the [wind4 preset](https://unocss.dev/presets/wind4) to achieve maximum compatibility with components styled with Tailwind.
+
+To find components to add to this project, please preferably use those sources to maintain a consistent visual appearance:
+
+1. [UnaUI](https://unaui.com/components), a UI Framework with native UnoCSS components.
+2. [Shadcn-Vue](https://www.shadcn-vue.com/), Vue UI Framework with Tailwind-styled blocks and components.
+3. [Inspira UI](https://github.com/unovue/inspira-ui), another Nuxt/Vue UI framework.
+
+## Initial Setup
+
+## Modern Javascript setups
+
+If you are unfamiliar with the setup for a web application using JavaScript, the introduction [Modern Javascript explained for dinosaurs](https://peterxjang.com/blog/modern-javascript-explained-for-dinosaurs.html) is highly recommended not only for dinosaurs, but also for beginners. 
+
+This project uses `pnpm` as [package manager](https://peterxjang.com/blog/modern-javascript-explained-for-dinosaurs.html#using-a-javascript-package-manager-(npm)) and since mixing them can cause conflicts in the `package.json`, it is recommended to stick with that when working on **Syndecan**. `pnpm` will help you to install, update, and manage the dependencies (external libraries and tools) that our project needs.
+
+## Set up pnpm
+
+First, install pnpm if you haven't already:
+
+```bash
+# Using npm to install pnpm globally
+npm install -g pnpm
+
+# On macOS, you can also use Homebrew
+brew install pnpm
+```
+
+Then install the project dependencies:
+
+```bash
+pnpm install
+```
+
+## Development Server
+
+Start the development server on `http://localhost:3000`:
+
+```bash
+pnpm dev
+```
+
+## Production
+
+Build the application for production:
+
+```bash
+pnpm build
+```
+
+Locally preview production build:
+
+```bash
+pnpm preview
+```
 
 ## Features
 
@@ -14,21 +76,9 @@ A demonstration using [Nuxt](https://nuxt.com) with server-side rendering on the
 - Embed [Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview/) in the [Nuxt DevTools](https://devtools.nuxt.com)
 - Cache invalidation and Optimistic UI with [Pinia Colada](https://pinia-colada.esm.dev)
 
-## Live demo
 
-https://todos.nuxt.dev
 
-https://github.com/atinux/atidone/assets/904724/5f3bee55-dbae-4329-8057-7d0e16e92f81
-
-To see an example using Passkeys (WebAuthn) for authentication, checkout [todo-passkeys](https://github.com/atinux/todo-passkeys).
-
-## Setup
-
-Make sure to install the dependencies using [pnpm](https://pnpm.io/):
-
-```bash
-pnpm i
-```
+## Creating OAuth apps
 
 Create a [GitHub Oauth Application](https://github.com/settings/applications/new) with:
 - Homepage url: `http://localhost:3000`
@@ -46,18 +96,6 @@ To create sealed sessions, you also need to add `NUXT_SESSION_PASSWORD` in the `
 ```bash
 NUXT_SESSION_PASSWORD="your-super-long-secret-for-session-encryption"
 ```
-
-## Development
-
-Start the development server on http://localhost:3000
-
-```bash
-npm run dev
-```
-
-In the Nuxt DevTools, you can see your tables by clicking on the Hub Database tab:
-
-https://github.com/atinux/atidone/assets/904724/7ece3f10-aa6f-43d8-a941-7ca549bc208b
 
 ## Deploy
 
