@@ -100,7 +100,7 @@ const { mutate: deleteTodo } = useMutation({
         name="todo"
         :disabled="loading"
         class="flex-1"
-        placeholder="Make a Nuxt demo"
+        placeholder="Build a freezer database with Nuxt..."
         autocomplete="off"
         autofocus
         :ui="{ wrapper: 'flex-1' }"

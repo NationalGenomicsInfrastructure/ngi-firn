@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '#ui/types'
 
-const { $trpc } = useNuxtApp()  // enable tRPC client
-// const { data: hello } = await useAsyncData<{ greeting: string }>('hello', () => 
-//   ($trpc as any).hello.query({ text: 'client' })
-// )
-const { data: hello } = await $trpc.hello.useQuery({ text: 'client'  })
-
-
 const { loggedIn, user, clear } = useUserSession()
 const colorMode = useColorMode()
 
@@ -90,6 +83,7 @@ const items = [
               :color="$route.path === '/todos' ? 'primary' : 'neutral'"
               variant="ghost"
             />
+            <!--
             <UButton
               to="/optimistic-todos"
               icon="i-lucide-sparkles"
@@ -97,6 +91,7 @@ const items = [
               :color="$route.path === '/optimistic-todos' ? 'primary' : 'neutral'"
               variant="ghost"
             />
+            -->
             <UDropdownMenu
               v-if="user"
               :items="items"
@@ -115,7 +110,6 @@ const items = [
               </UButton>
             </UDropdownMenu>
           </div>
-          <div class="text-sm mt-2">{{ hello?.greeting }}</div>
         </template>
         <NuxtPage />
       </UCard>

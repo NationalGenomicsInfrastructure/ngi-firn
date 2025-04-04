@@ -1,38 +1,18 @@
+<script setup lang="ts">
+  const { $trpc } = useNuxtApp() // get the tRPC client
+  const { data: hello } = await $trpc.hello.useQuery({ text: 'Hello visitor'  })
+</script>
+
 <template>
   <div class="flex flex-col gap-4">
     <p class="font-medium">
       Welcome to Noetic.
     </p>
-    <p>
-      A <a
-        href="https://nuxt.com"
-        target="_blank"
-        class="text-(--ui-primary)"
-        rel="noopener"
-      >Nuxt</a> demo hosted on <a
-        href="https://pages.cloudflare.com"
-        target="_blank"
-        rel="noopener"
-        class="text-(--ui-primary)"
-      >Cloudflare Pages</a> with server-side rendering on the edge and using <NuxtLink
-        href="https://developers.cloudflare.com/d1/"
-        target="_blank"
-        rel="noopener"
-        class="text-(--ui-primary)"
-      >
-        Cloudflare D1 database
-      </NuxtLink>.
-    </p>
-    <p>
-      It is made using <a
-        href="https://hub.nuxt.com"
-        class="text-(--ui-primary)"
-      >NuxtHub</a> for a zero-config development & deployment experience on Cloudflare.
-    </p>
+    <p>{{ hello?.greeting }}</p>
+    
     <USeparator />
-    <p class="text-sm text-(--ui-text-muted) italic">
-      No personal information regarding your GitHub account are stored in database.<br>
-      We store only the todos created linked with your GitHub ID.
+    <p class="text-sm text-(--ui-text-muted)">
+      The adjective noetic means "<i>of, relating to, or based on the intellect</i>." and can be considered a synonym for "thoughtful". It is derived from the Greek word noesis, meaning "purely intellectual knowledge" and can also refer to "an act of thinking."
     </p>
   </div>
 </template>
