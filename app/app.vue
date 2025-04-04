@@ -2,6 +2,9 @@
 import type { DropdownMenuItem } from '#ui/types'
 
 const { $trpc } = useNuxtApp()  // enable tRPC client
+// const { data: hello } = await useAsyncData<{ greeting: string }>('hello', () => 
+//   ($trpc as any).hello.query({ text: 'client' })
+// )
 const { data: hello } = await $trpc.hello.useQuery({ text: 'client'  })
 
 
@@ -27,12 +30,9 @@ useHead({
 
 useSeoMeta({
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
-  title: 'Atidone',
+  title: 'NGI Noetic',
   description:
-    'A Nuxt demo hosted with edge-side rendering, authentication and queyring a Cloudflare D1 database',
-  ogImage: '/social-image.png',
-  twitterImage: '/social-image.png',
-  twitterCard: 'summary_large_image'
+    'Cold storage data and more',
 })
 
 const items = [
@@ -115,26 +115,26 @@ const items = [
               </UButton>
             </UDropdownMenu>
           </div>
+          <div class="text-sm mt-2">{{ hello?.greeting }}</div>
         </template>
-        <div><p>{{ hello?.greeting }}</p></div>
         <NuxtPage />
       </UCard>
 
       <footer class="text-center mt-2">
         <NuxtLink
-          href="https://github.com/atinux/atidone"
+          href="https://ngisweden.scilifelab.se"
           target="_blank"
           class="text-sm text-neutral-500 hover:text-neutral-700"
         >
-          GitHub
+          NGI Sweden
         </NuxtLink>
         ·
         <NuxtLink
-          href="https://twitter.com/atinux"
+          href="https://github.com/NationalGenomicsInfrastructure/"
           target="_blank"
           class="text-sm text-neutral-500 hover:text-neutral-700"
         >
-          Twitter
+          NGI GitHub
         </NuxtLink>
       </footer>
     </UContainer>
