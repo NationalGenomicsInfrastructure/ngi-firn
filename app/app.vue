@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '#ui/types'
 
+const { $trpc } = useNuxtApp()  // enable tRPC client
+const { data: hello } = await $trpc.hello.useQuery({ text: 'client'  })
+
+
 const { loggedIn, user, clear } = useUserSession()
 const colorMode = useColorMode()
 
@@ -63,7 +67,7 @@ const items = [
         <template #header>
           <h3 class="text-lg font-semibold leading-6">
             <NuxtLink to="/">
-              Atidone
+              Noetic
             </NuxtLink>
           </h3>
           <UButton
@@ -112,6 +116,7 @@ const items = [
             </UDropdownMenu>
           </div>
         </template>
+        <div><p>{{ hello?.greeting }}</p></div>
         <NuxtPage />
       </UCard>
 

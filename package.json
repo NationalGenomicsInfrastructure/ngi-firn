@@ -16,12 +16,15 @@
     "@pinia/colada": "^0.14.2",
     "@pinia/colada-nuxt": "^0.1.1",
     "@pinia/nuxt": "^0.10.1",
+    "@trpc/client": "^11.0.2",
+    "@trpc/server": "^11.0.2",
     "drizzle-kit": "^0.30.6",
     "drizzle-orm": "0.41.0",
     "h3-zod": "^0.5.3",
     "nuxt": "^3.16.2",
     "nuxt-auth-utils": "^0.5.18",
     "pinia": "^3.0.1",
+    "trpc-nuxt": "^1.0.4",
     "zod": "^3.24.2"
   },
   "devDependencies": {

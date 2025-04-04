@@ -29,6 +29,12 @@ importers:
       '@pinia/nuxt':
         specifier: ^0.10.1
         version: 0.10.1(magicast@0.3.5)(pinia@3.0.1(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2)))
+      '@trpc/client':
+        specifier: ^11.0.2
+        version: 11.0.2(@trpc/server@11.0.2(typescript@5.8.2))(typescript@5.8.2)
+      '@trpc/server':
+        specifier: ^11.0.2
+        version: 11.0.2(typescript@5.8.2)
       drizzle-kit:
         specifier: ^0.30.6
         version: 0.30.6
@@ -47,6 +53,9 @@ importers:
       pinia:
         specifier: ^3.0.1
         version: 3.0.1(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))
+      trpc-nuxt:
+        specifier: ^1.0.4
+        version: 1.0.4(@trpc/client@11.0.2(@trpc/server@11.0.2(typescript@5.8.2))(typescript@5.8.2))(@trpc/server@11.0.2(typescript@5.8.2))
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -2114,6 +2123,17 @@ packages:
     resolution: {integrity: sha512-1fPrd3hE1SS4R/9JbX1AlzueY4duCK7ixuLcMW5GMnk9N6WbLo9MioNKiv22V+UaXKOLNy8tLdzT8NYerOFTOQ==}
     peerDependencies:
       vue: ^2.7.0 || ^3.0.0
+
+  '@trpc/client@11.0.2':
+    resolution: {integrity: sha512-GlPEedbMTerkUfAJBsrwU6dg8N65lt3LBwrCoqR3MTZ64lRU/DQqyLjzpz5nRkEN0x4S2JmX0hASV9vc2KlSHA==}
+    peerDependencies:
+      '@trpc/server': 11.0.2
+      typescript: '>=5.7.2'
+
+  '@trpc/server@11.0.2':
+    resolution: {integrity: sha512-PIcm8UWFyE0AnIYjxsyc1zfVa6X10m9Opm1SJ2ou9Vu8dlXO6rMtmafLUXJsMeQk/3ecxObFtEiZIX8TvB3eCg==}
+    peerDependencies:
+      typescript: '>=5.7.2'
 
   '@trysound/sax@0.2.0':
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
@@ -5131,6 +5151,12 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
+  trpc-nuxt@1.0.4:
+    resolution: {integrity: sha512-HIIBVGGIxvMWUWrb9FeVd+qvAPLSf47Eqku0zKcwncQI0v/3WddWegGer0DqsMIGbLDYxfmP/NdZMJu+V1PJwA==}
+    peerDependencies:
+      '@trpc/client': ^11.0.0
+      '@trpc/server': ^11.0.0
+
   truncatise@0.0.8:
     resolution: {integrity: sha512-cXzueh9pzBCsLzhToB4X4gZCb3KYkrsAcBAX97JnazE74HOl3cpBJYEV7nabHeG/6/WXCU5Yujlde/WPBUwnsg==}
 
@@ -7722,6 +7748,15 @@ snapshots:
     dependencies:
       '@tanstack/virtual-core': 3.13.4
       vue: 3.5.13(typescript@5.8.2)
+
+  '@trpc/client@11.0.2(@trpc/server@11.0.2(typescript@5.8.2))(typescript@5.8.2)':
+    dependencies:
+      '@trpc/server': 11.0.2(typescript@5.8.2)
+      typescript: 5.8.2
+
+  '@trpc/server@11.0.2(typescript@5.8.2)':
+    dependencies:
+      typescript: 5.8.2
 
   '@trysound/sax@0.2.0': {}
 
@@ -11087,6 +11122,14 @@ snapshots:
   totalist@3.0.1: {}
 
   tr46@0.0.3: {}
+
+  trpc-nuxt@1.0.4(@trpc/client@11.0.2(@trpc/server@11.0.2(typescript@5.8.2))(typescript@5.8.2))(@trpc/server@11.0.2(typescript@5.8.2)):
+    dependencies:
+      '@trpc/client': 11.0.2(@trpc/server@11.0.2(typescript@5.8.2))(typescript@5.8.2)
+      '@trpc/server': 11.0.2(typescript@5.8.2)
+      h3: 1.15.1
+      ofetch: 1.4.1
+      ohash: 2.0.11
 
   truncatise@0.0.8: {}
 
