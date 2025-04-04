@@ -12,3 +12,5 @@ dist
 db.sqlite-*
 .data
 .wrangler
+.debug/*
+.debug

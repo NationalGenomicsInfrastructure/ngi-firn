@@ -6,6 +6,8 @@ The adjective [_noetic_](https://www.merriam-webster.com/dictionary/noetic) mean
 
 ## Technology stack
 
+### Framework
+
 This project is built using those major technologies:
 
 - **[Vue.js](https://vuejs.org/)**: A progressive JavaScript framework for building user interfaces, known for its reactivity system and component-based architecture
@@ -18,6 +20,12 @@ To find components to add to this project, please preferably use those sources t
 2. [UnaUI](https://unaui.com/components), a UI Framework with native UnoCSS components.
 3. [Shadcn-Vue](https://www.shadcn-vue.com/), Vue UI Framework with Tailwind-styled blocks and components.
 4. [Inspira UI](https://github.com/unovue/inspira-ui), another Nuxt/Vue UI framework.
+
+### Libraries
+
+- **[Permask](https://github.com/dschewchenko/permask)**: A utility library for encoding authorization (access levels) with permission bitmasks.
+- **[Unsearch](https://github.com/productdevbook/unsearch)**: A utility library for encoding authorization (access levels) with permission bitmasks.
+
 
 ## Architecture overview
 
@@ -34,6 +42,8 @@ The directory tree of _Noetic_ already follows the upcoming Nuxt4 standard with 
 │   ├── middleware/        # Route middleware for authentication
 │   ├── pages/             # Vue pages that define the application routes
 │   └── utils/             # Utility functions and helper methods
+├── docs/                  # Documentation for the app itself
+├── public/                # Public static files served as-is
 ├── server/                # Server-side code, API routes, and database logic
 │   ├── api/               # API endpoints and route handlers
 │   │   ├── auth/          # Authentication-related API routes
@@ -44,7 +54,6 @@ The directory tree of _Noetic_ already follows the upcoming Nuxt4 standard with 
 │   └── utils/             # Server-side utility functions
 ├── shared/                # Shared types, constants, and utilities
 ├── types/                 # TypeScript type definitions
-├── public/                # Public static files served as-is
 ├── .data/                 # Local development SQLite database file
 └── .github/               # GitHub configuration and workflows
 ```
@@ -72,7 +81,6 @@ The main configuration files in the root directory include:
 - **.env**: *To be created by you from the `.env.example`*
 - **.env.example**: Template file showing the required environment variables without sensitive values.
 - **package.json**: Project metadata and dependency management, including scripts for development, building, and testing. Read by the package manager, in this case `pnpm`.
-
 
 #### Nuxt configuration files
 
