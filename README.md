@@ -2,7 +2,7 @@
 
 ## Namesake
 
-The adjective [_noetic_](https://www.merriam-webster.com/dictionary/noetic) means “of, relating to, or based on the intellect” and can be considered a synonym for “thoughtful”. It is derived from the Greek word _noesis_, meaning “purely intellectual knowledge” and can also refer to “an act of thinking.”
+The adjective [_noetic_](https://www.merriam-webster.com/dictionary/noetic) means "of, relating to, or based on the intellect" and can be considered a synonym for "thoughtful". It is derived from the Greek word _noesis_, meaning "purely intellectual knowledge" and can also refer to "an act of thinking."
 
 ## Technology stack
 
@@ -14,9 +14,78 @@ This project is built using those major technologies:
 
 To find components to add to this project, please preferably use those sources to maintain a consistent visual appearance:
 
-1. [UnaUI](https://unaui.com/components), a UI Framework with native UnoCSS components.
-2. [Shadcn-Vue](https://www.shadcn-vue.com/), Vue UI Framework with Tailwind-styled blocks and components.
-3. [Inspira UI](https://github.com/unovue/inspira-ui), another Nuxt/Vue UI framework.
+1. [Nuxt Shadcn Dashboard](https://github.com/dianprata/nuxt-shadcn-dashboard)
+2. [UnaUI](https://unaui.com/components), a UI Framework with native UnoCSS components.
+3. [Shadcn-Vue](https://www.shadcn-vue.com/), Vue UI Framework with Tailwind-styled blocks and components.
+4. [Inspira UI](https://github.com/unovue/inspira-ui), another Nuxt/Vue UI framework.
+
+## Architecture overview
+
+### Directory Tree
+
+The directory tree of _Noetic_ already follows the upcoming Nuxt4 standard with `use compatibility version 4`:
+
+```Bash
+├── app/                   # Main application directory
+│   ├── assets/            # Static assets like images, fonts, and global styles
+│   ├── components/        # Reusable Vue components that make up the UI
+│   ├── composables/       # Vue composables for shared logic and state management
+│   ├── layouts/           # Layout components that define the page structure
+│   ├── middleware/        # Route middleware for authentication
+│   ├── pages/             # Vue pages that define the application routes
+│   └── utils/             # Utility functions and helper methods
+├── server/                # Server-side code, API routes, and database logic
+│   ├── api/               # API endpoints and route handlers
+│   │   ├── auth/          # Authentication-related API routes
+│   │   └── .../           # Other feature API routes
+│   ├── database/          # Database configuration and schema
+│   │   ├── migrations/    # Database migration files
+│   │   └── schema.ts      # Database schema definitions
+│   └── utils/             # Server-side utility functions
+├── shared/                # Shared types, constants, and utilities
+├── types/                 # TypeScript type definitions
+├── public/                # Public static files served as-is
+├── .data/                 # Local development SQLite database file
+└── .github/               # GitHub configuration and workflows
+```
+
+Each directory serves a specific purpose in the application:
+
+- **app/components**: Contains reusable Vue components that make up the user interface, following the component-based architecture of Vue.js.
+- **app/composables**: Houses Vue composables that encapsulate reusable logic and state management, following Vue 3's Composition API patterns.
+- **app/layouts**: Defines the structural layouts for different pages, providing consistent page structures across the application.
+- **app/pages**: Contains the main page components that define the application's routes and views.
+- **app/middleware**: Implements route middleware for handling authentication, authorization, and other request processing.
+- **server**: Contains server-side code, API endpoints, and database interactions using Drizzle ORM.
+  - **server/api**: Houses all API endpoints, organized by feature (auth, todos, etc.)
+  - **server/database**: Contains database configuration, schema definitions, and migration files
+  - **server/utils**: Server-specific utility functions and helpers
+- **shared**: Stores shared utilities, constants, and types that are used across the application.
+- **types**: Contains TypeScript type definitions for better type safety and developer experience.
+- **public**: Holds static assets that are served directly to the client without processing.
+- **.data**: Stores local development database files and migrations.
+
+### Main configuration files
+
+The main configuration files in the root directory include:
+
+- **.env**: *To be created by you from the `.env.example`*
+- **.env.example**: Template file showing the required environment variables without sensitive values.
+- **package.json**: Project metadata and dependency management, including scripts for development, building, and testing. Read by the package manager, in this case `pnpm`.
+
+
+#### Nuxt configuration files
+
+- **nuxt.config.ts**: The primary configuration file for Nuxt.js, where you can customize build settings, modules, plugins, and other Nuxt-specific options.
+- **app/app.config.ts**: Application-specific configuration that can be accessed throughout the app.
+
+#### Database configuration
+
+- **drizzle.config.ts**: Configuration for Drizzle ORM, specifying database connections and migration settings.
+
+#### Linter and development config
+
+- **eslint.config.js**: ESLint configuration for maintaining consistent code style and catching potential errors.
 
 ## Initial Setup
 
@@ -75,8 +144,6 @@ pnpm preview
 - User interface made with [Nuxt UI](https://ui.nuxt.com)
 - Embed [Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview/) in the [Nuxt DevTools](https://devtools.nuxt.com)
 - Cache invalidation and Optimistic UI with [Pinia Colada](https://pinia-colada.esm.dev)
-
-
 
 ## Creating OAuth apps
 
