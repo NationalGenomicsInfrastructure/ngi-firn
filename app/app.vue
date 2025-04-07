@@ -102,11 +102,11 @@ const items = [
                 trailing-icon="i-lucide-chevron-down"
               >
                 <UAvatar
-                  :src="`https://github.com/${user.login}.png`"
-                  :alt="user.login"
+                  :src="`${user.avatar}`"
+                  :alt="user.name"
                   size="3xs"
                 />
-                {{ user.login }}
+                {{ user.name }}
               </UButton>
             </UDropdownMenu>
           </div>

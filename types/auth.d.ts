@@ -1,7 +1,10 @@
 declare module '#auth-utils' {
   interface User {
-    id: number
-    login: string
+    provider: 'github' | 'google' | 'anonymous'
+    id: string
+    name: string
+    avatar: string
+    url: string
   }
 }
 export {}
