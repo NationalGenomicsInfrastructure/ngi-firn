@@ -8,6 +8,16 @@
     <p class="font-medium">
       Welcome to Noetic.
     </p>
+    <div
+      class="group relative max-w-[400px]"
+    >
+      <img
+        src="@/assets/images/logos/ngi.png"
+        alt="Logo of the National Genomics Infrastructure Sweden"
+        class="w-full rounded aspect-1 bg-sky-900"
+        loading="lazy"
+          >
+      </div>
     <p>{{ hello?.greeting }}</p>
     
     <USeparator />

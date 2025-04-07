@@ -21,7 +21,7 @@ export default defineNuxtConfig({
   },
 
   // Include custom CSS styles
-  css: ['~/assets/main.css'],
+  css: ['~/assets/css/main.css'],
 
   // Nuxt 4 is not released yet, but this project already uses the Nuxt4 directory structure, so we need to set the compatibility version to 4
   future: { compatibilityVersion: 4 },
