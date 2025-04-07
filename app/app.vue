@@ -63,15 +63,29 @@ const items = [
               Noetic
             </NuxtLink>
           </h3>
-          <UButton
+          <div
             v-if="!loggedIn"
+            class="flex flex-wrap -mx-2 sm:mx-0"
+          >
+          <UButton
             to="/api/auth/github"
             icon="i-simple-icons-github"
             label="Login with GitHub"
             color="neutral"
             size="xs"
+            class="mx-2"
             external
           />
+          <UButton
+            to="/api/auth/google"
+            icon="i-simple-icons-google"
+            label="Login with Google"
+            color="neutral"
+            size="xs"
+            class="mx-2"
+            external
+          />
+          </div>
           <div
             v-else
             class="flex flex-wrap -mx-2 sm:mx-0"
