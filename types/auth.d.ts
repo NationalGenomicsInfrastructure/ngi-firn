@@ -1,6 +1,6 @@
 declare module '#auth-utils' {
   interface User {
-    provider: 'github' | 'google' | 'anonymous'
+    provider: 'github' | 'google' | 'token' | 'anonymous'
     id: string
     name: string
     avatar: string

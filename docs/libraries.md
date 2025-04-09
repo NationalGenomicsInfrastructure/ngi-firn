@@ -1,5 +1,7 @@
 # Libraries and dependencies
 
+> :warning: This list is incomplete, as it only comprises the major libraries. Furthermore, some that are listed are not yet integrated into the application. The authoritative list is therefore the [`package.json`](../package.json) file and the lock file of the package manager [`pnpm-lock.yaml`](../pnpm-lock.yaml).
+
 ## Core
 
 This project is built using those major technologies:
@@ -17,14 +19,16 @@ This project is built using those major technologies:
 
 To find components to add to this project, please preferably use those sources to maintain a consistent visual appearance:
 
-- User interface made with [Nuxt UI](https://ui.nuxt.com)
+1. **[Nuxt Shadcn Dashboard](https://github.com/dianprata/nuxt-shadcn-dashboard)**
+2. **[UnaUI](https://unaui.com/components)**, a UI Framework with native UnoCSS components.
+3. **[Shadcn-Vue](https://www.shadcn-vue.com/)**, Vue UI Framework with Tailwind-styled blocks and components.
+4. **[Inspira UI](https://github.com/unovue/inspira-ui)**, another Nuxt/Vue UI framework.
+5. **[Nuxt UI](https://ui.nuxt.com)**, the official UI toolkit for Nuxt.
 
-1. [Nuxt Shadcn Dashboard](https://github.com/dianprata/nuxt-shadcn-dashboard)
-2. [UnaUI](https://unaui.com/components), a UI Framework with native UnoCSS components.
-3. [Shadcn-Vue](https://www.shadcn-vue.com/), Vue UI Framework with Tailwind-styled blocks and components.
-4. [Inspira UI](https://github.com/unovue/inspira-ui), another Nuxt/Vue UI framework.
+## Data
 
-## Data transmission
+- **[Pinia](https://github.com/vuejs/pinia)** an intuitive, type safe and flexible Store for Vue as Nuxt Module.
+- **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for Pinia to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates).
 
 ## Users
 

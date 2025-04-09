@@ -1,6 +1,8 @@
 ![ngi-noetic](docs/images/repoheader.svg)
 
-# Candor (NGI frontend)
+# Laponia (NGI frontend)
+
+> :warning: This application is under heavy development and not production ready.
 
 <p>
     <i>A Nuxt3 web application for the <a href="https://ngisweden.scilifelab.se">National Genomics Infrastructure of Sweden</a>. It serves as laboratory inventory management system and a visualization layer for the data infrastructure.</i>
@@ -10,7 +12,7 @@
 
 ## Namesake
 
-The adjective [_noetic_](https://www.merriam-webster.com/dictionary/noetic) means "of, relating to, or based on the intellect" and can be considered a synonym for "thoughtful". It is derived from the Greek word _noesis_, meaning "purely intellectual knowledge" and can also refer to "an act of thinking."
+
 
 ## Documentation
 
