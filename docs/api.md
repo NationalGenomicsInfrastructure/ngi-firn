@@ -1,6 +1,6 @@
 # APIs and server-side code
 
-> :warning: Mind that Noetic uses predominantly [tRPC](./trpc.md) for client-server communication.
+> :warning: Mind that Firn uses predominantly [tRPC](./trpc.md) for client-server communication.
 
 ## REST API Routes
 

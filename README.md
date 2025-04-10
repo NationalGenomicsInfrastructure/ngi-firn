@@ -1,6 +1,6 @@
-![ngi-noetic](docs/images/repoheader.svg)
+![ngi-firn](docs/images/repoheader.svg)
 
-# Laponia (NGI frontend)
+# Firn
 
 > :warning: This application is under heavy development and not production ready.
 
@@ -12,7 +12,7 @@
 
 ## Namesake
 
-
+**Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages, including [Swedish](https://www.saob.se/artikel/?unik=F_0443-0373.gEg6) and [English](https://www.britannica.com/science/firn). This name was chosen for the application as it aptly reflects the cold storage conditions in the catalogued freezers and liquid nitrogen tanks. The meaning "of last year" also resonates with the application's role in managing items preserved over prolonged periods of time.
 
 ## Documentation
 

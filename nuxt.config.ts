@@ -29,7 +29,7 @@ export default defineNuxtConfig({
   // Nuxt compatibility date
   compatibilityDate: '2025-04-02',
 
-  // Settings for the Nuxt Hub, in case we wanted to deploy Noetic on the edge instead on a custom server.
+  // Settings for the Nuxt Hub, in case we wanted to deploy Firn on the edge instead on a custom server.
   hub: {
     database: true
   },

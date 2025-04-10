@@ -23,7 +23,7 @@ useHead({
 
 useSeoMeta({
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
-  title: 'NGI Noetic',
+  title: 'NGI Firn',
   description:
     'Cold storage data and more',
 })
@@ -60,7 +60,7 @@ const items = [
         <template #header>
           <h3 class="text-lg font-semibold leading-6">
             <NuxtLink to="/">
-              Noetic
+              Firn
             </NuxtLink>
           </h3>
           <div

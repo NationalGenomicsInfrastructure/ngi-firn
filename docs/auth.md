@@ -1,5 +1,7 @@
 # Authentication and authorization
 
+> 💡  An excellent, comprehensive resource covering the fundamentals is [Auth Boss](https://github.com/teesloane/Auth-Boss).
+
 ## Authentication
 
 ### Creating and configuring OAuth apps

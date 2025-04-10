@@ -16,4 +16,4 @@ TypeScript will catch any mismatches between client and server types during deve
 
 ## tRPC Nuxt
 
-tRPC is most popular in the React ecosystem, but is [framework agnostic](https://trpc.io/docs/community/awesome-trpc#frontend-frameworks), so works with Svelte or Nuxt. We are using the [tRPC Nuxt module](https://github.com/wobsoriano/trpc-nuxt) in Noetic.
+tRPC is most popular in the React ecosystem, but is [framework agnostic](https://trpc.io/docs/community/awesome-trpc#frontend-frameworks), so works with Svelte or Nuxt. We are using the [tRPC Nuxt module](https://github.com/wobsoriano/trpc-nuxt) in Firn.

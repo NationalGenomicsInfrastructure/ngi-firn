@@ -6,7 +6,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <p class="font-medium">
-      Welcome to Noetic.
+      Welcome to Firn.
     </p>
     <div
       class="group relative max-w-[400px]"
@@ -22,7 +22,7 @@
     
     <USeparator />
     <p class="text-sm text-(--ui-text-muted)">
-      The adjective noetic means "<i>of, relating to, or based on the intellect</i>." and can be considered a synonym for "thoughtful". It is derived from the Greek word noesis, meaning "purely intellectual knowledge" and can also refer to "an act of thinking."
+      **Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages.
     </p>
   </div>
 </template>

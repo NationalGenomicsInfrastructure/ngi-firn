@@ -24,7 +24,7 @@ More importantly, auto-import complicates state management for server-side rende
 
 ## Directory Tree
 
-The directory tree of _Noetic_ already follows the upcoming Nuxt4 standard with `use compatibility version 4`.
+The directory tree of _Firn_ already follows the upcoming Nuxt4 standard with `use compatibility version 4`.
 
 The main difference to Nuxt3 is the deeper nesting with `app`, `server` and `shared` folders. This this is a recent introduction, even tutorials that are barely a few months old are already outdated. Keep this in mind, if you are following a tutorial that asks you to place a file in a particular folder.
 
