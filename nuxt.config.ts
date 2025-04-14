@@ -7,12 +7,12 @@ export default defineNuxtConfig({
 
   // Directly loaded Nuxt modules
   modules: [
-    '@nuxt/ui',
     '@nuxt/eslint',
     '@nuxthub/core',
     'nuxt-auth-utils',
     '@pinia/nuxt',
     '@pinia/colada-nuxt',
+    '@una-ui/nuxt',
     '@unocss/nuxt',
   ],
 
@@ -43,5 +43,11 @@ export default defineNuxtConfig({
         commaDangle: 'never'
       }
     }
-  }
+  },
+
+  una: {
+    prefix: 'N',
+    themeable: true,
+    global: true,
+  },
 })

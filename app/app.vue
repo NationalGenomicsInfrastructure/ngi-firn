@@ -97,15 +97,6 @@ const items = [
               :color="$route.path === '/todos' ? 'primary' : 'neutral'"
               variant="ghost"
             />
-            <!--
-            <UButton
-              to="/optimistic-todos"
-              icon="i-lucide-sparkles"
-              label="Optimistic Todos"
-              :color="$route.path === '/optimistic-todos' ? 'primary' : 'neutral'"
-              variant="ghost"
-            />
-            -->
             <UDropdownMenu
               v-if="user"
               :items="items"

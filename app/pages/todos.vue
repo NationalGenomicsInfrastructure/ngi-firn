@@ -3,21 +3,21 @@ definePageMeta({
   middleware: 'auth'
 })
 const newTodo = ref('')
-const newTodoInput = useTemplateRef('new-todo')
 
 const toast = useToast()
+const { user } = useUserSession()
 const queryCache = useQueryCache()
 
 const { data: todos } = useQuery({
   key: ['todos'],
-  // NOTE: the cast sometimes avoids an "Excessive depth check" TS error
   // using $fetch directly doesn't avoid the round trip to the server
   // when doing SSR
   // https://github.com/nuxt/nuxt/issues/24813
-  query: () => useRequestFetch()('/api/todos') as Promise<Todo[]>
+  // NOTE: the cast sometimes avoids an "Excessive depth check" TS error
+  query: ({ signal }) => useRequestFetch()('/api/todos', { signal }) as Promise<Todo[]>
 })
 
-const { mutate: addTodo, isLoading: loading } = useMutation({
+const { mutate: addTodo } = useMutation({
   mutation: (title: string) => {
     if (!title.trim()) throw new Error('Title is required')
 
@@ -27,38 +27,69 @@ const { mutate: addTodo, isLoading: loading } = useMutation({
         title,
         completed: 0
       }
-    })
+    }) as Promise<Todo>
   },
 
-  async onSuccess(todo) {
-    await queryCache.invalidateQueries({ key: ['todos'] })
-    toast.add({ title: `Todo "${todo.title}" created.` })
+  onMutate(title) {
+    // let the user enter new todos right away!
+    newTodo.value = ''
+    const oldTodos = queryCache.getQueryData<Todo[]>(['todos']) || []
+    const newTodoItem = {
+      title,
+      completed: 0,
+      // a negative id to differentiate them from the server ones
+      id: -Date.now(),
+      createdAt: new Date(),
+      userId: user.value!.id
+    } satisfies Todo
+    // we use newTodos to check for the cache consistency
+    // a better way would be to save the entry time
+    // const when = queryCache.getEntries({ key: ['todos'], exact: true }).at(0)?.when
+    const newTodos = [
+      ...oldTodos,
+      newTodoItem
+    ]
+    queryCache.setQueryData(['todos'], newTodos)
+
+    queryCache.cancelQueries({ key: ['todos'], exact: true })
+
+    return { oldTodos, newTodos, newTodoItem }
+  },
+
+  onSuccess(todo, _, { newTodoItem }) {
+    // update the todo with the information from the server
+    // since we are invalidating queries, this allows us to progressively
+    // update the todo list even if the user is adding a lot very quickly
+    const todoList = queryCache.getQueryData<Todo[]>(['todos']) || []
+    const todoIndex = todoList.findIndex(t => t.id === newTodoItem.id)
+    if (todoIndex >= 0) {
+      queryCache.setQueryData(['todos'], todoList.toSpliced(todoIndex, 1, todo))
+    }
   },
 
   onSettled() {
-    newTodo.value = ''
-    // the first nextTick allows loading to become false and re enable the input
-    // the second nextTick allows the input to be rendered again so it can be focused
-    // a better solution would be to use a custom `v-focus` directive or a more elaborated focus management solution
-    nextTick()
-      .then(() => nextTick())
-      .then(() => {
-        newTodoInput.value?.input?.focus()
-      })
+    // always refetch the todos after a mutation
+    queryCache.invalidateQueries({ key: ['todos'] })
   },
 
-  onError(err) {
+  onError(err, _title, { oldTodos, newTodos }) {
+    // oldTodos can be undefined if onMutate errors
+    // we also want to check if the oldTodos are still in the cache
+    // because the cache could have been updated by another query
+    if (newTodos != null && newTodos === queryCache.getQueryData(['todos'])) {
+      queryCache.setQueryData(['todos'], oldTodos)
+    }
+
     if (isNuxtZodError(err)) {
-      const title = err.data?.data.issues
-        .map(issue => issue.message)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const title = (err as any).data.data.issues
+        .map((issue: { message: string }) => issue.message)
         .join('\n')
-      if (title) {
-        toast.add({ title, color: 'red' })
-      }
+      toast.add({ title, color: 'error' })
     }
     else {
       console.error(err)
-      toast.add({ title: 'Unexpected Error', color: 'red' })
+      toast.add({ title: 'Unexpected Error', color: 'error' })
     }
   }
 })
@@ -72,18 +103,69 @@ const { mutate: toggleTodo } = useMutation({
       }
     }),
 
-  async onSuccess() {
-    await queryCache.invalidateQueries({ key: ['todos'] })
+  onMutate(todo) {
+    const oldTodos = queryCache.getQueryData<Todo[]>(['todos']) || []
+    const todoIndex = oldTodos.findIndex(t => t.id === todo.id)
+    let newTodos = oldTodos
+    if (todoIndex >= 0) {
+      newTodos = oldTodos.toSpliced(todoIndex, 1, {
+        ...todo,
+        completed: Number(!todo.completed)
+      })
+      queryCache.setQueryData(['todos'], newTodos)
+    }
+
+    queryCache.cancelQueries({ key: ['todos'], exact: true })
+
+    return { oldTodos, newTodos }
+  },
+
+  onSettled() {
+    // always refetch the todos after a mutation
+    queryCache.invalidateQueries({ key: ['todos'], exact: true })
+  },
+
+  onError(err, todo, { oldTodos, newTodos }) {
+    // oldTodos can be undefined if onMutate errors
+    if (newTodos != null && newTodos === queryCache.getQueryData(['todos'])) {
+      queryCache.setQueryData(['todos'], oldTodos)
+    }
+
+    console.error(err)
+    toast.add({ title: 'Unexpected Error', color: 'error' })
   }
 })
 
 const { mutate: deleteTodo } = useMutation({
-  mutation: (todo: Todo) =>
-    $fetch(`/api/todos/${todo.id}`, { method: 'DELETE' }),
+  mutation: (todo: Todo) => $fetch(`/api/todos/${todo.id}`, { method: 'DELETE' }),
 
-  async onSuccess(_result, todo) {
-    await queryCache.invalidateQueries({ key: ['todos'] })
-    toast.add({ title: `Todo "${todo.title}" deleted.` })
+  onMutate(todo) {
+    const oldTodos = queryCache.getQueryData<Todo[]>(['todos']) || []
+    const todoIndex = oldTodos.findIndex(t => t.id === todo.id)
+    let newTodos = oldTodos
+    if (todoIndex >= 0) {
+      newTodos = oldTodos.toSpliced(todoIndex, 1)
+      queryCache.setQueryData(['todos'], newTodos)
+    }
+
+    queryCache.cancelQueries({ key: ['todos'], exact: true })
+
+    return { oldTodos, newTodos }
+  },
+
+  onSettled() {
+    // always refetch the todos after a mutation
+    queryCache.invalidateQueries({ key: ['todos'], exact: true })
+  },
+
+  onError(err, todo, { oldTodos, newTodos }) {
+    // oldTodos can be undefined if onMutate errors
+    if (newTodos != null && newTodos === queryCache.getQueryData(['todos'])) {
+      queryCache.setQueryData(['todos'], oldTodos)
+    }
+
+    console.error(err)
+    toast.add({ title: 'Unexpected Error', color: 'error' })
   }
 })
 </script>
@@ -95,12 +177,10 @@ const { mutate: deleteTodo } = useMutation({
   >
     <div class="flex items-center gap-2">
       <UInput
-        ref="new-todo"
         v-model="newTodo"
         name="todo"
-        :disabled="loading"
         class="flex-1"
-        placeholder="Build a freezer database with Nuxt..."
+        placeholder="Make a Nuxt demo"
         autocomplete="off"
         autofocus
         :ui="{ wrapper: 'flex-1' }"
@@ -109,7 +189,6 @@ const { mutate: deleteTodo } = useMutation({
       <UButton
         type="submit"
         icon="i-lucide-plus"
-        :loading="loading"
         :disabled="newTodo.trim().length === 0"
       />
     </div>
@@ -122,11 +201,15 @@ const { mutate: deleteTodo } = useMutation({
       >
         <span
           class="flex-1 font-medium"
-          :class="[todo.completed ? 'line-through text-gray-500' : '']"
+          :class="{
+            'text-gray-500': todo.completed || todo.id < 0,
+            'line-through': todo.completed
+          }"
         >{{ todo.title }}</span>
 
         <USwitch
           :model-value="Boolean(todo.completed)"
+          :disabled="todo.id < 0"
           @update:model-value="toggleTodo(todo)"
         />
 
@@ -135,6 +218,7 @@ const { mutate: deleteTodo } = useMutation({
           variant="soft"
           size="xs"
           icon="i-lucide-x"
+          :disabled="todo.id < 0"
           @click="deleteTodo(todo)"
         />
       </li>
