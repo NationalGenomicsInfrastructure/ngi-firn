@@ -13,6 +13,7 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     '@pinia/nuxt',
     '@pinia/colada-nuxt',
+    '@unocss/nuxt',
   ],
 
   // Enable Nuxt Developer Tools
