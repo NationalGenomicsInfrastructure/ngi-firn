@@ -1,6 +1,6 @@
 # Libraries and dependencies
 
-> :warning: This list is incomplete, as it only comprises the major libraries. Furthermore, some that are listed are not yet integrated into the application. The authoritative list is therefore the [`package.json`](../package.json) file and the lock file of the package manager [`pnpm-lock.yaml`](../pnpm-lock.yaml).
+> :warning: This list is incomplete, as it only comprises the major libraries. Furthermore, some that are listed as a bookmark and are not yet integrated into the application. The authoritative list is therefore the [`package.json`](../package.json) file and the lock file of the package manager [`pnpm-lock.yaml`](../pnpm-lock.yaml).
 
 ## Core
 
@@ -29,9 +29,11 @@ To find components to add to this project, please preferably use those sources t
 
 - **[Pinia](https://github.com/vuejs/pinia)** an intuitive, type safe and flexible Store for Vue as Nuxt Module.
 - **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for Pinia to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates).
+- **[Zod](https://github.com/colinhacks/zod)**: TypeScript-first schema validation with static type inference.
 
 ## Users
 
+- **[Jose](https://github.com/panva/jose)**: JWA, JWS, JWE, JWT, JWK, JWKS for Node.js, Browser, Cloudflare Workers, Deno, Bun, and other Web-interoperable runtimes. Combine with native Crypto module from NodeJS and modern browsers for crytpo-safe random numbers.
 - **[Permask](https://github.com/dschewchenko/permask)**: A utility library for encoding authorization (access levels) with permission bitmasks.
 
 ## Search

@@ -28,9 +28,9 @@ export default defineEventHandler(() => 'Only GET handler')
 
 More information can be found in the  Nuxt documentation on [server route features](https://nuxt.com/docs/guide/directory-structure/server#recipes).
 
-### Developer experience
+### Route inspection
 
-A Postman-like UI to call your API routes is available in the Nuxt DevTools by clicking the Server Routes tab. Alternatively enter `nuxt-devtools-api-routes` in the CLI.
+A Postman-like UI to call your API routes is available in the [Nuxt DevTools](./debugging.md) by clicking the Server Routes tab. Alternatively enter `nuxt-devtools-api-routes` in the CLI.
 
 ## REST API Route Validation
 
