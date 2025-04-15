@@ -26,7 +26,7 @@ function submitForm(){
       class="flex flex-col gap-4"
     >
       <NFormGroup label="Email">
-        <NInput v-model="form.email" placeholder="johndoe@email.com" />
+        <NInput v-model="form.email" placeholder="brilliant.researcher@scilifelab.se" />
       </NFormGroup>
 
       <NFormGroup label="Password">
