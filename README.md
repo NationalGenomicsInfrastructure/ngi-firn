@@ -1,6 +1,8 @@
 <p align="center">
-<img src="./app/assets/images/logos/ngi.png"  width=50% alt="Tokens of appreciation - Mankind in love with AI"/>
+<img src="./app/assets/images/logos/FirnBanner.svg"  width=70% alt="A banner with the logo of the NGI Firn application."/>
 </p>
+
+![ngi-firn](docs/images/repoheader.svg)
 
 # Firn
 
@@ -18,7 +20,7 @@
 
 This name was chosen for the application as it aptly reflects the cold storage conditions in the catalogued freezers and liquid nitrogen tanks. The meaning "of last year" also resonates with the application's role in managing items preserved over prolonged periods of time.
 
-![ngi-firn](docs/images/repoheader.svg)
+
 
 ## Documentation
 
