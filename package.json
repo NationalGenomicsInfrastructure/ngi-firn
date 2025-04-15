@@ -1,6 +1,38 @@
 {
+  "name": "ngi-firn",
   "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "description": "A laboratory freezer inventory management system created with Nuxt3, Vue and UnaUI.",
+  "author": "Matthias Zepper <MatthiasZepper@users.noreply.github.com>",
+  "license": "MIT",
+  "homepage": "https://ngisweden.scilifelab.se",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NationalGenomicsInfrastructure/ngi-firn.git"
+  },
+  "bugs": "https://github.com/NationalGenomicsInfrastructure/ngi-firn/issues",
+  "keywords": [
+    "ngi",
+    "scilifelab",
+    "laboratory-management",
+    "inventory-system",
+    "freezer-management",
+    "sample-tracking",
+    "scientific-application",
+    "laboratory-information-system",
+    "genomics",
+    "bioinformatics",
+    "nuxt",
+    "vue",
+    "database",
+    "web-application"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
     "build": "nuxi build",
     "preview": "npx nuxthub preview",
