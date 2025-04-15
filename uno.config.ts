@@ -1,11 +1,6 @@
-import {
-  defineConfig,
-  presetAttributify,
-  presetIcons,
-  presetWind4
-} from 'unocss'
+import { defaultConfig } from '@una-ui/nuxt/una.config'
 
-export default defineConfig({
+export default defaultConfig({
   /**
    * UnoCSS Configuration Options
    *
@@ -16,18 +11,7 @@ export default defineConfig({
    * @see https://unocss.dev/config/
    */
 
-  presets: [
-    presetWind4(),
-    presetAttributify(),
-    presetIcons({
-      extraProperties: {
-        'display': 'inline-block',
-        'height': '1em',
-        'width': '1em',
-        'vertical-align': 'middle',
-      },
-    }),
-  ],
+  presets: [],
 
   /**
    * Una UI Shortcuts Customization

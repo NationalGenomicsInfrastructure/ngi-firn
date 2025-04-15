@@ -12,8 +12,7 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     '@pinia/nuxt',
     '@pinia/colada-nuxt',
-    '@una-ui/nuxt',
-    '@unocss/nuxt',
+    '@una-ui/nuxt'
   ],
 
   // Enable Nuxt Developer Tools
@@ -21,8 +20,8 @@ export default defineNuxtConfig({
     enabled: true
   },
 
-  // Include custom CSS styles
-  css: ['~/assets/css/main.css'],
+  // Include custom CSS styles if needed
+  // css: ['~/assets/css/main.css'],
 
   // Nuxt 4 is not released yet, but this project already uses the Nuxt4 directory structure, so we need to set the compatibility version to 4
   future: { compatibilityVersion: 4 },

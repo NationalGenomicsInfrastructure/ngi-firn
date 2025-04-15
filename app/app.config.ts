@@ -1,17 +1,8 @@
 export default defineAppConfig({
-  ui: {
-    colors: {
-      primary: 'blue',
-      neutral: 'stone'
-    },
-    container: {
-      base: 'max-w-2xl'
-    },
-    card: {
-      slots: {
-        header: 'flex flex-wrap items-center justify-between'
-      },
-      body: 'space-y-4'
-    }
+  una: {
+    // you can use any color provided by tailwindcss 💛, or you can define your own colors via uno.config.ts
+    primary: 'yellow',
+    gray: 'stone',
+    radius: 0.5
   }
 })
