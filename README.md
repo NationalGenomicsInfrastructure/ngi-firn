@@ -1,10 +1,8 @@
 <p align="center">
-<img src="./app/assets/images/logos/FirnBanner.svg"  width=70% alt="A banner with the logo of the NGI Firn application."/>
+<img src="./app/assets/images/logos/FirnBannerWhite.svg"  width=100% alt="A banner with the logo of the NGI Firn application."/>
 </p>
 
 ![ngi-firn](docs/images/repoheader.svg)
-
-# Firn
 
 > :warning: This application is a work in progress.
 
