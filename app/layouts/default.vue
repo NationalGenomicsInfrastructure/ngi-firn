@@ -1,11 +1,11 @@
 <template>
   <div class="container mx-auto px-4 md:px-6 lg:px-8">
-    <AppHeader/>
+    <FrontpageHeader/>
 
     <main>
       <slot />
     </main>
 
-    <LazyAppFooter/>
+    <LazyFrontpageFooter/>
   </div>
 </template>

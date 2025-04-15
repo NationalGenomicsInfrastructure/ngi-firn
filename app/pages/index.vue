@@ -2,7 +2,7 @@
   <main class="mx-auto max-w-lg px-4 py-8 lg:px-8 sm:px-6">
     <div class="mx-auto max-w-xl rounded-md space-y-10">
       <div class="flex justify-center">
-        <AppLogo class="h-30"/>
+        <LogoFirn class="h-200"/>
       </div>
 
       <div class="text-center space-y-1">
@@ -15,7 +15,7 @@
       </div>
 
       <div class="space-y-4">
-        <FormLogin />
+        <LoginForm />
 
         <div class="border border-base rounded-md p-4 text-center text-sm">
           No account yet?

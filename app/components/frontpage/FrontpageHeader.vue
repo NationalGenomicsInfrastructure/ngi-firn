@@ -5,7 +5,7 @@
     </h1>
 
     <div class="inline-flex space-x-2">
-      <ColorMode/>
+      <ColorsChoice/>
       <NThemeSwitcher/>
     </div>
   </div>
