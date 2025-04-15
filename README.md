@@ -1,8 +1,10 @@
-![ngi-firn](docs/images/repoheader.svg)
+<p align="center">
+<img src="./app/assets/images/logos/ngi.png"  width=50% alt="Tokens of appreciation - Mankind in love with AI"/>
+</p>
 
 # Firn
 
-> :warning: This application is under heavy development and not production ready.
+> :warning: This application is a work in progress.
 
 <p>
     <i>A Nuxt3 web application for the <a href="https://ngisweden.scilifelab.se">National Genomics Infrastructure of Sweden</a>. It serves as laboratory inventory management system and a visualization layer for the data infrastructure.</i>
@@ -12,7 +14,11 @@
 
 ## Namesake
 
-**Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages, including [Swedish](https://www.saob.se/artikel/?unik=F_0443-0373.gEg6) and [English](https://www.britannica.com/science/firn). This name was chosen for the application as it aptly reflects the cold storage conditions in the catalogued freezers and liquid nitrogen tanks. The meaning "of last year" also resonates with the application's role in managing items preserved over prolonged periods of time.
+**Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages, including [Swedish](https://www.saob.se/artikel/?unik=F_0443-0373.gEg6) and [English](https://www.britannica.com/science/firn). 
+
+This name was chosen for the application as it aptly reflects the cold storage conditions in the catalogued freezers and liquid nitrogen tanks. The meaning "of last year" also resonates with the application's role in managing items preserved over prolonged periods of time.
+
+![ngi-firn](docs/images/repoheader.svg)
 
 ## Documentation
 

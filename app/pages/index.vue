@@ -1,28 +1,29 @@
-<script setup lang="ts">
-  const { $trpc } = useNuxtApp() // get the tRPC client
-  const { data: hello } = await $trpc.hello.useQuery({ text: 'Hello visitor'  })
-</script>
-
 <template>
-  <div class="flex flex-col gap-4">
-    <p class="font-medium">
-      Welcome to Firn.
-    </p>
-    <div
-      class="group relative max-w-[400px]"
-    >
-      <img
-        src="@/assets/images/logos/ngi.png"
-        alt="Logo of the National Genomics Infrastructure Sweden"
-        class="w-full rounded aspect-1 bg-sky-900"
-        loading="lazy"
-          >
+  <main class="mx-auto max-w-lg px-4 py-8 lg:px-8 sm:px-6">
+    <div class="mx-auto max-w-xl rounded-md space-y-10">
+      <div class="flex justify-center">
+        <AppLogo class="h-30"/>
       </div>
-    <p>{{ hello?.greeting }}</p>
-    
-    <USeparator />
-    <p class="text-sm text-(--ui-text-muted)">
-      **Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages.
-    </p>
-  </div>
+
+      <div class="text-center space-y-1">
+        <h1 class="text-3xl font-extrabold text-accent">
+          Sign in to your account
+        </h1>
+        <p class="text-sm font-medium text-primary">
+          Powered by <NLink to="https://unaui.com" target="_blank">https://unaui.com/</NLink>
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <FormLogin />
+
+        <div class="border border-base rounded-md p-4 text-center text-sm">
+          No account yet?
+          <NLink btn="link square" to="/">
+            Create an account here
+          </NLink>
+        </div>
+      </div>
+    </div>
+  </main>
 </template>

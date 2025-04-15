@@ -13,17 +13,19 @@ This project is built using those major technologies:
 
 ### Styles
 
-- **[UnoCSS](https://unocss.dev/)**: An atomic CSS engine that offers instant on-demand atomic CSS generation. It is heavily inspired by Tailwind CSS, but ships with [several improvements](https://unocss.dev/guide/why#tailwind-css) like an [Attributify mode](https://unocss.dev/presets/attributify#attributify-mode) or better handling of icons and webfonts. We load the [wind4 preset](https://unocss.dev/presets/wind4) to achieve maximum compatibility with components styled with Tailwind.
+- **[UnoCSS](https://unocss.dev/)**: An atomic CSS engine that offers instant on-demand atomic CSS generation. It is heavily inspired by Tailwind CSS, but ships with [several improvements](https://unocss.dev/guide/why#tailwind-css) like an [Attributify mode](https://unocss.dev/presets/attributify#attributify-mode) or better handling of icons and webfonts.
 
 ### Components
 
-To find components to add to this project, please preferably use those sources to maintain a consistent visual appearance:
+This project uses [UnaUI](https://www.unaui.com), a modern UI Framework  enabling the creation of modern and lightweight components. It combines the [UnoCSS engine](https://unocss.dev) with [Reka UI](https://reka-ui.com), an open-source library with unstyled, primitive components.
+
+To find components to add to this project, please preferably use [components from UnaUI](https://unaui.com/components). You can also use unstyled components from RekaUI directly without additional configuration, because they are imported by UnaUI.
+
+Further sources for components can be those projects, which, however, use TailwindCSS instead of UnaCSS. Since the latter is modelled after the former, some styles and classes will work out of the box, but some won't:
 
 1. **[Nuxt Shadcn Dashboard](https://github.com/dianprata/nuxt-shadcn-dashboard)**
-2. **[UnaUI](https://unaui.com/components)**, a UI Framework with native UnoCSS components.
-3. **[Shadcn-Vue](https://www.shadcn-vue.com/)**, Vue UI Framework with Tailwind-styled blocks and components.
-4. **[Inspira UI](https://github.com/unovue/inspira-ui)**, another Nuxt/Vue UI framework.
-5. **[Nuxt UI](https://ui.nuxt.com)**, the official UI toolkit for Nuxt.
+2. **[Shadcn-Vue](https://www.shadcn-vue.com/)**, Vue UI Framework with Tailwind-styled blocks and components.
+3. **[Inspira UI](https://github.com/unovue/inspira-ui)**, another Nuxt/Vue UI framework.
 
 ## Data
 
