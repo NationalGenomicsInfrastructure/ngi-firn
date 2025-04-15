@@ -23,7 +23,7 @@
     "drizzle-orm": "0.41.0",
     "h3-zod": "^0.5.3",
     "nuxt": "^3.16.2",
-    "nuxt-auth-utils": "^0.5.19",
+    "nuxt-auth-utils": "^0.5.20",
     "pinia": "^3.0.2",
     "trpc-nuxt": "^1.0.5",
     "zod": "^3.24.2"
@@ -39,7 +39,7 @@
     "eslint": "^9.24.0",
     "typescript": "^5.8.3",
     "unocss": "66.1.0-beta.11",
-    "wrangler": "^4.10.0"
+    "wrangler": "^4.11.0"
   },
   "packageManager": "pnpm@10.8.1",
   "pnpm": {

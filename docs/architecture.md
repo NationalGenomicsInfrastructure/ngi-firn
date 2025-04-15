@@ -35,6 +35,7 @@ The main difference to Nuxt3 is the deeper nesting with `app`, `server` and `sha
 │   ├── layouts/           # Layout components that define the page structure
 │   ├── middleware/        # Route middleware for authentication
 │   ├── pages/             # Vue pages that define the application routes
+│   ├── plugins/           # Plugins extend the core functionality of the application
 │   └── utils/             # Utility functions and helper methods
 ├── docs/                  # Documentation for the app itself
 ├── public/                # Public static files served as-is
@@ -55,10 +56,11 @@ The main difference to Nuxt3 is the deeper nesting with `app`, `server` and `sha
 Each directory serves a specific purpose in the application:
 
 - **app/components**: Contains reusable Vue components that make up the user interface, following the component-based architecture of Vue.js.
-- **app/composables**: Houses Vue composables that encapsulate reusable logic and state management, following Vue 3's Composition API patterns.
+- **app/composables**: Composables are a powerful feature in Vue 3 that allow you to extract and reuse reactive state logic. They are essentially functions that encapsulate and reuse stateful logic. Think of them as reusable pieces of code that can contain their own reactive state, computed properties, and methods and can help to organize complex logic outside of components. Default composables we use are for example `useUserSession()`, `useDB()` or `useColorMode()`.
 - **app/layouts**: Defines the structural layouts for different pages, providing consistent page structures across the application.
-- **app/pages**: Contains the main page components that define the application's routes and views.
 - **app/middleware**: Implements route middleware for handling authentication, authorization, and other request processing.
+- **app/pages**: Contains the main page components that define the application's routes and views. Nuxt provides file-based routing to create routes within a web application based on the page names.
+- **app/plugins**: Plugins extend the core functionality of the application. Plugins are executed before instantiating the Vue application and can be used to inject functions or constants, register components globally, or add third-party libraries.
 - **server**: Contains server-side code, API endpoints, and database interactions using Drizzle ORM.
   - **server/api**: Houses all API endpoints, organized by feature (auth, todos, etc.)
   - **server/database**: Contains database configuration, schema definitions, and migration files
