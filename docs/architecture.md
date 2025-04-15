@@ -21,7 +21,6 @@ On the other hand, one must comply with an [opinionated directory structure](#di
 
 More importantly, auto-import complicates state management for server-side rendered code, since extra care must be taken to avoid cross-request state pollution (leaking a shared reference between two users) and leakage between different components.
 
-
 ## Directory Tree
 
 The directory tree of _Firn_ already follows the upcoming Nuxt4 standard with `use compatibility version 4`.
