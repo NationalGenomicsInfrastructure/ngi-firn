@@ -26,6 +26,7 @@ This name was chosen for the application as it aptly reflects the cold storage c
 
 - [Initial Setup](docs/development.md)
 - [Debugging](docs/debugging.md)
+- [Building the user interface](docs/ui.md)
 
 ### Guide to the application
 
