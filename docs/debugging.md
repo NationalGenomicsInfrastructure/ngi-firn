@@ -9,3 +9,17 @@ The DevTools appear as a small floating panel at the bottom of your browser duri
 ## Manual inspection
 
 One can also temporarily add `console.log(useNuxtApp())` to the `<script></script>` block of any page component to log the entire Nuxt app context to the Javascript console. This allows inspecting the current state of the app, including all auto-imports. It is therefore particularly useful to understand, if a particular function or component is truly available in the context and for example helps uncovering name collisions in the imports.
+
+## Frequent issues
+
+### A component is missing
+
+If you used a non-existing component, you will get two warnings when the respective components needs to be rendered:
+
+> :warning:  WARN  [Vue warn]: Failed to resolve component: LoginForm
+
+This warning is followed by a second warning:
+
+> :warning: WARN  [Vue warn]: Component <Anonymous> is missing template or render function.
+
+Because both print the whole app context as JSON to stderr, it is easy to overlook the actual cause.

@@ -17,9 +17,15 @@ This project is built using those major technologies:
 
 ### Components
 
-This project uses [UnaUI](https://www.unaui.com), a modern UI Framework  enabling the creation of modern and lightweight components. It combines the [UnoCSS engine](https://unocss.dev) with [Reka UI](https://reka-ui.com), an open-source library with unstyled, primitive components.
+#### Main source
+
+This project uses **[UnaUI](https://www.unaui.com)**, a modern UI Framework  enabling the creation of modern and lightweight components. It combines the [UnoCSS engine](https://unocss.dev) with **[Reka UI](https://reka-ui.com)**, an open-source library with unstyled, primitive components.
 
 To find components to add to this project, please preferably use [components from UnaUI](https://unaui.com/components). You can also use unstyled components from RekaUI directly without additional configuration, because they are imported by UnaUI.
+
+Please refer to [the UI manual for details on using components](./ui.md#components).
+
+#### Further component sources and inspiration
 
 Further sources for components can be those projects, which, however, use TailwindCSS instead of UnaCSS. Since the latter is modelled after the former, some styles and classes will work out of the box, but some won't:
 

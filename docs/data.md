@@ -47,3 +47,7 @@ In an _optimistic update_, the user interface behaves as though a change was suc
 When you optimistically update the state in your client before performing a mutation, there is, however, a chance that the mutation will fail. In most of these failure cases, you can just trigger a refetch for your optimistic queries to revert them to their true server state. In some circumstances though, refetching may not work correctly and the mutation error could represent some type of server issue that won't make it possible to refetch. In this event, you can instead choose to rollback the client's state update.
 
 For a single component, this is relatively straightforward using variables and updating the UI directly. However, if you have multiple places on the screen that would require to know about the update, manipulating the store directly will take care of these rollbacks for you automatically. That is exactly cache invalidation with [Pinia Colada](https://pinia-colada.esm.dev) is simplifying.
+
+### Synchronization
+
+As of now, no local first features are planned that exceed the capabilities of the Pinia stores and also no SQLite use. But should we decide to include SQLite in the stack, offline-first, eventually consistent optimistic reads and writes, query subscriptions and real-time collaboration would be enabled by [SQLsync](https://github.com/orbitinghail/sqlsync) or [Socket supply](https://socketsupply.co).
