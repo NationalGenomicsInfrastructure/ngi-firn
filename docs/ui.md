@@ -63,6 +63,8 @@ In our app, we reference the components in _PascalCase_ based on their path dire
 
 If you incorrectly reference a component, you will get a corresponding [warning](./debugging.md#a-component-is-missing) in the console.
 
+You can optionally prefix a component name with `Lazy`, e.g. `<LazyFrontpageFooter hydrate-on-visible />`,  which [improves performance by deferring hydration of components until they're needed](https://nuxt.com/docs/guide/directory-structure/components#delayed-or-lazy-hydration).
+
 #### Naming convention
 
 Because duplicate segments are removed, both of these components would resolve to `<SubdirMenuButton />`:
