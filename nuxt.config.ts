@@ -5,6 +5,12 @@ export default defineNuxtConfig({
     transpile: ['trpc-nuxt']
   },
 
+  // Enable type checking during the build process. 
+  // For performance reasons, we don't enable it during development. Run `pnpm typecheck` to run it manually.
+  typescript: {
+    typeCheck: 'build'
+  },
+
   // Directly loaded Nuxt modules
   modules: [
     '@nuxt/eslint',

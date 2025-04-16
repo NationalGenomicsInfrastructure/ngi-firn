@@ -35,7 +35,7 @@
     "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
     "build": "nuxi build",
-    "preview": "npx nuxthub preview",
+    "typecheck": "npx nuxi typecheck",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint .",
@@ -71,6 +71,7 @@
     "eslint": "^9.24.0",
     "typescript": "^5.8.3",
     "unocss": "66.1.0-beta.11",
+    "vue-tsc": "^2.2.8",
     "wrangler": "^4.11.0"
   },
   "packageManager": "pnpm@10.8.1",
