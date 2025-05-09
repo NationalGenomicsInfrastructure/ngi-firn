@@ -87,3 +87,17 @@ For clarity, the Nuxt developers recommend that the component's filename matches
 ## Component Library
 
 In our Nuxt application, we leverage these Vue concepts along with additional UI libraries like [UnaUI and Reka UI](./libraries.md#components) to create a cohesive and responsive user interface.
+
+### Grimoire of common patterns and magic spells
+
+The following list highlights a few features of our UI libraries that you may use quite frequently.
+
+#### Properties for interactive
+
+```html
+ <NSidebarMenuButton
+                :tooltip="h('div', { hidden: false }, item.title)"
+                :is-active=" // some condition that evaluates to Boolean"
+                @click="() => { // a function triggered when clicking on the button}"
+                >
+```

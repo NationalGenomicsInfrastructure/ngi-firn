@@ -35,6 +35,7 @@ Further sources for components can be those projects, which, however, use Tailwi
 
 ## Data
 
+- **[Luxon](https://moment.github.io/luxon/)** for dealing with dates and times.
 - **[Pinia](https://github.com/vuejs/pinia)** an intuitive, type safe and flexible Store for Vue as Nuxt Module.
 - **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for Pinia to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates).
 - **[Zod](https://github.com/colinhacks/zod)**: TypeScript-first schema validation with static type inference.

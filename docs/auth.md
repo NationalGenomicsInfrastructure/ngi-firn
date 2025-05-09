@@ -59,3 +59,5 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET="my-google-oauth-app-secret"
 ## Authorization
 
 To be decided. The [Nuxt authorization module](https://github.com/Barbapapazes/nuxt-authorization) looks interesting, also see [the accompanying blog post](https://soubiran.dev/posts/nuxt-going-full-stack-how-to-handle-authorization). We will probably combine it with [Permask](https://github.com/dschewchenko/permask) for fine-grained permissions.
+
+[BetterAuth](https://www.better-auth.com/) was unfortunately no option, since there is no adapter for CouchDB. Hard to say whether it is easier to adapt the [MongoDB adapter](https://github.com/better-auth/better-auth/tree/main/packages/better-auth/src/adapters/mongodb-adapter) to Couch or whip-up a completely custom solution.
