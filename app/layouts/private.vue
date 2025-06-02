@@ -3,7 +3,6 @@
     <NavigationSidebarMain />
 
     <main>
-      <NSidebarTrigger />
       <slot />
     </main>
 

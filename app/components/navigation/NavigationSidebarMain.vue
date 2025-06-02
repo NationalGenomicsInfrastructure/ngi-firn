@@ -1,6 +1,5 @@
 <script setup lang="ts">
 
-
 // This is sample data
 const data = {
 user: {
@@ -10,44 +9,32 @@ user: {
 },
 navMain: [
     {
-    title: 'Inbox',
+    title: 'NGI Firn',
     url: '#',
-    icon: 'i-lucide-inbox',
+    icon: 'i-lucide-snowflake',
     isActive: true,
     },
     {
-    title: 'Drafts',
+    title: 'Genomics Status',
     url: '#',
-    icon: 'i-lucide-file',
+    icon: 'i-lucide-dna',
     isActive: false,
     },
     {
-    title: 'Sent',
+    title: 'Notebook',
     url: '#',
-    icon: 'i-lucide-send',
-    isActive: false,
-    },
-    {
-    title: 'Junk',
-    url: '#',
-    icon: 'i-lucide-archive-x',
-    isActive: false,
-    },
-    {
-    title: 'Trash',
-    url: '#',
-    icon: 'i-lucide-trash',
+    icon: 'i-lucide-notebook-pen',
     isActive: false,
     },
 ],
 }
 const activeItem = ref(data.navMain[0])
-const { setOpen } = useSidebar()
+const { setOpen, toggleSidebar } = useSidebar()
 </script>
 
 <template>
 <NSidebar
-    class="overflow-hidden w-1/7 [&>[data-sidebar=sidebar]]:flex-row"
+    class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
     collapsible="icon"
 >
     <!-- This is the first sidebar -->
@@ -61,14 +48,8 @@ const { setOpen } = useSidebar()
         <NSidebarMenu>
         <NSidebarMenuItem>
             <NSidebarMenuButton size="lg" as-child class="md:h-8 md:p-0">
-            <NLink to="#">
-                <div class="aspect-square flex items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground square-8">
-                <NIcon name="i-lucide-command" class="square-4" />
-                </div>
-                <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-semibold">Acme Inc</span>
-                <span class="truncate text-xs">Enterprise</span>
-                </div>
+            <NLink to="#" @click="toggleSidebar()">
+                <LogoNGI class="w-full h-full"/>
             </NLink>
             </NSidebarMenuButton>
         </NSidebarMenuItem>
@@ -97,6 +78,14 @@ const { setOpen } = useSidebar()
         </NSidebarGroup>
     </NSidebarContent>
     <NSidebarFooter>
+        <NSidebarMenu>
+            <NSidebarMenuItem>
+                <ColorsChoice/>
+            </NSidebarMenuItem>
+            <NSidebarMenuItem>
+                <NThemeSwitcher/>
+            </NSidebarMenuItem>
+        </NSidebarMenu>
         <NavigationUser :user="data.user" />
     </NSidebarFooter>
     </NSidebar>

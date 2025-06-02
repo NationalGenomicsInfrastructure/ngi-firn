@@ -8,18 +8,10 @@ user: {
 }>()
 
 const navs = [
-{
-    label: 'Upgrade to Pro',
-    leading: 'i-lucide-sparkles',
-},
-{},
+
 {
     label: 'Account',
     leading: 'i-lucide-badge-check',
-},
-{
-    label: 'Billing',
-    leading: 'i-lucide-banknote',
 },
 {
     label: 'Notifications',
