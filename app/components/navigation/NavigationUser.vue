@@ -76,3 +76,9 @@ const { isMobile } = useSidebar()
     </NSidebarMenuItem>
 </NSidebarMenu>
 </template>
+
+<style>
+.dropdown-menu-content {
+    background-color: var(--c-muted);
+}
+</style>
