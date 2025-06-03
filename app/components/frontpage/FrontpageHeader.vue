@@ -9,7 +9,6 @@
 
     <div class="inline-flex space-x-2">
       <ColorsChoice/>
-      <NThemeSwitcher/>
     </div>
   </div>
 </template>
