@@ -68,6 +68,7 @@ function handleRegister(provider: string) {
             label="Sign in with GitHub"
             class="w-full"
             size="md"
+            external
             @click="handleOAuthLogin('github')"
           />
           <NButton
@@ -77,6 +78,7 @@ function handleRegister(provider: string) {
             label="Sign in with Google"
             class="w-full"
             size="md"
+            external
             @click="handleOAuthLogin('google')"
           />
         </div>
@@ -116,6 +118,7 @@ function handleRegister(provider: string) {
             label="Connect with Google"
             size="md"
             class="w-full"
+            external
             :disabled="!username"
             @click="handleRegister('google')"
           />

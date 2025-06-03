@@ -10,7 +10,7 @@ export default defineOAuthGitHubEventHandler({
       },
     })
 
-    return sendRedirect(event, '/todos')
+    return sendRedirect(event, '/firn')
   },
 })
 

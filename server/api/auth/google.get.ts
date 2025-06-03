@@ -10,6 +10,6 @@ export default defineOAuthGoogleEventHandler({
             },
         })
     
-        return sendRedirect(event, '/todos')
+        return sendRedirect(event, '/firn')
         },
 })
