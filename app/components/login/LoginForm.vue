@@ -1,40 +1,140 @@
 <script setup lang="ts">
-
 const loading = ref(false)
+const username = ref('')
 
-const form = ref({
-  email: '',
-  password: '',
-})
+const items = ref([
+  {
+    value: 'login',
+    name: 'Sign in to Firn',
+    _tabsTrigger: {
+      leading: 'i-lucide-snowflake',
+    },
+  },
+  {
+    value: 'register',
+    name: 'Register new account',
+    _tabsTrigger: {
+      leading: 'i-lucide-user-plus',
+    },
+  },
+])
 
-function submitForm(){
+const requestAccess = ref(false)
+
+function handleOAuthLogin(provider: string) {
+  // The actual OAuth flow will be handled by the route
   loading.value = true
+}
 
-  setTimeout(() => {
-    loading.value = false
-  }, 3000);
+function handleRegister(provider: string) {
+  if (!username.value) {
+    // Show error or handle validation
+    return
+  }
+  
+  if (!requestAccess.value) {
+    // First time: Link OAuth account
+    handleOAuthLogin(provider)
+  } else {
+    // Second time: Request access
+    loading.value = true
+    // TODO: Implement access request logic
+    setTimeout(() => {
+      loading.value = false
+    }, 1000)
+  }
 }
 </script>
 
 <template>
-  <form
-    class="flex flex-col border border-base gap-4 rounded-md p-8"
-    @submit.prevent="submitForm()"
+  <NTabs
+    :items="items"
+    default-value="login"
+    :_tabs-list="{
+      class: 'grid grid-cols-2 w-full border-b border-primary',
+    }"
+    :_tabs-content="{
+      class: 'py-4 mx-auto w-full',
+    }"
   >
-    <div
-      :class="{ 'n-disabled': loading }"
-      class="flex flex-col gap-4"
-    >
-      <NFormGroup label="Email">
-        <NInput v-model="form.email" placeholder="brilliant.researcher@scilifelab.se" />
-      </NFormGroup>
+    <template #content="{ item }">
+      <!-- Login Tab -->
+      <div v-if="item.value === 'login'" class="space-y-4">
+        <div class="flex flex-col gap-3">
+          <NButton
+            to="/api/auth/github"
+            btn="solid-gray"
+            leading="i-simple-icons-github"
+            label="Sign in with GitHub"
+            class="w-full"
+            size="md"
+            @click="handleOAuthLogin('github')"
+          />
+          <NButton
+            to="/api/auth/google"
+            btn="solid-gray"
+            leading="i-simple-icons-google"
+            label="Sign in with Google"
+            class="w-full"
+            size="md"
+            @click="handleOAuthLogin('google')"
+          />
+        </div>
+      </div>
 
-      <NFormGroup label="Password">
-        <NInput v-model="form.password" type="password" />
-      </NFormGroup>
-    </div>
+      <!-- Register Tab -->
+      <div v-if="item.value === 'register'" class="space-y-6">
+        <NFormGroup
+          label="Choose a username"
+          required
+        >
+          <NInput
+            v-model="username"
+            placeholder="brilliant.researcher"
+            :disabled="requestAccess"
+          />
+        </NFormGroup>
 
-    <NButton class="mt-4" type="submit" label="Submit" :loading="loading" />
-    <NButton v-if="loading" btn="solid-white" label="Cancel" @click="loading = false" />
-  </form>
+        <div v-if="!requestAccess" class="space-y-3">
+          <p class="text-base text-muted">
+            Connect your account with the following providers:
+          </p>
+          <NButton
+            to="/api/auth/github"
+            btn="solid-gray"
+            leading="i-simple-icons-github"
+            label="Connect with GitHub"
+            size="md"
+            class="w-full"
+            :disabled="!username"
+            @click="handleRegister('github')"
+          />
+          <NButton
+            to="/api/auth/google"
+            btn="solid-gray"
+            leading="i-simple-icons-google"
+            label="Connect with Google"
+            size="md"
+            class="w-full"
+            :disabled="!username"
+            @click="handleRegister('google')"
+          />
+        </div>
+
+        <div v-else class="space-y-3">
+          <p class="text-base text-muted">
+            Your account is connected. You can now request access to the system:
+          </p>
+          <NButton
+            btn="solid-primary"
+            label="Request Access"
+            size="md"
+            class="w-full"
+            :loading="loading"
+            @click="handleRegister('request')"
+          />
+        </div>
+      </div>
+    </template>
+  </NTabs>
 </template>

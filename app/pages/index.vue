@@ -10,22 +10,9 @@ definePageMeta({
       <div class="flex justify-center">
         <LogoFirn class="h-auto w-full max-w-[200px] min-h-[50px]"/>
       </div>
-
-      <div class="text-center space-y-1">
-        <h1 class="text-3xl font-extrabold text-accent">
-          Sign in to your account
-        </h1>
-      </div>
-
-      <div class="space-y-4">
+      
+      <div class="border border-base rounded-md p-4 text-center text-sm">
         <LoginForm />
-
-        <div class="border border-base rounded-md p-4 text-center text-sm">
-          No account yet?
-          <NLink btn="link square" to="/">
-            Create an account here
-          </NLink>
-        </div>
       </div>
     </div>
   </main>
