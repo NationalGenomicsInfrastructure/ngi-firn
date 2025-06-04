@@ -33,9 +33,11 @@
   },
   "scripts": {
     "preinstall": "npx only-allow pnpm",
+    "auth:generate": "pnpm dlx @better-auth/cli@latest generate --config ./server/utils/betterAuth.ts",
+    "auth:migrate": "pnpm dlx better-auth@latest migrate --config ./server/utils/betterAuth.ts",
     "dev": "nuxi dev",
     "build": "nuxi build",
-    "typecheck": "npx nuxi typecheck",
+    "typecheck": "nuxi typecheck",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint .",
@@ -62,6 +64,7 @@
     "zod": "^3.25.49"
   },
   "devDependencies": {
+    "@better-auth/cli": "1.2.8",
     "@iconify-json/radix-icons": "^1.2.2",
     "@iconify-json/tabler": "^1.2.18",
     "@nuxt/devtools": "^2.4.1",
@@ -79,7 +82,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
+      "@prisma/client",
+      "@prisma/engines",
+      "better-sqlite3",
       "esbuild",
+      "prisma",
       "sharp",
       "unrs-resolver",
       "vue-demi",
