@@ -21,6 +21,17 @@ export default defineNuxtConfig({
     '@una-ui/nuxt'
   ],
 
+  // Runtime configuration for the Nuxt app, mainly for the auth module.
+  runtimeConfig: {
+    public: {
+      auth: {
+        redirectUserTo: '/firn',
+        redirectGuestTo: '/',
+      },
+    },
+  },
+
+
   // Enable Nuxt Developer Tools
   devtools: {
     enabled: true
@@ -36,8 +47,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-04-02',
 
   // Settings for the Nuxt Hub, in case we wanted to deploy Firn on the edge instead on a custom server.
+  // https://hub.nuxt.com/docs/getting-started/installation#options
   hub: {
-    database: true
+    database: true,
+    kv: true,
   },
   
   // Linting configuration
