@@ -1,25 +1,12 @@
 <script setup lang="ts">
-const loading = ref(false)
-const username = ref('')
+// https://better-auth.vercel.app/docs/integrations/nuxt#ssr-usage
+const { user, session, client } = useAuth()
+const toast = useToast()
+const { data: accounts } = await useAsyncData('accounts', () => client.listAccounts())
 
-const items = ref([
-  {
-    value: 'login',
-    name: 'Sign in to Firn',
-    _tabsTrigger: {
-      leading: 'i-lucide-snowflake',
-    },
-  },
-  {
-    value: 'register',
-    name: 'Register new account',
-    _tabsTrigger: {
-      leading: 'i-lucide-user-plus',
-    },
-  },
-])
-
-const requestAccess = ref(false)
+function hasProvider(provider: string) {
+  return accounts.value?.data?.some(account => account.provider === provider)
+}
 
 function handleOAuthLogin(provider: string) {
   // The actual OAuth flow will be handled by the route
@@ -44,11 +31,35 @@ function handleRegister(provider: string) {
     }, 1000)
   }
 }
+
+// UI state: Loading state for the login form
+
+const loading = ref(false)
+const username = ref('')
+const requestAccess = ref(false)
+
+// UI config: Tabs for the login form
+const tabs = ref([
+  {
+    value: 'login',
+    name: 'Sign in to Firn',
+    _tabsTrigger: {
+      leading: 'i-lucide-snowflake',
+    },
+  },
+  {
+    value: 'register',
+    name: 'Register new account',
+    _tabsTrigger: {
+      leading: 'i-lucide-user-plus',
+    },
+  },
+])
 </script>
 
 <template>
   <NTabs
-    :items="items"
+    :items="tabs"
     default-value="login"
     :_tabs-list="{
       class: 'grid grid-cols-2 w-full border-b border-primary',
@@ -101,18 +112,38 @@ function handleRegister(provider: string) {
           <p class="text-base text-muted">
             Connect your account with the following providers:
           </p>
+
           <NButton
-            to="/api/auth/github"
+            v-if="hasProvider('github')"
+            btn="solid-primary"
+            leading="i-simple-icons-github"
+            trailing="i-lucide-badge-check"
+            label="Connected with GitHub"
+            size="md"
+            class="w-full"
+          />
+          <NButton
+            v-else
             btn="solid-gray"
             leading="i-simple-icons-github"
             label="Connect with GitHub"
             size="md"
             class="w-full"
             :disabled="!username"
-            @click="handleRegister('github')"
+            @click="client.linkSocial({ provider: 'github' })"
+          />
+
+          <NButton
+            v-if="hasProvider('google')"
+            btn="solid-primary"
+            leading="i-simple-icons-google"
+            trailing="i-lucide-badge-check"
+            label="Connected with Google"
+            size="md"
+            class="w-full"
           />
           <NButton
-            to="/api/auth/google"
+            v-else
             btn="solid-gray"
             leading="i-simple-icons-google"
             label="Connect with Google"
@@ -120,7 +151,7 @@ function handleRegister(provider: string) {
             class="w-full"
             external
             :disabled="!username"
-            @click="handleRegister('google')"
+            @click="client.linkSocial({ provider: 'google' })"
           />
         </div>
 
