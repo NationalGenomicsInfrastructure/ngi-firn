@@ -1,9 +1,7 @@
-import type { CloudantV1 } from '@ibm-cloud/cloudant'
+import type { BaseDocument } from '../server/database/couchdb'
 
 // Define the Todo type for CouchDB documents
-export interface Todo extends CloudantV1.Document {
-  _id?: string
-  _rev?: string
+export interface Todo extends BaseDocument {
   type: 'todo'
   userId: string // GitHub or Google ID
   title: string

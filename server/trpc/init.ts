@@ -1,7 +1,18 @@
-import { initTRPC } from '@trpc/server'
+import { initTRPC, TRPCError } from '@trpc/server'
 import type { H3Event } from 'h3'
+import { UserService } from '../utils/users'
 
-export const createTRPCContext = async (event: H3Event) => {
+interface Context {
+  auth?: {
+    user?: {
+      id: string
+      name: string
+      email?: string
+    }
+  }
+}
+
+export const createTRPCContext = async (event: H3Event): Promise<Context> => {
   /**
   * see: https://trpc.io/docs/server/context
   */
@@ -10,7 +21,7 @@ export const createTRPCContext = async (event: H3Event) => {
 
 // Avoid exporting the entire t-object since it's not very descriptive.
 // For instance, the use of a t variable is common in i18n libraries.
-const t = initTRPC.create({
+const t = initTRPC.context<Context>().create({
   /**
   * see: https://trpc.io/docs/server/data-transformers
   */
@@ -21,3 +32,59 @@ const t = initTRPC.create({
 export const createTRPCRouter = t.router
 export const createCallerFactory = t.createCallerFactory
 export const baseProcedure = t.procedure
+
+// Middleware to check if user is authenticated
+const isAuthed = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.auth?.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.auth.user
+    }
+  })
+})
+
+// Middleware to check if user is approved
+const isApproved = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.auth?.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  
+  const isApproved = await UserService.isUserApproved(ctx.auth.user.id)
+  if (!isApproved) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'User not approved' })
+  }
+  
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.auth.user
+    }
+  })
+})
+
+// Middleware to check if user is admin
+const isAdmin = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.auth?.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  
+  const isAdmin = await UserService.isUserAdmin(ctx.auth.user.id)
+  if (!isAdmin) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' })
+  }
+  
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.auth.user
+    }
+  })
+})
+
+// Export procedures
+export const authedProcedure = baseProcedure.use(isAuthed)
+export const approvedProcedure = baseProcedure.use(isApproved)
+export const adminProcedure = baseProcedure.use(isAdmin)

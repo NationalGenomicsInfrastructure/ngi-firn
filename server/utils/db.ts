@@ -13,8 +13,17 @@ export async function ensureDatabase() {
 
 // Helper function to create indexes for better performance
 export async function createIndexes() {
+  // Todo indexes
   await couchDB.createIndex(['type', 'userId'])
   await couchDB.createIndex(['type', 'userId', 'completed'])
+  await couchDB.createIndex(['type', 'createdAt'])
+  
+  // User indexes
+  await couchDB.createIndex(['type', 'email'])
+  await couchDB.createIndex(['type', 'googleId'])
+  await couchDB.createIndex(['type', 'githubId'])
+  await couchDB.createIndex(['type', 'permissions'])
+  await couchDB.createIndex(['type', 'isAdmin'])
   await couchDB.createIndex(['type', 'createdAt'])
 }
 
