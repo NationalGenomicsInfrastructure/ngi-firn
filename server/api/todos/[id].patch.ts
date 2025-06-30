@@ -1,5 +1,6 @@
 import { useValidatedParams, useValidatedBody, z, zh } from 'h3-zod'
-import { useDB, type Todo } from '../../utils/db'
+import { couchDB } from '../../database/couchdb'
+import type { Todo } from '../../../types/productivity'
 
 export default eventHandler(async (event) => {
   const { id } = await useValidatedParams(event, {
@@ -14,7 +15,7 @@ export default eventHandler(async (event) => {
   const documentId = id.toString()
 
   // First, get the existing todo to verify ownership and get the current rev
-  const existingTodo = await useDB().getDocument<Todo>(documentId)
+  const existingTodo = await couchDB.getDocument<Todo>(documentId)
   
   if (!existingTodo) {
     throw createError({
@@ -43,7 +44,7 @@ export default eventHandler(async (event) => {
     completed
   }
 
-  const result = await useDB().updateDocument(documentId, updatedTodo, existingTodo._rev!)
+  const result = await couchDB.updateDocument(documentId, updatedTodo, existingTodo._rev!)
   
   return {
     ...updatedTodo,

@@ -1,11 +1,11 @@
-import { ensureDatabase, createIndexes } from './db'
+import { couchDB } from './couchdb'
 
 export async function initializeDatabase() {
   try {
     console.log('Initializing CouchDB database...')
     
     // Ensure the database exists
-    await ensureDatabase()
+    await couchDB.ensureDatabase()
     console.log('Database ensured successfully')
     
     // Create indexes for better query performance
@@ -19,5 +19,9 @@ export async function initializeDatabase() {
   }
 }
 
-// Export for use in server startup
-export { initializeDatabase } 
+// Helper function to create indexes for better performance
+export async function createIndexes() {
+  await couchDB.createIndex(['type', 'userId'])
+  await couchDB.createIndex(['type', 'userId', 'completed'])
+  await couchDB.createIndex(['type', 'createdAt'])
+}

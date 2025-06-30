@@ -1,4 +1,5 @@
 import { CloudantV1 } from '@ibm-cloud/cloudant'
+import { BasicAuthenticator } from 'ibm-cloud-sdk-core'
 
 // CouchDB connection configuration
 interface CouchDBConfig {
@@ -10,11 +11,20 @@ interface CouchDBConfig {
 
 // Initialize Cloudant client
 function createCloudantClient(config: CouchDBConfig): CloudantV1 {
-  const client = CloudantV1.newInstance({
-    url: config.url,
-    username: config.username,
-    password: config.password
-  })
+  const options: any = {
+    url: config.url
+  }
+  
+  // Add basic authentication if username and password are provided
+  if (config.username && config.password) {
+    const authenticator = new BasicAuthenticator({
+      username: config.username,
+      password: config.password
+    })
+    options.authenticator = authenticator
+  }
+  
+  const client = CloudantV1.newInstance(options)
   return client
 }
 
@@ -145,13 +155,12 @@ export class CouchDBConnector {
   }
 
   // Create indexes for better query performance
-  async createIndex(fields: string[], name?: string): Promise<void> {
+  async createIndex(fields: string[]): Promise<void> {
     try {
       await this.client.postIndex({
         db: this.database,
         index: {
-          fields: fields.map(field => ({ [field]: 'asc' })),
-          name: name || fields.join('_')
+          fields: fields.map(field => ({ [field]: 'asc' }))
         }
       })
     }
@@ -161,6 +170,7 @@ export class CouchDBConnector {
     }
   }
 }
+
 
 // Default configuration from environment variables
 const defaultConfig: CouchDBConfig = {
@@ -173,6 +183,9 @@ const defaultConfig: CouchDBConfig = {
 // Export a singleton instance
 export const couchDB = new CouchDBConnector(defaultConfig)
 
-// Export the class for custom instances
-export { CouchDBConnector }
-export type { CouchDBConfig }
+// Helper function to ensure database exists
+export async function ensureDatabase() {
+  await couchDB.ensureDatabase()
+}
+
+

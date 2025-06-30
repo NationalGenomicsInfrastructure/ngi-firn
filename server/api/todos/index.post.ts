@@ -1,5 +1,5 @@
 import { useValidatedBody, z } from 'h3-zod'
-import { useDB, type Todo } from '../../utils/db'
+import type { Todo } from '../../../types/productivity'
 
 export default eventHandler(async (event) => {
   const { title } = await useValidatedBody(event, {
