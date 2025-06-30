@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm'
 import { useValidatedParams, zh } from 'h3-zod'
+import { useDB, type Todo } from '../../utils/db'
 
 export default eventHandler(async (event) => {
   const { id } = await useValidatedParams(event, {
@@ -7,17 +7,35 @@ export default eventHandler(async (event) => {
   })
   const { user } = await requireUserSession(event)
 
-  // List todos for the current user
-  const deletedTodo = await useDB().delete(tables.todos).where(and(
-    eq(tables.todos.id, id),
-    eq(tables.todos.userId, user.id)
-  )).returning().get()
+  // Convert numeric ID to string for CouchDB
+  const documentId = id.toString()
 
-  if (!deletedTodo) {
+  // First, get the existing todo to verify ownership and get the current rev
+  const existingTodo = await useDB().getDocument<Todo>(documentId)
+  
+  if (!existingTodo) {
     throw createError({
       statusCode: 404,
       message: 'Todo not found'
     })
   }
-  return deletedTodo
+
+  if (existingTodo.userId !== user.id) {
+    throw createError({
+      statusCode: 403,
+      message: 'Not authorized to delete this todo'
+    })
+  }
+
+  if (existingTodo.type !== 'todo') {
+    throw createError({
+      statusCode: 400,
+      message: 'Invalid document type'
+    })
+  }
+
+  // Delete the todo document
+  await useDB().deleteDocument(documentId, existingTodo._rev!)
+
+  return existingTodo
 })

@@ -1,9 +1,19 @@
-import { sql } from 'drizzle-orm'
+import { useDB, type Todo } from '../../utils/db'
 
 export default eventHandler(async () => {
-  // Count the total number of todos
-  return await useDB().select({
-    todos: sql<number>`count(*)`,
-    users: sql<number>`count(distinct(${tables.todos.userId}))`
-  }).from(tables.todos).get()
+  // Get all todo documents
+  const todos = await useDB().queryDocuments<Todo>({
+    type: 'todo'
+  }, ['userId'])
+
+  // Count total todos
+  const totalTodos = todos.length
+
+  // Count unique users
+  const uniqueUsers = new Set(todos.map(todo => todo.userId)).size
+
+  return {
+    todos: totalTodos,
+    users: uniqueUsers
+  }
 })

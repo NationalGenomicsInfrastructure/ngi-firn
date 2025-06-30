@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm'
 import { useValidatedParams, useValidatedBody, z, zh } from 'h3-zod'
+import { useDB, type Todo } from '../../utils/db'
 
 export default eventHandler(async (event) => {
   const { id } = await useValidatedParams(event, {
@@ -10,13 +10,44 @@ export default eventHandler(async (event) => {
   })
   const { user } = await requireUserSession(event)
 
-  // List todos for the current user
-  const todo = await useDB().update(tables.todos).set({
-    completed
-  }).where(and(
-    eq(tables.todos.id, id),
-    eq(tables.todos.userId, user.id)
-  )).returning().get()
+  // Convert numeric ID to string for CouchDB
+  const documentId = id.toString()
 
-  return todo
+  // First, get the existing todo to verify ownership and get the current rev
+  const existingTodo = await useDB().getDocument<Todo>(documentId)
+  
+  if (!existingTodo) {
+    throw createError({
+      statusCode: 404,
+      message: 'Todo not found'
+    })
+  }
+
+  if (existingTodo.userId !== user.id) {
+    throw createError({
+      statusCode: 403,
+      message: 'Not authorized to update this todo'
+    })
+  }
+
+  if (existingTodo.type !== 'todo') {
+    throw createError({
+      statusCode: 400,
+      message: 'Invalid document type'
+    })
+  }
+
+  // Update the todo document
+  const updatedTodo: Todo = {
+    ...existingTodo,
+    completed
+  }
+
+  const result = await useDB().updateDocument(documentId, updatedTodo, existingTodo._rev!)
+  
+  return {
+    ...updatedTodo,
+    _id: result.id,
+    _rev: result.rev
+  }
 })

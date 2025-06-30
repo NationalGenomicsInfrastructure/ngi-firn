@@ -1,10 +1,13 @@
-import { eq } from 'drizzle-orm'
+import { useDB, type Todo } from '../../utils/db'
 
 export default eventHandler(async (event) => {
   const { user } = await requireUserSession(event)
 
-  // List todos for the current user
-  const todos = await useDB().select().from(tables.todos).where(eq(tables.todos.userId, user.id)).all()
+  // Query todos for the current user using Mango query
+  const todos = await useDB().queryDocuments<Todo>({
+    type: 'todo',
+    userId: user.id
+  }, ['_id', '_rev', 'type', 'userId', 'title', 'completed', 'createdAt'])
 
-  return todos as Todo[]
+  return todos
 })

@@ -1,12 +1,29 @@
-import { drizzle } from 'drizzle-orm/d1'
-import * as schema from '../database/schema'
+import { couchDB } from '../database/couchdb'
 
-export { sql, eq, and, or } from 'drizzle-orm'
-
-export const tables = schema
-
-export function useDB() {
-  return drizzle(hubDatabase(), { schema })
+// Define the Todo type for CouchDB documents
+export interface Todo {
+  _id?: string
+  _rev?: string
+  type: 'todo'
+  userId: string // GitHub or Google ID
+  title: string
+  completed: number // 0 or 1
+  createdAt: string // ISO date string
 }
 
-export type Todo = typeof tables.todos.$inferSelect
+// Helper function to get CouchDB instance
+export function useDB() {
+  return couchDB
+}
+
+// Helper function to ensure database exists
+export async function ensureDatabase() {
+  await couchDB.ensureDatabase()
+}
+
+// Helper function to create indexes for better performance
+export async function createIndexes() {
+  await couchDB.createIndex(['type', 'userId'], 'type_userid_idx')
+  await couchDB.createIndex(['type', 'userId', 'completed'], 'type_userid_completed_idx')
+  await couchDB.createIndex(['type', 'createdAt'], 'type_createdat_idx')
+}
