@@ -1,107 +1,117 @@
 <script setup lang="ts">
-
 // This is sample data
 const data = {
-user: {
+  user: {
     name: 'Brilliant Researcher',
     email: 'brilliant.researcher@scilifelab.se',
-    avatar: '',
-},
-navMain: [
+    avatar: ''
+  },
+  navMain: [
     {
-    title: 'NGI Firn',
-    url: '#',
-    icon: 'i-lucide-snowflake',
-    isActive: true,
+      title: 'NGI Firn',
+      url: '#',
+      icon: 'i-lucide-snowflake',
+      isActive: true
     },
     {
-    title: 'Genomics Status',
-    url: '#',
-    icon: 'i-lucide-dna',
-    isActive: false,
+      title: 'Genomics Status',
+      url: '#',
+      icon: 'i-lucide-dna',
+      isActive: false
     },
     {
-    title: 'Notebook',
-    url: '#',
-    icon: 'i-lucide-notebook-pen',
-    isActive: false,
-    },
-],
+      title: 'Notebook',
+      url: '#',
+      icon: 'i-lucide-notebook-pen',
+      isActive: false
+    }
+  ]
 }
 const activeItem = ref(data.navMain[0])
 const { setOpen, toggleSidebar } = useSidebar()
 </script>
 
 <template>
-<NSidebar
+  <NSidebar
     class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
     collapsible="icon"
->
+  >
     <!-- This is the first sidebar -->
     <!-- We disable collapsible and adjust width to icon. -->
     <!-- This will make the sidebar appear as icons. -->
     <NSidebar
-    collapsible="none"
-    class="border-r !w-[calc(var(--sidebar-width-icon)_+_1px)]"
+      collapsible="none"
+      class="border-r !w-[calc(var(--sidebar-width-icon)_+_1px)]"
     >
-    <NSidebarHeader>
+      <NSidebarHeader>
         <NSidebarMenu>
-        <NSidebarMenuItem>
-            <NSidebarMenuButton size="lg" as-child class="md:h-8 md:p-0">
-            <NLink to="#" @click="toggleSidebar()">
-                <LogoNGI class="w-full h-full"/>
-            </NLink>
+          <NSidebarMenuItem>
+            <NSidebarMenuButton
+              size="lg"
+              as-child
+              class="md:h-8 md:p-0"
+            >
+              <NLink
+                to="#"
+                @click="toggleSidebar()"
+              >
+                <LogoNGI class="w-full h-full" />
+              </NLink>
             </NSidebarMenuButton>
-        </NSidebarMenuItem>
+          </NSidebarMenuItem>
         </NSidebarMenu>
-    </NSidebarHeader>
-    <NSidebarContent>
+      </NSidebarHeader>
+      <NSidebarContent>
         <NSidebarGroup>
-        <NSidebarGroupContent class="px-1.5 md:px-0">
+          <NSidebarGroupContent class="px-1.5 md:px-0">
             <NSidebarMenu>
-            <NSidebarMenuItem v-for="item in data.navMain" :key="item.title">
+              <NSidebarMenuItem
+                v-for="item in data.navMain"
+                :key="item.title"
+              >
                 <NSidebarMenuButton
-                :tooltip="h('div', { hidden: false }, item.title)"
-                :is-active="activeItem.title === item.title"
-                class="px-2.5 md:px-2"
-                @click="() => {
+                  :tooltip="h('div', { hidden: false }, item.title)"
+                  :is-active="activeItem.title === item.title"
+                  class="px-2.5 md:px-2"
+                  @click="() => {
                     activeItem = item
                     setOpen(true)
-                }"
+                  }"
                 >
-                <NIcon :name="item.icon" />
-                <span>{{ item.title }}</span>
+                  <NIcon :name="item.icon" />
+                  <span>{{ item.title }}</span>
                 </NSidebarMenuButton>
-            </NSidebarMenuItem>
+              </NSidebarMenuItem>
             </NSidebarMenu>
-        </NSidebarGroupContent>
+          </NSidebarGroupContent>
         </NSidebarGroup>
-    </NSidebarContent>
-    <NSidebarFooter>
+      </NSidebarContent>
+      <NSidebarFooter>
         <NSidebarMenu>
-            <NSidebarMenuItem>
-                <ColorsChoice/>
-            </NSidebarMenuItem>
-            <NSidebarMenuItem>
-                <NThemeSwitcher/>
-            </NSidebarMenuItem>
+          <NSidebarMenuItem>
+            <ColorsChoice />
+          </NSidebarMenuItem>
+          <NSidebarMenuItem>
+            <NThemeSwitcher />
+          </NSidebarMenuItem>
         </NSidebarMenu>
         <NavigationUser :user="data.user" />
-    </NSidebarFooter>
+      </NSidebarFooter>
     </NSidebar>
     <!--  This is the second sidebar -->
     <!--  We disable collapsible and let it fill remaining space -->
-    <NSidebar 
-    collapsible="none" 
-    class="hidden flex-1 md:flex"     
-    sheet="left"
-    rail>
-    <NSidebarHeader class="gap-3.5 border-b p-4">
+    <NSidebar
+      collapsible="none"
+      class="hidden flex-1 md:flex"
+      sheet="left"
+      rail
+    >
+      <NSidebarHeader class="gap-3.5 border-b p-4">
         <div class="w-full flex items-center justify-between">
         </br>
         </div>
         <NSidebarInput placeholder="Type to search..." />
-    </NSidebarHeader>
+      </NSidebarHeader>
     </NSidebar>
-</NSidebar>
+  </NSidebar>
 </template>

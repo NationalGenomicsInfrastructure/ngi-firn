@@ -7,16 +7,16 @@ const items = ref([
     value: 'login',
     name: 'Sign in to Firn',
     _tabsTrigger: {
-      leading: 'i-lucide-snowflake',
-    },
+      leading: 'i-lucide-snowflake'
+    }
   },
   {
     value: 'register',
     name: 'Register new account',
     _tabsTrigger: {
-      leading: 'i-lucide-user-plus',
-    },
-  },
+      leading: 'i-lucide-user-plus'
+    }
+  }
 ])
 
 const requestAccess = ref(false)
@@ -31,11 +31,12 @@ function handleRegister(provider: string) {
     // Show error or handle validation
     return
   }
-  
+
   if (!requestAccess.value) {
     // First time: Link OAuth account
     handleOAuthLogin(provider)
-  } else {
+  }
+  else {
     // Second time: Request access
     loading.value = true
     // TODO: Implement access request logic
@@ -51,15 +52,18 @@ function handleRegister(provider: string) {
     :items="items"
     default-value="login"
     :_tabs-list="{
-      class: 'grid grid-cols-2 w-full border-b border-primary',
+      class: 'grid grid-cols-2 w-full border-b border-primary'
     }"
     :_tabs-content="{
-      class: 'py-4 mx-auto w-full',
+      class: 'py-4 mx-auto w-full'
     }"
   >
     <template #content="{ item }">
       <!-- Login Tab -->
-      <div v-if="item.value === 'login'" class="space-y-4">
+      <div
+        v-if="item.value === 'login'"
+        class="space-y-4"
+      >
         <div class="flex flex-col gap-3">
           <NButton
             to="/api/auth/github"
@@ -85,7 +89,10 @@ function handleRegister(provider: string) {
       </div>
 
       <!-- Register Tab -->
-      <div v-if="item.value === 'register'" class="space-y-6">
+      <div
+        v-if="item.value === 'register'"
+        class="space-y-6"
+      >
         <NFormGroup
           label="Choose a username"
           required
@@ -97,7 +104,10 @@ function handleRegister(provider: string) {
           />
         </NFormGroup>
 
-        <div v-if="!requestAccess" class="space-y-3">
+        <div
+          v-if="!requestAccess"
+          class="space-y-3"
+        >
           <p class="text-base text-muted">
             Connect your account with the following providers:
           </p>
@@ -124,7 +134,10 @@ function handleRegister(provider: string) {
           />
         </div>
 
-        <div v-else class="space-y-3">
+        <div
+          v-else
+          class="space-y-3"
+        >
           <p class="text-base text-muted">
             Your account is connected. You can now request access to the system:
           </p>

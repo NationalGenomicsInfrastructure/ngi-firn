@@ -5,6 +5,5 @@
     <main>
       <slot />
     </main>
-
   </NSidebarProvider>
 </template>

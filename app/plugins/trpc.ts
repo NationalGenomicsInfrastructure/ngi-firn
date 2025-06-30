@@ -3,12 +3,12 @@ import type { AppRouter } from '../../server/trpc/routers/index'
 
 export default defineNuxtPlugin(() => {
   const trpc = createTRPCNuxtClient<AppRouter>({
-    links: [httpBatchLink({ url: '/api/trpc' })],
+    links: [httpBatchLink({ url: '/api/trpc' })]
   })
 
   return {
     provide: {
-      trpc,
-    },
+      trpc
+    }
   }
 })

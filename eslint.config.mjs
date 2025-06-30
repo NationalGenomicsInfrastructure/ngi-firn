@@ -2,5 +2,10 @@
 import withNuxt from './.nuxt/eslint.config.mjs'
 
 export default withNuxt(
-  // Your custom configs here
+  // Custom indentation rules similar to Python
+  {
+    rules: {
+      indent: ['error', 2]
+    }
+  }
 )

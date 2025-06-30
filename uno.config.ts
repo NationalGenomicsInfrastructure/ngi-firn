@@ -38,7 +38,7 @@ export default defaultConfig({
      */
     {
       // add here ...
-    },
+    }
 
     /**
      * Dynamic Shortcuts
@@ -49,5 +49,5 @@ export default defaultConfig({
      * [/^gradient-(\w+)$/, ([, color]) => `bg-gradient-to-r from-${color}-500 to-${color}-700`],
      * [/^shadow-(\w+)$/, ([, size]) => size === 'sm' ? 'shadow-sm' : size === 'lg' ? 'shadow-lg' : 'shadow']
      */
-  ],
+  ]
 })

@@ -6,11 +6,10 @@ export default defineOAuthGitHubEventHandler({
         id: String(user.id),
         name: user.name || user.login,
         avatar: user.avatar_url,
-        url: user.html_url,
-      },
+        url: user.html_url
+      }
     })
 
     return sendRedirect(event, '/firn')
-  },
+  }
 })
-
