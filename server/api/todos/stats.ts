@@ -1,9 +1,8 @@
-import { couchDB } from '../../database/couchdb'
-import type { Todo } from '../../../types/productivity'
+import { useDB, type Todo } from '../../utils/db'
 
 export default eventHandler(async () => {
   // Get all todo documents
-  const todos = await couchDB.queryDocuments<Todo>({
+  const todos = await useDB().queryDocuments<Todo>({
     type: 'todo'
   }, ['userId'])
 

@@ -1,5 +1,5 @@
 import { useValidatedBody, z } from 'h3-zod'
-import type { Todo } from '../../../types/productivity'
+import { useDB, type Todo } from '../../utils/db'
 
 export default eventHandler(async (event) => {
   const { title } = await useValidatedBody(event, {
@@ -17,7 +17,7 @@ export default eventHandler(async (event) => {
   }
 
   const result = await useDB().createDocument(todo)
-  
+
   // Return the created todo with the generated ID and rev
   return {
     _id: result.id,

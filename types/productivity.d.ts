@@ -1,4 +1,4 @@
-import { CloudantV1 } from '@ibm-cloud/cloudant';
+import type { CloudantV1 } from '@ibm-cloud/cloudant'
 
 // Define the Todo type for CouchDB documents
 export interface Todo extends CloudantV1.Document {
@@ -10,7 +10,3 @@ export interface Todo extends CloudantV1.Document {
   completed: number // 0 or 1
   createdAt: string // ISO date string
 }
-
-
-
-
