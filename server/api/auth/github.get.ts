@@ -31,12 +31,11 @@ export default defineOAuthGitHubEventHandler({
         return sendRedirect(event, '/pending-approval')
       }
 
-      // Check if user exists by GitHub ID
-      const existingUserByGitHub = await UserService.getUserByProviderId('github', String(user.id))
+      // For direct GitHub login, check if user exists and is approved
+      const existingUser = await UserService.getUserByProviderId('github', String(user.id))
       
-      if (existingUserByGitHub) {
-        // User exists with this GitHub account
-        const isApproved = await UserService.isUserApproved(existingUserByGitHub._id)
+      if (existingUser) {
+        const isApproved = await UserService.isUserApproved(existingUser._id)
         
         if (!isApproved) {
           return sendRedirect(event, '/pending-approval')
@@ -46,52 +45,18 @@ export default defineOAuthGitHubEventHandler({
         await setUserSession(event, {
           user: {
             provider: 'github',
-            id: existingUserByGitHub._id,
-            name: existingUserByGitHub.name,
-            avatar: existingUserByGitHub.avatar,
-            url: existingUserByGitHub.githubUrl || ''
+            id: existingUser._id,
+            name: existingUser.name,
+            avatar: existingUser.avatar,
+            url: existingUser.githubUrl || ''
           }
         })
 
         return sendRedirect(event, '/firn')
       }
 
-      // Check if user exists by email (to link GitHub to existing Google account)
-      const existingUserByEmail = await UserService.getUserByEmail(String(user.email))
-      
-      if (existingUserByEmail) {
-        // Link GitHub account to existing user
-        const updates: Partial<typeof existingUserByEmail> = {
-          githubId: String(user.id),
-          githubName: user.name || user.login,
-          githubAvatar: user.avatar_url,
-          githubUrl: user.html_url,
-          updatedAt: new Date().toISOString()
-        }
-
-        await couchDB.updateDocument(existingUserByEmail._id, { ...existingUserByEmail, ...updates }, existingUserByEmail._rev!)
-        
-        const isApproved = await UserService.isUserApproved(existingUserByEmail._id)
-        
-        if (!isApproved) {
-          return sendRedirect(event, '/pending-approval')
-        }
-
-        // User is approved, set session and redirect to main app
-        await setUserSession(event, {
-          user: {
-            provider: 'github',
-            id: existingUserByEmail._id,
-            name: existingUserByEmail.name,
-            avatar: existingUserByEmail.avatar,
-            url: existingUserByEmail.githubUrl || ''
-          }
-        })
-
-        return sendRedirect(event, '/firn')
-      }
-
-      // New user trying to sign up with GitHub - redirect to login page with Google signup state
+      // If no existing user found, redirect to registration flow
+      // This will prompt the user to register with Google first
       return sendRedirect(event, '/?state=signup-google&email=' + encodeURIComponent(String(user.email)))
     } catch (error) {
       console.error('Error in GitHub OAuth handler:', error)

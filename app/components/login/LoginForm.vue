@@ -1,7 +1,9 @@
 <script setup lang="ts">
 const route = useRoute()
+const { $trpc } = useNuxtApp()
+
 const loading = ref(false)
-const username = ref('')
+const pendingUser = ref<any>(null)
 
 // Get state from URL query parameters
 const state = computed(() => route.query.state as string)
@@ -25,8 +27,6 @@ const items = ref([
   }
 ])
 
-const requestAccess = ref(false)
-
 // Set active tab based on state
 const activeTab = computed(() => {
   if (state.value === 'link-github' || state.value === 'signup-google') {
@@ -35,47 +35,90 @@ const activeTab = computed(() => {
   return 'login'
 })
 
-function handleOAuthLogin(provider: string) {
-  // The actual OAuth flow will be handled by the route
+// Handle OAuth login for existing users
+async function handleLogin(provider: 'google' | 'github') {
   loading.value = true
+  
+  try {
+    // Redirect to OAuth provider
+    if (provider === 'github') {
+      window.location.href = '/api/auth/github'
+    } else if (provider === 'google') {
+      window.location.href = '/api/auth/google'
+    }
+  } catch (error: any) {
+    console.error('Login error:', error)
+    loading.value = false
+  }
 }
 
-function handleRegister(provider: string) {
-  if (!username.value) {
-    // Show error or handle validation
+// Handle Google registration
+async function handleGoogleRegister() {
+  loading.value = true
+  
+  try {
+    // Redirect to Google OAuth for registration
+    window.location.href = '/api/auth/google'
+  } catch (error: any) {
+    console.error('Registration error:', error)
+    loading.value = false
+  }
+}
+
+// Handle GitHub linking
+async function handleGitHubLink() {
+  if (!pendingUser.value) {
+    console.error('No pending user: Please connect your Google account first.')
     return
   }
 
-  if (!requestAccess.value) {
-    // First time: Link OAuth account
-    handleOAuthLogin(provider)
-  }
-  else {
-    // Second time: Request access
-    loading.value = true
-    // TODO: Implement access request logic
-    setTimeout(() => {
-      loading.value = false
-    }, 1000)
-  }
-}
-
-function handleLinkGitHub() {
-  if (linkingUserId.value) {
+  loading.value = true
+  
+  try {
     // Redirect to GitHub OAuth with userId parameter for linking
-    window.location.href = `/api/auth/github?userId=${linkingUserId.value}`
+    window.location.href = `/api/auth/github?userId=${pendingUser.value.id}`
+  } catch (error: any) {
+    console.error('GitHub linking error:', error)
+    loading.value = false
   }
 }
 
-function handleGoogleSignup() {
-  // Redirect to Google OAuth for signup
-  window.location.href = '/api/auth/google'
+// Handle access request
+async function handleRequestAccess() {
+  if (!pendingUser.value) {
+    console.error('No pending user: Please complete the registration process first.')
+    return
+  }
+
+  loading.value = true
+  
+  try {
+    // The user is already created and stored in the database
+    // We just need to show a success message
+    console.log('Access request submitted: Your request has been submitted and is awaiting admin approval.')
+    
+    // Clear pending user and redirect to pending approval page
+    pendingUser.value = null
+    await navigateTo('/pending-approval')
+  } catch (error: any) {
+    console.error('Access request error:', error)
+    console.error('Request failed:', error.message || 'An error occurred while submitting your request.')
+  } finally {
+    loading.value = false
+  }
 }
+
+
 
 // Watch for state changes and update UI accordingly
 watchEffect(() => {
-  if (state.value === 'link-github') {
-    requestAccess.value = true
+  if (state.value === 'link-github' && linkingUserId.value) {
+    // If we have a linking user ID, we can restore the pending user state
+    // This would typically fetch the user data from the server
+    pendingUser.value = {
+      id: linkingUserId.value,
+      email: signupEmail.value
+    }
   }
 })
 </script>
@@ -97,26 +140,33 @@ watchEffect(() => {
         v-if="item.value === 'login'"
         class="space-y-4"
       >
+        <div class="text-center space-y-2 mb-6">
+          <h3 class="text-lg font-semibold">
+            Sign in to Firn
+          </h3>
+          <p class="text-muted">
+            Use your existing account to access the system.
+          </p>
+        </div>
+        
         <div class="flex flex-col gap-3">
           <NButton
-            to="/api/auth/github"
             btn="solid-gray"
             leading="i-simple-icons-github"
             label="Sign in with GitHub"
             class="w-full"
             size="md"
-            external
-            @click="handleOAuthLogin('github')"
+            :loading="loading"
+            @click="handleLogin('github')"
           />
           <NButton
-            to="/api/auth/google"
             btn="solid-gray"
             leading="i-simple-icons-google"
             label="Sign in with Google"
             class="w-full"
             size="md"
-            external
-            @click="handleOAuthLogin('google')"
+            :loading="loading"
+            @click="handleLogin('google')"
           />
         </div>
       </div>
@@ -126,9 +176,34 @@ watchEffect(() => {
         v-if="item.value === 'register'"
         class="space-y-6"
       >
-        <!-- Link GitHub State -->
+        <!-- Step 1: Google Registration -->
         <div
-          v-if="state === 'link-github'"
+          v-if="!pendingUser"
+          class="space-y-4"
+        >
+          <div class="text-center space-y-2">
+            <h3 class="text-lg font-semibold">
+              Register with Google
+            </h3>
+            <p class="text-muted">
+              Start by connecting your Google account. This will be your primary account.
+            </p>
+          </div>
+          
+          <NButton
+            btn="solid-gray"
+            leading="i-simple-icons-google"
+            label="Connect with Google"
+            size="md"
+            class="w-full"
+            :loading="loading"
+            @click="handleGoogleRegister"
+          />
+        </div>
+
+        <!-- Step 2: GitHub Linking -->
+        <div
+          v-else-if="pendingUser && !pendingUser.githubLinked"
           class="space-y-4"
         >
           <div class="text-center space-y-2">
@@ -138,6 +213,9 @@ watchEffect(() => {
             <p class="text-muted">
               Your Google account has been connected. Now link your GitHub account to complete the registration.
             </p>
+            <p class="text-sm text-muted">
+              Email: {{ pendingUser.email }}
+            </p>
           </div>
           
           <NButton
@@ -146,102 +224,33 @@ watchEffect(() => {
             label="Link GitHub Account"
             size="md"
             class="w-full"
-            @click="handleLinkGitHub"
+            :loading="loading"
+            @click="handleGitHubLink"
           />
         </div>
 
-        <!-- Signup with Google State -->
+        <!-- Step 3: Request Access -->
         <div
-          v-else-if="state === 'signup-google'"
+          v-else-if="pendingUser && pendingUser.githubLinked"
           class="space-y-4"
         >
           <div class="text-center space-y-2">
             <h3 class="text-lg font-semibold">
-              Complete Registration with Google
+              Request Access
             </h3>
             <p class="text-muted">
-              To register, please use your Google account. This ensures proper account verification.
-            </p>
-            <p
-              v-if="signupEmail"
-              class="text-sm text-muted"
-            >
-              Email: {{ signupEmail }}
+              Your accounts are connected. You can now request access to the system.
             </p>
           </div>
           
           <NButton
-            btn="solid-gray"
-            leading="i-simple-icons-google"
-            label="Continue with Google"
+            btn="solid-primary"
+            label="Request Access"
             size="md"
             class="w-full"
-            @click="handleGoogleSignup"
+            :loading="loading"
+            @click="handleRequestAccess"
           />
-        </div>
-
-        <!-- Default Register State -->
-        <div
-          v-else
-          class="space-y-6"
-        >
-          <NFormGroup
-            label="Choose a username"
-            required
-          >
-            <NInput
-              v-model="username"
-              placeholder="brilliant.researcher"
-              :disabled="requestAccess"
-            />
-          </NFormGroup>
-
-          <div
-            v-if="!requestAccess"
-            class="space-y-3"
-          >
-            <p class="text-base text-muted">
-              Connect your account with the following providers:
-            </p>
-            <NButton
-              to="/api/auth/github"
-              btn="solid-gray"
-              leading="i-simple-icons-github"
-              label="Connect with GitHub"
-              size="md"
-              class="w-full"
-              :disabled="!username"
-              @click="handleRegister('github')"
-            />
-            <NButton
-              to="/api/auth/google"
-              btn="solid-gray"
-              leading="i-simple-icons-google"
-              label="Connect with Google"
-              size="md"
-              class="w-full"
-              external
-              :disabled="!username"
-              @click="handleRegister('google')"
-            />
-          </div>
-
-          <div
-            v-else
-            class="space-y-3"
-          >
-            <p class="text-base text-muted">
-              Your account is connected. You can now request access to the system:
-            </p>
-            <NButton
-              btn="solid-primary"
-              label="Request Access"
-              size="md"
-              class="w-full"
-              :loading="loading"
-              @click="handleRegister('request')"
-            />
-          </div>
         </div>
       </div>
     </template>

@@ -278,5 +278,161 @@ export const usersRouter = createTRPCRouter({
 
       const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
       return { id: result.id, ...updates }
+    }),
+
+  // Login with OAuth provider (public endpoint)
+  login: baseProcedure
+    .input(z.object({
+      provider: z.enum(['google', 'github']),
+      providerId: z.string(),
+      name: z.string(),
+      email: z.string().email(),
+      avatar: z.string().url().optional(),
+      url: z.string().url().optional()
+    }))
+    .mutation(async ({ input }) => {
+      // Check if user exists by provider ID
+      const existingUser = await UserService.getUserByProviderId(input.provider, input.providerId)
+      
+      if (!existingUser) {
+        throw new Error('User not found')
+      }
+
+      // Check if user is approved
+      const isApproved = await UserService.isUserApproved(existingUser._id)
+      
+      if (!isApproved) {
+        throw new Error('User not approved')
+      }
+
+      // Update last seen and provider-specific fields
+      const updates: Partial<User> = {
+        lastSeen: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      if (input.provider === 'google') {
+        updates.googleId = input.providerId
+        updates.name = input.name
+        updates.avatar = input.avatar
+      } else if (input.provider === 'github') {
+        updates.githubId = input.providerId
+        updates.githubName = input.name
+        updates.githubAvatar = input.avatar
+        updates.githubUrl = input.url
+      }
+
+      await couchDB.updateDocument(existingUser._id, { ...existingUser, ...updates }, existingUser._rev!)
+
+      return {
+        success: true,
+        user: {
+          id: existingUser._id,
+          name: existingUser.name,
+          avatar: existingUser.avatar,
+          email: existingUser.email,
+          provider: input.provider
+        }
+      }
+    }),
+
+  // Register new user with Google OAuth (public endpoint)
+  register: baseProcedure
+    .input(z.object({
+      provider: z.enum(['google']),
+      providerId: z.string(),
+      name: z.string(),
+      email: z.string().email(),
+      avatar: z.string().url().optional()
+    }))
+    .mutation(async ({ input }) => {
+      // Check if user already exists by email
+      const existingUser = await UserService.getUserByEmail(input.email)
+      
+      if (existingUser) {
+        throw new Error('User with this email already exists')
+      }
+
+      // Create new user (unapproved by default)
+      const newUser: Omit<User, '_id' | '_rev'> = {
+        type: 'user',
+        provider: input.provider,
+        name: input.name,
+        avatar: input.avatar || '',
+        email: input.email,
+        emailVerified: true, // Google emails are verified
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        isAdmin: false,
+        permissions: [], // New users are not approved by default
+        tokens: [],
+        sessions: [],
+        todos: [],
+        settings: {},
+        preferences: {},
+        googleId: input.providerId
+      }
+
+      const result = await couchDB.createDocument(newUser)
+      
+      return {
+        success: true,
+        user: {
+          id: result.id,
+          name: newUser.name,
+          email: newUser.email,
+          avatar: newUser.avatar,
+          provider: input.provider
+        }
+      }
+    }),
+
+  // Link GitHub to existing user (public endpoint)
+  linkGitHub: baseProcedure
+    .input(z.object({
+      userId: z.string(),
+      providerId: z.string(),
+      name: z.string(),
+      avatar: z.string().url().optional(),
+      url: z.string().url().optional()
+    }))
+    .mutation(async ({ input }) => {
+      const user = await couchDB.getDocument<User>(input.userId)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // Check if this GitHub account is already linked to another user
+      const existingUser = await couchDB.queryDocuments<User>({
+        type: 'user',
+        githubId: input.providerId
+      })
+
+      if (existingUser.length > 0 && existingUser[0]._id !== user._id) {
+        throw new Error('This GitHub account is already linked to another user')
+      }
+
+      // Update user with GitHub information
+      const updates: Partial<User> = {
+        githubId: input.providerId,
+        githubName: input.name,
+        githubAvatar: input.avatar,
+        githubUrl: input.url,
+        updatedAt: new Date().toISOString()
+      }
+
+      const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+      
+      return {
+        success: true,
+        user: {
+          id: result.id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          githubLinked: true
+        }
+      }
     })
 }) 
