@@ -11,10 +11,15 @@ export default defineOAuthGoogleEventHandler({
         email: user.email,
         avatar: user.picture
       })
-
-      // Check if user is approved
-      const isApproved = await UserService.isUserApproved(dbUser._id)
       
+      if (isNew) {
+        // New user - redirect back to login page with linking state
+        return sendRedirect(event, '/?state=link-github&userId=' + dbUser._id)
+      }
+
+      // Existing user - check if approved
+      const isApproved = await UserService.isUserApproved(dbUser._id)
+
       if (!isApproved) {
         // User is not approved, redirect to pending page
         return sendRedirect(event, '/pending-approval')

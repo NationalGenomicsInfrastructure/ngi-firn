@@ -46,7 +46,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   })
 })
 
-// Middleware to check if user is approved
+// Middleware to check if user is approved (for Firn)
 const isApproved = t.middleware(async ({ ctx, next }) => {
   if (!ctx.auth?.user) {
     throw new TRPCError({ code: 'UNAUTHORIZED' })

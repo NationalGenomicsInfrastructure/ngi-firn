@@ -59,8 +59,6 @@ export const usersRouter = createTRPCRouter({
         emailVerified: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        lastActive: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
         isAdmin: input.isAdmin,
         permissions: input.isAdmin ? ['admin'] : [],
@@ -109,7 +107,7 @@ export const usersRouter = createTRPCRouter({
       return users.filter(user => {
         const isApproved = user.permissions.includes('approved')
         return (input.includeApproved && isApproved) || 
-               (input.includePending && !isApproved)
+              (input.includePending && !isApproved)
       })
     }),
 
