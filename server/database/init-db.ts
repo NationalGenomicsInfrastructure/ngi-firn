@@ -1,10 +1,19 @@
+import 'dotenv/config'
 import { couchDB } from './couchdb'
 import { createIndexes } from '../utils/db'
-import type { User } from '../../types/user'
+import type { User } from '../../types/auth'
 
 export async function initializeDatabase() {
   try {
     console.log('Initializing database...')
+    
+    // Debug: Log environment variables (without sensitive data)
+    console.log('Environment check:')
+    console.log('- CLOUDANT_URL:', process.env.CLOUDANT_URL ? 'Set' : 'Not set')
+    console.log('- CLOUDANT_USERNAME:', process.env.CLOUDANT_USERNAME ? 'Set' : 'Not set')
+    console.log('- CLOUDANT_PASSWORD:', process.env.CLOUDANT_PASSWORD ? 'Set' : 'Not set')
+    console.log('- CLOUDANT_DATABASE:', process.env.CLOUDANT_DATABASE || 'firn (default)')
+    console.log('- FIRST_ADMIN_EMAIL:', process.env.FIRST_ADMIN_EMAIL ? 'Set' : 'Not set')
     
     // Ensure database exists
     await couchDB.ensureDatabase()
@@ -22,19 +31,25 @@ export async function initializeDatabase() {
     
     if (adminUsers.length === 0) {
       console.log('No admin users found, creating first admin...')
+      // Check if FIRST_ADMIN_EMAIL is set and is a valid SciLifeLab email
+      if (!process.env.FIRST_ADMIN_EMAIL) {
+        throw new Error('FIRST_ADMIN_EMAIL environment variable is required for creating the first admin user')
+      }
       
-      // Create first admin user (this should be replaced with actual admin creation)
+      if (!process.env.FIRST_ADMIN_EMAIL.endsWith('@scilifelab.se')) {
+        throw new Error('FIRST_ADMIN_EMAIL must be a SciLifeLab email address.')
+      }
+      
+      // Create first admin user
       const firstAdmin: Omit<User, '_id' | '_rev'> = {
         type: 'user',
         provider: 'google',
-        name: 'System Administrator',
+        name: '',
         avatar: '',
-        email: process.env.FIRST_ADMIN_EMAIL || 'admin@example.com',
+        email: process.env.FIRST_ADMIN_EMAIL,
         emailVerified: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        lastActive: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
         isAdmin: true,
         permissions: ['admin', 'approved'],
@@ -47,7 +62,6 @@ export async function initializeDatabase() {
       
       const result = await couchDB.createDocument(firstAdmin)
       console.log(`First admin user created with ID: ${result.id}`)
-      console.log('Please update the admin email and credentials after first login')
     } else {
       console.log(`Found ${adminUsers.length} admin user(s)`)
     }
@@ -60,7 +74,7 @@ export async function initializeDatabase() {
 }
 
 // Run initialization if this file is executed directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   initializeDatabase()
     .then(() => {
       console.log('Database initialization completed')

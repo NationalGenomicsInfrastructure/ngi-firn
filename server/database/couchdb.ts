@@ -1,6 +1,5 @@
 import { CloudantV1 } from '@ibm-cloud/cloudant'
 import { BasicAuthenticator } from 'ibm-cloud-sdk-core'
-import type { Todo } from '../../types/productivity'
 
 // CouchDB connection configuration
 interface CouchDBConfig {
@@ -18,20 +17,28 @@ interface BaseDocument extends CloudantV1.Document {
 
 // Initialize Cloudant client
 function createCloudantClient(config: CouchDBConfig): CloudantV1 {
-  const options: any = {
-    url: config.url
-  }
+  console.log('Creating Cloudant client with config:', {
+    url: config.url,
+    username: config.username ? 'Set' : 'Not set',
+    password: config.password ? 'Set' : 'Not set',
+    database: config.database
+  })
 
-  // Add basic authentication if username and password are provided
+  // Set environment variables for IBM Cloudant SDK
+  process.env.CLOUDANT_URL = config.url
+  if (config.username) {
+    process.env.CLOUDANT_USERNAME = config.username
+  }
+  if (config.password) {
+    process.env.CLOUDANT_PASSWORD = config.password
+  }
+  // Use COUCHDB_SESSION authentication for username/password
   if (config.username && config.password) {
-    const authenticator = new BasicAuthenticator({
-      username: config.username,
-      password: config.password
-    })
-    options.authenticator = authenticator
+    process.env.CLOUDANT_AUTH_TYPE = 'COUCHDB_SESSION'
   }
 
-  const client = CloudantV1.newInstance(options)
+  // Create client using IBM Cloudant SDK pattern
+  const client = CloudantV1.newInstance({})
   return client
 }
 
@@ -40,9 +47,41 @@ export class CouchDBConnector {
   private client: CloudantV1
   private database: string
 
-  constructor(config: CouchDBConfig) {
-    this.client = createCloudantClient(config)
-    this.database = config.database
+  constructor(config?: Partial<CouchDBConfig>) {
+    // Load environment variables if not already loaded
+    if (!process.env.CLOUDANT_URL) {
+      try {
+        require('dotenv/config')
+      } catch (e) {
+        console.warn('dotenv not available, using existing environment variables')
+      }
+    }
+
+    // Merge config with environment variables
+    const finalConfig: CouchDBConfig = {
+      url: config?.url || process.env.CLOUDANT_URL || process.env.COUCHDB_URL || 'http://localhost:5984',
+      username: config?.username || process.env.CLOUDANT_USERNAME,
+      password: config?.password || process.env.CLOUDANT_PASSWORD,
+      database: config?.database || process.env.CLOUDANT_DATABASE || 'firn'
+    }
+
+    // Validate required configuration
+    if (!finalConfig.url) {
+      throw new Error('CLOUDANT_URL or COUCHDB_URL is required but not provided')
+    }
+
+    this.client = createCloudantClient(finalConfig)
+    this.database = finalConfig.database
+  }
+
+  // Create a new instance with a different database
+  withDatabase(databaseName: string): CouchDBConnector {
+    return new CouchDBConnector({
+      url: process.env.CLOUDANT_URL || process.env.COUCHDB_URL || 'http://localhost:5984',
+      username: process.env.CLOUDANT_USERNAME,
+      password: process.env.CLOUDANT_PASSWORD,
+      database: databaseName
+    })
   }
 
   // Create a document
@@ -184,16 +223,8 @@ export class CouchDBConnector {
   }
 }
 
-// Default configuration from environment variables
-const defaultConfig: CouchDBConfig = {
-  url: process.env.COUCHDB_URL || 'http://localhost:5984',
-  username: process.env.COUCHDB_USERNAME,
-  password: process.env.COUCHDB_PASSWORD,
-  database: process.env.COUCHDB_DATABASE || 'firn'
-}
-
-// Export a singleton instance
-export const couchDB = new CouchDBConnector(defaultConfig)
+// Export a singleton instance with default configuration
+export const couchDB = new CouchDBConnector()
 
 // Helper function to ensure database exists
 export async function ensureDatabase() {
