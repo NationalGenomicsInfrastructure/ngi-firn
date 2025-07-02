@@ -2,6 +2,22 @@ import { UserService } from '../../utils/users'
 
 export default defineOAuthGoogleEventHandler({
   async onSuccess(event, { user }) {
+
+    // user object example:
+    // sub: '[[:digits:]]+',
+    // name: '[[:letters:]]+',
+    // given_name: '[[:letters:]]+',
+    // family_name: '[[:letters:]]+',
+    // picture: 'URL',
+    // email: 'email',
+    // email_verified: Boolean,
+    // hd: 'domain'
+
+    // only allow users from scilifelab.se to sign in
+    if (user.hd !== 'scilifelab.se') {
+      return sendRedirect(event, '/auth-error', 401)
+    }
+
     try {
       // Find or create user in database
       const { user: dbUser, isNew } = await UserService.findOrCreateUser({

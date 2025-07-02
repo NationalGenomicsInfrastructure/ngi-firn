@@ -1,56 +1,59 @@
 import type { BaseDocument } from '../server/database/couchdb'
 
-declare module '#auth-utils' {
-  interface User extends BaseDocument {
-    type: 'user'
-    provider: 'github' | 'google' | 'token' | 'anonymous'
-    name: string
-    avatar: string
-    email: string
-    emailVerified: boolean
-    createdAt: string
-    updatedAt: string
-    lastSeen: string
-    isAdmin: boolean
-    permissions: string[]
-    tokens: string[]
-    sessions: string[]
-    todos: string[]
-    settings: Record<string, string>
-    preferences: Record<string, string>
-    // Provider-specific IDs
-    googleId?: string
-    githubId?: string
-    // GitHub-specific fields for linking
-    githubName?: string
-    githubAvatar?: string
-    githubUrl?: string
-  }
-}
-
-// Export the User type for use in other modules
-export interface User extends BaseDocument {
+// Define the User interface
+export interface FirnUser extends BaseDocument {
   type: 'user'
-  provider: 'github' | 'google' | 'token' | 'anonymous'
-  name: string
-  avatar: string
-  email: string
-  emailVerified: boolean
+  googleId: number
+  googleName: string
+  googleGivenName: string
+  googleFamilyName: string
+  googleAvatar: string
+  googleEmail: string
+  googleEmailVerified: boolean
+  // GitHub-specific fields for linking
+  githubId?: number
+  githubName?: string
+  githubAvatar?: string
+  githubEmail?: string
+  githubUrl?: string
+  // Timestamps
   createdAt: string
-  updatedAt: string
-  lastSeen: string
+  lastSeenAt: string
+  // User properties
   isAdmin: boolean
   permissions: string[]
   tokens: string[]
   sessions: string[]
+  // User-related collections
   todos: string[]
-  settings: Record<string, string>
-  preferences: Record<string, string>
-  // Provider-specific IDs
-  googleId?: string
-  githubId?: string
-  // GitHub-specific fields for linking
-  githubName?: string
-  githubAvatar?: string
-  githubUrl?: string
+  preferences: string[]
+}
+
+declare module '#auth-utils' {
+  interface SessionUser extends FirnUser {
+      provider: 'github' | 'google' | 'token' 
+      currentSessionId: string
+      currentSessionExpiresAt: string
+  }
+
+  interface GoogleUser extends Partial<SessionUser> {
+    provider: 'google'
+    googleId: number
+    googleName: string
+    googleGivenName: string
+    googleFamilyName: string
+    googleAvatar: string
+    googleEmail: string
+    googleEmailVerified: boolean
+  }
+
+  interface GitHubUser extends Partial<SessionUser> {
+    provider: 'github'
+    githubId: number
+    githubName: string
+    githubAvatar?: string
+    githubEmail?: string
+    githubUrl?: string
+  }
+  
 }
