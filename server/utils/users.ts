@@ -1,5 +1,5 @@
 import { couchDB } from '../database/couchdb'
-import type { FirnUser, GoogleUser, GitHubUser, SessionUser } from '../../types/auth'
+import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserPrivate } from '../../types/auth'
 
 export class UserService {
   /**
@@ -79,6 +79,20 @@ export class UserService {
     }
 
   /**
+   * Match a SessionUserPrivate to a FirnUser
+   * Returns null if no user is found
+   */
+    static async matchSessionUserPrivate(sessionUserPrivate: SessionUserPrivate): Promise<FirnUser | null> {
+      // First, try to find user by Document ID 
+      const existingUserByDocumentId = await couchDB.queryDocuments<FirnUser>({
+        type: 'user', 
+        _id: sessionUserPrivate.id
+      })
+  
+      return existingUserByDocumentId[0] as FirnUser
+    }
+
+  /**
    * Get all pending users
    */
   static async getPendingUsers(): Promise<FirnUser[]> {
@@ -106,5 +120,82 @@ export class UserService {
       type: 'user'
     })
     return users.filter(user => user.allowLogin)
+  }
+
+  /**
+   * Convert a FirnUser to a SessionUser
+   */
+  static async convertToSessionUser(user: FirnUser, provider: 'google' | 'github' | 'token'): Promise<[SessionUser, SessionUserPrivate]> {
+
+    let avatar: string | undefined
+    let name: string
+
+    if (provider === 'github') {
+      avatar = user.githubAvatar
+      name = user.githubName || user.googleName
+    } else {
+      avatar = user.googleAvatar
+      name = user.googleName
+    }
+
+    const sessionUser: SessionUser = {
+      provider: provider,
+      name: name,
+      givenName: user.googleGivenName,
+      familyName: user.googleFamilyName,
+      avatar: avatar,
+      linkedGitHub: user.githubId ? true : false
+    }
+
+    const sessionUserPrivate: SessionUserPrivate = {
+      id: user._id,
+      rev: user._rev,
+      allowLogin: user.allowLogin,
+      isRetired: user.isRetired,
+      isAdmin: user.isAdmin,
+      permissions: user.permissions
+    }
+
+    return [sessionUser, sessionUserPrivate]
+  }
+
+  /**
+   * Convert a GoogleUser to a FirnUser
+   */
+  static async convertGoogleUserToFirnUser(googleUser: GoogleUser): Promise<FirnUser> {
+
+    // Create new user from GoogleUser with all required FirnUser fields
+    const newFirnUser: Omit<FirnUser, '_id' | '_rev'> = 
+    {
+      type: 'user',
+      // Google-specific fields
+      googleId: googleUser.googleId,
+      googleName: googleUser.googleName,
+      googleGivenName: googleUser.googleGivenName,
+      googleFamilyName: googleUser.googleFamilyName,
+      googleAvatar: googleUser.googleAvatar,
+      googleEmail: googleUser.googleEmail,
+      googleEmailVerified: googleUser.googleEmailVerified,
+      // GitHub-specific fields (empty for new users)
+      githubId: undefined,
+      githubName: undefined,
+      githubAvatar: undefined,
+      githubEmail: undefined,
+      githubUrl: undefined,
+      // Timestamps
+      createdAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      // User properties (new users are not approved by default)
+      allowLogin: false,
+      isRetired: false,
+      isAdmin: false,
+      permissions: [],
+      tokens: [],
+      sessions: [],
+      // User-related collections
+      todos: [],
+      preferences: []
+    }
+    return newFirnUser as FirnUser
   }
 } 

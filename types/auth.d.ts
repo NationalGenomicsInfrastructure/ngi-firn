@@ -1,6 +1,6 @@
 import type { BaseDocument } from '../server/database/couchdb'
 
-// Define the User interface
+// Full user object as it is stored in the database
 export interface FirnUser extends BaseDocument {
   type: 'user'
   googleId: number
@@ -25,19 +25,33 @@ export interface FirnUser extends BaseDocument {
   isAdmin: boolean
   permissions: string[]
   tokens: string[]
-  sessions: string[]
   // User-related collections
   todos: string[]
   preferences: string[]
 }
 
-export interface SessionUser extends Partial<FirnUser> {
+// User object as it is stored in the session, no sensitive data
+export interface SessionUser {
   provider: 'github' | 'google' | 'token' 
-  currentSessionId: string
-  currentSessionExpiresAt: string
+  name: string
+  givenName?: string
+  familyName?: string
+  avatar?: string
+  linkedGitHub?: boolean
 }
 
-export interface GoogleUser extends Partial<SessionUser> {
+// Private user object, only server side
+export interface SessionUserPrivate {
+  id: string
+  rev?: string
+  allowLogin: boolean
+  isRetired: boolean
+  isAdmin: boolean
+  permissions: string[]
+}
+
+// Google OAuth user object
+export interface GoogleUser extends Partial<FirnUser> {
 provider: 'google'
 googleId: number
 googleName: string
@@ -48,7 +62,8 @@ googleEmail: string
 googleEmailVerified: boolean
 }
 
-export interface GitHubUser extends Partial<SessionUser> {
+// GitHub OAuth user object
+export interface GitHubUser extends Partial<FirnUser> {
 provider: 'github'
 githubId: number
 githubName: string
