@@ -1,10 +1,10 @@
 import { UserService } from '../../utils/users'
-import type { GoogleUser, FirnUser } from '../../../types/auth'
+import type { GoogleUser } from '../../../types/auth'
 
 export default defineOAuthGoogleEventHandler({
   async onSuccess(event, { user }) {
 
-    /** user object example:
+    /** user object example from Google OAuth:
     * sub: '[[:digits:]]+',
     * name: '[[:letters:]]+',
     * given_name: '[[:letters:]]+',
@@ -17,7 +17,8 @@ export default defineOAuthGoogleEventHandler({
 
     // only allow users from scilifelab.se to sign in
     if (user.hd !== 'scilifelab.se') {
-      return sendRedirect(event, '/auth-error', 401)
+      await clearUserSession(event)
+      return sendRedirect(event, '/auth-error', 403)
     }
 
     const googleUser: GoogleUser = {
@@ -31,75 +32,67 @@ export default defineOAuthGoogleEventHandler({
       googleEmailVerified: user.email_verified
     }
 
+    /**
+     * We need to distinguish between three cases:
+     * 1. User is already in the database and is approved
+     * 2. User is already in the database but not approved
+     * 3. User is not in the database (new registration)
+     */
+
     try {
 
-      // Search for user in database
+      // Search for existing user in database
       const firnUser = await UserService.matchGoogleUser(googleUser)
       
-        if (!firnUser) {
+      if (firnUser) {
+      
+        if (!firnUser.allowLogin || firnUser.isRetired) {
 
-          // Create new user from GoogleUser with all required FirnUser fields
-          const newFirnUser: Omit<FirnUser, '_id' | '_rev'> = {
-            type: 'user',
-            // Google-specific fields
-            googleId: googleUser.googleId,
-            googleName: googleUser.googleName,
-            googleGivenName: googleUser.googleGivenName,
-            googleFamilyName: googleUser.googleFamilyName,
-            googleAvatar: googleUser.googleAvatar,
-            googleEmail: googleUser.googleEmail,
-            googleEmailVerified: googleUser.googleEmailVerified,
-            // GitHub-specific fields (empty for new users)
-            githubId: undefined,
-            githubName: undefined,
-            githubAvatar: undefined,
-            githubEmail: undefined,
-            githubUrl: undefined,
-            // Timestamps
-            createdAt: new Date().toISOString(),
-            lastSeenAt: new Date().toISOString(),
-            // User properties (new users are not approved by default)
-            allowLogin: false,
-            isRetired: false,
-            isAdmin: false,
-            permissions: [],
-            tokens: [],
-            sessions: [],
-            // User-related collections
-            todos: [],
-            preferences: []
-          }
-
-          const newUser = await UserService.createUser(newFirnUser)
-
-          await setUserSession(event, {
-            user: googleUser,
-            private: newUser
-          })
-
-          // New user - redirect back to login page with linking state
-          return sendRedirect(event, '/?state=link-github')
+          // User is not approved or retired, redirect to pending page (case 2)
+          await clearUserSession(event)
+          return sendRedirect(event, '/pending-approval', 401)
 
         } else {
 
-          if (!firnUser.allowLogin || firnUser.isRetired) {
-            // User is not approved or retired, redirect to pending page
-            return sendRedirect(event, '/pending-approval')
+        // User is approved, set session and redirect to main app (case 1)
 
-          } else {
+        const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(firnUser, 'google')
 
-          // User is approved, set session and redirect to main app
+        await replaceUserSession(event, {
+          user: sessionUser,
+          private: sessionUserSecure
+        })
 
-          await setUserSession(event, {
-            user: googleUser,
-            private: firnUser
-          })
-          return sendRedirect(event, '/firn')
+        return sendRedirect(event, '/firn', 201)
         }
-      }
+      
+      } else {
+
+        // Create a new, unapproved user from the GoogleUser (case 3)
+        const newUser = await UserService.convertGoogleUserToFirnUser(googleUser)
+        // add to database
+        const newFirnUser = await UserService.createUser(newUser)
+
+        if (!newFirnUser) {
+          await clearUserSession(event)
+          return sendRedirect(event, '/auth-error', 401)
+        }
+        // convert to session user
+        const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(newFirnUser, 'google')
+
+        await replaceUserSession(event, {
+          user: sessionUser,
+          secure: sessionUserSecure
+        })
+
+        // New user - redirect back to login page with linking state
+        return sendRedirect(event, '/?state=link-github')
+      
+    }
 
     } catch (error) {
       console.error('Error in Google OAuth handler of user', user.name, user.email, error)
+      await clearUserSession(event)
       return sendRedirect(event, '/auth-error')
     }
   }

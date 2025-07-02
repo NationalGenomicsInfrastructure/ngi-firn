@@ -1,5 +1,5 @@
 import { UserService } from '../../utils/users'
-import { couchDB } from '../../database/couchdb'
+import type { GitHubUser } from '../../../types/auth'
 
 export default defineOAuthGitHubEventHandler({
   async onSuccess(event, { user }) {
@@ -40,64 +40,66 @@ export default defineOAuthGitHubEventHandler({
     * created_at: 'YYYY-MM-DDTHH:MM:SSZ',
     * updated_at: 'YYYY-MM-DDTHH:MM:SSZ'
     */
+
+    const githubUser: GitHubUser = {
+      provider: 'github',
+      githubId: user.id,
+      githubName: user.name,
+      githubAvatar: user.avatar_url,
+      githubEmail: user.email || null,
+      githubUrl: user.html_url
+    }
+
+    /**
+     * Since Google is our source of truth, GitHub users must exist in the database or are rejected.
+     * There is one exception: If we can match the GitHub user to a Google user, we will link the two.
+     * 1. User is already in the database and is approved -> log in and redirect to main app
+     * 2. User is already in the database but not approved -> redirect to pending page
+     * 3. GitHub user can be matched to User from Google -> link the two.
+     * 4. GitHub user cannot be matched to existing user -> reject.
+     */
+
     try {
-      // Get query parameters to check if this is a linking flow
-      const query = getQuery(event)
-      const linkingUserId = query.userId as string
+
+      // Search for existing user in database
+      const firnUser = await UserService.matchGitHubUser(githubUser)
       
-      if (linkingUserId) {
-        // This is a linking flow - link GitHub to existing user
-        const existingUser = await UserService.getUserById(linkingUserId)
-        
-        if (!existingUser) {
-          throw new Error('User not found for linking')
-        }
-
-        // Link GitHub account to the existing user
-        const updates: Partial<typeof existingUser> = {
-          githubId: String(user.id),
-          githubName: user.name || user.login,
-          githubAvatar: user.avatar_url,
-          githubUrl: user.html_url,
-          updatedAt: new Date().toISOString()
-        }
-
-        await couchDB.updateDocument(existingUser._id, { ...existingUser, ...updates }, existingUser._rev!)
-        
-        // Redirect to pending approval
-        return sendRedirect(event, '/pending-approval')
-      }
-
-      // For direct GitHub login, check if user exists and is approved
-      const existingUser = await UserService.getUserByProviderId('github', String(user.id))
+      if (firnUser) {
       
-      if (existingUser) {
-        const isApproved = await UserService.isUserApproved(existingUser._id)
-        
-        if (!isApproved) {
-          return sendRedirect(event, '/pending-approval')
-        }
+        if (!firnUser.allowLogin || firnUser.isRetired) {
 
-        // User is approved, set session and redirect to main app
-        await setUserSession(event, {
-          user: {
-            provider: 'github',
-            id: existingUser._id,
-            name: existingUser.name,
-            avatar: existingUser.avatar,
-            url: existingUser.githubUrl || ''
-          }
+          // User is not approved or retired, redirect to pending page (case 2)
+          await clearUserSession(event)
+          return sendRedirect(event, '/pending-approval', 401)
+
+        } else {
+
+        // User is approved, set session and redirect to main app (case 1)
+
+        const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(firnUser, 'github')
+
+        await replaceUserSession(event, {
+          user: sessionUser,
+          secure: sessionUserSecure
         })
 
-        return sendRedirect(event, '/firn')
+        return sendRedirect(event, '/firn', 201)
+        }
+      
+      } else {
+
+      // GitHub user cannot be matched to existing user -> test if this is a linking attempt
+
+      // get the existing session, if it is a linking attempt, there should be a (Google) sessionUser with a linkedGitHub field
+      const session = await getUserSession(event)
+
+      console.log('session', session)
       }
 
-      // If no existing user found, redirect to registration flow
-      // This will prompt the user to register with Google first
-      return sendRedirect(event, '/?state=signup-google&email=' + encodeURIComponent(String(user.email)))
     } catch (error) {
-      console.error('Error in GitHub OAuth handler:', error)
-      return sendRedirect(event, '/auth-error')
+      console.error('Error in GitHub OAuth handler of user', user.name, user.email, error)
+      await clearUserSession(event)
+      return sendRedirect(event, '/auth-error', 403)
     }
   }
 })

@@ -1,13 +1,18 @@
 import { couchDB } from '../database/couchdb'
-import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserPrivate } from '../../types/auth'
+import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure } from '../../types/auth'
 
 export class UserService {
   /**
    * Create a new FirnUser
    */
-  static async createUser(user: Omit<FirnUser, '_id' | '_rev'>): Promise<{ user: FirnUser }> {
-    const result = await couchDB.createDocument(user)
-    return { user: { ...user, _id: result.id, _rev: result.rev } as FirnUser }
+  static async createUser(user: Omit<FirnUser, '_id' | '_rev'>): Promise<FirnUser | null> {
+    const document = await couchDB.createDocument(user)
+    // query the new user by document id
+    const newUser = await couchDB.queryDocuments<FirnUser>({
+      type: 'user', 
+      _id: document.id
+    })
+    return newUser[0] as FirnUser
   }
   
   /**
@@ -79,14 +84,14 @@ export class UserService {
     }
 
   /**
-   * Match a SessionUserPrivate to a FirnUser
+   * Match a SessionUserSecure to a FirnUser
    * Returns null if no user is found
    */
-    static async matchSessionUserPrivate(sessionUserPrivate: SessionUserPrivate): Promise<FirnUser | null> {
+    static async matchSessionUserSecure(sessionUserSecure: SessionUserSecure): Promise<FirnUser | null> {
       // First, try to find user by Document ID 
       const existingUserByDocumentId = await couchDB.queryDocuments<FirnUser>({
         type: 'user', 
-        _id: sessionUserPrivate.id
+        _id: sessionUserSecure.id
       })
   
       return existingUserByDocumentId[0] as FirnUser
@@ -125,9 +130,9 @@ export class UserService {
   /**
    * Convert a FirnUser to a SessionUser
    */
-  static async convertToSessionUser(user: FirnUser, provider: 'google' | 'github' | 'token'): Promise<[SessionUser, SessionUserPrivate]> {
+  static async convertToSessionUser(user: FirnUser, provider: 'google' | 'github' | 'token'): Promise<[SessionUser, SessionUserSecure]> {
 
-    let avatar: string | undefined
+    let avatar: string | null = null
     let name: string
 
     if (provider === 'github') {
@@ -147,7 +152,7 @@ export class UserService {
       linkedGitHub: user.githubId ? true : false
     }
 
-    const sessionUserPrivate: SessionUserPrivate = {
+    const sessionUserSecure: SessionUserSecure = {
       id: user._id,
       rev: user._rev,
       allowLogin: user.allowLogin,
@@ -156,7 +161,7 @@ export class UserService {
       permissions: user.permissions
     }
 
-    return [sessionUser, sessionUserPrivate]
+    return [sessionUser, sessionUserSecure]
   }
 
   /**
@@ -176,12 +181,12 @@ export class UserService {
       googleAvatar: googleUser.googleAvatar,
       googleEmail: googleUser.googleEmail,
       googleEmailVerified: googleUser.googleEmailVerified,
-      // GitHub-specific fields (empty for new users)
-      githubId: undefined,
-      githubName: undefined,
-      githubAvatar: undefined,
-      githubEmail: undefined,
-      githubUrl: undefined,
+      // GitHub-specific fields (null for new users)
+      githubId: null,
+      githubName: null,
+      githubAvatar: null,
+      githubEmail: null,
+      githubUrl: null,
       // Timestamps
       createdAt: new Date().toISOString(),
       lastSeenAt: new Date().toISOString(),

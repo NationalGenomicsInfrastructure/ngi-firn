@@ -11,11 +11,11 @@ export interface FirnUser extends BaseDocument {
   googleEmail: string
   googleEmailVerified: boolean
   // GitHub-specific fields for linking
-  githubId?: number
-  githubName?: string
-  githubAvatar?: string
-  githubEmail?: string
-  githubUrl?: string
+  githubId: number | null
+  githubName: string | null
+  githubAvatar: string | null
+  githubEmail: string | null
+  githubUrl: string | null
   // Timestamps
   createdAt: string
   lastSeenAt: string
@@ -28,26 +28,6 @@ export interface FirnUser extends BaseDocument {
   // User-related collections
   todos: string[]
   preferences: string[]
-}
-
-// User object as it is stored in the session, no sensitive data
-export interface SessionUser {
-  provider: 'github' | 'google' | 'token' 
-  name: string
-  givenName?: string
-  familyName?: string
-  avatar?: string
-  linkedGitHub?: boolean
-}
-
-// Private user object, only server side
-export interface SessionUserPrivate {
-  id: string
-  rev?: string
-  allowLogin: boolean
-  isRetired: boolean
-  isAdmin: boolean
-  permissions: string[]
 }
 
 // Google OAuth user object
@@ -66,8 +46,34 @@ googleEmailVerified: boolean
 export interface GitHubUser extends Partial<FirnUser> {
 provider: 'github'
 githubId: number
-githubName: string
-githubAvatar?: string
-githubEmail?: string
-githubUrl?: string
+githubName: string | null
+githubAvatar: string | null
+githubEmail: string | null
+githubUrl: string
+}
+
+// User object as it is stored in the session, no sensitive data
+export interface SessionUser {
+  provider: 'github' | 'google' | 'token' 
+  name: string
+  givenName?: string
+  familyName?: string
+  avatar: string | null
+  linkedGitHub: boolean
+}
+
+// Private user object, only server side
+export interface SessionUserSecure {
+  id: string
+  rev?: string
+  allowLogin: boolean
+  isRetired: boolean
+  isAdmin: boolean
+  permissions: string[]
+}
+
+// Extend the auth-utils session to include our own fields
+declare module '#auth-utils' {
+  interface User extends SessionUser {}
+  interface SecureSessionData extends SessionUserSecure {}
 }
