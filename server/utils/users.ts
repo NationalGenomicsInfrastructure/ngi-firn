@@ -5,7 +5,7 @@ export class UserService {
   /**
    * Create a new FirnUser
    */
-  static async createUser(user: FirnUser): Promise<{ user: FirnUser }> {
+  static async createUser(user: Omit<FirnUser, '_id' | '_rev'>): Promise<{ user: FirnUser }> {
     const result = await couchDB.createDocument(user)
     return { user: { ...user, _id: result.id, _rev: result.rev } as FirnUser }
   }
