@@ -20,6 +20,8 @@ export interface FirnUser extends BaseDocument {
   createdAt: string
   lastSeenAt: string
   // User properties
+  allowLogin: boolean
+  isRetired: boolean
   isAdmin: boolean
   permissions: string[]
   tokens: string[]
@@ -29,31 +31,28 @@ export interface FirnUser extends BaseDocument {
   preferences: string[]
 }
 
-declare module '#auth-utils' {
-  interface SessionUser extends FirnUser {
-      provider: 'github' | 'google' | 'token' 
-      currentSessionId: string
-      currentSessionExpiresAt: string
-  }
+export interface SessionUser extends Partial<FirnUser> {
+  provider: 'github' | 'google' | 'token' 
+  currentSessionId: string
+  currentSessionExpiresAt: string
+}
 
-  interface GoogleUser extends Partial<SessionUser> {
-    provider: 'google'
-    googleId: number
-    googleName: string
-    googleGivenName: string
-    googleFamilyName: string
-    googleAvatar: string
-    googleEmail: string
-    googleEmailVerified: boolean
-  }
+export interface GoogleUser extends Partial<SessionUser> {
+provider: 'google'
+googleId: number
+googleName: string
+googleGivenName: string
+googleFamilyName: string
+googleAvatar: string
+googleEmail: string
+googleEmailVerified: boolean
+}
 
-  interface GitHubUser extends Partial<SessionUser> {
-    provider: 'github'
-    githubId: number
-    githubName: string
-    githubAvatar?: string
-    githubEmail?: string
-    githubUrl?: string
-  }
-  
+export interface GitHubUser extends Partial<SessionUser> {
+provider: 'github'
+githubId: number
+githubName: string
+githubAvatar?: string
+githubEmail?: string
+githubUrl?: string
 }
