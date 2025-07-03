@@ -149,7 +149,9 @@ export class UserService {
       givenName: user.googleGivenName,
       familyName: user.googleFamilyName,
       avatar: avatar,
-      linkedGitHub: user.githubId ? true : false
+      linkedGitHub: user.githubId ? true : false,
+      allowLoginClientside: user.allowLogin,
+      isRetiredClientside: user.isRetired
     }
 
     const sessionUserSecure: SessionUserSecure = {

@@ -278,7 +278,7 @@ export class CouchDBConnector {
 
   // Validate database connection and terminate if not available
   async validateConnection(): Promise<void> {
-    console.log('🔍 Validating database connection...')
+    console.log('🛋  Validating database connection...')
     
     const isConnected = await this.testConnection()
     

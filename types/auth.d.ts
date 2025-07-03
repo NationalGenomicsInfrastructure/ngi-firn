@@ -52,7 +52,7 @@ githubEmail: string | null
 githubUrl: string
 }
 
-// User object as it is stored in the session, no sensitive data
+// User object as it is stored in the session cookie, no sensitive data
 export interface SessionUser {
   provider: 'github' | 'google' | 'token' 
   name: string
@@ -60,9 +60,12 @@ export interface SessionUser {
   familyName?: string
   avatar: string | null
   linkedGitHub: boolean
+  // Purely informational fields for UI rendering, not to be used for authentication!
+  allowLoginClientside: boolean
+  isRetiredClientside: boolean
 }
 
-// Private user object, only server side
+// Private user object, only available on server side
 export interface SessionUserSecure {
   id: string
   rev?: string
@@ -72,8 +75,16 @@ export interface SessionUserSecure {
   permissions: string[]
 }
 
+// Auth status object to render toast notifications in the UI
+export interface AuthStatus {
+  kind: 'base' | 'success' | 'warning' | 'error'
+  reject: boolean
+  message: string
+}
+
 // Extend the auth-utils session to include our own fields
 declare module '#auth-utils' {
   interface User extends SessionUser {}
   interface SecureSessionData extends SessionUserSecure {}
+  interface AuthStatus extends AuthStatus {}
 }

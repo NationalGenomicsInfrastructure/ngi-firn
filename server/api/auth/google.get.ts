@@ -18,7 +18,15 @@ export default defineOAuthGoogleEventHandler({
     // only allow users from scilifelab.se to sign in
     if (user.hd !== 'scilifelab.se') {
       await clearUserSession(event)
-      return sendRedirect(event, '/auth-error', 403)
+      await setUserSession(event, {
+        // Any extra fields for the session data
+        authStatus: {
+          kind: 'error',
+          reject: true,
+          message: 'Only users from SciLifeLab can sign in'
+        }
+      })
+      return sendRedirect(event, '/', 403)
     }
 
     const googleUser: GoogleUser = {
