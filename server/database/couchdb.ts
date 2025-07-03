@@ -221,6 +221,83 @@ export class CouchDBConnector {
       throw error
     }
   }
+
+  // Test database connectivity
+  async testConnection(): Promise<boolean> {
+    try {
+      // Try to get database info - this will fail if the database server is not reachable
+      await this.client.getDatabaseInformation({
+        db: this.database
+      })
+      return true
+    }
+    catch (error: any) {
+      // Check for specific connection errors
+      if (this.isConnectionError(error)) {
+        console.error('❌ Database connection failed:', error.message)
+        console.error('   This indicates the database server is not available.')
+        console.error('   Please ensure CouchDB is running and accessible.')
+        return false
+      }
+      
+      // If it's a 404, the database doesn't exist but the server is reachable
+      if (error.code === 404) {
+        console.log(`Database "${this.database}" does not exist, but server is reachable.`)
+        return true
+      }
+      
+      // For other errors, log but don't treat as connection failure
+      console.error('Database test failed with error:', error.message)
+      return false
+    }
+  }
+
+  // Check if an error is a connection error
+  private isConnectionError(error: any): boolean {
+    const errorMessage = error.message?.toLowerCase() || ''
+    const errorCode = error.code?.toLowerCase() || ''
+    
+    // Common connection error patterns
+    const connectionErrorPatterns = [
+      'econnrefused',
+      'connection refused',
+      'connect econnrefused',
+      'network error',
+      'timeout',
+      'enotfound',
+      'getaddrinfo enotfound',
+      'unable to connect',
+      'connection failed',
+      'connection timeout'
+    ]
+    
+    return connectionErrorPatterns.some(pattern => 
+      errorMessage.includes(pattern) || errorCode.includes(pattern)
+    )
+  }
+
+  // Validate database connection and terminate if not available
+  async validateConnection(): Promise<void> {
+    console.log('🔍 Validating database connection...')
+    
+    const isConnected = await this.testConnection()
+    
+    if (!isConnected) {
+      console.error('❌ Database connection validation failed!')
+      console.error('   The application cannot start without a database connection.')
+      console.error('   Please check your database configuration and ensure CouchDB is running.')
+      console.error('   Environment variables:')
+      console.error(`   - CLOUDANT_URL: ${process.env.CLOUDANT_URL || 'Not set'}`)
+      console.error(`   - CLOUDANT_USERNAME: ${process.env.CLOUDANT_USERNAME ? 'Set' : 'Not set'}`)
+      console.error(`   - CLOUDANT_PASSWORD: ${process.env.CLOUDANT_PASSWORD ? 'Set' : 'Not set'}`)
+      console.error(`   - CLOUDANT_DATABASE: ${process.env.CLOUDANT_DATABASE || 'firn (default)'}`)
+      
+      // Terminate the application
+      process.exit(1)
+    }
+    
+    console.log('✅ Database connection validated successfully')
+  }
 }
 
 // Export a singleton instance with default configuration
@@ -229,6 +306,11 @@ export const couchDB = new CouchDBConnector()
 // Helper function to ensure database exists
 export async function ensureDatabase() {
   await couchDB.ensureDatabase()
+}
+
+// Helper function to validate database connection
+export async function validateDatabaseConnection() {
+  await couchDB.validateConnection()
 }
 
 // Export types for use in other modules

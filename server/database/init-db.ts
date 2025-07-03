@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { couchDB } from './couchdb'
 import { createIndexes } from '../utils/db'
-import type { User } from '../../types/auth'
+import type { FirnUser } from '../../types/auth'
 
 export async function initializeDatabase() {
   try {
@@ -15,6 +15,9 @@ export async function initializeDatabase() {
     console.log('- CLOUDANT_DATABASE:', process.env.CLOUDANT_DATABASE || 'firn (default)')
     console.log('- FIRST_ADMIN_EMAIL:', process.env.FIRST_ADMIN_EMAIL ? 'Set' : 'Not set')
     
+    // Validate database connection first
+    await couchDB.validateConnection()
+    
     // Ensure database exists
     await couchDB.ensureDatabase()
     console.log('Database ensured')
@@ -24,7 +27,7 @@ export async function initializeDatabase() {
     console.log('Indexes created')
     
     // Check if we need to create the first admin user
-    const adminUsers = await couchDB.queryDocuments<User>({
+    const adminUsers = await couchDB.queryDocuments<FirnUser>({
       type: 'user',
       isAdmin: true
     })
@@ -41,23 +44,29 @@ export async function initializeDatabase() {
       }
       
       // Create first admin user
-      const firstAdmin: Omit<User, '_id' | '_rev'> = {
+      const firstAdmin: Omit<FirnUser, '_id' | '_rev'> = {
         type: 'user',
-        provider: 'google',
-        name: '',
-        avatar: '',
-        email: process.env.FIRST_ADMIN_EMAIL,
-        emailVerified: true,
+        googleId: 0, // Will be updated when user first logs in
+        googleName: '',
+        googleGivenName: '',
+        googleFamilyName: '',
+        googleAvatar: '',
+        googleEmail: process.env.FIRST_ADMIN_EMAIL,
+        googleEmailVerified: true,
+        githubId: null,
+        githubName: null,
+        githubAvatar: null,
+        githubEmail: null,
+        githubUrl: null,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastSeen: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+        allowLogin: true,
+        isRetired: false,
         isAdmin: true,
-        permissions: ['admin', 'approved'],
+        permissions: [],
         tokens: [],
-        sessions: [],
         todos: [],
-        settings: {},
-        preferences: {}
+        preferences: []
       }
       
       const result = await couchDB.createDocument(firstAdmin)

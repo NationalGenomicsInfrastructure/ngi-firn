@@ -127,7 +127,7 @@ updates = {"age": 31, "last_seen_at": "2024-01-15T10:30:00Z"}
 updated_user = user.copy()
 updated_user.update(updates)
 
-# Method 2: Use dict unpacking (Python 3.5+)
+# Method 2: Use dict unpacking
 updated_user = {**user, **updates}
 ```
 

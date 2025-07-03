@@ -38,7 +38,8 @@
     "typecheck": "npx nuxi typecheck",
     "lint": "eslint .",
     "postinstall": "nuxt prepare",
-    "db:init": "tsx scripts/init-db.ts"
+    "db:init": "tsx scripts/init-db.ts",
+    "db:test": "tsx scripts/test-db-connection.ts"
   },
   "dependencies": {
     "@ibm-cloud/cloudant": "^0.12.4",
