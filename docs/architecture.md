@@ -85,10 +85,6 @@ The main configuration files in the root directory include:
 - **nuxt.config.ts**: The primary configuration file for Nuxt.js, where you can customize build settings, modules, plugins, and other Nuxt-specific options.
 - **app/app.config.ts**: Application-specific configuration that can be accessed throughout the app.
 
-### Database configuration
-
-- **drizzle.config.ts**: Configuration for Drizzle ORM, specifying database connections and migration settings.
-
 ### Linter and development config
 
 - **eslint.config.js**: ESLint configuration for maintaining consistent code style and catching potential errors.

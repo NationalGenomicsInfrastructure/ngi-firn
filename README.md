@@ -14,7 +14,7 @@
 
 ## Namesake
 
-**Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages, including [Swedish](https://www.saob.se/artikel/?unik=F_0443-0373.gEg6) and [English](https://www.britannica.com/science/firn). 
+**Firn** refers to compacted, granular snow on mountain tops and glaciers that has survived at least one summer melt season. The word originates from Swiss-German "firn" meaning "of last year" and has been adopted into many languages, including [Swedish](https://www.saob.se/artikel/?unik=F_0443-0373.gEg6) and [English](https://www.britannica.com/science/firn).
 
 This name was chosen for the application as it aptly reflects the cold storage conditions in the catalogued freezers and liquid nitrogen tanks. The meaning "of last year" also resonates with the application's role in managing items preserved over prolonged periods of time.
 
@@ -24,6 +24,7 @@ This name was chosen for the application as it aptly reflects the cold storage c
 
 ### Development
 
+- [Typescript primer](docs/typescript.md)
 - [Initial Setup](docs/development.md)
 - [Debugging](docs/debugging.md)
 - [Building the user interface](docs/ui.md)
