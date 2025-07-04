@@ -75,16 +75,19 @@ export interface SessionUserSecure {
   permissions: string[]
 }
 
-// Auth status object to render toast notifications in the UI
+// Auth status object to render toast notifications in the UI, amended to the UserSession interface
 export interface AuthStatus {
   kind: 'base' | 'success' | 'warning' | 'error'
   reject: boolean
+  title: string
   message: string
 }
 
-// Extend the auth-utils session to include our own fields
+// Extend the auth-utils module type declarations to include our custom fields
 declare module '#auth-utils' {
   interface User extends SessionUser {}
   interface SecureSessionData extends SessionUserSecure {}
-  interface AuthStatus extends AuthStatus {}
+  interface UserSession extends UserSession {
+    authStatus?: AuthStatus
+  }
 }

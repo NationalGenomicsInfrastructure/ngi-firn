@@ -69,8 +69,15 @@ export default defineOAuthGitHubEventHandler({
         if (!firnUser.allowLogin || firnUser.isRetired) {
 
           // User is not approved or retired, redirect to pending page (case 2)
-          await clearUserSession(event)
-          return sendRedirect(event, '/pending-approval', 401)
+          await replaceUserSession(event, {
+            // Any extra fields for the session data
+            authStatus: {
+              kind: 'warning',
+              reject: true,
+              message: 'Your account is not approved yet for access to Firn. Please contact the admin to get access.'
+            }
+          })
+          return sendRedirect(event, '/', 401)
 
         } else {
 

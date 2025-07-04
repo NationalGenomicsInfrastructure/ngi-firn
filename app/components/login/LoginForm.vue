@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const { loggedIn, user, session, fetch, clear, openInPopup } = useUserSession()
+const { user, session, clear, openInPopup } = useUserSession()
+const { toast } = useToast()
 
 // Stages of the registration process to render the correct UI
 const stage = ref<'register-google' | 'link-github' | 'pending-approval'>('register-google')
@@ -37,6 +38,16 @@ watchEffect(() => {
     activeTab.value = 'register'
     stage.value = 'pending-approval'
   }
+  if (session.value?.authStatus) {
+    toast({
+      title: session.value.authStatus.title,
+      description: session.value.authStatus.message,
+      toast: `soft-${session.value.authStatus.kind}`,
+      progress: session.value.authStatus.kind,
+      showProgress: true,
+      closable: true,
+    })
+    }
 })
 
 
@@ -49,14 +60,6 @@ watchEffect(() => {
     {{ user }}
     {{ session }}
   </pre>
-  <NButton
-            btn="solid-gray"
-            leading="i-lucide-trash"
-            label="Clear session"
-            class="w-full"
-            size="md"
-            @click="clear()"
-          />
   </div>
   <NTabs
     :items="items"
@@ -86,7 +89,7 @@ watchEffect(() => {
             label="Sign in with Google"
             class="w-full"
             size="md"
-            to="/api/auth/google"
+            @click="clear(); loadingGoogle = true; openInPopup('/api/auth/google')"
           />
           <div class="flex flex-col gap-3">
           <NButton
@@ -95,7 +98,7 @@ watchEffect(() => {
             label="Sign in with GitHub"
             class="w-full"
             size="md"
-            to="/api/auth/github"
+            @click="clear(); loadingGitHub = true; openInPopup('/api/auth/github')"
           />
         </div>
       </div>
@@ -180,7 +183,6 @@ watchEffect(() => {
             label="Return to NGI Sweden"
             size="md"
             class="w-full"
-            @click="activeTab = 'login'; clear()"
             to="https://ngisweden.scilifelab.se"
           />
         </div>
