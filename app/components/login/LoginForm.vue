@@ -26,6 +26,22 @@ const items = ref([
 
 const activeTab = ref(items.value[0]?.value)
 
+const toastActions = [
+  {
+    label: 'Confirm',
+    btn: 'solid-primary',
+    altText: 'Confirm',
+    onClick: () => {
+      clear()
+    },
+  },
+]
+
+// Clear session on component mount. No old session should be present.
+onMounted(() => {
+  clear()
+})
+
 // Watch for state changes and update UI accordingly
 watchEffect(() => {
   if (user.value && user.value.provider === 'google' && user.value.linkedGitHub === false) {
@@ -38,17 +54,21 @@ watchEffect(() => {
     activeTab.value = 'register'
     stage.value = 'pending-approval'
   }
-  if (session.value?.authStatus) {
-    toast({
-      title: session.value.authStatus.title,
-      description: session.value.authStatus.message,
-      toast: `soft-${session.value.authStatus.kind}`,
-      progress: session.value.authStatus.kind,
-      showProgress: true,
-      closable: true,
-    })
-    }
 })
+
+// Separate watcher for authStatus to ensure it triggers properly
+watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
+  if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
+    console.log('AuthStatus changed:', newAuthStatus)
+    toast({
+      title: newAuthStatus.title,
+      description: newAuthStatus.message,
+      toast: `border-${newAuthStatus.kind}`,
+      closable: true,
+      actions: toastActions,
+    })
+  }
+}, { immediate: true })
 
 
 </script>
@@ -56,9 +76,8 @@ watchEffect(() => {
 <template>
   <div>
     <pre>
-    {{ stage }}
-    {{ user }}
-    {{ session }}
+    Stage: {{ stage }}
+    User: {{ user }}
   </pre>
   </div>
   <NTabs
