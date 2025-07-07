@@ -31,16 +31,9 @@ const toastActions = [
     label: 'Confirm',
     btn: 'solid-primary',
     altText: 'Confirm',
-    onClick: () => {
-      clear()
-    },
+    onClick: () => {},
   },
 ]
-
-// Clear session on component mount. No old session should be present.
-onMounted(() => {
-  clear()
-})
 
 // Watch for state changes and update UI accordingly
 watchEffect(() => {

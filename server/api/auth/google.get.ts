@@ -82,7 +82,7 @@ export default defineOAuthGoogleEventHandler({
             kind: 'success',
             reject: false,
             title: 'Welcome to Firn!',
-            message: `Successfully signed in as ${firnUser.name}.`
+            message: `Successfully signed in as ${sessionUser.name}.`
           }
         })
 
@@ -134,8 +134,8 @@ export default defineOAuthGoogleEventHandler({
         authStatus: {
           kind: 'error',
           reject: true,
-          title: 'A technical error occurred',
-          message: 'An error occurred while signing in. Please try again or contact the admin.'
+          title: 'Technical error with the Google login',
+          message: 'An error occurred while signing in with Google. Please try again or contact the admin.'
         }
       })
       return sendRedirect(event, '/', 400)
@@ -149,8 +149,8 @@ export default defineOAuthGoogleEventHandler({
       authStatus: {
         kind: 'error',
         reject: true,
-        title: 'A technical error occurred',
-        message: 'An error occurred while signing in. Please try again or contact the admin.'
+        title: 'Technical error with the Google login',
+        message: 'An error occurred while signing in with Google. Please try again or contact the admin.'
       }
     })
   }

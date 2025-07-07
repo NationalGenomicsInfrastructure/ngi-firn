@@ -14,9 +14,28 @@ export class UserService {
     })
     return newUser[0] as FirnUser
   }
+
+  /**
+   * Link a GitHubUser to a FirnUser
+   */
+    static async linkGitHubUser(user: FirnUser, githubUser: GitHubUser): Promise<FirnUser | null> {
+      // Update user information and last login
+      const linkedAccount: Partial<FirnUser> = {
+        lastSeenAt: new Date().toISOString(),
+        // Update GitHub profile information in case it changed
+        githubName: githubUser.githubName,
+        githubAvatar: githubUser.githubAvatar,
+        githubEmail: githubUser.githubEmail,
+        githubUrl: githubUser.githubUrl
+      }
+
+      // Update the user
+      await couchDB.updateDocument(user._id, { ...user, ...linkedAccount }, user._rev!)
+      return { ...user, ...linkedAccount } as FirnUser
+    }
   
   /**
-   * Match a Google OAuth user to a FirnUser
+   * Match a Google OAuth user to a FirnUser based on Google ID
    * Returns null if no user is found, allowing for conditional handling
    */
   static async matchGoogleUser(oauthUser: GoogleUser): Promise<FirnUser | null> {
@@ -51,11 +70,11 @@ export class UserService {
   }
 
   /**
-   * Match a GitHub OAuth user to a FirnUser
+   * Match a GitHub OAuth user to a FirnUser based on GitHub ID
    * Returns null if no user is found, allowing for conditional handling
    */
     static async matchGitHubUser(oauthUser: GitHubUser): Promise<FirnUser | null> {
-      // First, try to find user by GitHub ID 
+      // Find user by GitHub ID, matching based on the e-mail address is too flaky.
       const existingUserByGitHubId = await couchDB.queryDocuments<FirnUser>({
         type: 'user',
         githubId: oauthUser.githubId
