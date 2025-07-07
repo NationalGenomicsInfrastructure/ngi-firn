@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { user, session, clear, openInPopup } = useUserSession()
+const { user, session, clear } = useUserSession()
 const { toast } = useToast()
 
 // Stages of the registration process to render the correct UI
@@ -108,7 +108,9 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             label="Sign in with Google"
             class="w-full"
             size="md"
-            @click="clear(); loadingGoogle = true; openInPopup('/api/auth/google')"
+            to="/api/auth/google"
+            external
+            @click="clear(); loadingGoogle = true"
           />
           <div class="flex flex-col gap-3">
           <NButton
@@ -117,7 +119,9 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             label="Sign in with GitHub"
             class="w-full"
             size="md"
-            @click="clear(); loadingGitHub = true; openInPopup('/api/auth/github')"
+            to="/api/auth/github"
+            external
+            @click="clear(); loadingGitHub = true"
           />
         </div>
       </div>
@@ -145,7 +149,9 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             size="md"
             class="w-full"
             :loading="loadingGoogle"
-            @click="clear(); loadingGoogle = true; openInPopup('/api/auth/google')"
+            to="/api/auth/google"
+            external
+            @click="clear(); loadingGoogle = true"
           />
         </div>
 
@@ -170,7 +176,9 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             size="md"
             class="w-full"
             :loading="loadingGitHub"
-            @click="loadingGitHub = true; openInPopup('/api/auth/github')"
+            to="/api/auth/github"
+            external
+            @click="loadingGitHub = true"
           />
 
           <NButton
@@ -179,6 +187,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             label="Complete Registration"
             size="md"
             class="w-full"
+            to="https://ngisweden.scilifelab.se"
             @click="stage = 'pending-approval'"
           />
         </div>

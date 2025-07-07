@@ -1,11 +1,5 @@
 <script setup lang="ts">
-// This is sample data
 const data = {
-  user: {
-    name: 'Brilliant Researcher',
-    email: 'brilliant.researcher@scilifelab.se',
-    avatar: ''
-  },
   navMain: [
     {
       title: 'NGI Firn',
@@ -27,7 +21,7 @@ const data = {
     }
   ]
 }
-const activeItem = ref(data.navMain[0])
+const activeItem = ref(data.navMain[0] || { title: '', url: '', icon: '', isActive: false })
 const { setOpen, toggleSidebar } = useSidebar()
 </script>
 
@@ -95,7 +89,7 @@ const { setOpen, toggleSidebar } = useSidebar()
             <NThemeSwitcher />
           </NSidebarMenuItem>
         </NSidebarMenu>
-        <NavigationUser :user="data.user" />
+        <NavigationUser />
       </NSidebarFooter>
     </NSidebar>
     <!--  This is the second sidebar -->

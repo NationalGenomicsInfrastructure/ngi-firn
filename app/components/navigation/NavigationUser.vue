@@ -1,29 +1,42 @@
 <script setup lang="ts">
-defineProps<{
-  user: {
-    name: string
-    email: string
-    avatar: string
+
+const { clear, user: sessionUser } = useUserSession()
+
+const user = computed(() => {
+  return {
+    name: sessionUser.value?.name || '',
+    subtitle: sessionUser.value?.provider || '',
+    avatar: sessionUser.value?.avatar || '',
   }
-}>()
+})
 
 const navs = [
-
   {
-    label: 'Account',
-    leading: 'i-lucide-badge-check'
+    label: 'Profile',
+    leading: 'i-lucide-user',
+    onClick: () => {
+      navigateTo('/profile')
+    } 
   },
   {
-    label: 'Notifications',
-    leading: 'i-lucide-bell'
+    label: 'Settings',
+    leading: 'i-lucide-settings',
+    onClick: () => {
+      navigateTo('/settings')
+    }
   },
   {
     label: 'Log out',
-    leading: 'i-lucide-log-out'
+    leading: 'i-lucide-log-out',
+    onClick: () => {
+      clear()
+      navigateTo('/')
+    }
   }
 ]
 
 const { isMobile } = useSidebar()
+
 </script>
 
 <template>
@@ -53,7 +66,7 @@ const { isMobile } = useSidebar()
           />
           <div class="grid flex-1 text-left text-sm leading-tight">
             <span class="truncate font-semibold">{{ user.name }}</span>
-            <span class="truncate text-xs">{{ user.email }}</span>
+            <span class="truncate text-xs capitalize">{{ user.subtitle }}</span>
           </div>
           <NIcon
             name="i-lucide-chevron-down"
@@ -71,7 +84,7 @@ const { isMobile } = useSidebar()
             />
             <div class="grid flex-1 text-left text-sm leading-tight">
               <span class="truncate font-semibold">{{ user.name }}</span>
-              <span class="truncate text-xs">{{ user.email }}</span>
+              <span class="truncate text-xs capitalize">{{ user.subtitle }}</span>
             </div>
           </div>
         </template>
