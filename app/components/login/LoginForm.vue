@@ -25,15 +25,6 @@ const items = ref([
 
 const activeTab = ref(items.value[0]?.value)
 
-const toastActions = [
-  {
-    label: 'Confirm',
-    btn: 'solid-primary',
-    altText: 'Confirm',
-    onClick: () => {},
-  },
-]
-
 // Clear the session by default to prevent lingering sessions, unless a step in the multi-step process is specified.
 onMounted(() => {
   if (!route.query.step) {
@@ -61,13 +52,27 @@ watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
 // Separate watcher for authStatus to ensure it triggers properly
 watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
   if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
+  
+    // The detour via kindToColor/toastClass is unfortunately necessary, otherwise the mapping of kind to color is not applied.
+    // When specified as hardcoded string, toast = 'border-success' or class: 'alert-border-success' works like a charm, but my initial approach toast = `border-${newAuthStatus.kind}` does unfortunately not.
+    
+    const kindToColor = {
+      success: 'green',
+      warning: 'blue',
+      error: 'red',
+      base: 'primary'
+    }
+    const toastClass = {
+      class: `alert-border-${kindToColor[newAuthStatus.kind] || 'primary'}`,
+      progress: `${kindToColor[newAuthStatus.kind] || 'primary'}`
+    }
     toast({
       title: newAuthStatus.title,
       description: newAuthStatus.message,
-      //toast: `border-${newAuthStatus.kind}`,
-      toast: 'border-error',
       closable: true,
-      actions: toastActions,
+      duration: 6000,
+      showProgress: true,
+      ...toastClass
     })
   }
 }, { immediate: true })
