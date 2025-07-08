@@ -22,7 +22,8 @@ export class UserService {
       // Update user information and last login
       const linkedAccount: Partial<FirnUser> = {
         lastSeenAt: new Date().toISOString(),
-        // Update GitHub profile information in case it changed
+        githubId: githubUser.githubId,
+        githubNodeId: githubUser.githubNodeId,
         githubName: githubUser.githubName,
         githubAvatar: githubUser.githubAvatar,
         githubEmail: githubUser.githubEmail,
@@ -51,7 +52,6 @@ export class UserService {
       // Update user information and last login
       const updates: Partial<FirnUser> = {
         lastSeenAt: new Date().toISOString(),
-        // Update Google profile information in case it changed
         googleName: oauthUser.googleName,
         googleGivenName: oauthUser.googleGivenName,
         googleFamilyName: oauthUser.googleFamilyName,
@@ -86,7 +86,7 @@ export class UserService {
         // Update user information and last login
         const updates: Partial<FirnUser> = {
           lastSeenAt: new Date().toISOString(),
-          // Update GitHub profile information in case it changed
+          githubNodeId: oauthUser.githubNodeId,
           githubName: oauthUser.githubName,
           githubAvatar: oauthUser.githubAvatar,
           githubEmail: oauthUser.githubEmail,

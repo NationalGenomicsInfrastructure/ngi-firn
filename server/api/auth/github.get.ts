@@ -41,18 +41,15 @@ export default defineOAuthGitHubEventHandler({
     * updated_at: 'YYYY-MM-DDTHH:MM:SSZ'
     */
 
-    console.log('githubUser', user)
-
     const githubUser: GitHubUser = {
       provider: 'github',
       githubId: user.id,
+      githubNodeId: user.node_id,
       githubName: user.name,
       githubAvatar: user.avatar_url,
       githubEmail: user.email || null,
       githubUrl: user.html_url
     }
-
-    console.log('githubUser', githubUser)
 
     /**
      * Since Google is our source of truth, GitHub users must exist in the database or are rejected.
@@ -67,7 +64,7 @@ export default defineOAuthGitHubEventHandler({
 
       // Search for existing user in database
       // This will only work, if the accounts have already been linked previously, since the match is based on otherwise unknown GitHub ID.
-      // (Matching based on the e-mail address is too flaky)
+      // (Matching based on the e-mail address is too flaky, since it is often null)
       const firnUser = await UserService.matchGitHubUser(githubUser)
       
       if (firnUser) {

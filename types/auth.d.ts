@@ -12,6 +12,7 @@ export interface FirnUser extends BaseDocument {
   googleEmailVerified: boolean
   // GitHub-specific fields for linking
   githubId: number | null
+  githubNodeId: string | null
   githubName: string | null
   githubAvatar: string | null
   githubEmail: string | null
@@ -46,6 +47,7 @@ googleEmailVerified: boolean
 export interface GitHubUser extends Partial<FirnUser> {
 provider: 'github'
 githubId: number
+githubNodeId: string | null
 githubName: string | null
 githubAvatar: string | null
 githubEmail: string | null
