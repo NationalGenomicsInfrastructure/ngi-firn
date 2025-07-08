@@ -109,7 +109,7 @@ export default defineOAuthGitHubEventHandler({
       const session = await getUserSession(event) // get the server session
       const sessionUser = session?.user as SessionUser
 
-      if(sessionUser.linkedGitHub){
+      if(sessionUser?.linkedGitHub){
       
         // The sessionUser is already linked to a GitHub user, but it was not matched to the current OAuth GitHub user -> reject
         await replaceUserSession(event, {

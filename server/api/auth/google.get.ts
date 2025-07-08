@@ -27,7 +27,7 @@ export default defineOAuthGoogleEventHandler({
           message: 'Only users from SciLifeLab can sign in'
         }
       })
-      return sendRedirect(event, '/', 401)
+      return sendRedirect(event, '/?stage=clear', 401)
     }
 
     const googleUser: GoogleUser = {
@@ -67,7 +67,7 @@ export default defineOAuthGoogleEventHandler({
               message: 'Your account is not approved yet for access to Firn. Please contact the admin to get access.'
             }
           })
-          return sendRedirect(event, '/', 401)
+          return sendRedirect(event, '/?stage=pending-approval', 401)
 
         } else {
 

@@ -1,11 +1,10 @@
 <script setup lang="ts">
 const { user, session, clear } = useUserSession()
 const { toast } = useToast()
+const route = useRoute()
 
 // Stages of the registration process to render the correct UI
 const stage = ref<'register-google' | 'link-github' | 'pending-approval'>('register-google')
-const loadingGoogle = ref(false)
-const loadingGitHub = ref(false)
 
 const items = ref([
   {
@@ -35,19 +34,22 @@ const toastActions = [
   },
 ]
 
-// Watch for state changes and update UI accordingly
-watchEffect(() => {
-  if (user.value && user.value.provider === 'google' && user.value.linkedGitHub === false) {
-    loadingGoogle.value = false
-    activeTab.value = 'register'
-    stage.value = 'link-github'
+// Watch for step/state changes and update UI accordingly
+watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
+  if (newLoginStep && newLoginStep !== oldLoginStep) {
+    if (newLoginStep === 'clear') {
+      clear()
+    }
+    if (newLoginStep === 'link-github') {
+      activeTab.value = 'register'
+      stage.value = 'link-github'
+    }
+    if (newLoginStep === 'pending-approval') {
+      activeTab.value = 'register'
+      stage.value = 'pending-approval'
+    }
   }
-  if (user.value && user.value.provider === 'github' && user.value.linkedGitHub === true) {
-    loadingGitHub.value = false
-    activeTab.value = 'register'
-    stage.value = 'pending-approval'
-  }
-})
+}, { immediate: true })
 
 // Separate watcher for authStatus to ensure it triggers properly
 watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
@@ -56,7 +58,8 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
     toast({
       title: newAuthStatus.title,
       description: newAuthStatus.message,
-      toast: `border-${newAuthStatus.kind}`,
+      //toast: `border-${newAuthStatus.kind}`,
+      toast: 'border-error',
       closable: true,
       actions: toastActions,
     })
@@ -70,7 +73,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
   <div>
     <pre>
     Stage: {{ stage }}
-    User: {{ user }}
+    Session: {{ session }}
   </pre>
   </div>
   <NTabs
@@ -103,7 +106,6 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             size="md"
             to="/api/auth/google"
             external
-            @click="clear(); loadingGoogle = true"
           />
           <div class="flex flex-col gap-3">
           <NButton
@@ -114,7 +116,6 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             size="md"
             to="/api/auth/github"
             external
-            @click="clear(); loadingGitHub = true"
           />
         </div>
       </div>
@@ -141,10 +142,8 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             label="Create account with Google"
             size="md"
             class="w-full"
-            :loading="loadingGoogle"
             to="/api/auth/google"
             external
-            @click="clear(); loadingGoogle = true"
           />
         </div>
 
@@ -168,20 +167,17 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             label="Link GitHub Account"
             size="md"
             class="w-full"
-            :loading="loadingGitHub"
             to="/api/auth/github"
             external
-            @click="loadingGitHub = true"
           />
 
           <NButton
             btn="solid-gray"
-            leading="i-lucide-user-round-pen"
-            label="Complete Registration"
+            leading="i-lucide-skip-forward"
+            label="Skip GitHub setup"
             size="md"
             class="w-full"
-            to="https://ngisweden.scilifelab.se"
-            @click="stage = 'pending-approval'"
+            to="/?step=pending-approval"
           />
         </div>
 
@@ -195,7 +191,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
               Your account is pending approval
             </h3>
             <p class="text-muted">
-              Please wait for the administrator to approve your account.
+              Please wait for an administrator to approve your account.
             </p>
           </div>
           
@@ -204,6 +200,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             label="Return to NGI Sweden"
             size="md"
             class="w-full"
+            external
             to="https://ngisweden.scilifelab.se"
           />
         </div>
