@@ -109,63 +109,82 @@ export default defineOAuthGitHubEventHandler({
       const session = await getUserSession(event) // get the server session
       const sessionUser = session?.user as SessionUser
 
-      if(sessionUser?.linkedGitHub){
-      
-        // The sessionUser is already linked to a GitHub user, but it was not matched to the current OAuth GitHub user -> reject
-        await replaceUserSession(event, {
-          authStatus: {
-            kind: 'error',
-            reject: true,
-            title: 'Account already linked',
-            message: 'Your account is already linked to a different GitHub account. Please contact an admin to delete the existing link.'
-          }
-        })
-        return sendRedirect(event, '/', 401)
+        if(sessionUser){
 
-      } else {
-        // The sessionUser is not linked to a GitHub user, so we can link it to the current OAuth GitHub user
-
-        // get the Document ID of the FirnUser in the database. This information is stored in the secure parts of the session on the server and unavailable to the client.
-        const sessionUserSecure = session?.secure as SessionUserSecure
-
-        // get the FirnUser from the database based on the Document ID
-        const referenceUser = await UserService.matchSessionUserSecure(sessionUserSecure)
-
-        if (referenceUser) {
-          // link the FirnUser to the OAuth GitHub user
-          const linkedUser = await UserService.linkGitHubUser(referenceUser, githubUser)
-
-          if (linkedUser) {
-            // update the sessionUser with the linked GitHub user
-            // convert to session user
-            const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(linkedUser, 'github')
-
-            // update the sessionUser with the linked GitHub user
-            await replaceUserSession(event, {
-              user: sessionUser,
-              secure: sessionUserSecure,
-              authStatus: {
-                kind: 'success',
-                reject: true,
-                title: 'GitHub login method successfully linked',
-                message: `Successfully linked your Firn user account ${referenceUser.name} to your GitHub account.`
-              }
-            })
-            return sendRedirect(event, '/', 201)
-          } else { // the linking failed, likely a database issue with updating the document then.
-            // error linking the FirnUser to the OAuth GitHub user
+          if(sessionUser?.linkedGitHub){
+          
+            // The sessionUser is already linked to a GitHub user, but it was not matched to the current OAuth GitHub user -> reject
             await replaceUserSession(event, {
               authStatus: {
                 kind: 'error',
                 reject: true,
-                title: 'Error linking GitHub account',
-                message: 'An error occurred while linking your GitHub account. Please try again.'
+                title: 'Account already linked',
+                message: 'Your account is already linked to a different GitHub account. Please contact an admin to delete the existing link.'
               }
             })
             return sendRedirect(event, '/', 401)
+
+          } else {
+            // The sessionUser is not linked to a GitHub user, so we can link it to the current OAuth GitHub user
+
+            // get the Document ID of the FirnUser in the database. This information is stored in the secure parts of the session on the server and unavailable to the client.
+            const sessionUserSecure = session?.secure as SessionUserSecure
+
+            console.log('sessionUserSecure', sessionUserSecure)
+            console.log('sessionUser', sessionUser)
+
+            // get the FirnUser from the database based on the Document ID
+            const referenceUser = await UserService.matchSessionUserSecure(sessionUserSecure)
+
+            if (referenceUser) {
+              // link the FirnUser to the OAuth GitHub user
+              const linkedUser = await UserService.linkGitHubUser(referenceUser, githubUser)
+
+              if (linkedUser) {
+                // update the sessionUser with the linked GitHub user
+                // convert to session user
+                const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(linkedUser, 'github')
+
+                // update the sessionUser with the linked GitHub user
+                await replaceUserSession(event, {
+                  user: sessionUser,
+                  secure: sessionUserSecure,
+                  authStatus: {
+                    kind: 'success',
+                    reject: true,
+                    title: 'GitHub login method successfully linked',
+                    message: `Successfully linked your Firn user account ${referenceUser.name} to your GitHub account.`
+                  }
+                })
+                return sendRedirect(event, '/', 201)
+              } else { // the linking failed, likely a database issue with updating the document then.
+                // error linking the FirnUser to the OAuth GitHub user
+                await replaceUserSession(event, {
+                  authStatus: {
+                    kind: 'error',
+                    reject: true,
+                    title: 'Error linking GitHub account',
+                    message: 'An error occurred while linking your GitHub account. Please try again.'
+                  }
+                })
+                return sendRedirect(event, '/', 401)
+              }
+            } else { // no reference user found. There is no document in the database with the same Document ID as the sessionUserSecure.
+              // error matching the FirnUser to the OAuth GitHub user
+              await replaceUserSession(event, {
+                authStatus: {
+                  kind: 'error',
+                  reject: true,
+                  title: 'Error identifying your Firn user account.',
+                  message: 'An error occurred while loading your Firn user account. Please log in with your Google account instead.'
+                }
+              })
+              return sendRedirect(event, '/?stage=clear', 401)
+            }
           }
-        } else { // no reference user found. There is no document in the database with the same Document ID as the sessionUserSecure.
-          // error matching the FirnUser to the OAuth GitHub user
+
+        } else {
+          // no sessionUser found, this is a new user
           await replaceUserSession(event, {
             authStatus: {
               kind: 'error',
@@ -174,9 +193,9 @@ export default defineOAuthGitHubEventHandler({
               message: 'An error occurred while loading your Firn user account. Please log in with your Google account instead.'
             }
           })
-          return sendRedirect(event, '/', 401)
+          return sendRedirect(event, '/?stage=clear', 401)
         }
-      }}
+      } // closes the FirnUser check
 
     } catch (error) {
       console.error('Error in GitHub OAuth handler of user', user.name, user.email, error)
