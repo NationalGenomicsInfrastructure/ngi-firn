@@ -34,6 +34,13 @@ const toastActions = [
   },
 ]
 
+// Clear the session by default to prevent lingering sessions, unless a step in the multi-step process is specified.
+onMounted(() => {
+  if (!route.query.step) {
+    clear()
+  }
+})
+
 // Watch for step/state changes and update UI accordingly
 watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
   if (newLoginStep && newLoginStep !== oldLoginStep) {
@@ -54,7 +61,6 @@ watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
 // Separate watcher for authStatus to ensure it triggers properly
 watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
   if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
-    console.log('AuthStatus changed:', newAuthStatus)
     toast({
       title: newAuthStatus.title,
       description: newAuthStatus.message,
@@ -153,6 +159,19 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
           class="space-y-4"
         >
           <div class="text-center space-y-2">
+            <NAvatar
+              v-if="user?.avatar"
+              size="sm:3xl md:4xl lg:5xl"
+              :src="user?.avatar"
+              class="border-2 border-black rounded-full"
+            />
+            <NAvatar 
+              v-else
+              icon
+              label="i-lucide-user-plus"
+              size="sm:3xl md:4xl lg:5xl"
+              class="border-2 border-black rounded-full"
+            />
             <h3 class="text-lg font-semibold">
               Welcome to Firn, {{user?.name}}
             </h3>
@@ -187,6 +206,19 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
           class="space-y-4"
         >
           <div class="text-center space-y-2">
+            <NAvatar
+              v-if="user?.avatar"
+              size="sm:3xl md:4xl lg:5xl"
+              :src="user?.avatar"
+              class="border-2 border-black rounded-full"
+            />
+            <NAvatar 
+              v-else
+              icon
+              label="i-lucide-user-lock"
+              size="sm:3xl md:4xl lg:5xl"
+              class="border-2 border-black rounded-full"
+            />
             <h3 class="text-lg font-semibold">
               Your account is pending approval
             </h3>

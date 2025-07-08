@@ -41,6 +41,8 @@ export default defineOAuthGitHubEventHandler({
     * updated_at: 'YYYY-MM-DDTHH:MM:SSZ'
     */
 
+    console.log('githubUser', user)
+
     const githubUser: GitHubUser = {
       provider: 'github',
       githubId: user.id,
@@ -49,6 +51,8 @@ export default defineOAuthGitHubEventHandler({
       githubEmail: user.email || null,
       githubUrl: user.html_url
     }
+
+    console.log('githubUser', githubUser)
 
     /**
      * Since Google is our source of truth, GitHub users must exist in the database or are rejected.
@@ -130,9 +134,6 @@ export default defineOAuthGitHubEventHandler({
             // get the Document ID of the FirnUser in the database. This information is stored in the secure parts of the session on the server and unavailable to the client.
             const sessionUserSecure = session?.secure as SessionUserSecure
 
-            console.log('sessionUserSecure', sessionUserSecure)
-            console.log('sessionUser', sessionUser)
-
             // get the FirnUser from the database based on the Document ID
             const referenceUser = await UserService.matchSessionUserSecure(sessionUserSecure)
 
@@ -153,10 +154,10 @@ export default defineOAuthGitHubEventHandler({
                     kind: 'success',
                     reject: true,
                     title: 'GitHub login method successfully linked',
-                    message: `Successfully linked your Firn user account ${referenceUser.name} to your GitHub account.`
+                    message: `Successfully linked your Firn user account ${sessionUser.name} to your GitHub account.`
                   }
                 })
-                return sendRedirect(event, '/', 201)
+                return sendRedirect(event, '/?step=pending-approval', 201)
               } else { // the linking failed, likely a database issue with updating the document then.
                 // error linking the FirnUser to the OAuth GitHub user
                 await replaceUserSession(event, {

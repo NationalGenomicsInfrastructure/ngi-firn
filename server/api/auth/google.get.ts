@@ -67,7 +67,7 @@ export default defineOAuthGoogleEventHandler({
               message: 'Your account is not approved yet for access to Firn. Please contact the admin to get access.'
             }
           })
-          return sendRedirect(event, '/?stage=pending-approval', 401)
+          return sendRedirect(event, '/?step=pending-approval', 401)
 
         } else {
 
@@ -118,12 +118,12 @@ export default defineOAuthGoogleEventHandler({
             kind: 'success',
             reject: true,
             title: 'Welcome to Firn!',
-            message: `Successfully created your Firn user account ${newFirnUser.name}. You can log in after admin approval.`
+            message: `Successfully created your Firn user account ${sessionUser.name}. You can log in after admin approval.`
           }
         })
 
         // New user - redirect back to login page with linking state
-        return sendRedirect(event, '/',201)
+        return sendRedirect(event, '/?step=link-github',201)
       
     }
 
@@ -138,7 +138,7 @@ export default defineOAuthGoogleEventHandler({
           message: 'An error occurred while signing in with Google. Please try again or contact the admin.'
         }
       })
-      return sendRedirect(event, '/', 400)
+      return sendRedirect(event, '/?stage=clear', 400)
     }
   },
 
@@ -153,5 +153,6 @@ export default defineOAuthGoogleEventHandler({
         message: 'An error occurred while signing in with Google. Please try again or contact the admin.'
       }
     })
+    return sendRedirect(event, '/?stage=clear', 400)
   }
 })
