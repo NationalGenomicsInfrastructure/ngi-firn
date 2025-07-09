@@ -63,11 +63,38 @@ export class UserService {
       // Update the user
       await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
       return { ...user, ...updates } as FirnUser
-    }
+    
+    } else {
+      // No user found by Google ID, try by e-mail address (only for Google, only for pre-created users)
+      // When an admin creates a user in advance, they know the e-mail address, but not the Google ID
+      // When a user self-registers, we can get the GoogleID directly from the OAuth response.
+      const existingUserByEmail = await couchDB.queryDocuments<FirnUser>({
+        type: 'user',
+        googleEmail: oauthUser.googleEmail
+      })
 
-    // No user found - return null to indicate new or unknown user
-    return null
-  }
+      if (existingUserByEmail.length > 0) {
+        const user = existingUserByEmail[0]
+        
+        // Update user information and last login
+        const updates: Partial<FirnUser> = {
+          lastSeenAt: new Date().toISOString(),
+          googleId: oauthUser.googleId,
+          googleName: oauthUser.googleName,
+          googleGivenName: oauthUser.googleGivenName,
+          googleFamilyName: oauthUser.googleFamilyName,
+          googleAvatar: oauthUser.googleAvatar,
+        }
+  
+        // Update the user
+        await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+        return { ...user, ...updates } as FirnUser
+      
+    } else {
+      // No user found either by Google ID or e-mail address - return null to indicate new, unknown user
+      return null
+    }
+  }}
 
   /**
    * Match a GitHub OAuth user to a FirnUser based on GitHub ID

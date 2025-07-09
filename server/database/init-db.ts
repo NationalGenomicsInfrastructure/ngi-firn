@@ -32,6 +32,7 @@ export async function initializeDatabase() {
       isAdmin: true
     })
     
+    // Hopefully, this check adds some extra security, since no further admin user can be created once we already have one.
     if (adminUsers.length === 0) {
       console.log('No admin users found, creating first admin...')
       // Check if FIRST_ADMIN_EMAIL is set and is a valid SciLifeLab email
@@ -46,7 +47,7 @@ export async function initializeDatabase() {
       // Create first admin user
       const firstAdmin: Omit<FirnUser, '_id' | '_rev'> = {
         type: 'user',
-        googleId: 0, // Will be updated when user first logs in
+        googleId: 0, // Will be updated when user first logs in from Google OAuth user.
         googleName: '',
         googleGivenName: '',
         googleFamilyName: '',

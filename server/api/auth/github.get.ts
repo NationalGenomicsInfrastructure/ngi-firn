@@ -81,7 +81,7 @@ export default defineOAuthGitHubEventHandler({
               message: 'Your account is not approved yet for access to Firn. Please contact the admin to get access.'
             }
           })
-          return sendRedirect(event, '/', 401)
+          return sendRedirect(event, '/?step=pending-approval', 401)
 
         } else {
 
@@ -155,6 +155,7 @@ export default defineOAuthGitHubEventHandler({
                   }
                 })
                 return sendRedirect(event, '/?step=pending-approval', 201)
+
               } else { // the linking failed, likely a database issue with updating the document then.
                 // error linking the FirnUser to the OAuth GitHub user
                 await replaceUserSession(event, {
