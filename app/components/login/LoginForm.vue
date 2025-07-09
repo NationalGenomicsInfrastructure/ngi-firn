@@ -81,12 +81,6 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
 </script>
 
 <template>
-  <div>
-    <pre>
-    Stage: {{ stage }}
-    Session: {{ session }}
-  </pre>
-  </div>
   <NTabs
     :items="items"
     :default-value="activeTab"
