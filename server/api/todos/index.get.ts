@@ -1,4 +1,4 @@
-import { useDB } from '../../utils/db'
+import { useDB } from '../../crud/indices'
 import type { Todo } from '../../../types/productivity'
 
 export default eventHandler(async (event) => {

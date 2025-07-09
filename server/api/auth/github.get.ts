@@ -1,4 +1,4 @@
-import { UserService } from '../../utils/users'
+import { UserService } from '../../crud/users'
 import type { GitHubUser, SessionUser, SessionUserSecure } from '../../../types/auth'
 
 export default defineOAuthGitHubEventHandler({

@@ -1,4 +1,4 @@
-import { useDB, type Todo } from '../../utils/db'
+import { useDB, type Todo } from '../../crud/indices'
 
 export default eventHandler(async () => {
   // Get all todo documents

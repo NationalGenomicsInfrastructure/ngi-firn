@@ -96,7 +96,7 @@ The `{ ...user, ...updates }` syntax works like this:
 
 #### Real example from the codebase
 
-In `server/utils/users.ts`, you'll see this pattern:
+In `server/crud/users.ts`, you'll see this pattern:
 
 ```ts
 await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)

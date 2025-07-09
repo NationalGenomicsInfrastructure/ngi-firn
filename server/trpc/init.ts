@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { H3Event } from 'h3'
-import { UserService } from '../utils/users'
+import { UserService } from '../crud/users'
 
 interface Context {
   auth?: {

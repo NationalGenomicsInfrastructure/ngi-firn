@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { couchDB } from './couchdb'
-import { createIndexes } from '../utils/db'
+import { createIndexes } from '../crud/indices'
 import type { FirnUser } from '../../types/auth'
 
 export async function initializeDatabase() {
@@ -54,6 +54,7 @@ export async function initializeDatabase() {
         googleEmail: process.env.FIRST_ADMIN_EMAIL,
         googleEmailVerified: true,
         githubId: null,
+        githubNodeId: null,
         githubName: null,
         githubAvatar: null,
         githubEmail: null,

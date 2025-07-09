@@ -1,5 +1,5 @@
 import { useValidatedParams, zh } from 'h3-zod'
-import { useDB, type Todo } from '../../utils/db'
+import { useDB, type Todo } from '../../crud/indices'
 
 export default eventHandler(async (event) => {
   const { id } = await useValidatedParams(event, {

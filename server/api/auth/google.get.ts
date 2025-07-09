@@ -1,4 +1,4 @@
-import { UserService } from '../../utils/users'
+import { UserService } from '../../crud/users'
 import type { GoogleUser } from '../../../types/auth'
 
 export default defineOAuthGoogleEventHandler({

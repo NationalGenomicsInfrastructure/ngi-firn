@@ -204,6 +204,7 @@ export class UserService {
       googleEmailVerified: googleUser.googleEmailVerified,
       // GitHub-specific fields (null for new users)
       githubId: null,
+      githubNodeId: null,
       githubName: null,
       githubAvatar: null,
       githubEmail: null,
