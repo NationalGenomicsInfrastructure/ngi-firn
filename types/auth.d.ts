@@ -3,6 +3,7 @@ import type { BaseDocument } from '../server/database/couchdb'
 // Full user object as it is stored in the database
 export interface FirnUser extends BaseDocument {
   type: 'user'
+  schema: 1
   googleId: number
   googleName: string
   googleGivenName: string

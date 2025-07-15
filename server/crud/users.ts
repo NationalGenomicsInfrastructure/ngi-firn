@@ -221,6 +221,7 @@ export class UserService {
     const newFirnUser: Omit<FirnUser, '_id' | '_rev'> = 
     {
       type: 'user',
+      schema: 1,
       // Google-specific fields
       googleId: googleUser.googleId,
       googleName: googleUser.googleName,
