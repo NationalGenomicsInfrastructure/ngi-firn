@@ -53,19 +53,42 @@ watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
 watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
   if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
   
-    // The detour via kindToColor/toastClass is unfortunately necessary, otherwise the mapping of kind to color is not applied.
-    // When specified as hardcoded string, toast = 'border-success' or class: 'alert-border-success' works like a charm, but my initial approach toast = `border-${newAuthStatus.kind}` does unfortunately not.
+    // Function to get hardcoded toast classes for each auth status kind
+    // The AuthStatus kind was chosen to allow using UnoCSS utility classes for success, warning, error or base
+    // , but the mapping fails because of the immediate:true setting of the watcher:
+    // [unocss] unmatched utility "dark:n-$-100" in shortcut "alert-border-$"
+    // Therefore we hardcode the toast classes here:
+      const getToastClass = (kind: string) => {
+      switch (kind) {
+        case 'success':
+          return {
+            leading: 'i-lucide-circle-check',
+            class: 'alert-border-teal',
+            progress: 'teal'
+          }
+        case 'warning':
+          return {
+            leading: 'i-lucide-triangle-alert',
+            class: 'alert-border-orange',
+            progress: 'amber'
+          }
+        case 'error':
+          return {
+            leading: 'i-lucide-circle-x',
+            class: 'alert-border-red',
+            progress: 'red'
+          }
+        case 'base':
+        default:
+          return {
+            leading: 'i-lucide-info',
+            class: 'alert-border-indigo',
+            progress: 'indigo'
+          }
+      }
+    }
     
-    const kindToColor = {
-      success: 'green',
-      warning: 'blue',
-      error: 'red',
-      base: 'primary'
-    }
-    const toastClass = {
-      class: `alert-border-${kindToColor[newAuthStatus.kind] || 'primary'}`,
-      progress: `${kindToColor[newAuthStatus.kind] || 'primary'}`
-    }
+    const toastClass = getToastClass(newAuthStatus.kind)
     toast({
       title: newAuthStatus.title,
       description: newAuthStatus.message,
