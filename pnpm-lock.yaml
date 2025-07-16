@@ -51,8 +51,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
       trpc-nuxt:
-        specifier: ^1.0.5
-        version: 1.0.5(@trpc/client@11.1.2(@trpc/server@11.1.2(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.2(typescript@5.8.3))
+        specifier: ^1.1.0
+        version: 1.2.0(@trpc/client@11.1.2(@trpc/server@11.1.2(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.2(typescript@5.8.3))
       zod:
         specifier: ^3.24.4
         version: 3.24.4
@@ -5233,8 +5233,9 @@ packages:
     resolution: {integrity: sha512-aZbgViZrg1QNcG+LULa7nhZpJTZSLm/mXnHXnbAbjmN5aSa0y7V+wvv6+4WaBtpISJzThKy+PIPxc1Nq1EJ9mg==}
     engines: {node: '>= 14.0.0'}
 
-  trpc-nuxt@1.0.5:
-    resolution: {integrity: sha512-leQSJvyl0B+M47UH37Dvh+XoQKTtUnKW3d/g1S/SLh8ro3fNMGa2Cs1LNRwUbmMYin6Y3zFt1tKB9Wu0MSYKDA==}
+  trpc-nuxt@1.2.0:
+    resolution: {integrity: sha512-UasLY53UL8nIzGo5DJfRmj1MCLiLuMixg4y4wUCaPyaEc6rvBkM1GRmk53biCA/M9ygXgguQk60EtUQLU5AJeg==}
+    engines: {node: '>=20'}
     peerDependencies:
       '@trpc/client': ^11.0.0
       '@trpc/server': ^11.0.0
@@ -9552,7 +9553,7 @@ snapshots:
       '@petamoriken/float16': 3.9.2
       debug: 4.4.0
       env-paths: 3.0.0
-      semver: 7.7.1
+      semver: 7.7.2
       shell-quote: 1.8.2
       which: 4.0.0
     transitivePeerDependencies:
@@ -11757,7 +11758,7 @@ snapshots:
 
   triple-beam@1.4.1: {}
 
-  trpc-nuxt@1.0.5(@trpc/client@11.1.2(@trpc/server@11.1.2(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.2(typescript@5.8.3)):
+  trpc-nuxt@1.2.0(@trpc/client@11.1.2(@trpc/server@11.1.2(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.2(typescript@5.8.3)):
     dependencies:
       '@trpc/client': 11.1.2(@trpc/server@11.1.2(typescript@5.8.3))(typescript@5.8.3)
       '@trpc/server': 11.1.2(typescript@5.8.3)
@@ -12253,7 +12254,7 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@webassemblyjs/wasm-edit': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
-      acorn: 8.14.1
+      acorn: 8.15.0
       browserslist: 4.24.5
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.18.1
