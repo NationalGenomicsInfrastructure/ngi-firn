@@ -2,31 +2,25 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import type { H3Event } from 'h3'
 import { UserService } from '../crud/users'
 import type { SessionUser,SessionUserSecure, FirnUser } from '../../types/auth'
+import type { Context } from '../../types/trpc'
 
-interface Context {
-  user: SessionUser | null
-  secure: SessionUserSecure | null
-  firnUser?: FirnUser | null
-}
 
-// The context is only server-side, the client can't access it.
+// The tRPC context is only server-side, the client can't access it.
+// It is therefore safe to put the private parts of the session in the context.
 export const createTRPCContext = async (event: H3Event): Promise<Context> => {
   // Get the session from the event
   const session = await getUserSession(event)
   // Get the session user and secure user from the session
-  const sessionUser = session?.user as SessionUser | null
-  const sessionUserSecure = session?.secure as SessionUserSecure | null
+  const sessionUser = session?.user as SessionUser
+  const sessionUserSecure = session?.secure as SessionUserSecure 
   
   if (!sessionUser && !sessionUserSecure) {
-    return {
-      user: null,
-      secure: null
-    }
+    return {} as Context
   } else {
     return {
       user: sessionUser,
       secure: sessionUserSecure
-    }
+    } as Context
   }
 }
 
@@ -43,6 +37,10 @@ const t = initTRPC.context<Context>().create({
 export const createTRPCRouter = t.router
 export const createCallerFactory = t.createCallerFactory
 export const baseProcedure = t.procedure
+
+  /**
+  * Middleware
+  */
 
 // Middleware to check if user is authenticated
 const isAuthed = t.middleware(async ({ ctx, next }) => {
@@ -85,13 +83,13 @@ const getFirnUser = t.middleware(async ({ ctx, next }) => {
     return next({
       ctx: {
         ...ctx,
-        firnUser : firnUser
+        firnUser : firnUser as FirnUser
       }
     })
   }
 })
 
-// Export procedures
-export const authedProcedure = baseProcedure.use(isAuthed)
-export const adminProcedure = baseProcedure.use(isAdmin)
-export const firnUserProcedure = baseProcedure.use(getFirnUser)
+// Export procedures with middleware
+export const authedProcedure = baseProcedure.use(isAuthed) // For endpoints that require authentication
+export const adminProcedure = baseProcedure.use(isAdmin) // For endpoints that require admin permissions
+export const firnUserProcedure = baseProcedure.use(getFirnUser) // For endpoints that need the full user object from the database
