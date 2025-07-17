@@ -16,12 +16,13 @@
  * getRetiredUsers() - Get all retired users
  * getApprovedUsers() - Get all active users (allowed to login)
  * USER TYPE CONVERSION:
- * convertToSessionUser(user, provider) - Convert a FirnUser to a SessionUser
- * convertGoogleUserToFirnUser(googleUser) - Convert a GoogleUser to a FirnUser
+ * convertToSessionUser(user, provider) - Convert a FirnUser to a SessionUser (for authentication)
+ * convertToDisplayUserToAdmin(user) - Convert a FirnUser to a DisplayUserToAdmin (for administrative UI display)
+ * convertGoogleUserToFirnUser(googleUser) - Convert a GoogleUser to a FirnUser (for creating a new user)
  */
 
 import { couchDB } from '../database/couchdb'
-import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure } from '../../types/auth'
+import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput } from '../../types/users'
 
 export class UserService {
@@ -92,26 +93,29 @@ export class UserService {
   /*
    * Set access of a user by an admin: Allow login, retire, or promote to admin.
    */
-    static async setUserAccessByAdmin(user: SetUserAccessByAdminInput): Promise<FirnUser | null> {
+    static async setUserAccessByAdmin(userSettings: SetUserAccessByAdminInput): Promise<FirnUser | null> {
       // First, try to find user by Google ID (Google is source of truth)
       const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
         type: 'user',
-        googleId: user.googleId
+        googleId: userSettings.googleId
       })
   
       if (existingUserByGoogleId.length > 0) {
         const user = existingUserByGoogleId[0]
         
-        // Update user information and last login
+        // Update user information
         const updates: Partial<FirnUser> = {
-          allowLogin: user.allowLogin,
-          isRetired: user.isRetired,
-          isAdmin: user.isAdmin
+          allowLogin: userSettings.allowLogin,
+          isRetired: userSettings.isRetired,
+          isAdmin: userSettings.isAdmin
         }
   
-        // Update the user
-        await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
-        return { ...user, ...updates } as FirnUser
+        // TypeScript can't guarantee that existingUserByGoogleId[0] is defined,
+        // even though we checked length > 0. To help the typechecker, we can use a type guard.
+        if (user) {
+          const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+          return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+        }
       }
   
       // No user found - return null to indicate new or unknown user
@@ -133,9 +137,12 @@ export class UserService {
           githubUrl: githubUser.githubUrl
         }
   
-        // Update the user
-        await couchDB.updateDocument(user._id, { ...user, ...linkedAccount }, user._rev!)
-        return { ...user, ...linkedAccount } as FirnUser
+        if (user) {
+          // Update the user
+          const result = await couchDB.updateDocument(user._id, { ...user, ...linkedAccount }, user._rev!)
+          return { ...user, ...linkedAccount, _id: result.id, _rev: result.rev } as FirnUser
+        }
+        return null
       }
   
   /*
@@ -164,8 +171,12 @@ export class UserService {
       }
 
       // Update the user
-      await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
-      return { ...user, ...updates } as FirnUser
+      if (user) {
+        const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+        return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+      } else {
+        return null
+      }
     
     } else {
       // No user found by Google ID, try by e-mail address (only for Google, only for pre-created users)
@@ -190,8 +201,12 @@ export class UserService {
         }
   
         // Update the user
-        await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
-        return { ...user, ...updates } as FirnUser
+        if (user) {
+          const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+          return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+        } else {
+          return null
+        }
       
     } else {
       // No user found either by Google ID or e-mail address - return null to indicate new, unknown user
@@ -224,8 +239,12 @@ export class UserService {
         }
   
         // Update the user
-        await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
-        return { ...user, ...updates } as FirnUser
+        if (user) {
+          const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+          return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+        } else {
+          return null
+        }
       }
   
       // No user found - return null to indicate new or unknown user
@@ -313,6 +332,29 @@ export class UserService {
     }
 
     return [sessionUser, sessionUserSecure]
+  }
+  /*
+   * Convert a FirnUser to a DisplayUserToAdmin
+   */
+  static async convertToDisplayUserToAdmin(user: FirnUser): Promise<DisplayUserToAdmin> {
+    const displayUser: DisplayUserToAdmin = {
+      googleId: user.googleId,
+      googleName: user.googleName,
+      googleGivenName: user.googleGivenName,
+      googleFamilyName: user.googleFamilyName,
+      googleAvatar: user.googleAvatar,
+      githubId: user.githubId,
+      githubName: user.githubName,
+      githubAvatar: user.githubAvatar,
+      createdAt: user.createdAt,
+      lastSeenAt: user.lastSeenAt,
+      allowLogin: user.allowLogin,
+      isRetired: user.isRetired,
+      isAdmin: user.isAdmin,
+      permissions: user.permissions,
+      tokens: user.tokens
+    }
+    return displayUser
   }
 
   /*

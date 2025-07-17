@@ -12,7 +12,7 @@ interface CouchDBConfig {
 // Base document interface extending CloudantV1.Document
 interface BaseDocument extends CloudantV1.Document {
   _id: string
-  _rev?: string
+  _rev: string
 }
 
 // Initialize Cloudant client

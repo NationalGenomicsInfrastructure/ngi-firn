@@ -8,7 +8,7 @@ export interface FirnUser extends BaseDocument {
   googleName: string
   googleGivenName: string
   googleFamilyName: string
-  googleAvatar: string
+  googleAvatar: string | null
   googleEmail: string
   googleEmailVerified: boolean
   // GitHub-specific fields for linking
@@ -76,6 +76,25 @@ export interface SessionUserSecure {
   isRetired: boolean
   isAdmin: boolean
   permissions: string[]
+}
+
+// Display user object, used for displaying user information about other users to an admin
+export interface DisplayUserToAdmin {
+  googleId?: number
+  googleName?: string
+  googleGivenName?: string
+  googleFamilyName?: string
+  googleAvatar: string | null
+  githubId: number | null
+  githubName: string | null
+  githubAvatar: string | null
+  createdAt?: string
+  lastSeenAt?: string  
+  allowLogin: boolean
+  isRetired: boolean
+  isAdmin: boolean
+  permissions: string[] 
+  tokens: string[]
 }
 
 // Auth status object to render toast notifications in the UI, amended to the UserSession interface
