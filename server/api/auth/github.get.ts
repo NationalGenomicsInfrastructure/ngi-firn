@@ -4,7 +4,7 @@ import type { GitHubUser, SessionUser, SessionUserSecure } from '../../../types/
 export default defineOAuthGitHubEventHandler({
   async onSuccess(event, { user }) {
 
-    /** user object example:
+    /* user object example:
     * login: '[[:letters:]]+',
     * id: '[[:digits:]]+',
     * node_id: '[[:alnum:]]+',
@@ -51,7 +51,7 @@ export default defineOAuthGitHubEventHandler({
       githubUrl: user.html_url
     }
 
-    /**
+    /*
      * Since Google is our source of truth, GitHub users must exist in the database or are rejected.
      * There is one exception: If we can match the GitHub user to a Google user, we will link the two.
      * 1. User is already in the database and is approved -> log in and redirect to main app

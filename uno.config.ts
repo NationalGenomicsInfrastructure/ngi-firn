@@ -1,7 +1,7 @@
 import { defaultConfig } from '@una-ui/nuxt/una.config'
 
 export default defaultConfig({
-  /**
+  /*
    * UnoCSS Configuration Options
    *
    * You can extend the default UnoCSS configuration here by adding rules,
@@ -13,7 +13,7 @@ export default defaultConfig({
 
   presets: [],
 
-  /**
+  /*
    * Una UI Shortcuts Customization
    *
    * Shortcuts allow you to create reusable utility combinations or override
@@ -27,7 +27,7 @@ export default defaultConfig({
    * @see https://unocss.dev/config/shortcuts
    */
   shortcuts: [
-    /**
+    /*
      * Static Shortcuts
      *
      * Use these to create new utility combinations or override existing ones.
@@ -40,7 +40,7 @@ export default defaultConfig({
       // add here ...
     }
 
-    /**
+    /*
      * Dynamic Shortcuts
      *
      * Create pattern-based utilities with variants using RegExp.

@@ -4,7 +4,7 @@ import type { GoogleUser } from '../../../types/auth'
 export default defineOAuthGoogleEventHandler({
   async onSuccess(event, { user }) {
 
-    /** user object example from Google OAuth:
+    /* user object example from Google OAuth:
     * sub: '[[:digits:]]+',
     * name: '[[:letters:]]+',
     * given_name: '[[:letters:]]+',
@@ -41,7 +41,7 @@ export default defineOAuthGoogleEventHandler({
       googleEmailVerified: user.email_verified
     }
 
-    /**
+    /*
      * We need to distinguish between three cases:
      * 1. User is already in the database and is approved
      * 2. User is already in the database but not approved
