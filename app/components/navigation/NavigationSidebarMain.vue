@@ -27,7 +27,7 @@ const { setOpen, toggleSidebar } = useSidebar()
 
 <template>
   <NSidebar
-    class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
+    class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row border-r border-primary/20"
     collapsible="icon"
   >
     <!-- This is the first sidebar -->
@@ -100,12 +100,8 @@ const { setOpen, toggleSidebar } = useSidebar()
       sheet="left"
       rail
     >
-      <NSidebarHeader class="gap-3.5 border-b p-4">
-        <div class="w-full flex items-center justify-between">
-        </br>
-        </div>
-        <NSidebarInput placeholder="Type to search..." />
-      </NSidebarHeader>
+        <!-- This is the slot for the page-specific main navigation -->
+        <slot name="sidebar-main-navigation" />
     </NSidebar>
   </NSidebar>
 </template>

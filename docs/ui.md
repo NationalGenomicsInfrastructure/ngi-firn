@@ -32,6 +32,160 @@ Components are the building blocks of the user interface and Vue application.
 
 Components can be nested within each other, creating a tree-like structure that represents your application's UI. This modular approach promotes reusability, maintainability, and separation of concerns.
 
+### Slots
+
+Slots are a Vue feature that allows you to create reusable components with customizable content areas. They act as placeholders where parent components can inject their own content, enabling flexible component composition.
+
+#### Basic slots
+
+A basic slot creates a "hole" in your component where parent content can be inserted:
+
+```vue [ChildComponent.vue]
+<template>
+  <div class="container">
+    <h1>Fixed Header</h1>
+    <slot></slot> <!-- Parent content goes here -->
+    <footer>Fixed Footer</footer>
+  </div>
+</template>
+```
+
+```vue [ParentComponent.vue]
+<template>
+  <ChildComponent>
+    <p>This content goes into the slot!</p>
+  </ChildComponent>
+</template>
+```
+
+#### Named slots
+
+Named slots allow you to create multiple content areas within a single component. This is particularly useful for complex layouts like navigation components.
+
+**Defining named slots in a component:**
+
+```vue [NavigationSidebarMain.vue]
+<template>
+  <NSidebar>
+    <NSidebarHeader>
+      <slot name="header">
+        <!-- Default header content -->
+        <h2>Default Header</h2>
+      </slot>
+    </NSidebarHeader>
+    
+    <NSidebarContent>
+      <slot name="content">
+        <!-- Default content -->
+        <p>Default content area</p>
+      </slot>
+    </NSidebarContent>
+    
+    <NSidebarFooter>
+      <slot name="footer">
+        <!-- Default footer -->
+        <p>Default footer</p>
+      </slot>
+    </NSidebarFooter>
+  </NSidebar>
+</template>
+```
+
+Using named slots from a parent component:
+
+```vue [PageComponent.vue]
+<template>
+  <NavigationSidebarMain>
+    <template #header>
+      <CustomHeader />
+    </template>
+    <template #content>
+      <CustomContent />
+    </template>
+    <template #footer>
+      <CustomFooter />
+    </template>
+  </NavigationSidebarMain>
+</template>
+```
+
+The `#header` syntax is shorthand for `v-slot:header`.
+
+##### Multiple named slots
+
+You can have multiple named slots in one component:
+
+```vue
+<!-- Enhanced NavigationSidebarMain.vue -->
+<template>
+  <NSidebar>
+    <NSidebarHeader>
+      <slot name="header">
+        <!-- Default header -->
+      </slot>
+    </NSidebarHeader>
+    
+    <NSidebarContent>
+      <slot name="content">
+        <!-- Default content -->
+      </slot>
+    </NSidebarContent>
+    
+    <NSidebarFooter>
+      <slot name="footer">
+        <!-- Default footer -->
+      </slot>
+    </NSidebarFooter>
+  </NSidebar>
+</template>
+```
+
+Usage:
+
+```vue
+<NavigationSidebarMain>
+  <template #header>
+    <CustomHeader />
+  </template>
+  <template #content>
+    <CustomContent />
+  </template>
+  <template #footer>
+    <CustomFooter />
+  </template>
+</NavigationSidebarMain>
+```
+
+#### Conditional slot content
+
+You can also make slot content conditional:
+
+```vue
+<template>
+  <NavigationSidebarMain>
+    <template #secondary-sidebar-header>
+      <component :is="currentSidebarHeader" />
+    </template>
+  </NavigationSidebarMain>
+</template>
+
+<script setup>
+const route = useRoute()
+
+// Dynamically choose component based on route
+const currentSidebarHeader = computed(() => {
+  switch (route.name) {
+    case 'profile':
+      return defineAsyncComponent(() => import('~/components/profile/ProfileSidebarHeader.vue'))
+    case 'settings':
+      return defineAsyncComponent(() => import('~/components/settings/SettingsSidebarHeader.vue'))
+    default:
+      return null // Use default slot content
+  }
+})
+</script>
+```
+
 ### Available components
 
 In the [directory tree](./architecture.md#directory-tree), components are found in `app/components`.
@@ -101,3 +255,81 @@ The following list highlights a few features of our UI libraries that you may us
                 @click="() => { // a function triggered when clicking on the button}"
                 >
 ```
+
+#### Named Slots
+
+Named slots allow you to create multiple content areas within a single component. This is particularly useful for complex layouts like navigation components.
+
+**Defining named slots in a component:**
+
+```vue [NavigationSidebarMain.vue]
+<template>
+  <NSidebar>
+    <NSidebarHeader>
+      <slot name="header">
+        <!-- Default header content -->
+        <h2>Default Header</h2>
+      </slot>
+    </NSidebarHeader>
+    
+    <NSidebarContent>
+      <slot name="content">
+        <!-- Default content -->
+        <p>Default content area</p>
+      </slot>
+    </NSidebarContent>
+    
+    <NSidebarFooter>
+      <slot name="footer">
+        <!-- Default footer -->
+        <p>Default footer</p>
+      </slot>
+    </NSidebarFooter>
+  </NSidebar>
+</template>
+```
+
+**Using named slots from a parent component:**
+
+```vue [PageComponent.vue]
+<template>
+  <NavigationSidebarMain>
+    <template #header>
+      <CustomHeader />
+    </template>
+    <template #content>
+      <CustomContent />
+    </template>
+    <template #footer>
+      <CustomFooter />
+    </template>
+  </NavigationSidebarMain>
+</template>
+```
+
+The `#header` syntax is shorthand for `v-slot:header`.
+
+#### Best Practices for Page-Specific Components
+
+##### 1. Create Dedicated Components
+
+For different pages, create specific components for slot content:
+
+```vue [components/profile/ProfileSidebarHeader.vue]
+<template>
+  <div class="flex items-center gap-2">
+    <NIcon name="i-lucide-user" />
+    <h2>Profile Settings</h2>
+    <NButton size="sm">Edit</NButton>
+  </div>
+</template>
+```
+
+```vue [components/settings/SettingsSidebarHeader.vue]
+<template>
+  <div class="flex items-center gap-2">
+    <NIcon name="i-lucide-settings" />
+    <h2>System Settings</h2>
+    <NButton size="sm" variant="outline">Reset</NButton>
+  </div>
+</template>
