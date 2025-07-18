@@ -3,25 +3,34 @@ const data = {
   navMain: [
     {
       title: 'NGI Firn',
-      url: '#',
+      url: '/firn',
       icon: 'i-lucide-snowflake',
       isActive: true
     },
     {
       title: 'Genomics Status',
-      url: '#',
+      url: '/firn',
       icon: 'i-lucide-dna',
       isActive: false
     },
     {
       title: 'Notebook',
-      url: '#',
+      url: '/firn',
       icon: 'i-lucide-notebook-pen',
       isActive: false
     }
   ]
 }
 const activeItem = ref(data.navMain[0] || { title: '', url: '', icon: '', isActive: false })
+
+const route = useRoute()
+const activeMenu = computed(() => {
+  const paths = route.path.split('/').filter(Boolean)
+  const firstLevelNav = paths[0] || ''
+  return firstLevelNav
+})
+
+
 const { setOpen, toggleSidebar } = useSidebar()
 </script>
 
@@ -35,7 +44,7 @@ const { setOpen, toggleSidebar } = useSidebar()
     <!-- This will make the sidebar appear as icons. -->
     <NSidebar
       collapsible="none"
-      class="border-r !w-[calc(var(--sidebar-width-icon)_+_1px)]"
+      class="bg-primary/5 border-r !w-[calc(var(--sidebar-width-icon)_+_1px)]"
     >
       <NSidebarHeader>
         <NSidebarMenu>
@@ -66,10 +75,11 @@ const { setOpen, toggleSidebar } = useSidebar()
                 <NSidebarMenuButton
                   :tooltip="h('div', { hidden: false }, item.title)"
                   :is-active="activeItem.title === item.title"
-                  class="px-2.5 md:px-2"
+                  class="px-2.5 md:px-2 hover:bg-primary/10"
                   @click="() => {
                     activeItem = item
                     setOpen(true)
+                    navigateTo(item.url)
                   }"
                 >
                   <NIcon :name="item.icon" />
@@ -100,8 +110,9 @@ const { setOpen, toggleSidebar } = useSidebar()
       sheet="left"
       rail
     >
-        <!-- This is the slot for the page-specific main navigation -->
-        <slot name="sidebar-main-navigation" />
+      <!-- This is the slot for the page-specific main navigation -->
+      <slot name="sidebar-main-navigation" />
+      <MenuFirn v-if="activeMenu === 'firn'" />
     </NSidebar>
   </NSidebar>
 </template>
