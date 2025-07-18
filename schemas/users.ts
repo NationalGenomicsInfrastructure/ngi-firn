@@ -23,4 +23,4 @@ export const setUserAccessByAdminSchema = z.object({
 
 // Inferred types from schemas
 export type CreateUserByAdminInput = z.infer<typeof createUserByAdminSchema>
-export type SetUserAccessByAdminInput = z.infer<typeof setUserAccessByAdminSchema>
+export type SetUserAccessByAdminInput = z.infer<typeof setUserAccessByAdminSchema> 

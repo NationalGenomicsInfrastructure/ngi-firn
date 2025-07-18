@@ -23,7 +23,7 @@
 
 import { couchDB } from '../database/couchdb'
 import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
-import type { CreateUserByAdminInput, SetUserAccessByAdminInput } from '../../types/users'
+import type { CreateUserByAdminInput, SetUserAccessByAdminInput } from '../../schemas/users'
 
 export class UserService {
 
