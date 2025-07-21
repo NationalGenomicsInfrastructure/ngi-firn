@@ -7,7 +7,7 @@ function toggleDark() {
 
 <template>
   <NButton
-    btn="ghost"
+    btn="soft"
     label="i-radix-icons-moon dark:i-radix-icons-sun"
     icon
     @click="toggleDark()"

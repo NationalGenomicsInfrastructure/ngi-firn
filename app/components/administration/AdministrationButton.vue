@@ -8,8 +8,9 @@ const { user } = useUserSession()
 <template>
   <NButton
     v-if="user?.isAdminClientside"
-    btn="ghost"
+    btn="soft"
     label="i-lucide-user-cog"
+    class="text-color-amber-800 dark:text-color-amber-300"
     icon
     @click="navigateTo('/administration')"
   />

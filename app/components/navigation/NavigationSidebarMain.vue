@@ -3,25 +3,26 @@ const data = {
   navMain: [
     {
       title: 'NGI Firn',
-      url: '/firn',
+      url: 'firn',
       icon: 'i-lucide-snowflake',
       isActive: true
     },
     {
       title: 'Genomics Status',
-      url: '/firn',
+      url: 'firn',
       icon: 'i-lucide-dna',
       isActive: false
     },
     {
       title: 'Notebook',
-      url: '/firn',
+      url: 'firn',
       icon: 'i-lucide-notebook-pen',
       isActive: false
     },
   ]
 }
-const activeItem = ref(data.navMain[0] || { title: '', url: '', icon: '', isActive: false })
+
+const activeItem = ref(data.navMain[0]?.url || '' )
 
 const route = useRoute()
 const activeMenu = computed(() => {
@@ -74,15 +75,16 @@ const { setOpen, toggleSidebar } = useSidebar()
               >
                 <NSidebarMenuButton
                   :tooltip="h('div', { hidden: false }, item.title)"
-                  :is-active="activeItem.title === item.title"
-                  class="px-2.5 md:px-2 hover:bg-primary/10"
+                  :is-active="activeItem === activeMenu"
+                  class="soft hover:bg-primary/7 focus:outline-primary active:outline-primary text-color-primary"
+                  style="background-color: transparent;"
                   @click="() => {
-                    activeItem = item
+                    activeItem = item.url
                     setOpen(true)
                     navigateTo(item.url)
                   }"
                 >
-                  <NIcon :name="item.icon" />
+                  <NIcon :name="item.icon"/>
                   <span>{{ item.title }}</span>
                 </NSidebarMenuButton>
               </NSidebarMenuItem>
