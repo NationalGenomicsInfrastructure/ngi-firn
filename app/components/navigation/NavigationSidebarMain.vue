@@ -2,27 +2,19 @@
 const data = {
   navMain: [
     {
-      title: 'NGI Firn',
-      url: 'firn',
+      title: 'Cold Storage Inventory',
+      url: 'inventory',
       icon: 'i-lucide-snowflake',
       isActive: true
     },
     {
       title: 'Genomics Status',
-      url: 'firn',
+      url: '#',
       icon: 'i-lucide-dna',
-      isActive: false
-    },
-    {
-      title: 'Notebook',
-      url: 'firn',
-      icon: 'i-lucide-notebook-pen',
       isActive: false
     },
   ]
 }
-
-const activeItem = ref(data.navMain[0]?.url || '' )
 
 const route = useRoute()
 const activeMenu = computed(() => {
@@ -31,6 +23,10 @@ const activeMenu = computed(() => {
   return firstLevelNav
 })
 
+const activeTitle = computed(() => {
+  const title = data.navMain.find(item => item.url === activeMenu.value)?.title || activeMenu.value || ''
+  return title.charAt(0).toUpperCase() + title.slice(1)
+})
 
 const { setOpen, toggleSidebar } = useSidebar()
 </script>
@@ -75,11 +71,9 @@ const { setOpen, toggleSidebar } = useSidebar()
               >
                 <NSidebarMenuButton
                   :tooltip="h('div', { hidden: false }, item.title)"
-                  :is-active="activeItem === activeMenu"
                   class="soft hover:bg-primary/7 focus:outline-primary active:outline-primary text-color-primary"
                   style="background-color: transparent;"
                   @click="() => {
-                    activeItem = item.url
                     setOpen(true)
                     navigateTo(item.url)
                   }"
@@ -114,10 +108,14 @@ const { setOpen, toggleSidebar } = useSidebar()
       class="hidden flex-1 md:flex"
       sheet="left"
       rail
-    >
+    >  
+      <NSidebarHeader>
+        <LogoFirn class="h-8 w-auto mb-0" />
+        <h4 class="text-primary/60 text-sm capitalize text-center">{{ activeTitle }}</h4>
+      </NSidebarHeader>
       <!-- This is the slot for the page-specific main navigation -->
       <slot name="sidebar-main-navigation" />
-      <MenuFirn v-if="activeMenu === 'firn'" />
+      <MenuInventory v-if="activeMenu === 'inventory'" />
     </NSidebar>
   </NSidebar>
 </template>

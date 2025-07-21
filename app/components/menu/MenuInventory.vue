@@ -101,9 +101,6 @@ const data = {
 </script>
 
 <template>
-  <NSidebarHeader>
-    <LogoFirn class="h-8 w-auto" />
-  </NSidebarHeader>
   <NavigationGroups title="Actions" :items="data.menuItems" />
   <NavigationWorksets title="Your Worksets" :worksets="data.worksets" />
 </template>
