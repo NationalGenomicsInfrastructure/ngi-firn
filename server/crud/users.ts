@@ -319,7 +319,8 @@ export class UserService {
       avatar: avatar,
       linkedGitHub: user.githubId ? true : false,
       allowLoginClientside: user.allowLogin,
-      isRetiredClientside: user.isRetired
+      isRetiredClientside: user.isRetired,
+      isAdminClientside: user.isAdmin,
     }
 
     const sessionUserSecure: SessionUserSecure = {

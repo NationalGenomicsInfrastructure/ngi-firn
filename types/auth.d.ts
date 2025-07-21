@@ -66,6 +66,7 @@ export interface SessionUser {
   // Purely informational fields for UI rendering, not to be used for authentication!
   allowLoginClientside: boolean
   isRetiredClientside: boolean
+  isAdminClientside: boolean
 }
 
 // Private user object, only available on server side

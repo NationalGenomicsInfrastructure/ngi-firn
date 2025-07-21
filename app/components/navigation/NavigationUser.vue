@@ -95,6 +95,6 @@ const { isMobile } = useSidebar()
 
 <style>
 .dropdown-menu-content {
-    background-color: var(--c-muted);
+    background-color: var(--c-background);
 }
 </style>

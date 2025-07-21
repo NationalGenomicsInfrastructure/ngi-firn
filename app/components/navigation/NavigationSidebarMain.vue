@@ -18,7 +18,7 @@ const data = {
       url: '/firn',
       icon: 'i-lucide-notebook-pen',
       isActive: false
-    }
+    },
   ]
 }
 const activeItem = ref(data.navMain[0] || { title: '', url: '', icon: '', isActive: false })
@@ -95,9 +95,12 @@ const { setOpen, toggleSidebar } = useSidebar()
           <NSidebarMenuItem>
             <ColorsChoice />
           </NSidebarMenuItem>
-          <NSidebarMenuItem>
-            <NThemeSwitcher />
-          </NSidebarMenuItem>
+            <NSidebarMenuItem>
+              <NThemeSwitcher />
+            </NSidebarMenuItem>
+            <NSidebarMenuItem>
+              <AdministrationButton />
+            </NSidebarMenuItem>
         </NSidebarMenu>
         <NavigationUser />
       </NSidebarFooter>
