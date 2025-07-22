@@ -19,8 +19,8 @@ interface BaseDocument extends CloudantV1.Document {
 function createCloudantClient(config: CouchDBConfig): CloudantV1 {
   console.log('Creating Cloudant client with config:', {
     url: config.url,
-    username: config.username ? 'Set' : 'Not set',
-    password: config.password ? 'Set' : 'Not set',
+    username: config.username ? '****** (set)' : '- (not set)',
+    password: config.password ? '****** (set)' : '- (not set)',
     database: config.database
   })
 
@@ -287,9 +287,9 @@ export class CouchDBConnector {
       console.error('   The application cannot start without a database connection.')
       console.error('   Please check your database configuration and ensure CouchDB is running.')
       console.error('   Environment variables:')
-      console.error(`   - CLOUDANT_URL: ${process.env.CLOUDANT_URL || 'Not set'}`)
-      console.error(`   - CLOUDANT_USERNAME: ${process.env.CLOUDANT_USERNAME ? 'Set' : 'Not set'}`)
-      console.error(`   - CLOUDANT_PASSWORD: ${process.env.CLOUDANT_PASSWORD ? 'Set' : 'Not set'}`)
+      console.error(`   - CLOUDANT_URL: ${process.env.CLOUDANT_URL || '- (not set)'}`)
+      console.error(`   - CLOUDANT_USERNAME: ${process.env.CLOUDANT_USERNAME ? '****** (set)' : '- (not set)'}`)
+      console.error(`   - CLOUDANT_PASSWORD: ${process.env.CLOUDANT_PASSWORD ? '****** (set)' : '- (not set)'}`)
       console.error(`   - CLOUDANT_DATABASE: ${process.env.CLOUDANT_DATABASE || 'firn (default)'}`)
       
       // Terminate the application

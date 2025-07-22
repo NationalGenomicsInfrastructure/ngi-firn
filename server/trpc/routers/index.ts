@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { baseProcedure, createTRPCRouter } from '../init'
 import { usersRouter } from './users'
 
-export const appRouter = createTRPCRouter({
+export const firnRouter = createTRPCRouter({
   hello: baseProcedure
     .input(
       z.object({
@@ -11,11 +11,11 @@ export const appRouter = createTRPCRouter({
     )
     .query((opts) => {
       return {
-        greeting: `Reply via tRPC: ${opts.input.text}`
+        greeting: `Hello ${opts.input.text}!`
       }
     }),
   users: usersRouter
 })
 
 // export type definition of API
-export type AppRouter = typeof appRouter
+export type FirnRouter = typeof firnRouter

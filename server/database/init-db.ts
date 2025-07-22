@@ -9,11 +9,11 @@ export async function initializeDatabase() {
     
     // Debug: Log environment variables (without sensitive data)
     console.log('Environment check:')
-    console.log('- CLOUDANT_URL:', process.env.CLOUDANT_URL ? 'Set' : 'Not set')
-    console.log('- CLOUDANT_USERNAME:', process.env.CLOUDANT_USERNAME ? 'Set' : 'Not set')
-    console.log('- CLOUDANT_PASSWORD:', process.env.CLOUDANT_PASSWORD ? 'Set' : 'Not set')
+    console.log('- CLOUDANT_URL:', process.env.CLOUDANT_URL ? '****** (set)' : '- (not set)')
+    console.log('- CLOUDANT_USERNAME:', process.env.CLOUDANT_USERNAME ? '****** (set)' : '- (not set)')
+    console.log('- CLOUDANT_PASSWORD:', process.env.CLOUDANT_PASSWORD ? '****** (set)' : '- (not set)')
     console.log('- CLOUDANT_DATABASE:', process.env.CLOUDANT_DATABASE || 'firn (default)')
-    console.log('- FIRST_ADMIN_EMAIL:', process.env.FIRST_ADMIN_EMAIL ? 'Set' : 'Not set')
+    console.log('- FIRST_ADMIN_EMAIL:', process.env.FIRST_ADMIN_EMAIL ? '****** (set)' : '- (not set)')
     
     // Validate database connection first
     await couchDB.validateConnection()
