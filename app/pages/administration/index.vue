@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { DisplayUserToAdmin } from '~~/types/auth'
+
 import { useQuery as useQueryColada, useQueryCache as useQueryCacheColada } from '@pinia/colada'
+import type { DisplayUserToAdmin } from '~~/types/auth'
+import { getApprovedFirnUsers } from '~/utils/users/apiUsers'
 
 definePageMeta({
   layout: 'private'
@@ -12,19 +14,13 @@ const { user, session } = useUserSession()
 // Notifications
 const { toast } = useToast()
 
-// tRPC
-const { $trpc } = useNuxtApp()
+
 
 // Form data
 const newFirnUser = ref('')
 
 // Query cache
 const queryCache = useQueryCacheColada()
-
-const getApprovedFirnUsers = async () => {
-  const res = await $trpc.users.getApprovedUsers.useQuery()
-  return res.data
-}
 
 const {
   state,
@@ -53,7 +49,5 @@ const {
     <div v-else-if="state.data">
       <pre>{{ state.data }}</pre>
     </div>
-    
-
   </div>
 </template>
