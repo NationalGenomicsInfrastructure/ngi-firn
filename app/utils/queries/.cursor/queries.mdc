@@ -5,20 +5,59 @@ alwaysApply: false
 
 # Data fetching with Pinia Colada
 
-## Core Principles
-
 **ALWAYS use key factories and `defineQueryOptions()` for ALL queries** - this ensures type safety, organization, and prevents typos. Never use simple static keys or inline query definitions.
 
 ## Query Organization Structure
 
-Organize queries by domain in separate files:
-```
-.app/utils/queries/
+Organize queries by domain in separate files in `app/utils/queries/`:
+
+```bash
+tree .app/utils/queries/
 ├── boards.ts
 ├── documents.ts
 ├── users.ts
 └── [domain].ts
 ```
+
+## Hierarchical key pattern (MANDATORY)
+
+Nest keys to create a hierarchy of queries. For example, let's say you have a query that fetches the information of a product with all its details while you have another one that only fetches a summary of that product to be shown in a search. Their keys would look like this:
+
+```ts
+// gets the product with all its details
+useQuery({
+  key: () => ['products', productId.value],
+  query: () => getProductById(productId.value),
+})
+// gets a product summary suited for searches
+useQuery({
+  key: () => ['products', productId.value, { searchResult: true }],
+  query: () => getProductSummaryById(productId.value),
+})
+
+Always use hierarchical keys. Sharing the same root key allows to invalidate all the data related to a specific product at once with 
+
+```ts
+queryCache.invalidateQueries({ key: ['products', productId.value] })
+// or even
+queryCache.invalidateQueries({
+  key: [
+    'products',
+    productId.value,
+    {}, // partially match { searchResult: true }
+  ],
+})
+```
+
+These _key filters_ are used in many places, [query invalidation](./query-invalidation.md) is just one of them.
+
+When creating query keys, organize your keys precisely to take advantage of this feature.
+
+Keys can contain strings, numbers, objects, and arrays. Anything that is serializable to JSON can be used in a key. Keep in mind these rules when writing keys:
+
+- `['doc', 2]` and `['doc', '2']` are different keys
+- Within objects, `undefined` is stripped out but `null` is not. Therefore `['doc', { withComments: undefined }]` is equivalent to `['doc', {}]` and matches both `withComments: true` and `withComments: false`
+- Arrays are also partially matched so `['doc', ['nested', 'array']]` is matched by `['doc', ['nested']]` but not by `['doc', ['nested', 'array', 'other']]`.
 
 ## Key Factory Pattern (MANDATORY)
 
@@ -59,152 +98,4 @@ export const [domain]ByIdWithOptionsQuery = defineQueryOptions(
     query: () => get[Domain]ById(id, { withComments }),
   })
 )
-```
-
-## Component Usage
-
-In Vue components, use the defined query options:
-
-```vue
-<script setup lang="ts">
-import { useQuery } from '@pinia/colada'
-import { [domain]ByIdQuery } from '@/queries/[domain]'
-
-const route = useRoute()
-const { state, asyncStatus, refresh, refetch } = useQuery(
-  [domain]ByIdQuery(route.params.id)
-)
-</script>
-
-<template>
-  <div v-if="state.status === 'pending'">Loading...</div>
-  <div v-else-if="state.status === 'error'">
-    Error: {{ state.error?.message }}
-  </div>
-  <div v-else-if="state.status === 'success'">
-    {{ state.data.name }}
-  </div>
-</template>
-```
-
-## Query State Management
-
-- Use `state` object for type-safe conditional rendering
-- `state.status`: 'pending' | 'success' | 'error'
-- `state.data`: the fetched data (undefined when pending/error)
-- `state.error`: error object (null when success)
-- `asyncStatus`: 'idle' | 'loading' for loading states
-
-## Pausing Queries
-
-Use `enabled` option when query depends on reactive data that might not be available:
-
-```typescript
-export const userProfileQuery = defineQueryOptions(
-  (userId?: string) => ({
-    key: ['user', 'profile', userId],
-    query: () => getUserProfile(userId!),
-    enabled: () => !!userId,
-  })
-)
-```
-
-## Cache Access
-
-Use `useQueryCache()` to access cached data without triggering queries:
-
-```typescript
-import { useQueryCache } from '@pinia/colada'
-import { userProfileQuery } from '@/queries/users'
-
-const queryCache = useQueryCache()
-const cachedUser = queryCache.getQueryData(userProfileQuery('123').key)
-```
-
-## Refetching Strategies
-
-- Use `refresh()` for most cases (respects cache, deduplicates requests)
-- Use `refetch()` only when you need to force a fresh request
-- Both return promises with the state object
-
-## Type Safety Best Practices
-
-1. Always use `state` object for conditional rendering to get proper TypeScript narrowing
-2. Define proper return types for your query functions
-3. Use const assertions (`as const`) for key arrays
-4. Leverage TypeScript's type inference with `defineQueryOptions()`
-
-## Common Patterns
-
-### List with Filters
-```typescript
-export const documentsListQuery = defineQueryOptions(
-  (filters?: DocumentFilters) => ({
-    key: DOCUMENT_QUERY_KEYS.list(filters),
-    query: () => getDocumentList(filters),
-  })
-)
-```
-
-### Pagination
-```typescript
-export const documentsPaginatedQuery = defineQueryOptions(
-  ({ page = 1, limit = 10 }: { page?: number; limit?: number }) => ({
-    key: DOCUMENT_QUERY_KEYS.paginated({ page, limit }),
-    query: () => getDocumentList({ page, limit }),
-  })
-)
-```
-
-### Related Data
-```typescript
-export const documentWithCommentsQuery = defineQueryOptions(
-  ({ id, includeComments = false }: { id: string; includeComments?: boolean }) => ({
-    key: DOCUMENT_QUERY_KEYS.withComments(id, includeComments),
-    query: () => getDocumentWithComments(id, includeComments),
-  })
-)
-```
-
-## Error Handling
-
-Always handle the three states properly:
-- `pending`: Show loading state
-- `error`: Show error message with retry option
-- `success`: Show data
-
-## Performance Considerations
-
-- Queries automatically deduplicate requests
-- Cached data is reused when switching between routes
-- Use `staleTime` and `cacheTime` options for fine-tuning
-- Pause queries when dependencies are not available
-
-## Migration from Simple Keys
-
-If you find simple static keys or inline query definitions, refactor them immediately:
-
-❌ **Don't do this:**
-```typescript
-const { data } = useQuery({
-  key: ['users'],
-  query: () => getUsers(),
-})
-```
-
-✅ **Do this instead:**
-```typescript
-// In queries/users.ts
-export const USERS_QUERY_KEYS = {
-  root: ['users'] as const,
-  list: () => [...USERS_QUERY_KEYS.root, 'list'] as const,
-}
-
-export const usersListQuery = defineQueryOptions({
-  key: USERS_QUERY_KEYS.list(),
-  query: () => getUsers(),
-})
-
-// In component
-const { state } = useQuery(usersListQuery)
 ```
