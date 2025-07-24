@@ -19,13 +19,13 @@
       <g
         id="g834"
         transform="translate(-31.903,23.095)"
-        fill="rgb(var(--una-primary-600))"
+        fill="var(--color-primary)"
         style="stroke-width:1.362"
       >
         <g
           id="g832"
           transform="translate(1.3e-5,-1.7e-5)"
-          fill="rgb(var(--una-primary-600))"
+          fill="var(--color-primary)"
           stroke-linecap="round"
           stroke-width="0.278886"
         >
@@ -54,3 +54,9 @@
     </g>
   </svg>
 </template>
+
+<style>
+svg {
+  --color-primary: #2E86EF;
+}
+</style>
