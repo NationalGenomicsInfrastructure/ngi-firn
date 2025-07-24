@@ -1,47 +1,22 @@
 <script setup lang="ts">
 
-import { useQuery as useQueryColada, useQueryCache as useQueryCacheColada } from '@pinia/colada'
+import { useQuery, useQueryCache } from '@pinia/colada'
 import type { DisplayUserToAdmin } from '~~/types/auth'
-//import { getApprovedFirnUsers } from '~/utils/users/apiUsers'
+import { approvedUsersQuery, pendingUsersQuery, retiredUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
 
 definePageMeta({
   layout: 'private'
 })
 
-// User session
-const { user, session } = useUserSession()
-
 // Notifications
 const { toast } = useToast()
 
-const { $trpc } = useNuxtApp()
-
-
-// Form data
-const newFirnUser = ref('')
-
 // Query cache
-const queryCache = useQueryCacheColada()
+const queryCache = useQueryCache()
 
-const {
-  state,
-  asyncStatus,
-  refresh,
-  refetch,
-} = useQueryColada<DisplayUserToAdmin[]>({
-  key: ['approvedFirnUsers'],
-  query: () => $trpc.users.getApprovedUsers.query(),
-})
-
-const {
-  state,
-  asyncStatus,
-  refresh,
-  refetch,
-} = useQueryColada<DisplayUserToAdmin[]>({
-  key: ['pendingFirnUsers'],
-  query: () => $trpc.users.getPendingUsers.query(),
-})
+const { state, asyncStatus} = useQuery(approvedUsersQuery)
+const {} = useQuery(pendingUsersQuery)
+const {} = useQuery(retiredUsersQuery)
 
 </script>
 
@@ -57,8 +32,8 @@ const {
     <div v-else-if="state.status === 'error'">
       Oops, an error happened...
     </div>
-    <div v-else-if="state.data">
-      <pre>{{ state.data }}</pre>
+    <div>
+      <pre>{{ queryCache.getQueryData(USERS_QUERY_KEYS.pending()) }}</pre>
     </div>
   </div>
 </template>
