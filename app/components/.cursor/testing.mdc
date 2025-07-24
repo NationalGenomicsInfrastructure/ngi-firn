@@ -1,0 +1,41 @@
+---
+description: Rules for writing unit and integration tests
+alwaysApply: false
+---
+## Testing Optimistic Updates
+
+### Mock QueryCache
+
+```typescript
+import { useQueryCache } from '@pinia/colada'
+
+// In test setup
+const mockQueryCache = {
+  getQueryData: vi.fn(),
+  setQueryData: vi.fn(),
+  cancelQueries: vi.fn(),
+  invalidateQueries: vi.fn()
+}
+
+vi.mocked(useQueryCache).mockReturnValue(mockQueryCache)
+```
+
+### Test Optimistic Update Flow
+
+```typescript
+test('should apply optimistic update', async () => {
+  const { mutate } = useCreateItem()
+  
+  // Mock initial data
+  mockQueryCache.getQueryData.mockReturnValue([{ id: '1', name: 'Item 1' }])
+  
+  // Trigger mutation
+  mutate({ name: 'New Item' })
+  
+  // Check optimistic update was applied
+  expect(mockQueryCache.setQueryData).toHaveBeenCalledWith(
+    ['items'],
+    [{ id: '1', name: 'Item 1' }, { name: 'New Item', id: expect.any(String) }]
+  )
+})
+```

@@ -2,7 +2,7 @@
 
 import { useQuery as useQueryColada, useQueryCache as useQueryCacheColada } from '@pinia/colada'
 import type { DisplayUserToAdmin } from '~~/types/auth'
-import { getApprovedFirnUsers } from '~/utils/users/apiUsers'
+//import { getApprovedFirnUsers } from '~/utils/users/apiUsers'
 
 definePageMeta({
   layout: 'private'
@@ -14,6 +14,7 @@ const { user, session } = useUserSession()
 // Notifications
 const { toast } = useToast()
 
+const { $trpc } = useNuxtApp()
 
 
 // Form data
@@ -29,7 +30,17 @@ const {
   refetch,
 } = useQueryColada<DisplayUserToAdmin[]>({
   key: ['approvedFirnUsers'],
-  query: getApprovedFirnUsers,
+  query: () => $trpc.users.getApprovedUsers.query(),
+})
+
+const {
+  state,
+  asyncStatus,
+  refresh,
+  refetch,
+} = useQueryColada<DisplayUserToAdmin[]>({
+  key: ['pendingFirnUsers'],
+  query: () => $trpc.users.getPendingUsers.query(),
 })
 
 </script>

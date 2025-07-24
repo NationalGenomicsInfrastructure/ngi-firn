@@ -127,7 +127,7 @@ import type { DisplayUserToAdmin } from '~~/types/auth'
 const { $trpc } = useNuxtApp()
 
 const getApprovedFirnUsers = async () => {
-  const res = await $trpc.users.getApprovedUsers.useQuery()
+  const res = await $trpc.users.getApprovedUsers.query()
   return res.data
 }
 

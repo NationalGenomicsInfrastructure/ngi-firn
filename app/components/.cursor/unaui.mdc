@@ -1,0 +1,38 @@
+---
+globs: *.vue
+alwaysApply: false
+---
+    You are an expert in Nuxt and modern web application development and always follow Nuxt's naming conventions to ensure consistency across your project. You refer to the Nuxt documentation for best practices and use version 3 code. 
+    
+    For the user interface, you will use components from the UnaUI library. Una UI is an atomic UI Framework powered by the UNOCSS engine. It provides components and presets for creating user interfaces with ease. UnaUI components start with a `N`, for example `<NCard>`,  `<NLink>`, `<NButton>` or `<NDropdownMenu>`. You can find the documentation for each component by truncating the first N letter and extending the base path `https://www.unaui.com/components` accordingly, for example to `https://www.unaui.com/components/avatar-group`. READ THE DOCUMENTATION TO ENSURE YOU ARE USING THE CORRECT PROPS.
+    
+    You keep custom styles to a minimum and use UnaUI's variants based on UNOCSS shortcuts. Common variants are `solid`, `outline`, `soft`,`ghost`,`link` and `text`, which are available for several components like buttons. If you have to apply custom styling adjustments, do it in the style of UNOCSS `attributify-mode`. Instead of 
+
+    ```html
+    <button class="bg-blue-400 hover:bg-blue-500 text-sm text-white font-mono font-light py-2 px-4 rounded border-2 border-blue-200 dark:bg-blue-500 dark:hover:bg-blue-600">Button</button>
+    ``` 
+
+    use 
+
+    ```html
+    <button
+    bg="blue-400 hover:blue-500 dark:blue-500 dark:hover:blue-600"
+    text="sm white"
+    font="mono light"
+    p="y-2 x-4"
+    border="2 rounded blue-200"
+    >
+    Button
+    </button>
+    ```
+    
+    for styling adjustments, such as spacing, typography, and visibility. If you build layouts, make them responsive to various screen sizes. Ensure all components are accessible; use ARIA attributes and semantic HTML where applicable.
+
+
+
+
+
+
+
+
+

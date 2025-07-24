@@ -1,0 +1,364 @@
+---
+description: These rules are helpful, if data needs to be updated in components.
+alwaysApply: false
+---
+# Pinia Colada Mutations & Optimistic Updates
+
+## Core Principles
+
+**ALWAYS use optimistic updates with queryCache for ALL mutations** - this provides immediate UI feedback and better user experience. Never implement mutations without optimistic updates.
+
+## Mutation Organization
+
+Organize mutations by domain in separate files:
+```
+./app/utils/mutations
+├── boards.ts
+├── documents.ts
+├── users.ts
+└── [domain].ts
+```
+
+## Basic Mutation Pattern (MANDATORY)
+
+Every mutation MUST use `defineMutation()` for reusability and organization:
+
+```typescript
+// ./app/utils/mutations/[domain].ts
+import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
+
+export const useCreate[Domain] = defineMutation(() => {
+  const queryCache = useQueryCache()
+  
+  const { mutate, ...mutation } = useMutation({
+    mutation: (data: Create[Domain]Data) => create[Domain](data),
+    onMutate(data) {
+      // ALWAYS implement optimistic update here
+      const oldData = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list())
+      const newItem = { ...data, id: crypto.randomUUID() }
+      const newData = [...(oldData || []), newItem]
+      
+      queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), newData)
+      queryCache.cancelQueries({ key: [DOMAIN]_QUERY_KEYS.list() })
+      
+      return { oldData, newData, newItem }
+    },
+    onSettled() {
+      // ALWAYS invalidate affected queries
+      queryCache.invalidateQueries({ key: [DOMAIN]_QUERY_KEYS.list() })
+    },
+    onError(err, data, { oldData }) {
+      // ALWAYS implement rollback
+      if (oldData) {
+        queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), oldData)
+      }
+      console.error('Error creating [domain]:', err)
+    },
+    onSuccess(result, data, { newItem }) {
+      // Update with server response
+      const currentData = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list()) || []
+      const index = currentData.findIndex(item => item.id === newItem.id)
+      if (index >= 0) {
+        const updated = [...currentData]
+        updated[index] = result
+        queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), updated)
+      }
+    }
+  })
+  
+  return {
+    ...mutation,
+    create[Domain]: (data: Create[Domain]Data) => mutate(data)
+  }
+})
+```
+
+## Component Usage with Optimistic Updates
+
+```vue
+<script setup lang="ts">
+import { useCreate[Domain] } from '@/app/utils/mutations/[domain]'
+
+const { create[Domain], isLoading, error } = useCreate[Domain]()
+
+const handleSubmit = (data: Create[Domain]Data) => {
+  create[Domain](data)
+  // UI updates immediately due to optimistic update
+}
+</script>
+
+<template>
+  <form @submit.prevent="handleSubmit(formData)">
+    <!-- Form fields -->
+    <button type="submit" :disabled="isLoading">
+      {{ isLoading ? 'Creating...' : 'Create' }}
+    </button>
+    <div v-if="error" class="error">
+      {{ error.message }}
+    </div>
+  </form>
+</template>
+```
+
+## Optimistic Update Patterns
+
+### 1. Create Operations
+
+```typescript
+onMutate(data) {
+  const oldList = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list())
+  const newItem = { ...data, id: crypto.randomUUID() }
+  const newList = [...(oldList || []), newItem]
+  
+  queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), newList)
+  queryCache.cancelQueries({ key: [DOMAIN]_QUERY_KEYS.list() })
+  
+  return { oldList, newList, newItem }
+}
+```
+
+### 2. Update Operations
+
+```typescript
+onMutate(updateData) {
+  const oldItem = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.byId(updateData.id))
+  const newItem = { ...oldItem, ...updateData }
+  
+  queryCache.setQueryData([DOMAIN]_QUERY_KEYS.byId(updateData.id), newItem)
+  queryCache.cancelQueries({ key: [DOMAIN]_QUERY_KEYS.byId(updateData.id) })
+  
+  return { oldItem, newItem }
+}
+```
+
+### 3. Delete Operations
+
+```typescript
+onMutate(id) {
+  const oldList = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list())
+  const newList = oldList?.filter(item => item.id !== id) || []
+  
+  queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), newList)
+  queryCache.cancelQueries({ key: [DOMAIN]_QUERY_KEYS.list() })
+  
+  return { oldList, newList }
+}
+```
+
+## QueryCache Best Practices
+
+### Always Use Type-Safe Keys
+
+```typescript
+// Use key factories for type safety
+const oldData = queryCache.getQueryData<[Domain][]>([DOMAIN]_QUERY_KEYS.list())
+queryCache.setQueryData<[Domain][]>([DOMAIN]_QUERY_KEYS.list(), newData)
+```
+
+### Handle Multiple Related Queries
+
+```typescript
+onMutate(data) {
+  // Update main list
+  const oldList = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list())
+  // Update filtered lists
+  const oldFiltered = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.filtered(filters))
+  // Update paginated lists
+  const oldPaginated = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.paginated(page))
+  
+  // Apply optimistic updates to all
+  queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), newList)
+  queryCache.setQueryData([DOMAIN]_QUERY_KEYS.filtered(filters), newFiltered)
+  queryCache.setQueryData([DOMAIN]_QUERY_KEYS.paginated(page), newPaginated)
+  
+  // Cancel all related queries
+  queryCache.cancelQueries({ key: [DOMAIN]_QUERY_KEYS.root })
+  
+  return { oldList, oldFiltered, oldPaginated, newList, newFiltered, newPaginated }
+}
+```
+
+### Proper Rollback Logic
+
+```typescript
+onError(err, data, context) {
+  // Check if cache still contains our optimistic update before rolling back
+  const currentData = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list())
+  
+  if (context.newList === currentData) {
+    queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), context.oldList)
+  }
+  
+  // Rollback other affected queries
+  if (context.oldFiltered && context.newFiltered === queryCache.getQueryData([DOMAIN]_QUERY_KEYS.filtered(filters))) {
+    queryCache.setQueryData([DOMAIN]_QUERY_KEYS.filtered(filters), context.oldFiltered)
+  }
+}
+```
+
+## Mutation State Management
+
+### Use Both mutate() and mutateAsync()
+
+```typescript
+const { mutate, mutateAsync, isLoading, isSuccess, error } = useMutation({
+  // ... mutation config
+})
+
+// For simple cases
+const handleSubmit = (data) => {
+  mutate(data)
+}
+
+// For complex cases requiring await
+const handleSubmitWithValidation = async (data) => {
+  try {
+    const result = await mutateAsync(data)
+    // Handle success
+  } catch (error) {
+    // Handle error
+  }
+}
+```
+
+### Global Mutation State
+When mutations need to be accessed across components:
+
+```typescript
+// mutations/[domain].ts
+export const useCreate[Domain] = defineMutation({
+  key: ['create[Domain]'], // Required for global state
+  mutation: (data) => create[Domain](data),
+  // ... optimistic update hooks
+})
+
+// Component A - triggers mutation
+const { mutate } = useCreate[Domain]()
+
+// Component B - observes mutation state
+const { isLoading, variables } = useMutationState({ key: ['create[Domain]'] })
+```
+
+## Error Handling Patterns
+
+### Comprehensive Error Handling
+
+```typescript
+onError(err, data, context) {
+  // 1. Rollback optimistic updates
+  if (context) {
+    // Rollback logic here
+  }
+  
+  // 2. Log error
+  console.error('Mutation failed:', err)
+  
+  // 3. Show user feedback
+  showToast('Operation failed. Please try again.')
+  
+  // 4. Handle specific error types
+  if (err.status === 401) {
+    // Handle unauthorized
+  } else if (err.status === 409) {
+    // Handle conflict
+  }
+}
+```
+
+### Retry Logic
+
+```typescript
+const { mutate } = useMutation({
+  mutation: (data) => apiCall(data),
+  retry: 3,
+  retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  onError(err, data, context) {
+    // Rollback on final failure
+    if (context) {
+      // Rollback logic
+    }
+  }
+})
+```
+
+## Performance Optimizations
+
+### Batch Updates
+
+```typescript
+onMutate(batchData) {
+  const updates = batchData.map(item => ({
+    old: queryCache.getQueryData([DOMAIN]_QUERY_KEYS.byId(item.id)),
+    new: { ...item }
+  }))
+  
+  // Apply all updates at once
+  updates.forEach(({ old, new }) => {
+    queryCache.setQueryData([DOMAIN]_QUERY_KEYS.byId(new.id), new)
+  })
+  
+  return { updates }
+}
+```
+
+### Conditional Optimistic Updates
+
+```typescript
+onMutate(data) {
+  // Only apply optimistic update if data is small/quick
+  if (data.size < 1000) {
+    const oldData = queryCache.getQueryData([DOMAIN]_QUERY_KEYS.list())
+    const newData = [...(oldData || []), data]
+    queryCache.setQueryData([DOMAIN]_QUERY_KEYS.list(), newData)
+    return { oldData, newData }
+  }
+  
+  // For large data, skip optimistic update
+  return null
+}
+```
+
+## Migration from Simple Mutations
+
+❌ **Don't do this:**
+```typescript
+const { mutate } = useMutation({
+  mutation: (data) => createItem(data)
+})
+```
+
+✅ **Do this instead:**
+```typescript
+// app/utils/mutations/items.ts
+export const useCreateItem = defineMutation(() => {
+  const queryCache = useQueryCache()
+  
+  const { mutate } = useMutation({
+    mutation: (data) => createItem(data),
+    onMutate(data) {
+      // Optimistic update
+      const oldList = queryCache.getQueryData(['items'])
+      const newItem = { ...data, id: crypto.randomUUID() }
+      const newList = [...(oldList || []), newItem]
+      
+      queryCache.setQueryData(['items'], newList)
+      queryCache.cancelQueries({ key: ['items'] })
+      
+      return { oldList, newList, newItem }
+    },
+    onSettled() {
+      queryCache.invalidateQueries({ key: ['items'] })
+    },
+    onError(err, data, { oldList }) {
+      if (oldList) {
+        queryCache.setQueryData(['items'], oldList)
+      }
+    }
+  })
+  
+  return { createItem: mutate }
+})
+
+// In component
+const { createItem } = useCreateItem()
+```
