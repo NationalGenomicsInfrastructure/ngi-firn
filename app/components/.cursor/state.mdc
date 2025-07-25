@@ -1,0 +1,31 @@
+---
+globs: *.vue
+alwaysApply: false
+---
+
+# Managing state when developing components
+
+## Replace vue references with Nuxt useState composable.
+
+The `useState()` composable creates a reactive and SSR-friendly shared state. If you find simple vue references, refactor them immediately:
+
+❌ **Don't do this:**
+
+```typescript
+import { ref } from 'vue'
+const counter = ref ('')
+```
+
+✅ **Do this instead:**
+
+```typescript
+const count = useState('counter', () => Math.round(Math.random() * 100))
+```
+
+### About useState()
+
+The types of useState are `useState<T>(key: string, init?: () => T | Ref<T>): Ref<T>`:
+- `@param key` a unique key ensuring that data fetching can be properly de-duplicated across requests
+- `@param init` a function that provides initial value for the state when it's not initiated
+
+Because the data inside useState will be serialized to JSON, it is important that it does not contain anything that cannot be serialized, such as classes, functions or symbols.

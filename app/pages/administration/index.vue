@@ -14,9 +14,13 @@ const { toast } = useToast()
 // Query cache
 const queryCache = useQueryCache()
 
-const { state, asyncStatus} = useQuery(approvedUsersQuery)
-const {} = useQuery(pendingUsersQuery)
-const {} = useQuery(retiredUsersQuery)
+await queryCache.refresh(queryCache.ensure(approvedUsersQuery))
+queryCache.refresh(queryCache.ensure(pendingUsersQuery))
+queryCache.refresh(queryCache.ensure(retiredUsersQuery))
+
+const approvedUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
+const pendingUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.pending())
+const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired())
 
 </script>
 
@@ -26,14 +30,8 @@ const {} = useQuery(retiredUsersQuery)
     
     <!-- Debug output for pending users query -->
 
-    <div v-if="asyncStatus === 'loading'">
-      Loading...
-    </div>
-    <div v-else-if="state.status === 'error'">
-      Oops, an error happened...
-    </div>
     <div>
-      <pre>{{ queryCache.getQueryData(USERS_QUERY_KEYS.pending()) }}</pre>
+      <pre>{{ approvedUsers }}</pre>
     </div>
   </div>
 </template>
