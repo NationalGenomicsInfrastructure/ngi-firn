@@ -6,6 +6,6 @@ try {
     await validateDatabaseConnection()
 } catch (error) {
     console.error('❌ Fatal error during database validation:', error)
-    process.exit(1)
+    throw new Error('Database connection validation failed')
 }
 }) 

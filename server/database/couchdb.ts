@@ -1,5 +1,4 @@
 import { CloudantV1 } from '@ibm-cloud/cloudant'
-import { BasicAuthenticator } from 'ibm-cloud-sdk-core'
 
 // CouchDB connection configuration
 interface CouchDBConfig {
@@ -291,9 +290,7 @@ export class CouchDBConnector {
       console.error(`   - CLOUDANT_USERNAME: ${process.env.CLOUDANT_USERNAME ? '****** (set)' : '- (not set)'}`)
       console.error(`   - CLOUDANT_PASSWORD: ${process.env.CLOUDANT_PASSWORD ? '****** (set)' : '- (not set)'}`)
       console.error(`   - CLOUDANT_DATABASE: ${process.env.CLOUDANT_DATABASE || 'firn (default)'}`)
-      
-      // Terminate the application
-      process.exit(1)
+      throw new Error('Database connection validation failed')
     }
     
     console.log('✅ Database connection validated successfully')
