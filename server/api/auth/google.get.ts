@@ -77,7 +77,7 @@ export default defineOAuthGoogleEventHandler({
 
         await replaceUserSession(event, {
           user: sessionUser,
-          private: sessionUserSecure,
+          secure: sessionUserSecure,
           authStatus: {
             kind: 'success',
             reject: false,
