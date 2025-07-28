@@ -30,6 +30,10 @@ onMounted(() => {
   if (!route.query.step) {
     clear()
   }
+  // reset authStatus to undefined to prevent lingering authStatus
+  if (session.value?.authStatus) {
+    session.value.authStatus = undefined
+  }
 })
 
 // Watch for step/state changes and update UI accordingly

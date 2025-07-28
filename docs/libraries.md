@@ -1,6 +1,6 @@
 # Libraries and dependencies
 
-> :warning: This list is incomplete, as it only comprises the major libraries. Furthermore, some that are listed as a bookmark and are not yet integrated into the application. The authoritative list is therefore the [`package.json`](../package.json) file and the lock file of the package manager [`pnpm-lock.yaml`](../pnpm-lock.yaml).
+> :warning: This list is incomplete, as it only comprises the major libraries. Furthermore, some entries are bookmarks and are not actually integrated into the application. They have been deemed suitable, but not added since there is currently not yet a use case for them. The authoritative list is therefore the [`package.json`](../package.json) file and the lock file of the package manager [`pnpm-lock.yaml`](../pnpm-lock.yaml).
 
 ## Core
 
@@ -35,6 +35,7 @@ Further sources for components can be those projects, which, however, use Tailwi
 
 ## Data
 
+- **[BullMQ](https://bullmq.io) for long-running asynchronous tasks (Not needed with currently planned functionality).
 - **[Luxon](https://moment.github.io/luxon/)** for dealing with dates and times.
 - **[Legid](https://github.com/shuding/legid)** to create client-side URIs safely.
 - **[Pinia](https://github.com/vuejs/pinia)** an intuitive, type safe and flexible Store for Vue as Nuxt Module.
@@ -44,6 +45,7 @@ Further sources for components can be those projects, which, however, use Tailwi
 ## Users
 
 - **[Jose](https://github.com/panva/jose)**: JWA, JWS, JWE, JWT, JWK, JWKS for Node.js, Browser, Cloudflare Workers, Deno, Bun, and other Web-interoperable runtimes. Combine with native Crypto module from NodeJS and modern browsers for crytpo-safe random numbers.
+- **[Lingui]**(https://github.com/lingui/js-lingui) for translations of the UI (probably not needed).
 - **[Permask](https://github.com/dschewchenko/permask)**: A utility library for encoding authorization (access levels) with permission bitmasks.
 
 ## Search

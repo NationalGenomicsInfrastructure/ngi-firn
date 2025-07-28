@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { useQuery, useQueryCache } from '@pinia/colada'
+import { useQueryCache } from '@pinia/colada'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { approvedUsersQuery, pendingUsersQuery, retiredUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
 

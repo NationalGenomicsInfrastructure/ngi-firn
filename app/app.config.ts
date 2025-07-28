@@ -1,8 +1,8 @@
 export default defineAppConfig({
   una: {
     // you can use any color provided by tailwindcss 💛, or you can define your own colors via uno.config.ts
-    primary: 'yellow',
-    gray: 'stone',
-    radius: 0.5
+    primary: 'blue',
+    gray: 'slate',
+    radius: 0.375
   }
 })

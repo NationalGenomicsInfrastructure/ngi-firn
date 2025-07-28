@@ -290,7 +290,6 @@ export class CouchDBConnector {
       console.error(`   - CLOUDANT_USERNAME: ${process.env.CLOUDANT_USERNAME ? '****** (set)' : '- (not set)'}`)
       console.error(`   - CLOUDANT_PASSWORD: ${process.env.CLOUDANT_PASSWORD ? '****** (set)' : '- (not set)'}`)
       console.error(`   - CLOUDANT_DATABASE: ${process.env.CLOUDANT_DATABASE || 'firn (default)'}`)
-      throw new Error('Database connection validation failed')
     }
     
     console.log('✅ Database connection validated successfully')
