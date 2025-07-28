@@ -2,8 +2,9 @@
 import type { ColumnDef } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 
-defineProps<{
-  users: DisplayUserToAdmin[]
+const props = defineProps<{
+  users: DisplayUserToAdmin[] | undefined
+  loading: boolean
 }>()
 
 const columns: ColumnDef<DisplayUserToAdmin>[] = [
@@ -43,8 +44,9 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
   <template>
     <NTable
       v-model:expanded="expanded"
-      :columns
-      :data
+      :loading="loading"
+      :columns="columns"
+      :data="users || []"
     >
       <template #expanded="{ row }">
         <div class="p-4">
