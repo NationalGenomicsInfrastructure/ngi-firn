@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { DateTime } from 'luxon'
 import { couchDB } from './couchdb'
 import { createIndexes } from '../crud/indices'
 import type { FirnUser } from '../../types/auth'
@@ -60,8 +61,8 @@ export async function initializeDatabase() {
         githubAvatar: null,
         githubEmail: null,
         githubUrl: null,
-        createdAt: new Date().toISOString(),
-        lastSeenAt: new Date().toISOString(),
+        createdAt: DateTime.now().toISO(),
+        lastSeenAt: DateTime.now().toISO(),
         allowLogin: true,
         isRetired: false,
         isAdmin: true,

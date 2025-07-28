@@ -5,15 +5,15 @@ const data = {
     {
       title: 'Users',
       url: '#',
-      icon: 'i-lucide-user-cog',
+      icon: 'i-lucide-users',
       items: [
         {
           title: 'List Users',
-          url: '#',
+          url: '/administration/users/list',
         },
         {
           title: 'Add User',
-          url: '#',
+          url: '/administration/users/add',
         },
       ],
     },
@@ -24,11 +24,11 @@ const data = {
       items: [
         {
           title: 'Event Logs',
-          url: '#',
+          url: '/administration/logs/event',
         },
         {
           title: 'User Logs',
-          url: '#',
+          url: '/administration/logs/user',
         },
       ],
     },

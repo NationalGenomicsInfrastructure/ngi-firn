@@ -21,6 +21,8 @@
  * convertGoogleUserToFirnUser(googleUser) - Convert a GoogleUser to a FirnUser (for creating a new user)
  */
 
+import { DateTime } from 'luxon'
+
 import { couchDB } from '../database/couchdb'
 import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput } from '../../schemas/users'
@@ -66,8 +68,8 @@ export class UserService {
       githubEmail: null,
       githubUrl: null,
       // Timestamps
-      createdAt: new Date().toISOString(),
-      lastSeenAt: new Date().toISOString(),
+      createdAt: DateTime.now().toISO(),
+      lastSeenAt: DateTime.now().toISO(),
       // User properties (new users are not approved by default)
       allowLogin: user.allowLogin,
       isRetired: user.isRetired,
@@ -128,7 +130,7 @@ export class UserService {
       static async linkGitHubUser(user: FirnUser, githubUser: GitHubUser): Promise<FirnUser | null> {
         // Update user information and last login
         const linkedAccount: Partial<FirnUser> = {
-          lastSeenAt: new Date().toISOString(),
+          lastSeenAt: DateTime.now().toISO(),
           githubId: githubUser.githubId,
           githubNodeId: githubUser.githubNodeId,
           githubName: githubUser.githubName,
@@ -161,7 +163,7 @@ export class UserService {
       
       // Update user information and last login
       const updates: Partial<FirnUser> = {
-        lastSeenAt: new Date().toISOString(),
+        lastSeenAt: DateTime.now().toISO(),
         googleName: oauthUser.googleName,
         googleGivenName: oauthUser.googleGivenName,
         googleFamilyName: oauthUser.googleFamilyName,
@@ -192,7 +194,7 @@ export class UserService {
         
         // Update user information and last login
         const updates: Partial<FirnUser> = {
-          lastSeenAt: new Date().toISOString(),
+          lastSeenAt: DateTime.now().toISO(),
           googleId: oauthUser.googleId,
           googleName: oauthUser.googleName,
           googleGivenName: oauthUser.googleGivenName,
@@ -230,7 +232,7 @@ export class UserService {
         
         // Update user information and last login
         const updates: Partial<FirnUser> = {
-          lastSeenAt: new Date().toISOString(),
+          lastSeenAt: DateTime.now().toISO(),
           githubNodeId: oauthUser.githubNodeId,
           githubName: oauthUser.githubName,
           githubAvatar: oauthUser.githubAvatar,
@@ -347,8 +349,8 @@ export class UserService {
       githubId: user.githubId,
       githubName: user.githubName,
       githubAvatar: user.githubAvatar,
-      createdAt: user.createdAt,
-      lastSeenAt: user.lastSeenAt,
+      createdAt: DateTime.fromISO(user.createdAt).setLocale('en-US').toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY),
+      lastSeenAt: DateTime.fromISO(user.lastSeenAt).setLocale('en-US').toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY),
       allowLogin: user.allowLogin,
       isRetired: user.isRetired,
       isAdmin: user.isAdmin,
@@ -384,8 +386,8 @@ export class UserService {
       githubEmail: null,
       githubUrl: null,
       // Timestamps
-      createdAt: new Date().toISOString(),
-      lastSeenAt: new Date().toISOString(),
+      createdAt: DateTime.now().toISO(),
+      lastSeenAt: DateTime.now().toISO(),
       // User properties (new users are not approved by default)
       allowLogin: false,
       isRetired: false,

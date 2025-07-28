@@ -10,7 +10,7 @@ const { setOpen } = useSidebar()
   <NButton
     v-if="user?.isAdminClientside"
     btn="soft"
-    label="i-lucide-user-star"
+    label="i-lucide-key-round"
     class="text-color-amber-800 dark:text-color-amber-300"
     icon
     @click="setOpen(true); navigateTo('/administration')"
