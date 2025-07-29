@@ -56,26 +56,26 @@ const expanded = ref<Record<string, boolean>>({})
 // Date formatting options
 const relativeDates = ref(false)
 const includeWeekday = ref(false)
-const time = ref(false)
+const displayTime = ref(false)
 
 const formattedUsers = computed(() => {
   return props.users?.map((user) => {
     return {
       ...user,
-      createdAt: formatDate(user.createdAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: time.value }),
-      lastSeenAt: formatDate(user.lastSeenAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: time.value })
+      createdAt: formatDate(user.createdAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
+      lastSeenAt: formatDate(user.lastSeenAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
     }
   })
 }) 
 
 // Watch for date formatting options changes
-watch([relativeDates, includeWeekday, time], () => {
+watch([relativeDates, includeWeekday, displayTime], () => {
   // When relativeDates is enabled, turn off includeWeekday and time.
   // When either includeWeekday or time is enabled, turn off relativeDates.
   if (relativeDates.value) {
     if (includeWeekday.value) includeWeekday.value = false
-    if (time.value) time.value = false
-  } else if (includeWeekday.value || time.value) {
+    if (displayTime.value) displayTime.value = false
+  } else if (includeWeekday.value || displayTime.value) {
     if (relativeDates.value) relativeDates.value = false
   }
 })
@@ -93,9 +93,9 @@ watch([relativeDates, includeWeekday, time], () => {
         v-model="includeWeekday"
       />
     </NFormField>
-    <NFormField :label="time ? 'Show Time' : 'Hide Time'" name="time">
+    <NFormField :label="displayTime ? 'Show Time' : 'Hide Time'" name="displayTime">
       <NSwitch
-        v-model="time"
+        v-model="displayTime"
       />
     </NFormField>
   </div>
@@ -110,14 +110,57 @@ watch([relativeDates, includeWeekday, time], () => {
     }"
     >
       <template #expanded="{ row }">
-        <div class="p-2 flex flex-col items-center gap-2">
-          <NAvatarGroup :max="2">
-            <NAvatar v-if="row.original.googleAvatar" :src="row.original.googleAvatar" :alt="row.original.googleName" />
-            <NAvatar v-if="row.original.githubAvatar" :src="row.original.githubAvatar" :alt="row.original.githubName" />
-          </NAvatarGroup>
-          <div class="flex flex-wrap gap-2 justify-center">
-            <NBadge badge="solid" label="Administrator" v-if="row.original.isAdmin" />
-            <NBadge badge="outline" label="Retired" v-if="row.original.isRetired" />
+        <div class="p-2 flex flex-row items-start gap-4">
+          <!-- Column 1: Avatars and badges -->
+          <div class="flex flex-col items-center gap-2 flex-shrink-0">
+            <NAvatarGroup :max="2">
+              <NAvatar v-if="row.original.googleAvatar" :src="row.original.googleAvatar" :alt="row.original.googleName" />
+              <NAvatar v-if="row.original.githubAvatar" :src="row.original.githubAvatar" :alt="row.original.githubName" />
+            </NAvatarGroup>
+            <div class="flex flex-wrap gap-2 justify-center">
+              <NBadge badge="solid" label="Administrator" v-if="row.original.isAdmin" />
+              <NBadge badge="outline" label="Retired" v-if="row.original.isRetired" />
+            </div>
+          </div>
+          
+          <!-- Column 2: Textual information -->
+          <div class="flex flex-col gap-2 text-sm flex-1">
+            <div>
+              <span class="font-semibold mr-2">Google ID:</span>
+              <span> {{ row.original.googleId ?? '—' }}</span>
+            </div>
+            <div>
+              <span class="font-semibold mr-2">Google E-Mail:</span>
+              <span> {{ row.original.googleEmail ?? '—' }}</span>
+            </div>
+            <div>
+              <span class="font-semibold mr-2">GitHub ID:</span>
+              <NLink
+                :to="row.original.githubUrl"
+                :label="row.original.githubId ?? 'GitHub not linked'"
+                :disabled="!row.original.githubUrl"
+                active-class="text-primary"
+                external
+                />
+            </div>
+            <div>
+              <span class="font-semibold mr-2">Tokens:</span>
+              <span> {{ row.original.tokens ? row.original.tokens.length : 0 }}</span>
+            </div>
+          </div>
+          
+          <!-- Column 3: Button -->
+          <div class="flex flex-col items-end flex-shrink-0 gap-2">
+            <NButton
+              label="Administer user"
+              class="transition delay-300 ease-in-out"
+              btn="soft-primary hover:soft-warning"
+            />
+            <NButton
+              label="Administer tokens"
+              class="transition delay-300 ease-in-out"
+              btn="soft-primary hover:soft-warning"
+            />
           </div>
         </div>
       </template>

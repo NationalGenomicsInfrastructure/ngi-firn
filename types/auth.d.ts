@@ -86,9 +86,10 @@ export interface DisplayUserToAdmin {
   googleGivenName?: string
   googleFamilyName?: string
   googleAvatar: string | null
+  googleEmail: string
   githubId: number | null
-  githubName: string | null
   githubAvatar: string | null
+  githubUrl: string | null
   createdAt?: string
   lastSeenAt?: string
   allowLogin: boolean
