@@ -11,30 +11,42 @@ const props = defineProps<{
 const columns: ColumnDef<DisplayUserToAdmin>[] = [
   {
     header: 'First Name',
-    accessorKey: 'googleGivenName'
+    accessorKey: 'googleGivenName',
+    meta: {
+      una: {
+        tableCell: 'text-primary-600 dark:text-primary-700 font-semibold',
+        tableHead: 'text-left bg-primary-700 border-b-2 border-primary-300 dark:border-primary-500 dark:bg-primary-700 text-primary-100 dark:text-primary-400',
+      },
+    }
   },
   {
     header: 'Last Name',
-    accessorKey: 'googleFamilyName'
+    accessorKey: 'googleFamilyName',
+    meta: {
+      una: {
+        tableCell: 'text-primary-600 dark:text-primary-700 font-semibold',
+        tableHead: 'text-left bg-primary-700 border-b-2 border-primary-300 dark:border-primary-500 dark:bg-primary-700 text-primary-100 dark:text-primary-400',
+      },
+    }
   },
   {
     header: 'Created',
     accessorKey: 'createdAt'
   },
   {
-    header: 'Last Seen',
+    header: 'Last seen',
     accessorKey: 'lastSeenAt'
   },
   {
-    header: 'Allow Login',
+    header: 'Login permitted',
     accessorKey: 'allowLogin'
   },
   {
-    header: 'Is Retired',
+    header: 'Retired',
     accessorKey: 'isRetired'
   },
   {
-    header: 'Is Admin',
+    header: 'Admin',
     accessorKey: 'isAdmin'
   }
 ]
@@ -71,21 +83,21 @@ watch([relativeDates, includeWeekday, time], () => {
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <NFormGroup :label="relativeDates ? 'Relative Dates' : 'Absolute Dates'">
+    <NFormField :label="relativeDates ? 'Relative Dates' : 'Absolute Dates'" name="relativeDates">
       <NSwitch
         v-model="relativeDates"
       />
-    </NFormGroup>
-    <NFormGroup :label="includeWeekday ? 'Show Weekday' : 'Hide Weekday'">
+    </NFormField>
+    <NFormField :label="includeWeekday ? 'Show Weekday' : 'Hide Weekday'" name="includeWeekday">
       <NSwitch
         v-model="includeWeekday"
       />
-    </NFormGroup>
-    <NFormGroup :label="time ? 'Show Time' : 'Hide Time'">
+    </NFormField>
+    <NFormField :label="time ? 'Show Time' : 'Hide Time'" name="time">
       <NSwitch
         v-model="time"
       />
-    </NFormGroup>
+    </NFormField>
   </div>
   <div class="w-full overflow-x-auto">
     <NTable
@@ -93,16 +105,20 @@ watch([relativeDates, includeWeekday, time], () => {
       :loading="loading"
       :columns="columns"
       :data="formattedUsers || []"
-      class="w-full"
+      :una="{
+        tableHead: 'text-left bg-primary-700 border-b-2 border-primary-300 dark:border-primary-500 dark:bg-primary-700 text-primary-100 dark:text-primary-400',
+    }"
     >
       <template #expanded="{ row }">
-        <div class="p-4">
-          <p class="text-sm text-muted">
-            Object:
-          </p>
-          <p class="text-base">
-            {{ row }}
-          </p>
+        <div class="p-2 flex flex-col items-center gap-2">
+          <NAvatarGroup :max="2">
+            <NAvatar v-if="row.original.googleAvatar" :src="row.original.googleAvatar" :alt="row.original.googleName" />
+            <NAvatar v-if="row.original.githubAvatar" :src="row.original.githubAvatar" :alt="row.original.githubName" />
+          </NAvatarGroup>
+          <div class="flex flex-wrap gap-2 justify-center">
+            <NBadge badge="solid" label="Administrator" v-if="row.original.isAdmin" />
+            <NBadge badge="outline" label="Retired" v-if="row.original.isRetired" />
+          </div>
         </div>
       </template>
     </NTable>
