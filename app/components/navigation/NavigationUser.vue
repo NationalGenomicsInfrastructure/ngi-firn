@@ -1,12 +1,11 @@
 <script setup lang="ts">
-
 const { clear, user: sessionUser } = useUserSession()
 
 const user = computed(() => {
   return {
     name: sessionUser.value?.name || '',
     subtitle: sessionUser.value?.provider || '',
-    avatar: sessionUser.value?.avatar || '',
+    avatar: sessionUser.value?.avatar || ''
   }
 })
 
@@ -16,7 +15,7 @@ const navs = [
     leading: 'i-lucide-user',
     onClick: () => {
       navigateTo('/profile')
-    } 
+    }
   },
   {
     label: 'Settings',
@@ -36,7 +35,6 @@ const navs = [
 ]
 
 const { isMobile } = useSidebar()
-
 </script>
 
 <template>

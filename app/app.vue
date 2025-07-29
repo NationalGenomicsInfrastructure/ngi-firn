@@ -10,9 +10,10 @@ useSeoMeta({
   description:
     'A Nuxt3 web application for the National Genomics Infrastructure of Sweden. It serves as laboratory inventory management system and a visualization layer for the data infrastructure',
   ogImage: '/social-image.png',
-  twitterImage: '/social-image.png',
+  twitterImage: '/social-image.png'
 })
 </script>
+
 <template>
   <div>
     <NuxtLoadingIndicator

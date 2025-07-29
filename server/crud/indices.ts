@@ -17,7 +17,7 @@ export async function createIndexes() {
   await couchDB.createIndex(['type', 'userId'])
   await couchDB.createIndex(['type', 'userId', 'completed'])
   await couchDB.createIndex(['type', 'createdAt'])
-  
+
   // User indexes
   await couchDB.createIndex(['type', 'email'])
   await couchDB.createIndex(['type', 'googleId'])

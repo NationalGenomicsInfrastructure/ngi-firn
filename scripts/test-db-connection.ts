@@ -7,10 +7,11 @@ async function main() {
     console.log('🛋 Testing database connection...')
     await validateDatabaseConnection()
     console.log('✅ Database connection test passed!')
-  } catch (error) {
+  }
+  catch (error) {
     console.error('❌ Database connection test failed:', error)
     process.exit(1)
   }
 }
 
-main() 
+main()

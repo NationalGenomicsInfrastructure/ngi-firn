@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 const data = {
   menuItems: [
     {
@@ -10,13 +9,13 @@ const data = {
       items: [
         {
           title: 'List Projects',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Manage Projects',
-          url: '#',
-        },
-      ],
+          url: '#'
+        }
+      ]
     },
     {
       title: 'Plates',
@@ -25,17 +24,17 @@ const data = {
       items: [
         {
           title: 'List Plates',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Search Plates',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Manage Plates',
-          url: '#',
-        },
-      ],
+          url: '#'
+        }
+      ]
     },
     {
       title: 'Freezers',
@@ -44,21 +43,21 @@ const data = {
       items: [
         {
           title: 'List Freezers',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Manage Freezers',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Configure Racks',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Freezer Status',
-          url: '#',
-        },
-      ],
+          url: '#'
+        }
+      ]
     },
     {
       title: 'Documentation',
@@ -67,40 +66,46 @@ const data = {
       items: [
         {
           title: 'Introduction',
-          url: '#',
+          url: '#'
         },
         {
           title: 'Tutorial',
-          url: '#',
+          url: '#'
         },
         {
           title: 'FAQ',
-          url: '#',
-        },
-      ],
-    },
+          url: '#'
+        }
+      ]
+    }
   ],
   worksets: [
     {
       name: 'P.Ositive_25_01',
       url: '#',
-      icon: 'i-lucide-group',
+      icon: 'i-lucide-group'
     },
     {
       name: 'P.Ositive_24_01',
       url: '#',
-      icon: 'i-lucide-group',
+      icon: 'i-lucide-group'
     },
     {
-      name: 'N.Egative_25_01	',
+      name: 'N.Egative_25_01',
       url: '#',
-      icon: 'i-lucide-group',
-    },
-  ],
+      icon: 'i-lucide-group'
+    }
+  ]
 }
 </script>
 
 <template>
-  <NavigationGroups title="Actions" :items="data.menuItems" />
-  <NavigationWorksets title="Your Worksets" :worksets="data.worksets" />
+  <NavigationGroups
+    title="Actions"
+    :items="data.menuItems"
+  />
+  <NavigationWorksets
+    title="Your Worksets"
+    :worksets="data.worksets"
+  />
 </template>

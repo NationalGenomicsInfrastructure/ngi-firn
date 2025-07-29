@@ -3,7 +3,6 @@ import type { GitHubUser, SessionUser, SessionUserSecure } from '../../../types/
 
 export default defineOAuthGitHubEventHandler({
   async onSuccess(event, { user }) {
-
     /* user object example:
     * login: '[[:letters:]]+',
     * id: '[[:digits:]]+',
@@ -61,16 +60,13 @@ export default defineOAuthGitHubEventHandler({
      */
 
     try {
-
       // Search for existing user in database
       // This will only work, if the accounts have already been linked previously, since the match is based on otherwise unknown GitHub ID.
       // (Matching based on the e-mail address is too flaky, since it is often null)
       const firnUser = await UserService.matchGitHubUser(githubUser)
-      
-      if (firnUser) {
-      
-        if (!firnUser.allowLogin || firnUser.isRetired) {
 
+      if (firnUser) {
+        if (!firnUser.allowLogin || firnUser.isRetired) {
           // User is not approved or retired, redirect to pending page (case 2)
           await replaceUserSession(event, {
             // Any extra fields for the session data
@@ -82,38 +78,34 @@ export default defineOAuthGitHubEventHandler({
             }
           })
           return sendRedirect(event, '/?step=pending-approval', 401)
-
-        } else {
-
+        }
+        else {
         // User is approved, set session and redirect to main app (case 1)
 
-        const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(firnUser, 'github')
+          const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(firnUser, 'github')
 
-        await replaceUserSession(event, {
-          user: sessionUser,
-          secure: sessionUserSecure,
-          authStatus: {
-            kind: 'success',
-            reject: false,
-            title: 'Welcome to Firn!',
-            message: `Successfully signed in as ${sessionUser.name}.`
-          }
+          await replaceUserSession(event, {
+            user: sessionUser,
+            secure: sessionUserSecure,
+            authStatus: {
+              kind: 'success',
+              reject: false,
+              title: 'Welcome to Firn!',
+              message: `Successfully signed in as ${sessionUser.name}.`
+            }
 
-        })
+          })
 
-        return sendRedirect(event, '/firn', 201)
+          return sendRedirect(event, '/firn', 201)
         }
-      
-      } else { // no FirnUser found in the database based on the GitHub ID -> this is likely a linking attempt
-
+      }
+      else { // no FirnUser found in the database based on the GitHub ID -> this is likely a linking attempt
       // get the existing session, if it is a linking attempt, there should be a (Google) sessionUser with a linkedGitHub field
-      const session = await getUserSession(event) // get the server session
-      const sessionUser = session?.user as SessionUser
+        const session = await getUserSession(event) // get the server session
+        const sessionUser = session?.user as SessionUser
 
-        if(sessionUser){
-
-          if(sessionUser?.linkedGitHub){
-          
+        if (sessionUser) {
+          if (sessionUser?.linkedGitHub) {
             // The sessionUser is already linked to a GitHub user, but it was not matched to the current OAuth GitHub user -> reject
             await replaceUserSession(event, {
               authStatus: {
@@ -124,8 +116,8 @@ export default defineOAuthGitHubEventHandler({
               }
             })
             return sendRedirect(event, '/', 401)
-
-          } else {
+          }
+          else {
             // The sessionUser is not linked to a GitHub user, so we can link it to the current OAuth GitHub user
 
             // get the Document ID of the FirnUser in the database. This information is stored in the secure parts of the session on the server and unavailable to the client.
@@ -155,8 +147,8 @@ export default defineOAuthGitHubEventHandler({
                   }
                 })
                 return sendRedirect(event, '/?step=pending-approval', 201)
-
-              } else { // the linking failed, likely a database issue with updating the document then.
+              }
+              else { // the linking failed, likely a database issue with updating the document then.
                 // error linking the FirnUser to the OAuth GitHub user
                 await replaceUserSession(event, {
                   authStatus: {
@@ -168,7 +160,8 @@ export default defineOAuthGitHubEventHandler({
                 })
                 return sendRedirect(event, '/', 401)
               }
-            } else { // no reference user found. There is no document in the database with the same Document ID as the sessionUserSecure.
+            }
+            else { // no reference user found. There is no document in the database with the same Document ID as the sessionUserSecure.
               // error matching the FirnUser to the OAuth GitHub user
               await replaceUserSession(event, {
                 authStatus: {
@@ -181,8 +174,8 @@ export default defineOAuthGitHubEventHandler({
               return sendRedirect(event, '/?stage=clear', 401)
             }
           }
-
-        } else {
+        }
+        else {
           // no sessionUser found, this is a new user
           await replaceUserSession(event, {
             authStatus: {
@@ -195,8 +188,8 @@ export default defineOAuthGitHubEventHandler({
           return sendRedirect(event, '/?stage=clear', 401)
         }
       } // closes the FirnUser check
-
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error in GitHub OAuth handler of user', user.name, user.email, error)
       await replaceUserSession(event, {
         // Any extra fields for the session data

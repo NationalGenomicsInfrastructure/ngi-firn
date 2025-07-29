@@ -1,9 +1,8 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { H3Event } from 'h3'
 import { UserService } from '../crud/users'
-import type { SessionUser,SessionUserSecure, FirnUser } from '../../types/auth'
+import type { SessionUser, SessionUserSecure, FirnUser } from '../../types/auth'
 import type { Context } from '../../types/trpc'
-
 
 // The tRPC context is only server-side, the client can't access it.
 // It is therefore safe to put the private parts of the session in the context.
@@ -12,11 +11,12 @@ export const createTRPCContext = async (event: H3Event): Promise<Context> => {
   const session = await getUserSession(event)
   // Get the session user and secure user from the session
   const sessionUser = session?.user as SessionUser
-  const sessionUserSecure = session?.secure as SessionUserSecure 
-  
+  const sessionUserSecure = session?.secure as SessionUserSecure
+
   if (!sessionUser && !sessionUserSecure) {
     return {} as Context
-  } else {
+  }
+  else {
     return {
       user: sessionUser,
       secure: sessionUserSecure
@@ -38,7 +38,7 @@ export const createTRPCRouter = t.router
 export const createCallerFactory = t.createCallerFactory
 export const baseProcedure = t.procedure
 
-  /*
+/*
   * Middleware
   */
 
@@ -48,7 +48,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   if (!ctx.secure) {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
   }
-  
+
   // Check if the user is allowed to login
   if (!ctx.secure.allowLogin || ctx.secure.isRetired) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not allowed to login' })
@@ -58,7 +58,6 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   return next()
 })
 
-
 // Middleware to check if user has admin permissions
 const isAdmin = t.middleware(async ({ ctx, next }) => {
   if (!ctx.secure?.isAdmin) {
@@ -67,23 +66,23 @@ const isAdmin = t.middleware(async ({ ctx, next }) => {
   return next()
 })
 
-
 // Middleware to get the full user object from the database
 const getFirnUser = t.middleware(async ({ ctx, next }) => {
   if (!ctx.secure) {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
   }
-  
+
   // Match the session user to the database user and return the full user object in context
   const firnUser = await UserService.matchSessionUserSecure(ctx.secure)
 
   if (!firnUser) {
     return next()
-  } else {
+  }
+  else {
     return next({
       ctx: {
         ...ctx,
-        firnUser : firnUser as FirnUser
+        firnUser: firnUser as FirnUser
       }
     })
   }

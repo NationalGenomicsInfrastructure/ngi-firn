@@ -15,7 +15,10 @@ const { isMobile } = useSidebar()
   <NSidebarGroup class="group-data-[collapsible=icon]:hidden">
     <NSidebarGroupLabel><span class="text-primary font-semibold">{{ title }}</span></NSidebarGroupLabel>
     <NSidebarMenu>
-      <NSidebarMenuItem v-for="item in worksets" :key="item.name">
+      <NSidebarMenuItem
+        v-for="item in worksets"
+        :key="item.name"
+      >
         <NSidebarMenuButton as-child>
           <a :href="item.url">
             <NIcon :name="item.icon" />
@@ -26,33 +29,39 @@ const { isMobile } = useSidebar()
           :_dropdown-menu-content="{
             side: isMobile ? 'bottom' : 'right',
             align: isMobile ? 'end' : 'start',
-            sideOffset: 4,
+            sideOffset: 4
           }"
           :items="[
             {
               leading: 'i-lucide-folder text-muted',
-              label: 'View Workset',
+              label: 'View Workset'
             },
             {
               leading: 'i-lucide-forward text-muted',
-              label: 'Share Workset',
+              label: 'Share Workset'
             },
             {},
             {
               leading: 'i-lucide-trash text-muted',
-              label: 'Delete Workset',
-            },
+              label: 'Delete Workset'
+            }
           ]"
         >
           <NSidebarMenuAction show-on-hover>
-            <NIcon name="i-lucide-more-horizontal" class="text-sidebar-foreground/70" />
+            <NIcon
+              name="i-lucide-more-horizontal"
+              class="text-sidebar-foreground/70"
+            />
           </NSidebarMenuAction>
         </NDropdownMenu>
       </NSidebarMenuItem>
 
       <NSidebarMenuItem>
         <NSidebarMenuButton class="text-sidebar-foreground/70">
-          <NIcon name="i-lucide-more-horizontal" class="text-sidebar-foreground/70" />
+          <NIcon
+            name="i-lucide-more-horizontal"
+            class="text-sidebar-foreground/70"
+          />
           <span>More</span>
         </NSidebarMenuButton>
       </NSidebarMenuItem>

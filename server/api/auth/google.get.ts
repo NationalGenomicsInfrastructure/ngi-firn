@@ -3,7 +3,6 @@ import type { GoogleUser } from '../../../types/auth'
 
 export default defineOAuthGoogleEventHandler({
   async onSuccess(event, { user }) {
-
     /* user object example from Google OAuth:
     * sub: '[[:digits:]]+',
     * name: '[[:letters:]]+',
@@ -49,14 +48,11 @@ export default defineOAuthGoogleEventHandler({
      */
 
     try {
-
       // Search for existing user in database
       const firnUser = await UserService.matchGoogleUser(googleUser)
-      
-      if (firnUser) {
-      
-        if (!firnUser.allowLogin || firnUser.isRetired) {
 
+      if (firnUser) {
+        if (!firnUser.allowLogin || firnUser.isRetired) {
           // User is not approved or retired, redirect to pending page (case 2)
           await replaceUserSession(event, {
             // Any extra fields for the session data
@@ -68,29 +64,27 @@ export default defineOAuthGoogleEventHandler({
             }
           })
           return sendRedirect(event, '/?step=pending-approval', 401)
-
-        } else {
-
+        }
+        else {
         // User is approved, set session and redirect to main app (case 1)
 
-        const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(firnUser, 'google')
+          const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(firnUser, 'google')
 
-        await replaceUserSession(event, {
-          user: sessionUser,
-          secure: sessionUserSecure,
-          authStatus: {
-            kind: 'success',
-            reject: false,
-            title: 'Welcome to Firn!',
-            message: `Successfully signed in as ${sessionUser.name}.`
-          }
-        })
+          await replaceUserSession(event, {
+            user: sessionUser,
+            secure: sessionUserSecure,
+            authStatus: {
+              kind: 'success',
+              reject: false,
+              title: 'Welcome to Firn!',
+              message: `Successfully signed in as ${sessionUser.name}.`
+            }
+          })
 
-        return sendRedirect(event, '/firn', 201)
+          return sendRedirect(event, '/firn', 201)
         }
-      
-      } else {
-
+      }
+      else {
         // Create a new, unapproved user from the GoogleUser (case 3)
         const newUser = await UserService.convertGoogleUserToFirnUser(googleUser)
         // add to database
@@ -123,11 +117,10 @@ export default defineOAuthGoogleEventHandler({
         })
 
         // New user - redirect back to login page with linking state
-        return sendRedirect(event, '/?step=link-github',201)
-      
+        return sendRedirect(event, '/?step=link-github', 201)
+      }
     }
-
-    } catch (error) {
+    catch (error) {
       console.error('Error in Google OAuth handler of user', user.name, user.email, error)
       await replaceUserSession(event, {
         // Any extra fields for the session data

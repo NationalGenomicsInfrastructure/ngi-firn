@@ -34,30 +34,30 @@ export interface FirnUser extends BaseDocument {
 
 // Google OAuth user object
 export interface GoogleUser extends Partial<FirnUser> {
-provider: 'google'
-googleId: number
-googleName: string
-googleGivenName: string
-googleFamilyName: string
-googleAvatar: string
-googleEmail: string
-googleEmailVerified: boolean
+  provider: 'google'
+  googleId: number
+  googleName: string
+  googleGivenName: string
+  googleFamilyName: string
+  googleAvatar: string
+  googleEmail: string
+  googleEmailVerified: boolean
 }
 
 // GitHub OAuth user object
 export interface GitHubUser extends Partial<FirnUser> {
-provider: 'github'
-githubId: number
-githubNodeId: string | null
-githubName: string | null
-githubAvatar: string | null
-githubEmail: string | null
-githubUrl: string
+  provider: 'github'
+  githubId: number
+  githubNodeId: string | null
+  githubName: string | null
+  githubAvatar: string | null
+  githubEmail: string | null
+  githubUrl: string
 }
 
 // User object as it is stored in the session cookie, no sensitive data
 export interface SessionUser {
-  provider: 'github' | 'google' | 'token' 
+  provider: 'github' | 'google' | 'token'
   name: string
   givenName?: string
   familyName?: string
@@ -90,11 +90,11 @@ export interface DisplayUserToAdmin {
   githubName: string | null
   githubAvatar: string | null
   createdAt?: string
-  lastSeenAt?: string  
+  lastSeenAt?: string
   allowLogin: boolean
   isRetired: boolean
   isAdmin: boolean
-  permissions: string[] 
+  permissions: string[]
   tokens: string[]
 }
 
@@ -108,8 +108,8 @@ export interface AuthStatus {
 
 // Extend the auth-utils module type declarations to include our custom fields
 declare module '#auth-utils' {
-  interface User extends SessionUser {}
-  interface SecureSessionData extends SessionUserSecure {}
+  type User = SessionUser
+  type SecureSessionData = SessionUserSecure
   interface UserSession extends UserSession {
     authStatus?: AuthStatus
   }

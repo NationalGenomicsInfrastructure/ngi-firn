@@ -12,7 +12,7 @@ const data = {
       url: '#',
       icon: 'i-lucide-dna',
       isActive: false
-    },
+    }
   ]
 }
 
@@ -78,7 +78,7 @@ const { setOpen, toggleSidebar } = useSidebar()
                     navigateTo(item.url)
                   }"
                 >
-                  <NIcon :name="item.icon"/>
+                  <NIcon :name="item.icon" />
                   <span>{{ item.title }}</span>
                 </NSidebarMenuButton>
               </NSidebarMenuItem>
@@ -91,12 +91,12 @@ const { setOpen, toggleSidebar } = useSidebar()
           <NSidebarMenuItem>
             <ColorsChoice />
           </NSidebarMenuItem>
-            <NSidebarMenuItem>
-              <NThemeSwitcher />
-            </NSidebarMenuItem>
-            <NSidebarMenuItem>
-              <AdministrationButton />
-            </NSidebarMenuItem>
+          <NSidebarMenuItem>
+            <NThemeSwitcher />
+          </NSidebarMenuItem>
+          <NSidebarMenuItem>
+            <AdministrationButton />
+          </NSidebarMenuItem>
         </NSidebarMenu>
         <NavigationUser />
       </NSidebarFooter>
@@ -108,10 +108,12 @@ const { setOpen, toggleSidebar } = useSidebar()
       class="hidden flex-1 md:flex"
       sheet="left"
       rail
-    >  
+    >
       <NSidebarHeader>
         <LogoFirn class="h-8 w-auto mb-0" />
-        <h4 class="text-primary/60 text-sm capitalize text-center">{{ activeTitle }}</h4>
+        <h4 class="text-primary/60 text-sm capitalize text-center">
+          {{ activeTitle }}
+        </h4>
       </NSidebarHeader>
       <!-- This is the slot for the page-specific main navigation -->
       <slot name="sidebar-main-navigation" />

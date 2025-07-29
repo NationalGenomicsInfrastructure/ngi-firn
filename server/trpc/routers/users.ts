@@ -1,5 +1,4 @@
-
-import { createTRPCRouter, adminProcedure} from '../init'
+import { createTRPCRouter, adminProcedure } from '../init'
 import { UserService } from '../../crud/users'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { createUserByAdminSchema, setUserAccessByAdminSchema } from '~~/schemas/users'
@@ -42,8 +41,5 @@ export const usersRouter = createTRPCRouter({
         return await UserService.convertToDisplayUserToAdmin(updatedUser)
       }
       return null
-    }),
+    })
 })
-
-
-

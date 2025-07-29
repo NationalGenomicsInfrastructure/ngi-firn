@@ -9,7 +9,6 @@ const { session } = useUserSession()
 onMounted(() => {
   setOpen(false)
 })
-
 </script>
 
 <template>

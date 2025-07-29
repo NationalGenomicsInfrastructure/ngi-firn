@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 const data = {
   menuItems: [
     {
@@ -9,13 +8,13 @@ const data = {
       items: [
         {
           title: 'List Users',
-          url: '/administration/users/list',
+          url: '/administration/users/list'
         },
         {
           title: 'Add User',
-          url: '/administration/users/add',
-        },
-      ],
+          url: '/administration/users/add'
+        }
+      ]
     },
     {
       title: 'Review Logs',
@@ -24,18 +23,21 @@ const data = {
       items: [
         {
           title: 'Event Logs',
-          url: '/administration/logs/event',
+          url: '/administration/logs/event'
         },
         {
           title: 'User Logs',
-          url: '/administration/logs/user',
-        },
-      ],
-    },
-  ],
+          url: '/administration/logs/user'
+        }
+      ]
+    }
+  ]
 }
 </script>
 
 <template>
-  <NavigationGroups title="Manage Firn" :items="data.menuItems" />
+  <NavigationGroups
+    title="Manage Firn"
+    :items="data.menuItems"
+  />
 </template>

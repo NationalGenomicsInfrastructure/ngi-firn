@@ -56,42 +56,41 @@ watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
 // Separate watcher for authStatus to ensure it triggers properly
 watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
   if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
-  
     // Function to get hardcoded toast classes for each auth status kind
     // The AuthStatus kind was chosen to allow using UnoCSS utility classes for success, warning, error or base
     // , but the mapping fails because of the immediate:true setting of the watcher:
     // [unocss] unmatched utility "dark:n-$-100" in shortcut "alert-border-$"
     // Therefore we hardcode the toast classes here:
-      const getToastClass = (kind: string) => {
+    const getToastClass = (kind: string) => {
       switch (kind) {
-        case 'success':
-          return {
-            leading: 'i-lucide-circle-check',
-            class: 'alert-border-teal',
-            progress: 'teal'
-          }
-        case 'warning':
-          return {
-            leading: 'i-lucide-triangle-alert',
-            class: 'alert-border-orange',
-            progress: 'amber'
-          }
-        case 'error':
-          return {
-            leading: 'i-lucide-circle-x',
-            class: 'alert-border-red',
-            progress: 'red'
-          }
-        case 'base':
-        default:
-          return {
-            leading: 'i-lucide-info',
-            class: 'alert-border-indigo',
-            progress: 'indigo'
-          }
+      case 'success':
+        return {
+          leading: 'i-lucide-circle-check',
+          class: 'alert-border-teal',
+          progress: 'teal'
+        }
+      case 'warning':
+        return {
+          leading: 'i-lucide-triangle-alert',
+          class: 'alert-border-orange',
+          progress: 'amber'
+        }
+      case 'error':
+        return {
+          leading: 'i-lucide-circle-x',
+          class: 'alert-border-red',
+          progress: 'red'
+        }
+      case 'base':
+      default:
+        return {
+          leading: 'i-lucide-info',
+          class: 'alert-border-indigo',
+          progress: 'indigo'
+        }
       }
     }
-    
+
     const toastClass = getToastClass(newAuthStatus.kind)
     toast({
       title: newAuthStatus.title,
@@ -103,8 +102,6 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
     })
   }
 }, { immediate: true })
-
-
 </script>
 
 <template>
@@ -129,17 +126,17 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
             Use your existing account to access the system.
           </p>
         </div>
-        
-          <NButton
-            btn="solid-gray"
-            leading="i-simple-icons-google"
-            label="Sign in with Google"
-            class="w-full"
-            size="md"
-            to="/api/auth/google"
-            external
-          />
-          <div class="flex flex-col gap-3">
+
+        <NButton
+          btn="solid-gray"
+          leading="i-simple-icons-google"
+          label="Sign in with Google"
+          class="w-full"
+          size="md"
+          to="/api/auth/google"
+          external
+        />
+        <div class="flex flex-col gap-3">
           <NButton
             btn="solid-gray"
             leading="i-simple-icons-github"
@@ -167,7 +164,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
               Start by connecting your SciLifeLab Google account, which will become your primary access method:
             </p>
           </div>
-          
+
           <NButton
             btn="solid-gray"
             leading="i-simple-icons-google"
@@ -191,7 +188,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
               :src="user?.avatar"
               class="border-2 border-black rounded-full"
             />
-            <NAvatar 
+            <NAvatar
               v-else
               icon
               label="i-lucide-user-plus"
@@ -199,13 +196,13 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
               class="border-2 border-black rounded-full"
             />
             <h3 class="text-lg font-semibold">
-              Welcome to Firn, {{user?.name}}
+              Welcome to Firn, {{ user?.name }}
             </h3>
             <p class="text-muted">
               Your Google account has been connected. Optionally, you can now also link your GitHub account as alternative access method or complete the registration.
             </p>
           </div>
-          
+
           <NButton
             btn="solid-gray"
             leading="i-simple-icons-github"
@@ -238,7 +235,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
               :src="user?.avatar"
               class="border-2 border-black rounded-full"
             />
-            <NAvatar 
+            <NAvatar
               v-else
               icon
               label="i-lucide-user-lock"
@@ -252,7 +249,7 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
               Please wait for an administrator to approve your account.
             </p>
           </div>
-          
+
           <NButton
             btn="solid-primary"
             label="Return to NGI Sweden"

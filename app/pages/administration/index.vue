@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import { useQueryCache } from '@pinia/colada'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { approvedUsersQuery, pendingUsersQuery, retiredUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
@@ -21,14 +20,16 @@ queryCache.refresh(queryCache.ensure(retiredUsersQuery))
 const approvedUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
 const pendingUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.pending())
 const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired())
-
 </script>
 
 <template>
   <div>
     <h1>Active Users</h1>
     <div>
-      <TableUserAdminDisplay :users="approvedUsers" :loading="false" />
+      <TableUserAdminDisplay
+        :users="approvedUsers"
+        :loading="false"
+      />
     </div>
   </div>
 </template>

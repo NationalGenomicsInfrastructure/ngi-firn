@@ -29,14 +29,23 @@ defineProps<{
         <NSidebarMenuItem>
           <NCollapsibleTrigger as-child>
             <NSidebarMenuButton :tooltip="item.title">
-              <NIcon v-if="item.icon" :name="item.icon" />
+              <NIcon
+                v-if="item.icon"
+                :name="item.icon"
+              />
               <span>{{ item.title }}</span>
-              <NIcon name="i-lucide-chevron-right" class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              <NIcon
+                name="i-lucide-chevron-right"
+                class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+              />
             </NSidebarMenuButton>
           </NCollapsibleTrigger>
           <NCollapsibleContent>
             <NSidebarMenuSub>
-              <NSidebarMenuSubItem v-for="subItem in item.items" :key="subItem.title">
+              <NSidebarMenuSubItem
+                v-for="subItem in item.items"
+                :key="subItem.title"
+              >
                 <NSidebarMenuSubButton as-child>
                   <NLink :to="subItem.url">
                     <span>{{ subItem.title }}</span>

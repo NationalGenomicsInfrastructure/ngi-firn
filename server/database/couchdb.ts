@@ -1,4 +1,5 @@
 import { CloudantV1 } from '@ibm-cloud/cloudant'
+import 'dotenv/config'
 
 // CouchDB connection configuration
 interface CouchDBConfig {
@@ -47,15 +48,6 @@ export class CouchDBConnector {
   private database: string
 
   constructor(config?: Partial<CouchDBConfig>) {
-    // Load environment variables if not already loaded
-    if (!process.env.CLOUDANT_URL) {
-      try {
-        require('dotenv/config')
-      } catch (e) {
-        console.warn('dotenv not available, using existing environment variables')
-      }
-    }
-
     // Merge config with environment variables
     const finalConfig: CouchDBConfig = {
       url: config?.url || process.env.CLOUDANT_URL || process.env.COUCHDB_URL || 'http://localhost:5984',
@@ -238,13 +230,13 @@ export class CouchDBConnector {
         console.error('   Please ensure CouchDB is running and accessible.')
         return false
       }
-      
+
       // If it's a 404, the database doesn't exist but the server is reachable
       if (error.code === 404) {
         console.log(`Database "${this.database}" does not exist, but server is reachable.`)
         return true
       }
-      
+
       // For other errors, log but don't treat as connection failure
       console.error('Database test failed with error:', error.message)
       return false
@@ -255,7 +247,7 @@ export class CouchDBConnector {
   private isConnectionError(error: any): boolean {
     const errorMessage = error.message?.toLowerCase() || ''
     const errorCode = error.code?.toLowerCase() || ''
-    
+
     // Common connection error patterns
     const connectionErrorPatterns = [
       'econnrefused',
@@ -269,8 +261,8 @@ export class CouchDBConnector {
       'connection failed',
       'connection timeout'
     ]
-    
-    return connectionErrorPatterns.some(pattern => 
+
+    return connectionErrorPatterns.some(pattern =>
       errorMessage.includes(pattern) || errorCode.includes(pattern)
     )
   }
@@ -278,9 +270,9 @@ export class CouchDBConnector {
   // Validate database connection and terminate if not available
   async validateConnection(): Promise<void> {
     console.log('🛋  Validating database connection...')
-    
+
     const isConnected = await this.testConnection()
-    
+
     if (!isConnected) {
       console.error('❌ Database connection validation failed!')
       console.error('   The application cannot start without a database connection.')
@@ -291,7 +283,7 @@ export class CouchDBConnector {
       console.error(`   - CLOUDANT_PASSWORD: ${process.env.CLOUDANT_PASSWORD ? '****** (set)' : '- (not set)'}`)
       console.error(`   - CLOUDANT_DATABASE: ${process.env.CLOUDANT_DATABASE || 'firn (default)'}`)
     }
-    
+
     console.log('✅ Database connection validated successfully')
   }
 }
