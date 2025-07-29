@@ -26,10 +26,7 @@ const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_K
 
 <template>
   <div>
-    <h1>Administration</h1>
-    
-    <!-- Debug output for pending users query -->
-
+    <h1>Active Users</h1>
     <div>
       <TableUserAdminDisplay :users="approvedUsers" :loading="false" />
     </div>

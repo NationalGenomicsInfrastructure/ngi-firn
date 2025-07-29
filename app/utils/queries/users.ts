@@ -1,5 +1,5 @@
 import type { DisplayUserToAdmin } from '~~/types/auth'
-import { useQueryCache, defineQueryOptions } from '@pinia/colada'
+import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for users domain
 export const USERS_QUERY_KEYS = {
@@ -10,7 +10,7 @@ export const USERS_QUERY_KEYS = {
 } as const
 
 // Query for approved users
-export const approvedUsersQuery = defineQueryOptions({
+export const approvedUsersQuery = defineQueryOptions<DisplayUserToAdmin[]>({
   key: USERS_QUERY_KEYS.approved(),
   query: () => {
     const { $trpc } = useNuxtApp()
@@ -19,7 +19,7 @@ export const approvedUsersQuery = defineQueryOptions({
 })
 
 // Query for pending users
-export const pendingUsersQuery = defineQueryOptions({
+export const pendingUsersQuery = defineQueryOptions<DisplayUserToAdmin[]>({
   key: USERS_QUERY_KEYS.pending(),
   query: () => {
     const { $trpc } = useNuxtApp()
@@ -28,7 +28,7 @@ export const pendingUsersQuery = defineQueryOptions({
 })
 
 // Query for retired users
-export const retiredUsersQuery = defineQueryOptions({
+export const retiredUsersQuery = defineQueryOptions<DisplayUserToAdmin[]>({
   key: USERS_QUERY_KEYS.retired(),
   query: () => {
     const { $trpc } = useNuxtApp()
