@@ -33,7 +33,7 @@ const { setOpen, toggleSidebar } = useSidebar()
 
 <template>
   <NSidebar
-    class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row border-r border-primary/20"
+    class="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
     collapsible="icon"
   >
     <!-- This is the first sidebar -->
@@ -41,7 +41,7 @@ const { setOpen, toggleSidebar } = useSidebar()
     <!-- This will make the sidebar appear as icons. -->
     <NSidebar
       collapsible="none"
-      class="bg-primary/5 border-r !w-[calc(var(--sidebar-width-icon)_+_1px)]"
+      class="text-left bg-primary-700/20 dark:bg-primary-900 border-r-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400 !w-[calc(var(--sidebar-width-icon)_+_1px)]"
     >
       <NSidebarHeader>
         <NSidebarMenu>
@@ -71,7 +71,7 @@ const { setOpen, toggleSidebar } = useSidebar()
               >
                 <NSidebarMenuButton
                   :tooltip="h('div', { hidden: false }, item.title)"
-                  class="soft hover:bg-primary/7 focus:outline-primary active:outline-primary text-color-primary"
+                  class="soft hover:text-primary-300 focus:outline-primary active:outline-primary text-primary-700 dark:text-primary-400"
                   style="background-color: transparent;"
                   @click="() => {
                     setOpen(true)
@@ -105,7 +105,7 @@ const { setOpen, toggleSidebar } = useSidebar()
     <!--  We disable collapsible and let it fill remaining space -->
     <NSidebar
       collapsible="none"
-      class="hidden flex-1 md:flex"
+      class="hidden flex-1 md:flex border-r-2 border-primary/20"
       sheet="left"
       rail
     >

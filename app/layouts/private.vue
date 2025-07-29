@@ -23,7 +23,7 @@ const breadcrumbItems = computed(() => {
     <NToaster />
 
     <NSidebarInset>
-      <header class="h-12 flex flex-col flex-col-reverse gap-4 sm:flex-row sm:justify-end shrink-0 items-center gap-2 border-b border-primary/20 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar_wrapper:h-12">
+      <header class="h-12 flex flex-col flex-col-reverse gap-4 sm:flex-row sm:justify-end shrink-0 items-center gap-2 border-b-2 border-primary/20 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar_wrapper:h-12">
         <div class="flex items-center gap-2 px-4">
           <NBreadcrumb
             breadcrumb-active="prose"
@@ -39,9 +39,9 @@ const breadcrumbItems = computed(() => {
           <LogoSciLifeLab class="ml-4 mr-2 h-8 w-auto" />
         </div>
       </header>
-      <div class="flex items-center gap-2 px-4">
+      <div class="flex items-center gap-2 px-4 w-full">
         <main>
-          <slot />
+            <slot />
         </main>
       </div>
     </NSidebarInset>

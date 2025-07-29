@@ -14,8 +14,8 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     accessorKey: 'googleGivenName',
     meta: {
       una: {
-        tableCell: 'text-primary-600 dark:text-primary-700 font-semibold',
-        tableHead: 'text-left bg-primary-700 border-b-2 border-primary-300 dark:border-primary-500 dark:bg-primary-700 text-primary-100 dark:text-primary-400',
+        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400',
       },
     }
   },
@@ -24,8 +24,8 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     accessorKey: 'googleFamilyName',
     meta: {
       una: {
-        tableCell: 'text-primary-600 dark:text-primary-700 font-semibold',
-        tableHead: 'text-left bg-primary-700 border-b-2 border-primary-300 dark:border-primary-500 dark:bg-primary-700 text-primary-100 dark:text-primary-400',
+        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400',
       },
     }
   },
@@ -106,7 +106,7 @@ watch([relativeDates, includeWeekday, displayTime], () => {
       :columns="columns"
       :data="formattedUsers || []"
       :una="{
-        tableHead: 'text-left bg-primary-700 border-b-2 border-primary-300 dark:border-primary-500 dark:bg-primary-700 text-primary-100 dark:text-primary-400',
+        tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400',
     }"
     >
       <template #expanded="{ row }">
