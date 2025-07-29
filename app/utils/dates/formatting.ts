@@ -7,10 +7,14 @@ interface DateFormatOptions {
 }
 
 export function formatDate(
-  date: string | Date,
+  date: string | Date | undefined,
   options: DateFormatOptions = {}
 ): string {
   const { relative = false, includeWeekday = false, time = false } = options
+
+  if (!date) {
+    return 'N/A'
+  }
 
   // Convert to DateTime object
   const dateTime = typeof date === 'string'

@@ -7,7 +7,7 @@ const data = {
       icon: 'i-lucide-users',
       items: [
         {
-          title: 'List Users',
+          title: 'Active Users',
           url: '/administration/users/list'
         },
         {
