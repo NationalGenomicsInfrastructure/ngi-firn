@@ -105,7 +105,7 @@ const { setOpen, toggleSidebar } = useSidebar()
     <!--  We disable collapsible and let it fill remaining space -->
     <NSidebar
       collapsible="none"
-      class="hidden flex-1 md:flex border-r-2 border-primary/20"
+      class="hidden flex-1 md:flex border-r-2 border-primary/20 bg-primary-50/50 dark:bg-primary/5"
       sheet="left"
       rail
     >

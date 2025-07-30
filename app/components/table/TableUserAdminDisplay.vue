@@ -83,17 +83,17 @@ watch([relativeDates, includeWeekday, displayTime], () => {
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <NFormField :label="relativeDates ? 'Relative Dates' : 'Absolute Dates'" name="relativeDates">
+    <NFormField :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'" name="relativeDates">
       <NSwitch
         v-model="relativeDates"
       />
     </NFormField>
-    <NFormField :label="includeWeekday ? 'Show Weekday' : 'Hide Weekday'" name="includeWeekday">
+    <NFormField :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'" name="includeWeekday">
       <NSwitch
         v-model="includeWeekday"
       />
     </NFormField>
-    <NFormField :label="displayTime ? 'Show Time' : 'Hide Time'" name="displayTime">
+    <NFormField :label="displayTime ? 'Time: show' : 'Time: hide'" name="displayTime">
       <NSwitch
         v-model="displayTime"
       />
