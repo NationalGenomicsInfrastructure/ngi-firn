@@ -100,6 +100,9 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
       showProgress: true,
       ...toastClass
     })
+    if (session.value?.authStatus) {
+      session.value.authStatus = undefined
+    }
   }
 }, { immediate: true })
 </script>
