@@ -24,13 +24,27 @@ const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_K
 
 <template>
   <div>
-    <PageHeadline
-      title="Active Users"
+    <PageTitle
+      title="User overview"
       description="Manage our users and their permissions."
+    />
+    <PageHeadline
+      section="Active users"
+      subsection="Users who hav"
+      paragraph="Active users"
     />
     <div>
       <TableUserAdminDisplay
         :users="approvedUsers"
+        :loading="false"
+      />
+    </div>
+    <PageHeadline
+      section="Inactive users"
+    />
+    <div>
+      <TableUserAdminDisplay
+        :users="retiredUsers"
         :loading="false"
       />
     </div>

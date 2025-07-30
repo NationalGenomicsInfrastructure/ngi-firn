@@ -1,22 +1,20 @@
 <script setup lang="ts">
 
 const props = defineProps<{
-    title: string
-    subtitle?: string
-    description?: string
+    section?: string
+    subsection?: string
+    paragraph?: string
 }>()
 </script>
 
 <template>
-    <div flex="~ col" class="text-center space-y-1 lg:text-left lg:space-y-2 mb-8 mt-4">
-        <h1 class="scroll-m-20 text-center font-extrabold tracking-tight text-balance text-2xl lg:text-3xl">
-            {{ props.title }} 
-        </h1>
-        <h2 v-if="props.subtitle" class="scroll-m-20 border-l-3 border-l-primary pl-2 font-semibold tracking-tight first:mt-0 text-xl lg:text-2xl"> 
-            {{ props.subtitle }}
-        </h2>
-        <p v-if="props.description" class="text-center text-muted text-md md:text-lg"> 
-            {{ props.description }} 
-        </p>
-    </div>
+    <h2 v-if="props.section" class="scroll-m-20 font-semibold text-primary-700 dark:text-primary-400 tracking-tight text-2xl lg:text-3xl leading-snug mt-12 mb-4"> 
+        {{ props.section }}
+    </h2>
+    <h3 v-if="props.subsection" class="scroll-m-20 font-medium text-primary-700 dark:text-primary-400 tracking-tight text-xl lg:text-2xl leading-normal mt-6 mb-4"> 
+        {{ props.subsection }}
+    </h3>
+    <h4 v-if="props.paragraph" class="text-primary-600 dark:text-primary-400 leading-relaxed mt-4 mb-2">
+        {{ props.paragraph }}
+    </h4>
 </template>

@@ -30,6 +30,10 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     }
   },
   {
+    header: 'E-Mail',
+    accessorKey: 'googleEmail',
+  },
+  {
     header: 'Created',
     accessorKey: 'createdAt'
   },
@@ -38,15 +42,7 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     accessorKey: 'lastSeenAt'
   },
   {
-    header: 'Login permitted',
-    accessorKey: 'allowLogin'
-  },
-  {
-    header: 'Retired',
-    accessorKey: 'isRetired'
-  },
-  {
-    header: 'Admin',
+    header: 'Administrator privileges',
     accessorKey: 'isAdmin'
   }
 ]

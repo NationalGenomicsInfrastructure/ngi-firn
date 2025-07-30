@@ -39,7 +39,7 @@ const breadcrumbItems = computed(() => {
           <LogoSciLifeLab class="ml-4 mr-2 h-8 w-auto" />
         </div>
       </header>
-      <div class="container mx-auto px-4 md:px-6 lg:px-8 h-full dark:bg-primary/5">
+      <div class="container mx-auto py-6 px-4 md:px-6 lg:px-8 h-full dark:bg-primary/5">
         <main>
             <slot />
         </main>

@@ -7,12 +7,12 @@ const data = {
       icon: 'i-lucide-users',
       items: [
         {
-          title: 'Active Users',
-          url: '/administration/users/list'
+          title: 'User overview',
+          url: '/administration/users'
         },
         {
           title: 'Add User',
-          url: '/administration/users/add'
+          url: '/administration/users'
         }
       ]
     },

@@ -1,4 +1,6 @@
 import { defaultConfig } from '@una-ui/nuxt/una.config'
+import { presetTypography } from '@unocss/preset-typography'
+import { presetWebFonts, presetAttributify, presetWind3 } from 'unocss'
 
 export default defaultConfig({
   /*
@@ -11,7 +13,34 @@ export default defaultConfig({
    * @see https://unocss.dev/config/
    */
 
-  presets: [],
+  presets: [
+    presetAttributify(), // required if using attributify mode
+    presetWind3(), // required
+    presetTypography({
+      selectorName: 'prose', // now use like `prose prose-slate`, `not-prose`
+      // @see https://github.com/tailwindlabs/tailwindcss-typography
+      // cssExtend is an object with CSS selector as key and
+      // CSS declaration block as value like writing normal CSS.
+      cssExtend: {
+        'code': {
+          color: 'var(--una-primary-hex)',
+        },
+        'a:hover': {
+          color: 'var(--una-primary-hex)',
+        },
+        'a:visited': {
+          color: 'var(--una-primary-gray)',
+        },
+      },
+    }),
+    presetWebFonts({
+      provider: 'bunny',
+      fonts: {
+        sans: 'Red Hat Display',
+        mono: 'Fira Code',
+      },
+    }),
+  ],
 
   /*
    * Una UI Shortcuts Customization
