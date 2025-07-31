@@ -55,7 +55,9 @@ const { setOpen, toggleSidebar } = useSidebar()
                 to="#"
                 @click="toggleSidebar()"
               >
-                <LogoNGI class="w-full h-full" />
+                <div class="bg-gray-50 rounded-lg aspect-square p-1 border-2 border-primary-700 dark:border-primary-400">
+                  <LogoNGI class="w-full h-full" />
+                </div>
               </NLink>
             </NSidebarMenuButton>
           </NSidebarMenuItem>

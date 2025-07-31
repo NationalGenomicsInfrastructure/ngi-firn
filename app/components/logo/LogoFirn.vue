@@ -56,7 +56,8 @@
 </template>
 
 <style>
+/*  #2E86EF is NGI Blue */
 svg {
-  --color-primary: #2E86EF;
+  --color-primary: var(--una-primary-hex);
 }
 </style>
