@@ -63,31 +63,31 @@ watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
     // Therefore we hardcode the toast classes here:
     const getToastClass = (kind: string) => {
       switch (kind) {
-      case 'success':
-        return {
-          leading: 'i-lucide-circle-check',
-          class: 'alert-border-teal',
-          progress: 'teal'
-        }
-      case 'warning':
-        return {
-          leading: 'i-lucide-triangle-alert',
-          class: 'alert-border-orange',
-          progress: 'amber'
-        }
-      case 'error':
-        return {
-          leading: 'i-lucide-circle-x',
-          class: 'alert-border-red',
-          progress: 'red'
-        }
-      case 'base':
-      default:
-        return {
-          leading: 'i-lucide-info',
-          class: 'alert-border-indigo',
-          progress: 'indigo'
-        }
+        case 'success':
+          return {
+            leading: 'i-lucide-circle-check',
+            class: 'alert-border-teal',
+            progress: 'teal'
+          }
+        case 'warning':
+          return {
+            leading: 'i-lucide-triangle-alert',
+            class: 'alert-border-orange',
+            progress: 'amber'
+          }
+        case 'error':
+          return {
+            leading: 'i-lucide-circle-x',
+            class: 'alert-border-red',
+            progress: 'red'
+          }
+        case 'base':
+        default:
+          return {
+            leading: 'i-lucide-info',
+            class: 'alert-border-indigo',
+            progress: 'indigo'
+          }
       }
     }
 

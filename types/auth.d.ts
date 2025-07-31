@@ -111,10 +111,9 @@ export interface AuthStatus {
 declare module '#auth-utils' {
 
   // Exporting it as 'type User = SessionUser' makes eslint happy, but it broke type checking on many components.
-
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  // eslint-disable-next-line
   interface User extends SessionUser {}
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  // eslint-disable-next-line
   interface SecureSessionData extends SessionUserSecure {}
   interface UserSession extends UserSession {
     authStatus?: AuthStatus

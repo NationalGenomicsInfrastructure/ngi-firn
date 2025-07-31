@@ -41,7 +41,7 @@ const breadcrumbItems = computed(() => {
       </header>
       <div class="container mx-auto py-6 px-4 md:px-6 lg:px-8 h-full dark:bg-primary/5">
         <main>
-            <slot />
+          <slot />
         </main>
       </div>
     </NSidebarInset>

@@ -23,23 +23,23 @@ export default defaultConfig({
       // CSS declaration block as value like writing normal CSS.
       cssExtend: {
         'code': {
-          color: 'var(--una-primary-hex)',
+          color: 'var(--una-primary-hex)'
         },
         'a:hover': {
-          color: 'var(--una-primary-hex)',
+          color: 'var(--una-primary-hex)'
         },
         'a:visited': {
-          color: 'var(--una-primary-gray)',
-        },
-      },
+          color: 'var(--una-primary-gray)'
+        }
+      }
     }),
     presetWebFonts({
       provider: 'bunny',
       fonts: {
         sans: 'Red Hat Display',
-        mono: 'Fira Code',
-      },
-    }),
+        mono: 'Fira Code'
+      }
+    })
   ],
 
   /*

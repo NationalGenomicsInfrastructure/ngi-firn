@@ -15,8 +15,8 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     meta: {
       una: {
         tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
-        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400',
-      },
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }
     }
   },
   {
@@ -25,13 +25,13 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     meta: {
       una: {
         tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
-        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400',
-      },
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }
     }
   },
   {
     header: 'E-Mail',
-    accessorKey: 'googleEmail',
+    accessorKey: 'googleEmail'
   },
   {
     header: 'Created',
@@ -62,7 +62,7 @@ const formattedUsers = computed(() => {
       lastSeenAt: formatDate(user.lastSeenAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
     }
   })
-}) 
+})
 
 // Watch for date formatting options changes
 watch([relativeDates, includeWeekday, displayTime], () => {
@@ -71,7 +71,8 @@ watch([relativeDates, includeWeekday, displayTime], () => {
   if (relativeDates.value) {
     if (includeWeekday.value) includeWeekday.value = false
     if (displayTime.value) displayTime.value = false
-  } else if (includeWeekday.value || displayTime.value) {
+  }
+  else if (includeWeekday.value || displayTime.value) {
     if (relativeDates.value) relativeDates.value = false
   }
 })
@@ -79,17 +80,26 @@ watch([relativeDates, includeWeekday, displayTime], () => {
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <NFormField :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'" name="relativeDates">
+    <NFormField
+      :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'"
+      name="relativeDates"
+    >
       <NSwitch
         v-model="relativeDates"
       />
     </NFormField>
-    <NFormField :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'" name="includeWeekday">
+    <NFormField
+      :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'"
+      name="includeWeekday"
+    >
       <NSwitch
         v-model="includeWeekday"
       />
     </NFormField>
-    <NFormField :label="displayTime ? 'Time: show' : 'Time: hide'" name="displayTime">
+    <NFormField
+      :label="displayTime ? 'Time: show' : 'Time: hide'"
+      name="displayTime"
+    >
       <NSwitch
         v-model="displayTime"
       />
@@ -102,23 +112,39 @@ watch([relativeDates, includeWeekday, displayTime], () => {
       :columns="columns"
       :data="formattedUsers || []"
       :una="{
-        tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400',
-    }"
+        tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }"
     >
       <template #expanded="{ row }">
         <div class="p-2 flex flex-row items-start gap-4">
           <!-- Column 1: Avatars and badges -->
           <div class="flex flex-col items-center gap-2 flex-shrink-0">
             <NAvatarGroup :max="2">
-              <NAvatar v-if="row.original.googleAvatar" :src="row.original.googleAvatar" :alt="row.original.googleName" />
-              <NAvatar v-if="row.original.githubAvatar" :src="row.original.githubAvatar" :alt="row.original.githubName" />
+              <NAvatar
+                v-if="row.original.googleAvatar"
+                :src="row.original.googleAvatar"
+                :alt="row.original.googleName"
+              />
+              <NAvatar
+                v-if="row.original.githubAvatar"
+                :src="row.original.githubAvatar"
+                :alt="row.original.githubName"
+              />
             </NAvatarGroup>
             <div class="flex flex-wrap gap-2 justify-center">
-              <NBadge badge="solid" label="Administrator" v-if="row.original.isAdmin" />
-              <NBadge badge="outline" label="Retired" v-if="row.original.isRetired" />
+              <NBadge
+                v-if="row.original.isAdmin"
+                badge="solid"
+                label="Administrator"
+              />
+              <NBadge
+                v-if="row.original.isRetired"
+                badge="outline"
+                label="Retired"
+              />
             </div>
           </div>
-          
+
           <!-- Column 2: Textual information -->
           <div class="flex flex-col gap-2 text-sm flex-1">
             <div>
@@ -137,14 +163,14 @@ watch([relativeDates, includeWeekday, displayTime], () => {
                 :disabled="!row.original.githubUrl"
                 active-class="text-primary"
                 external
-                />
+              />
             </div>
             <div>
               <span class="font-semibold mr-2">Tokens:</span>
               <span> {{ row.original.tokens ? row.original.tokens.length : 0 }}</span>
             </div>
           </div>
-          
+
           <!-- Column 3: Button -->
           <div class="flex flex-col items-end flex-shrink-0 gap-2">
             <NButton
