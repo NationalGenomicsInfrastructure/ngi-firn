@@ -286,7 +286,7 @@ export const UserService = {
     const users = await couchDB.queryDocuments<FirnUser>({
       type: 'user'
     })
-    return users.filter(user => !user.isRetired)
+    return users.filter(user => user.isRetired)
   },
 
   /*

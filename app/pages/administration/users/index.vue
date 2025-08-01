@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useQueryCache } from '@pinia/colada'
 import type { DisplayUserToAdmin } from '~~/types/auth'
-import { approvedUsersQuery, pendingUsersQuery, retiredUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
+import { approvedUsersQuery, retiredUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
 
 definePageMeta({
   layout: 'private'
@@ -13,12 +13,26 @@ const { toast } = useToast()
 // Query cache
 const queryCache = useQueryCache()
 
-await queryCache.refresh(queryCache.ensure(approvedUsersQuery))
-queryCache.refresh(queryCache.ensure(pendingUsersQuery))
-queryCache.refresh(queryCache.ensure(retiredUsersQuery))
+// Loading state
+const isLoading = ref(true)
+
+// Wrap cache requests in a function that manages loading state
+const loadUserData = async () => {
+  isLoading.value = true
+  try {
+    await Promise.all([
+      queryCache.refresh(queryCache.ensure(approvedUsersQuery)),
+      queryCache.refresh(queryCache.ensure(retiredUsersQuery))
+    ])
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Load data on component mount
+await loadUserData()
 
 const approvedUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
-const pendingUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.pending())
 const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired())
 </script>
 
@@ -30,22 +44,21 @@ const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_K
     />
     <PageHeadline
       section="Active users"
-      subsection="Users who hav"
-      paragraph="Active users"
     />
     <div>
       <TableUserAdminDisplay
         :users="approvedUsers"
-        :loading="false"
+        :loading="isLoading"
       />
     </div>
     <PageHeadline
       section="Inactive users"
     />
+    {{ retiredUsers }}
     <div>
       <TableUserAdminDisplay
         :users="retiredUsers"
-        :loading="false"
+        :loading="isLoading"
       />
     </div>
   </div>
