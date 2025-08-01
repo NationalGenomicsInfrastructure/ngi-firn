@@ -170,15 +170,18 @@ watch([relativeDates, includeWeekday, displayTime], () => {
 
           <!-- Column 3: Button -->
           <div class="flex flex-col items-end flex-shrink-0 gap-2">
-            <NButton
-              label="Administer user"
-              class="transition delay-300 ease-in-out"
-              btn="soft-primary hover:soft-warning"
+            <DialogSetUserPermissions
+              v-model:allow-login="row.original.allowLogin"
+              v-model:is-retired="row.original.isRetired"
+              v-model:is-admin="row.original.isAdmin"
+              :google-given-name="row.original.googleGivenName"
+              :google-family-name="row.original.googleFamilyName"
+              :google-email="row.original.googleEmail"
             />
             <NButton
               label="Administer tokens"
               class="transition delay-300 ease-in-out"
-              btn="soft-primary hover:soft-warning"
+              btn="soft-primary hover:outline-primary"
             />
           </div>
         </div>

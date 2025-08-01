@@ -31,7 +31,7 @@ const loadUserData = async () => {
 }
 
 // Load data on component mount
-await loadUserData()
+loadUserData() // no await, the component will display the loading state until the data is loaded
 
 const approvedUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
 const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired())
@@ -55,7 +55,6 @@ const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_K
     <PageHeadline
       section="Inactive users"
     />
-    {{ retiredUsers }}
     <div>
       <TableUserAdminDisplay
         :users="retiredUsers"
