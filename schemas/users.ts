@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 // Minimal user object for creating a user by an admin
 export const createUserByAdminSchema = z.object({
-  googleEmail: z.string().email().refine(
+  googleEmail: z.email().refine(
     val => val.endsWith('@scilifelab.se'),
     { message: 'Email must be a scilifelab.se address' }
   ),

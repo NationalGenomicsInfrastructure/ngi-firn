@@ -24,7 +24,8 @@ const loadUserData = async () => {
       queryCache.refresh(queryCache.ensure(approvedUsersQuery)),
       queryCache.refresh(queryCache.ensure(retiredUsersQuery))
     ])
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
