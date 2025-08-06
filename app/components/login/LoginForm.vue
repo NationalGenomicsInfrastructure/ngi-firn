@@ -2,6 +2,7 @@
 const { user, session, clear } = useUserSession()
 const { toast } = useToast()
 const route = useRoute()
+const { authStatusWatcher } = useAuthStatusToast()
 
 // Stages of the registration process to render the correct UI
 const stage = ref<'register-google' | 'link-github' | 'pending-approval'>('register-google')
@@ -53,58 +54,8 @@ watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
   }
 }, { immediate: true })
 
-// Separate watcher for authStatus to ensure it triggers properly
-watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
-  if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
-    // Function to get hardcoded toast classes for each auth status kind
-    // The AuthStatus kind was chosen to allow using UnoCSS utility classes for success, warning, error or base
-    // , but the mapping fails because of the immediate:true setting of the watcher:
-    // [unocss] unmatched utility "dark:n-$-100" in shortcut "alert-border-$"
-    // Therefore we hardcode the toast classes here:
-    const getToastClass = (kind: string) => {
-      switch (kind) {
-        case 'success':
-          return {
-            leading: 'i-lucide-circle-check',
-            class: 'alert-border-teal',
-            progress: 'teal'
-          }
-        case 'warning':
-          return {
-            leading: 'i-lucide-triangle-alert',
-            class: 'alert-border-orange',
-            progress: 'amber'
-          }
-        case 'error':
-          return {
-            leading: 'i-lucide-circle-x',
-            class: 'alert-border-red',
-            progress: 'red'
-          }
-        case 'base':
-        default:
-          return {
-            leading: 'i-lucide-info',
-            class: 'alert-border-indigo',
-            progress: 'indigo'
-          }
-      }
-    }
+onUnmounted(() => authStatusWatcher && authStatusWatcher())
 
-    const toastClass = getToastClass(newAuthStatus.kind)
-    toast({
-      title: newAuthStatus.title,
-      description: newAuthStatus.message,
-      closable: true,
-      duration: 6000,
-      showProgress: true,
-      ...toastClass
-    })
-    if (session.value?.authStatus) {
-      session.value.authStatus = undefined
-    }
-  }
-}, { immediate: true })
 </script>
 
 <template>

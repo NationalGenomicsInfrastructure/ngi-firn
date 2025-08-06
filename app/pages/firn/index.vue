@@ -5,9 +5,17 @@ definePageMeta({
 
 const { setOpen } = useSidebar()
 const { session } = useUserSession()
+const { authStatusWatcher } = useAuthStatusToast()
 
 onMounted(() => {
   setOpen(false)
+  if (session.value?.authStatus) {
+    session.value.authStatus = undefined
+  }
+})
+
+onUnmounted(() => {
+  authStatusWatcher && authStatusWatcher()
 })
 </script>
 

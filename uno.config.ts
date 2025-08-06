@@ -42,6 +42,17 @@ export default defaultConfig({
     })
   ],
 
+  safelist: [
+    // Classes for styling toast notifications. Normally lazy loaded,
+    // but these need to be available right away for the useAuthStatusToast composable
+    'alert-border-primary',
+    'alert-border-teal',
+    'alert-border-amber',
+    'alert-border-red',
+    'alert-border-indigo',
+    'bg-base', 
+  ],
+
   /*
    * Una UI Shortcuts Customization
    *
