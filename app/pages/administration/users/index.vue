@@ -1,40 +1,20 @@
 <script setup lang="ts">
-import { useQueryCache } from '@pinia/colada'
-import type { DisplayUserToAdmin } from '~~/types/auth'
-import { approvedUsersQuery, retiredUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
+import { useQuery } from '@pinia/colada'
+import { approvedUsersQuery, retiredUsersQuery } from '~/utils/queries/users'
 
 definePageMeta({
   layout: 'private'
 })
 
-// Notifications
-const { toast } = useToast()
+// Subscribe reactively to queries
+const { state: approvedUsersState, asyncStatus: approvedStatus } = useQuery(approvedUsersQuery)
+const { state: retiredUsersState, asyncStatus: retiredStatus } = useQuery(retiredUsersQuery)
 
-// Query cache
-const queryCache = useQueryCache()
+// Derive loading state from query statuses
+const isLoading = computed(() => approvedStatus.value === 'loading' || retiredStatus.value === 'loading')
 
-// Loading state
-const isLoading = ref(true)
-
-// Wrap cache requests in a function that manages loading state
-const loadUserData = async () => {
-  isLoading.value = true
-  try {
-    await Promise.all([
-      queryCache.refresh(queryCache.ensure(approvedUsersQuery)),
-      queryCache.refresh(queryCache.ensure(retiredUsersQuery))
-    ])
-  }
-  finally {
-    isLoading.value = false
-  }
-}
-
-// Load data on component mount
-loadUserData() // no await, the component will display the loading state until the data is loaded
-
-const approvedUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
-const retiredUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired())
+const approvedUsers = computed(() => approvedUsersState.value.status === 'success' ? approvedUsersState.value.data : undefined)
+const retiredUsers = computed(() => retiredUsersState.value.status === 'success' ? retiredUsersState.value.data : undefined)
 </script>
 
 <template>
