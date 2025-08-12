@@ -8,9 +8,7 @@ export const createUserByAdminSchema = z.object({
     val => val.endsWith('@scilifelab.se'),
     { message: 'Email must be a scilifelab.se address' }
   ),
-  allowLogin: z.boolean().default(true),
-  isRetired: z.boolean().default(false),
-  isAdmin: z.boolean().default(false)
+  isAdmin: z.boolean()
 })
 
 // Input schema for approving requested access of user by an admin
