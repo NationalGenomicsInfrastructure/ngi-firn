@@ -25,6 +25,13 @@ const navs = [
     }
   },
   {
+    label: 'Tokens',
+    leading: 'i-lucide-key-round',
+    onClick: () => {
+      navigateTo('/tokens')
+    }
+  },
+  {
     label: 'Log out',
     leading: 'i-lucide-log-out',
     onClick: () => {

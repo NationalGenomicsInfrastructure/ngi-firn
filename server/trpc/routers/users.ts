@@ -25,7 +25,7 @@ export const usersRouter = createTRPCRouter({
 
   createUserByAdmin: adminProcedure
     .input(createUserByAdminSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }) : Promise<DisplayUserToAdmin | null> => {
       const newUser = await UserService.createUserByAdmin(input)
       if (newUser) {
         return await UserService.convertToDisplayUserToAdmin(newUser)
@@ -35,7 +35,7 @@ export const usersRouter = createTRPCRouter({
 
   setUserAccessByAdmin: adminProcedure
     .input(setUserAccessByAdminSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }) : Promise<DisplayUserToAdmin | null> => {
       const updatedUser = await UserService.setUserAccessByAdmin(input)
       if (updatedUser) {
         return await UserService.convertToDisplayUserToAdmin(updatedUser)

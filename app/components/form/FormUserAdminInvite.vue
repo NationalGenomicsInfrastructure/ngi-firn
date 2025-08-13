@@ -32,6 +32,18 @@ async function onValidating() {
     class="mx-auto max-w-sm p-4 space-y-4"
     @submit.prevent="onValidating()"
   >
+  <NFormField
+      name="googleGivenName"
+      label="First name"
+    >
+      <NInput placeholder="First name" />
+    </NFormField>
+    <NFormField
+      name="googleFamilyName"
+      label="Last name"
+    >
+      <NInput placeholder="Family name" />
+    </NFormField>
     <NFormField
       name="googleEmail"
       label="SciLifeLab email"
@@ -46,6 +58,7 @@ async function onValidating() {
     >
       <NCheckbox
         label="Firn administrator"
+        :default-value="false"
       />
     </NFormField>
 

@@ -51,10 +51,11 @@ export const UserService = {
       type: 'user',
       schema: 1,
       // Google-specific fields
-      googleId: 0,
+      // Generate a random provisional googleId (9-digit number in a reserved range)
+      googleId: Math.floor(900000000 + Math.random() * 100000000),
       googleName: '',
-      googleGivenName: '',
-      googleFamilyName: '',
+      googleGivenName: user.googleGivenName,
+      googleFamilyName: user.googleFamilyName,
       googleAvatar: '',
       googleEmail: user.googleEmail,
       googleEmailVerified: true,
@@ -69,8 +70,8 @@ export const UserService = {
       createdAt: DateTime.now().toISO(),
       lastSeenAt: DateTime.now().toISO(),
       // User properties (new users are not approved by default)
-      allowLogin: user.allowLogin,
-      isRetired: user.isRetired,
+      allowLogin: true,
+      isRetired: false,
       isAdmin: user.isAdmin,
       permissions: [],
       tokens: [],

@@ -12,7 +12,7 @@ const data = {
         },
         {
           title: 'Add User',
-          url: '/administration/users'
+          url: '/administration/users/add'
         }
       ]
     },

@@ -1,0 +1,130 @@
+<script setup lang="ts">
+import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { DisplayUserToAdmin } from '~~/types/auth'
+import { formatDate } from '~/utils/dates/formatting'
+import { NAvatar } from '#components'
+
+
+const props = defineProps<{
+  users: DisplayUserToAdmin[] | undefined
+  loading: boolean
+}>()
+
+const columns: ColumnDef<DisplayUserToAdmin>[] = [
+  {
+    header: 'First Name',
+    accessorKey: 'googleGivenName',
+    meta: {
+      una: {
+        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }
+    }
+  },
+  {
+    header: 'Last Name',
+    accessorKey: 'googleFamilyName',
+    meta: {
+      una: {
+        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }
+    }
+  },
+  {
+  header: 'Requesting account',
+    accessorKey: 'user',
+    accessorFn: (row) => {
+      return {
+        fullname: `${row.googleGivenName} ${row.googleFamilyName}`,
+        avatar: row.googleAvatar,
+        email: row.googleEmail,
+      }
+    },
+    // you can customize the cell renderer like this as an alternative to slot
+    cell: (info: any) => {
+      const fullname = info.getValue().fullname
+
+      return h('div', {
+        class: 'flex items-center',
+      }, [
+        h(NAvatar, {
+          src: info.getValue().avatar,
+          alt: fullname,
+        }),
+        [
+          h('div', {
+            class: 'ml-2',
+          }, [
+            h('div', {
+              class: 'text-sm font-semibold leading-none',
+            }, fullname),
+            h('span', {
+              class: 'text-sm text-muted',
+            }, info.getValue().email),
+          ]),
+        ],
+      ])
+    },
+  },
+  {
+    header: 'Pending since',
+    accessorKey: 'createdAt'
+  }
+]
+
+const select = ref<RowSelectionState>()
+const table = useTemplateRef<Table<DisplayUserToAdmin>>('table')
+
+const formattedUsers = computed(() => {
+  return props.users?.map((user) => {
+    return {
+      ...user,
+      createdAt: formatDate(user.createdAt, { relative: true, includeWeekday: true, time: false }),
+    }
+  })
+})
+
+
+</script>
+
+<template>
+  <div class="w-full overflow-x-auto">
+    <NTable
+      ref="table"
+      v-model:row-selection="select"
+      :loading="loading"
+      :columns="columns"
+      :data="formattedUsers || []"
+      :una="{
+        tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }"
+      enable-row-selection
+    >
+    </NTable>
+    <div
+      class="flex items-center justify-between px-2"
+    >
+      <div
+        class="flex-1 text-sm text-muted"
+      >
+        {{ table?.getFilteredSelectedRowModel().rows.length }} of
+        {{ table?.getFilteredRowModel().rows.length }} requests(s) selected.
+      </div>
+      <div class="flex gap-4 justify-end mt-4">
+        <NButton
+          label="Reject"
+          class="transition delay-300 ease-in-out"
+          btn="soft-error hover:outline-error"
+          trailing="i-lucide-user-x"
+        />
+        <NButton
+          label="Approve"
+          leading="i-lucide-skip-forward"
+          class="transition delay-300 ease-in-out"
+          btn="soft-primary hover:outline-primary"
+        />
+      </div>
+    </div>
+  </div>
+</template>

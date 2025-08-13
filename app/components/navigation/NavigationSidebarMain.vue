@@ -3,7 +3,7 @@ const data = {
   navMain: [
     {
       title: 'Cold Storage Inventory',
-      url: 'inventory',
+      url: '/inventory',
       icon: 'i-lucide-snowflake',
       isActive: true
     },
