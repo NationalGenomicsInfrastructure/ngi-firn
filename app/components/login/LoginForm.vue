@@ -63,7 +63,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
     :items="items"
     :default-value="activeTab"
     :_tabs-list="{
-      class: 'grid grid-cols-2 w-full border-b border-primary'
+      class: 'grid grid-cols-2 w-full border-b border-primary bg-primary-50 dark:bg-primary/10'
     }"
     :_tabs-content="{
       class: 'py-4 mx-auto w-full'
@@ -82,7 +82,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
         </div>
 
         <NButton
-          btn="solid-gray"
+          btn="soft-primary hover:outline-primary"
           leading="i-simple-icons-google"
           label="Sign in with Google"
           class="w-full"
@@ -92,7 +92,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
         />
         <div class="flex flex-col gap-3">
           <NButton
-            btn="solid-gray"
+            btn="soft-primary hover:outline-primary"
             leading="i-simple-icons-github"
             label="Sign in with GitHub"
             class="w-full"
@@ -120,7 +120,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
           </div>
 
           <NButton
-            btn="solid-gray"
+            btn="soft-primary hover:outline-primary"
             leading="i-simple-icons-google"
             label="Create account with Google"
             size="md"
@@ -158,7 +158,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
           </div>
 
           <NButton
-            btn="solid-gray"
+            btn="soft-primary hover:outline-primary"
             leading="i-simple-icons-github"
             label="Link GitHub Account"
             size="md"
@@ -168,7 +168,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
           />
 
           <NButton
-            btn="solid-gray"
+            btn="soft-primary hover:outline-primary"
             leading="i-lucide-skip-forward"
             label="Skip GitHub setup"
             size="md"
@@ -205,7 +205,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
           </div>
 
           <NButton
-            btn="solid-primary"
+            btn="soft-primary hover:outline-primary"
             label="Return to NGI Sweden"
             size="md"
             class="w-full"

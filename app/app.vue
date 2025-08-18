@@ -15,7 +15,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <div>
+  <div class="dark:bg-primary-900/40 min-h-screen w-full">
     <NuxtLoadingIndicator
       :color="false"
       class="z-100 bg-primary/80"
