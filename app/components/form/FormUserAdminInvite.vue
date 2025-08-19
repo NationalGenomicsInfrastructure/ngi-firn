@@ -1,14 +1,25 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { createUserByAdminSchema } from '~~/schemas/users'
+import { createUserByAdmin } from '~/utils/mutations/users'
 
 const formSchema = toTypedSchema(createUserByAdminSchema)
 
 const { handleSubmit, validate, errors } = useForm({
   validationSchema: formSchema,
 })
-const onSubmit = handleSubmit((values) => {
-  alert(JSON.stringify(values, null, 2))
+const onSubmit = handleSubmit(async (values) => {
+  try {
+    const { mutateAsync } = createUserByAdmin()
+    const result = await mutateAsync(values)
+    if (result) {
+      console.log('User created successfully')
+    } else {
+      console.log('User creation failed')
+    }
+  } catch (error) {
+    console.error(error)
+  }
 })
 
 async function onValidating() {
