@@ -8,8 +8,8 @@ export const useAuthStatusToast = () => {
       case 'success':
         return {
           leading: 'i-lucide-circle-check',
-          class: 'alert-border-teal',
-          progress: 'teal'
+          class: 'alert-border-emerald',
+          progress: 'emerald'
         }
       case 'warning':
         return {
@@ -20,8 +20,8 @@ export const useAuthStatusToast = () => {
       case 'error':
         return {
           leading: 'i-lucide-circle-x',
-          class: 'alert-border-tomato',
-          progress: 'tomato'
+          class: 'alert-border-red',
+          progress: 'red'
         }
       case 'base':
       default:

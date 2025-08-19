@@ -3,9 +3,29 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { createUserByAdminSchema } from '~~/schemas/users'
 import { createUserByAdmin } from '~/utils/mutations/users'
 
+const { showSuccess, showError} = useFirnToast()
+const toastActions = [
+  {
+    label: 'Retry',
+    btn: 'solid-primary',
+    altText: 'Error',
+    onClick: () => {
+      onSubmit()
+    },
+  },
+  {
+    label: 'Dismiss',
+    btn: 'solid-white',
+    altText: 'Error',
+    onClick: () => {
+      resetForm()
+    },
+  },
+]
+
 const formSchema = toTypedSchema(createUserByAdminSchema)
 
-const { handleSubmit, validate, errors } = useForm({
+const { handleSubmit, validate, errors, resetForm } = useForm({
   validationSchema: formSchema,
 })
 const onSubmit = handleSubmit(async (values) => {
@@ -13,14 +33,16 @@ const onSubmit = handleSubmit(async (values) => {
     const { mutateAsync } = createUserByAdmin()
     const result = await mutateAsync(values)
     if (result) {
-      console.log('User created successfully')
+      showSuccess(`User account for ${result.googleGivenName} ${result.googleFamilyName} was pre-created successfully`)
+      resetForm()
     } else {
-      console.log('User creation failed')
+      showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created.`, 'Account creation error', { actions: toastActions })
     }
   } catch (error) {
-    console.error(error)
+    showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created: ${error}`, 'Account creation error', { actions: toastActions })
   }
 })
+
 
 async function onValidating() {
   await validate()
@@ -74,8 +96,8 @@ async function onValidating() {
     </NFormField>
 
 
-    <NButton type="submit">
-      Invite user
+    <NButton type="submit" btn="soft-primary hover:outline-primary">
+      Pre-create user account
     </NButton>
   </form>
 </template>

@@ -46,11 +46,16 @@ export default defaultConfig({
     // Classes for styling toast notifications. Normally lazy loaded,
     // but these need to be available right away for the useAuthStatusToast composable
     'alert-border-primary',
-    'alert-border-teal',
+    'alert-border-emerald',
     'alert-border-amber',
     'alert-border-red',
     'alert-border-indigo',
-    'bg-base', 
+    'bg-base',
+    // Toast icons - need to be available immediately for composables
+    'i-lucide-circle-check',
+    'i-lucide-triangle-alert', 
+    'i-lucide-circle-x',
+    'i-lucide-info'
   ],
 
   /*
