@@ -63,18 +63,21 @@ watch(currentUserState, (newState) => {
   formData.value.isRetired = isRetired
 })
 
-
-
 // Handle save action
 const handleSave = () => {
+
+  const { setUserAccess } = setUserAccessByAdmin()
+  setUserAccess({
+    googleId: props.googleId,
+    allowLogin: formData.value.allowLogin,
+    isRetired: formData.value.isRetired,
+    isAdmin: formData.value.isAdmin
+  })
 
   // Emit v-model changes to update the expanded row immediately
   emit('update:allowLogin', formData.value.allowLogin)
   emit('update:isRetired', formData.value.isRetired)
   emit('update:isAdmin', formData.value.isAdmin)
-
-
-
 
 }
 </script>
