@@ -16,6 +16,8 @@ export const createUserByAdminSchema = z.object({
 // Input schema for approving requested access of user by an admin
 export const setUserAccessByAdminSchema = z.object({
   googleId: z.number(),
+  googleGivenName: z.string(),
+  googleFamilyName: z.string(),
   allowLogin: z.boolean().default(true),
   isRetired: z.boolean().default(false),
   isAdmin: z.boolean().default(false)

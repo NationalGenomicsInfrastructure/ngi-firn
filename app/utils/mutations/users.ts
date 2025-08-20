@@ -1,10 +1,7 @@
-import { defineMutation } from '@pinia/colada'
+import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import type { CreateUserByAdminInput, DeleteUserByAdminInput, SetUserAccessByAdminInput } from '~~/schemas/users'
-
-// Query cache
 import { USERS_QUERY_KEYS } from '~/utils/queries/users'
-const queryCache = useQueryCache()
 
 // Notifications
 const { showSuccess, showError} = useFirnToast()
@@ -47,19 +44,26 @@ export const createUserByAdmin = defineMutation({
 
 // Mutation for deleting a user by an admin
 
-export const deleteUserByAdmin = defineMutation({
+export const deleteUserByAdmin = defineMutation(() => {
+  const { mutate, ...mutation } = useMutation({
   mutation: (input: DeleteUserByAdminInput) => {
     const { $trpc } = useNuxtApp()
     return $trpc.users.deleteUserByAdmin.mutate(input)
   },
   onMutate() {
+    const queryCache = useQueryCache()
   },
   onSettled() {
+    const queryCache = useQueryCache()
   },
   onError() {
+    const queryCache = useQueryCache()
   },
   onSuccess() {
+    const queryCache = useQueryCache()
   },
+})
+return { deleteUser: mutate, ...mutation }
 })
 
 // Mutation for updating user access by an admin
@@ -71,6 +75,7 @@ export const setUserAccessByAdmin = defineMutation(() => {
       return $trpc.users.setUserAccessByAdmin.mutate(input);
     },
     onMutate(input: SetUserAccessByAdminInput) {
+      const queryCache = useQueryCache()
       const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || [];
       const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired()) || [];
   
@@ -119,11 +124,13 @@ export const setUserAccessByAdmin = defineMutation(() => {
       return { approved, retired, updatedApproved, updatedRetired };
     },
     onSettled() {
+      const queryCache = useQueryCache()
       // Invalidate the queries to refetch the data from the server
       queryCache.invalidateQueries({key: USERS_QUERY_KEYS.approved(), exact: true})
       queryCache.invalidateQueries({key: USERS_QUERY_KEYS.retired(), exact: true})
     },
-    onError(error: Error, _input ,context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[] }) {
+    onError(error: Error, input ,context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[] }) {
+      const queryCache = useQueryCache()
       // Rollback the optimistic updates
       if (context.approved) {
         queryCache.setQueryData(USERS_QUERY_KEYS.approved(), context.approved);
@@ -137,10 +144,10 @@ export const setUserAccessByAdmin = defineMutation(() => {
         // in case we do not have the previous state, rather show an empty table and refetch the data from the server
         queryCache.setQueryData(USERS_QUERY_KEYS.retired(), []);
       }
-      showError(error.message, 'Error setting permissions for user');
+      showError(error.message, `Error setting permissions for ${input.googleGivenName} ${input.googleFamilyName}`);
     },
-    onSuccess() {
-      showSuccess('Permissions updated successfully');
+    onSuccess(_data, input: SetUserAccessByAdminInput) {
+      showSuccess(`Permissions updated successfully for ${input.googleGivenName} ${input.googleFamilyName}`);
     }
   });
 

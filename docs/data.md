@@ -26,63 +26,48 @@ In Firn, we use Pinia Colada as data fetching layer. The following example makes
 
 Updating the cache directly is the most efficient way to implement optimistic updates because you are collocating the optimistic update with the mutation itself. Since you are touching the cache directly, any query relying on the updated data will automatically reflect the changes. However, this also requires handling the **rollback** in case of errors.
 
-Here is a **complete example** of an optimistic update for the details of a contact:
+The basic template for a mutation looks like this:
 
 ```ts twoslash
-import { useMutation, useQueryCache } from '@pinia/colada'
-import { patchContact } from [...]
-import type { Contact } from [...]
+import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
+import type { DeleteUserByAdminInput } from '~~/schemas/users'
 
-const queryCache = useQueryCache()
-const { mutate } = useMutation({
-  mutation: patchContact,
-  // `contactInfo` type is inferred from the mutation function
-  onMutate(contactInfo) {
-    // get the current contact from the cache, we assume it exists
-    const oldContact = queryCache.getQueryData<Contact>(['contact', contactInfo.id])!
-    const newContact: Contact = {
-      // we merge both objects to have a complete contact
-      ...oldContact,
-      ...contactInfo,
-    }
-
-    // update the cache with the new contact
-    queryCache.setQueryData(['contact', newContact.id], newContact)
-    // we cancel (without refetching) all queries that depend on the contact
-    queryCache.cancelQueries({ key: ['contact', newContact.id] })
-
-    // pass the old and new contact to the other hooks
-    return { oldContact, newContact }
+export const deleteUserByAdmin = defineMutation(() => {
+  const { mutate, ...mutation } = useMutation({
+  mutation: (input: DeleteUserByAdminInput) => {
+    const { $trpc } = useNuxtApp()
+    return $trpc.users.deleteUserByAdmin.mutate(input)
   },
-
-  // on both error and success
-  onSettled(_data, _error, _vars, { newContact }) {
-    // `newContact` can be undefined if the `onMutate` hook fails
-    if (newContact) {
-      // invalidate the query to refetch the new data
-      queryCache.invalidateQueries({ key: ['contact', newContact.id] })
-    }
+  onMutate(input) {
+    const queryCache = useQueryCache()
+    return(context)
   },
-
-  onError(err, contactInfo, { newContact, oldContact }) {
-    // before applying the rollback, we need to check if the value in the cache
-    // is the same because the cache could have been updated by another mutation
-    // or query
-    if (newContact === queryCache.getQueryData(['contact', contactInfo.id])) {
-      queryCache.setQueryData(['contact', contactInfo.id], oldContact)
-    }
-
-    // handle the error
-    console.error(`An error occurred when updating a contact "${contactInfo.id}"`, err)
+  onSettled(_, input, context) {
+    const queryCache = useQueryCache()
   },
-
-  // Depending on your code, this `onSuccess` hook might not be necessary
-  onSuccess(contact, _contactInfo, { newContact }) {
-    // update the contact with the information from the server
-    // since we are invalidating queries, this allows us to progressively update
-    queryCache.setQueryData(['contact', newContact.id], contact)
+  onError(error, input, context) {
+    const queryCache = useQueryCache()
   },
+  onSuccess(_, input, context) {
+    const queryCache = useQueryCache()
+  },
+})
+return { deleteUser: mutate, ...mutation }
 })
 ```
 
-To be able to reuse a mutation, we typically do not define them with `useMutation()` directly on the component, but as a separate utility function with `defineMutation()`. You can find all mutations in `app/utils/mutations`, split across multiple files according to functionality.
+To be able to reuse a mutation, we typically do not define them with `useMutation()` directly on the component and explicitly call it with `mutate` or `mutateAsync`, but wrap it in a separate utility function with `defineMutation()`. You can find all mutations in `app/utils/mutations`, split across multiple files according to functionality.
+
+The mutation itself is a call to a REST / GraphQL endpoint or a tRPC procedure. Each mutation lifecycle consists of four main callbacks:
+
+- `onMutate`: This is called immediately before the mutation function is executed. It is the ideal place to perform optimistic updates—such as updating the cache or UI to reflect the expected result—before the server responds. You can also return a context object here, which will be passed to the later callbacks for potential rollback.
+
+- `onError`: This is triggered if the mutation fails (for example, due to a network or server error). It receives the error, the mutation input, and the context returned from `onMutate`. Here, you should use the context to rollback any optimistic updates and restore the previous state.
+
+- `onSuccess`: This is called when the mutation completes successfully. You can use this to show success notifications or perform any side effects that should only happen after a confirmed update.
+
+- `onSettled`: This is always called after the mutation finishes, regardless of whether it succeeded or failed. It is typically used to invalidate or refetch queries so that the UI stays in sync with the server state.
+
+By leveraging these lifecycle hooks, you can provide a responsive and robust user experience, handling both optimistic UI updates and error recovery gracefully.
+
+> :warning: Because `useQueryCache()` requires that the pinia instance is already injected into the app, it can only be used inside the callbacks, but not outside. Therefore, the `const queryCache = useQueryCache()` has to be declared separately for each callback, if it needs to be accessed.

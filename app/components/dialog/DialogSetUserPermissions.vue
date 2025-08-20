@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import type { DisplayUserToAdmin } from '~~/types/auth'
-import { setUserAccessByAdminSchema } from '~~/schemas/users'
 import { setUserAccessByAdmin } from '~/utils/mutations/users'
-
-const { mutateAsync } = setUserAccessByAdmin()
 
 const props = defineProps<{
   googleId: number
@@ -69,6 +65,8 @@ const handleSave = () => {
   const { setUserAccess } = setUserAccessByAdmin()
   setUserAccess({
     googleId: props.googleId,
+    googleGivenName: props.googleGivenName,
+    googleFamilyName: props.googleFamilyName,
     allowLogin: formData.value.allowLogin,
     isRetired: formData.value.isRetired,
     isAdmin: formData.value.isAdmin
@@ -102,7 +100,7 @@ const handleSave = () => {
         />
 
         <NFormGroup
-          :label="formData.isAdmin ? `${googleGivenName} can administer Firn.` : `${googleGivenName} cannot administer Firn.`"
+          :label="formData.isAdmin ? `${props.googleGivenName} can administer Firn.` : `${props.googleGivenName} cannot administer Firn.`"
           class="mt-5 font-semibold"
         >
           <NSwitch
@@ -111,7 +109,7 @@ const handleSave = () => {
             size="lg"
             checked-icon="i-lucide-key-round"
             unchecked-icon="i-lucide-shield-off"
-            :label="`${googleGivenName} can administer Firn.`"
+            :label="`${props.googleGivenName} can administer Firn.`"
           />
         </NFormGroup>
     </div>
