@@ -12,7 +12,7 @@ For data transmission between the `server` and the client `app`, traditional [RE
 
 ## Optimistic updates
 
-When building user interfaces, fast reactivity is an easily overlooked, but relevant factor for good user experience. As a rule of thumb, [actions that are completed in 100ms](https://medium.com/shakuro/milliseconds-matter-how-time-builds-ux-6cac50fb472e) or less are perceived instantaneous by human users. For that reason, you will want to give a user the impression that something has happened, even if the server takes longer to handle the request. 
+When building user interfaces, fast reactivity is an easily overlooked, but relevant factor for good user experience. As a rule of thumb, [actions that are completed in 100ms](https://medium.com/shakuro/milliseconds-matter-how-time-builds-ux-6cac50fb472e) or less are perceived instantaneous by human users. For that reason, you will want to give a user the impression that something has happened, even if the server takes longer to handle the request.
 
 In an _optimistic update_, the user interface behaves as though a change was successfully completed before receiving confirmation from the server that it actually was - it is being optimistic that it will eventually get the confirmation rather than an error. This allows for a more responsive user experience.
 
@@ -84,3 +84,5 @@ const { mutate } = useMutation({
   },
 })
 ```
+
+To be able to reuse a mutation, we typically do not define them with `useMutation()` directly on the component, but as a separate utility function with `defineMutation()`. You can find all mutations in `app/utils/mutations`, split across multiple files according to functionality.

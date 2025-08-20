@@ -174,9 +174,9 @@ watch([relativeDates, includeWeekday, displayTime], () => {
               v-model:allow-login="row.original.allowLogin"
               v-model:is-retired="row.original.isRetired"
               v-model:is-admin="row.original.isAdmin"
+              :google-id="row.original.googleId"
               :google-given-name="row.original.googleGivenName"
               :google-family-name="row.original.googleFamilyName"
-              :google-email="row.original.googleEmail"
             />
             <NButton
               label="Administer tokens"

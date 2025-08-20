@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { DisplayUserToAdmin } from '~~/types/auth'
-import { USERS_QUERY_KEYS } from '~/utils/queries/users'
+import { setUserAccessByAdminSchema } from '~~/schemas/users'
+import { setUserAccessByAdmin } from '~/utils/mutations/users'
+
+const { mutateAsync } = setUserAccessByAdmin()
 
 const props = defineProps<{
+  googleId: number
   googleGivenName: string
   googleFamilyName: string
-  googleEmail: string
   allowLogin: boolean
   isRetired: boolean
   isAdmin: boolean
@@ -60,78 +63,19 @@ watch(currentUserState, (newState) => {
   formData.value.isRetired = isRetired
 })
 
-// Query cache
-const queryCache = useQueryCache()
+
 
 // Handle save action
 const handleSave = () => {
+
   // Emit v-model changes to update the expanded row immediately
   emit('update:allowLogin', formData.value.allowLogin)
   emit('update:isRetired', formData.value.isRetired)
   emit('update:isAdmin', formData.value.isAdmin)
 
-  // Optimistically update cached lists so tables reflect changes instantly
-  const updateUserInLists = (lists: Array<DisplayUserToAdmin[] | undefined>) => {
-    for (const list of lists) {
-      if (!list) continue
-      const currentList = list as DisplayUserToAdmin[]
-      const idx = currentList.findIndex(u => u.googleEmail === props.googleEmail)
-      if (idx !== -1) {
-        const next = currentList.slice()
-        const user: DisplayUserToAdmin = { ...next[idx] } as DisplayUserToAdmin
-        user.allowLogin = formData.value.allowLogin
-        user.isRetired = formData.value.isRetired
-        user.isAdmin = formData.value.isAdmin
-        next.splice(idx, 1, user)
-        return next
-      }
-    }
-    return undefined
-  }
 
-  const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
-  const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired())
 
-  // Update the list where the user currently exists
-  const updatedApproved = updateUserInLists([approved])
-  if (updatedApproved) {
-    queryCache.setQueryData(USERS_QUERY_KEYS.approved(), updatedApproved)
-  }
 
-  const updatedRetired = updateUserInLists([retired])
-  if (updatedRetired) {
-    queryCache.setQueryData(USERS_QUERY_KEYS.retired(), updatedRetired)
-  }
-
-  // If state changed across lists (active <-> retired), move user between lists optimistically
-  if (approved && retired) {
-    const wasInApproved = approved.some(u => u.googleEmail === props.googleEmail)
-    const shouldBeRetired = formData.value.isRetired
-
-    if (wasInApproved && shouldBeRetired) {
-      const user = approved.find(u => u.googleEmail === props.googleEmail)!
-      const updatedUser: DisplayUserToAdmin = { ...user } as DisplayUserToAdmin
-      updatedUser.allowLogin = formData.value.allowLogin
-      updatedUser.isRetired = formData.value.isRetired
-      updatedUser.isAdmin = formData.value.isAdmin
-      queryCache.setQueryData(USERS_QUERY_KEYS.approved(), approved.filter(u => u.googleEmail !== props.googleEmail))
-      queryCache.setQueryData(USERS_QUERY_KEYS.retired(), [updatedUser, ...(retired ?? [])])
-    }
-
-    const wasInRetired = retired.some(u => u.googleEmail === props.googleEmail)
-    const shouldBeActive = !formData.value.isRetired && formData.value.allowLogin
-    if (wasInRetired && shouldBeActive) {
-      const user = retired.find(u => u.googleEmail === props.googleEmail)!
-      const updatedUser: DisplayUserToAdmin = { ...user } as DisplayUserToAdmin
-      updatedUser.allowLogin = formData.value.allowLogin
-      updatedUser.isRetired = formData.value.isRetired
-      updatedUser.isAdmin = formData.value.isAdmin
-      queryCache.setQueryData(USERS_QUERY_KEYS.retired(), retired.filter(u => u.googleEmail !== props.googleEmail))
-      queryCache.setQueryData(USERS_QUERY_KEYS.approved(), [updatedUser, ...(approved ?? [])])
-    }
-  }
-
-  // Do not invalidate or refetch here to avoid flicker; server sync will come with the real mutation later
 }
 </script>
 
