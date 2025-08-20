@@ -81,6 +81,27 @@ export const UserService = {
       preferences: []
     }
 
+    // Since the GoogleID is provisional and random, there is a tiny chance that the ID is already taken.
+    // If so, we need to generate a new one.
+    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
+      type: 'user',
+      googleId: newFirnUser.googleId
+    })
+    if (existingUserByGoogleId.length > 0) {
+      // Generate a new random GoogleID
+      newFirnUser.googleId = Math.floor(900000000 + Math.random() * 100000000)
+    }
+
+    // Check if the user already exists by e-mail address
+    const existingUserByGoogleMail = await couchDB.queryDocuments<FirnUser>({
+      type: 'user',
+      googleEmail: newFirnUser.googleEmail
+    })
+    if (existingUserByGoogleMail.length > 0) {
+      // User already exists - throw an explicit error to indicate that the user already exists
+      throw new Error('User with this email already exists')
+    }
+
     // Create the user
     const document = await couchDB.createDocument(newFirnUser)
     // query the new user by document id
