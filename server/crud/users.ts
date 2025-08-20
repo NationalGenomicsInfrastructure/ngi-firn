@@ -5,6 +5,7 @@
  * CREATION AND ADMINISTRATION:
  * createUser(user) - Create a new FirnUser with all required fields
  * createUserByAdmin(user) - Create a new, partially filled FirnUser by an admin
+ * deleteUserByAdmin(user) - Delete a user by an admin
  * setUserAccessByAdmin(user) - Set access of a user by an admin: Allow login, retire, or promote to admin
  * linkGitHubUser(user, githubUser) - Link a GitHubUser to a FirnUser
  * MATCHING - QUERYING WITH DIFFERENT INPUTS AND GET FULL USER OBJECT:
@@ -25,7 +26,7 @@ import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
 import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
-import type { CreateUserByAdminInput, SetUserAccessByAdminInput } from '../../schemas/users'
+import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
 
 export const UserService = {
   /*
@@ -110,6 +111,27 @@ export const UserService = {
       _id: document.id
     })
     return newUser[0] as FirnUser
+  },
+
+  /*
+   * Delete a user by an admin
+   */
+  async deleteUserByAdmin(user: DeleteUserByAdminInput): Promise<FirnUser | null> {
+    // First, try to find user by Google ID
+    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
+      type: 'user',
+      googleId: user.googleId
+    })
+
+    if (existingUserByGoogleId.length > 0) {
+      const user = existingUserByGoogleId[0]
+      // Delete the user
+      await couchDB.deleteDocument(user._id, user._rev!)
+      return user as FirnUser
+    } else {
+      // User not found - return null to indicate that the user does not exist
+      return null
+    }
   },
 
   /*
