@@ -3,7 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { createUserByAdminSchema } from '~~/schemas/users'
 import { createUserByAdmin } from '~/utils/mutations/users'
 
-const { showSuccess, showError} = useFirnToast()
+const { showError} = useFirnToast()
 const toastActions = [
   {
     label: 'Retry',
@@ -30,10 +30,11 @@ const { handleSubmit, validate, errors, resetForm } = useForm({
 })
 const onSubmit = handleSubmit(async (values) => {
   try {
+    // in this case, we use the async version of the mutation to act on the failure.
     const { mutateAsync } = createUserByAdmin()
     const result = await mutateAsync(values)
     if (result) {
-      showSuccess(`User account for ${result.googleGivenName} ${result.googleFamilyName} was pre-created successfully`)
+      // Success message is handled by mutation
       resetForm()
     } else {
       showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created.`, 'Account creation error', { actions: toastActions })

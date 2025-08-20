@@ -27,19 +27,36 @@ const updateUserInLists = ( updatedUser: SetUserAccessByAdminInput, lists: Array
 
 // Mutation for creating a user by an admin
 
-export const createUserByAdmin = defineMutation({
+export const createUserByAdmin = defineMutation(() => {
+  const { mutate, ...mutation } = useMutation({
   mutation: (input: CreateUserByAdminInput) => {
     const { $trpc } = useNuxtApp()
     return $trpc.users.createUserByAdmin.mutate(input)
   },
   onMutate() {
+    const queryCache = useQueryCache()
+    const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || [];
+    return { approved }
   },
-  onSettled() {
+  onError(error: Error, input: CreateUserByAdminInput, context: { approved?: DisplayUserToAdmin[] }) {
+    const queryCache = useQueryCache()
+    if (context.approved) {
+      queryCache.setQueryData(USERS_QUERY_KEYS.approved(), context.approved)
+    } else {
+      queryCache.setQueryData(USERS_QUERY_KEYS.approved(), [])
+    }
+    showError(error.message, `User ${input.googleGivenName} ${input.googleFamilyName} could not be created.`);
   },
-  onError() {
+  onSuccess(response, input: CreateUserByAdminInput) {
+    const queryCache = useQueryCache()
+    const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || [];
+    const newUser = response as DisplayUserToAdmin
+    queryCache.cancelQueries({key: USERS_QUERY_KEYS.approved(), exact: true})
+    queryCache.setQueryData(USERS_QUERY_KEYS.approved(), [newUser, ...approved])
+    showSuccess(`User ${input.googleGivenName} ${input.googleFamilyName} created successfully.`, `${input.googleGivenName} ${input.googleFamilyName} created`);
   },
-  onSuccess() {
-  },
+})
+return { createUser: mutate, ...mutation }
 })
 
 // Mutation for deleting a user by an admin
@@ -147,7 +164,7 @@ export const setUserAccessByAdmin = defineMutation(() => {
       showError(error.message, `Error setting permissions for ${input.googleGivenName} ${input.googleFamilyName}`);
     },
     onSuccess(_data, input: SetUserAccessByAdminInput) {
-      showSuccess(`Permissions updated successfully for ${input.googleGivenName} ${input.googleFamilyName}`);
+      showSuccess(`Permissions updated successfully. User ${input.googleGivenName} ${input.googleFamilyName} is now ${input.isRetired ? 'retired' : 'active'} and ${input.isAdmin ? 'can administer Firn.' : 'cannot administer Firn.'}`, `${input.googleGivenName} ${input.googleFamilyName} updated`);
     }
   });
 
