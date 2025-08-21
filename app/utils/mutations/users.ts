@@ -147,6 +147,7 @@ export const setUserAccessByAdmin = defineMutation(() => {
     onMutate(input: SetUserAccessByAdminInput) {
       const queryCache = useQueryCache()
       const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || [];
+      const pending = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.pending()) || [];
       const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired()) || [];
   
       // Update the list where the user currently exists 
@@ -191,7 +192,35 @@ export const setUserAccessByAdmin = defineMutation(() => {
         }
       }
 
-      return { approved, retired, updatedApproved, updatedRetired };
+    // If state changed across lists (pending <-> approved), move user between lists optimistically
+    if (pending && approved) {
+      const wasInApproved = approved.some(u => u.googleId === input.googleId)
+      const shouldBePending = !input.isRetired && !input.allowLogin
+
+      if (wasInApproved && shouldBePending) {
+        const user = approved.find(u => u.googleId === input.googleId)!
+        const updatedUser: DisplayUserToAdmin = { ...user } as DisplayUserToAdmin
+        updatedUser.allowLogin = input.allowLogin
+        updatedUser.isRetired = input.isRetired
+        updatedUser.isAdmin = input.isAdmin
+        queryCache.setQueryData(USERS_QUERY_KEYS.approved(), approved.filter(u => u.googleId !== input.googleId))
+        queryCache.setQueryData(USERS_QUERY_KEYS.pending(), [updatedUser, ...(pending ?? [])])
+      }
+
+      const wasInPending = pending.some(u => u.googleId === input.googleId)
+      const shouldBeActive = !input.isRetired && input.allowLogin
+      if (wasInPending && shouldBeActive) {
+        const user = pending.find(u => u.googleId === input.googleId)!
+        const updatedUser: DisplayUserToAdmin = { ...user } as DisplayUserToAdmin
+        updatedUser.allowLogin = input.allowLogin
+        updatedUser.isRetired = input.isRetired
+        updatedUser.isAdmin = input.isAdmin
+        queryCache.setQueryData(USERS_QUERY_KEYS.pending(), pending.filter(u => u.googleId !== input.googleId))
+        queryCache.setQueryData(USERS_QUERY_KEYS.approved(), [updatedUser, ...(approved ?? [])])
+      }
+    }
+
+      return { approved, retired, pending, updatedApproved, updatedRetired};
     },
     onSettled() {
       const queryCache = useQueryCache()
@@ -199,7 +228,7 @@ export const setUserAccessByAdmin = defineMutation(() => {
       queryCache.invalidateQueries({key: USERS_QUERY_KEYS.approved(), exact: true})
       queryCache.invalidateQueries({key: USERS_QUERY_KEYS.retired(), exact: true})
     },
-    onError(error: Error, input ,context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[] }) {
+    onError(error: Error, input ,context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], pending?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[], updatedPending?: DisplayUserToAdmin[] }) {
       const queryCache = useQueryCache()
       // Rollback the optimistic updates
       if (context.approved) {
@@ -207,6 +236,12 @@ export const setUserAccessByAdmin = defineMutation(() => {
       } else {
         // in case we do not have the previous state, rather show an empty table and refetch the data from the server
         queryCache.setQueryData(USERS_QUERY_KEYS.approved(), []);
+      }
+      if (context.pending) {
+        queryCache.setQueryData(USERS_QUERY_KEYS.pending(), context.pending);
+      } else {
+        // in case we do not have the previous state, rather show an empty table and refetch the data from the server
+        queryCache.setQueryData(USERS_QUERY_KEYS.pending(), []);
       }
       if (context.retired) {
         queryCache.setQueryData(USERS_QUERY_KEYS.retired(), context.retired);

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
+import { deleteUserByAdmin, setUserAccessByAdmin } from '~/utils/mutations/users'
 import { NAvatar } from '#components'
 
 
@@ -86,6 +87,36 @@ const formattedUsers = computed(() => {
 })
 
 
+const handleRejection = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
+  const { deleteUser } = deleteUserByAdmin()
+  selectedRows?.forEach(row => {
+    const user = row.original
+    if (user.googleId && user.googleGivenName &&user.googleFamilyName) {
+    deleteUser({
+      googleId: user.googleId,
+      googleGivenName: user.googleGivenName,
+      googleFamilyName: user.googleFamilyName,
+    })}
+  })
+}
+
+const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
+  const { setUserAccess } = setUserAccessByAdmin()
+  selectedRows?.forEach(row => {
+    const user = row.original
+    if (user.googleId && user.googleGivenName &&user.googleFamilyName) { 
+      setUserAccess({
+        googleId: user.googleId,
+        googleGivenName: user.googleGivenName,
+        googleFamilyName: user.googleFamilyName,
+        allowLogin: true,
+        isRetired: false,
+        isAdmin: user.isAdmin,
+      })
+    }
+  })
+}
+
 </script>
 
 <template>
@@ -100,6 +131,8 @@ const formattedUsers = computed(() => {
         tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
       }"
       enable-row-selection
+      empty-text="No pending requests"
+      empty-icon="i-lucide-user-check"
     >
     </NTable>
     <div
@@ -117,12 +150,14 @@ const formattedUsers = computed(() => {
           class="transition delay-300 ease-in-out"
           btn="soft-error hover:outline-error"
           trailing="i-lucide-user-x"
+          @click="handleRejection(table?.getFilteredSelectedRowModel().rows)"
         />
         <NButton
           label="Approve"
           leading="i-lucide-skip-forward"
           class="transition delay-300 ease-in-out"
           btn="soft-primary hover:outline-primary"
+          @click="handleApproval(table?.getFilteredSelectedRowModel().rows)"
         />
       </div>
     </div>

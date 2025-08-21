@@ -111,6 +111,8 @@ watch([relativeDates, includeWeekday, displayTime], () => {
       :una="{
         tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
       }"
+      empty-text="No users"
+      empty-icon="i-lucide-user-search"
     >
       <template #expanded="{ row }">
         <div class="p-2 flex flex-row items-start gap-4">

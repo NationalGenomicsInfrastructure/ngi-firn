@@ -97,7 +97,10 @@ async function onValidating() {
     </NFormField>
 
 
-    <NButton type="submit" btn="soft-primary hover:outline-primary">
+    <NButton type="submit" 
+    btn="soft-primary hover:outline-primary"
+    leading="i-lucide-user-plus"
+    >
       Pre-create user account
     </NButton>
   </form>
