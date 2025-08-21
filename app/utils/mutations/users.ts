@@ -12,13 +12,30 @@ const updateUserInLists = ( updatedUser: SetUserAccessByAdminInput, lists: Array
     if (!list) continue
     const currentList = list as DisplayUserToAdmin[]
     const idx = currentList.findIndex(u => u.googleId === updatedUser.googleId)
-    if (idx !== -1) {
+    if (idx !== -1) { // if the user is found in the list. -1 is returned by findIndex if the user is not found.
+      // slice() method is used to create a shallow copy of a portion of an array into a new array object
       const next = currentList.slice()
       const user: DisplayUserToAdmin = { ...next[idx] } as DisplayUserToAdmin
       user.allowLogin = updatedUser.allowLogin
       user.isRetired = updatedUser.isRetired
       user.isAdmin = updatedUser.isAdmin
+      // The splice() method changes the contents of an array by removing or replacing existing elements and/or adding new elements in place.
       next.splice(idx, 1, user)
+      return next
+    }
+  }
+  return undefined
+}
+
+// Helper function to delete a user from cached lists
+const deleteUserFromLists = (deletedUser: DeleteUserByAdminInput, lists: Array<DisplayUserToAdmin[] | undefined>) => {
+  for (const list of lists) {
+    if (!list) continue
+    const currentList = list as DisplayUserToAdmin[]
+    const idx = currentList.findIndex(u => u.googleId === deletedUser.googleId)
+    if (idx !== -1) {
+      const next = currentList.slice()
+      next.splice(idx, 1)
       return next
     }
   }
@@ -67,17 +84,53 @@ export const deleteUserByAdmin = defineMutation(() => {
     const { $trpc } = useNuxtApp()
     return $trpc.users.deleteUserByAdmin.mutate(input)
   },
-  onMutate() {
+  onMutate(input: DeleteUserByAdminInput) {
     const queryCache = useQueryCache()
+    const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || [];
+    const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired()) || [];
+    const pending = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.pending()) || [];
+
+    const updatedApproved = deleteUserFromLists(input,[approved])
+    if (updatedApproved) {
+      queryCache.cancelQueries({key: USERS_QUERY_KEYS.approved(), exact: true})
+      queryCache.setQueryData(USERS_QUERY_KEYS.approved(), updatedApproved)
+    }
+
+    const updatedRetired = deleteUserFromLists(input,[retired])
+    if (updatedRetired) {
+      queryCache.cancelQueries({key: USERS_QUERY_KEYS.retired(), exact: true})
+      queryCache.setQueryData(USERS_QUERY_KEYS.retired(), updatedRetired)
+    }
+
+    const updatedPending = deleteUserFromLists(input,[pending])
+    if (updatedPending) {
+      queryCache.cancelQueries({key: USERS_QUERY_KEYS.pending(), exact: true})
+      queryCache.setQueryData(USERS_QUERY_KEYS.pending(), updatedPending)
+    }
+    return { approved, retired, pending, updatedApproved, updatedRetired, updatedPending }
   },
   onSettled() {
     const queryCache = useQueryCache()
+    queryCache.invalidateQueries({key: USERS_QUERY_KEYS.approved(), exact: true})
+    queryCache.invalidateQueries({key: USERS_QUERY_KEYS.retired(), exact: true})
+    queryCache.invalidateQueries({key: USERS_QUERY_KEYS.pending(), exact: true})
   },
-  onError() {
+  onError(error: Error, input: DeleteUserByAdminInput, context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], pending?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[], updatedPending?: DisplayUserToAdmin[] }) {
     const queryCache = useQueryCache()
+    // rollback the optimistic updates if possible
+    if (context.approved) {
+      queryCache.setQueryData(USERS_QUERY_KEYS.approved(), context.approved)
+    } 
+    if (context.retired) {
+      queryCache.setQueryData(USERS_QUERY_KEYS.retired(), context.retired)
+    } 
+    if (context.pending) {
+      queryCache.setQueryData(USERS_QUERY_KEYS.pending(), context.pending)
+    } 
+    showError(error.message, `User ${input.googleGivenName} ${input.googleFamilyName} could not be deleted.`);
   },
-  onSuccess() {
-    const queryCache = useQueryCache()
+  onSuccess(response, input: DeleteUserByAdminInput) {
+    showSuccess(`User deleted successfully.`, `${input.googleGivenName} ${input.googleFamilyName} deleted`);
   },
 })
 return { deleteUser: mutate, ...mutation }
