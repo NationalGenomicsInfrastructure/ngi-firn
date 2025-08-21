@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { setUserAccessByAdmin } from '~/utils/mutations/users'
+const { user } = useUserSession()
 
 const props = defineProps<{
   googleId: number
@@ -41,6 +42,11 @@ const translateUserStateToBooleans = (state: string) => {
       return { allowLogin: false, isRetired: false }
   }
 }
+
+// Check if the user is the same as the user being edited
+const isDisabled = computed(() => {
+  return user.value?.givenName == props.googleGivenName && user.value?.familyName == props.googleFamilyName
+})
 
 // Initialize current user state based on props
 const currentUserState = ref(translateBooleansToUserState(props.allowLogin, props.isRetired))
@@ -87,9 +93,11 @@ const handleSave = () => {
   >
     <template #trigger>
       <NButton
-        label="Administer user"
+        :label="isDisabled ? 'Cannot edit self' : 'Administer user'"
         class="transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
+        :trailing="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-pen'"
+        :disabled="isDisabled"
       />
     </template>
 
@@ -121,6 +129,7 @@ const handleSave = () => {
             label="Cancel"
             class="transition delay-300 ease-in-out"
             btn="soft-gray hover:outline-gray"
+            trailing="i-lucide-x"
           />
         </NDialogClose>
         <NDialogClose>
@@ -128,6 +137,7 @@ const handleSave = () => {
             label="Save Changes"
             class="transition delay-300 ease-in-out"
             btn="soft-success hover:outline-success"
+            trailing="i-lucide-user-pen"
             @click="handleSave"
           />
         </NDialogClose>

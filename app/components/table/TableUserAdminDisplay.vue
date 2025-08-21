@@ -182,6 +182,12 @@ watch([relativeDates, includeWeekday, displayTime], () => {
               label="Administer tokens"
               class="transition delay-300 ease-in-out"
               btn="soft-primary hover:outline-primary"
+              trailing="i-lucide-qr-code"
+            />
+            <DialogDeleteUser
+              :google-id="row.original.googleId"
+              :google-given-name="row.original.googleGivenName"
+              :google-family-name="row.original.googleFamilyName"
             />
           </div>
         </div>
