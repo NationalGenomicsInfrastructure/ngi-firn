@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
 import { deleteUserByAdmin, setUserAccessByAdmin } from '~/utils/mutations/users'
@@ -34,22 +34,16 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
   {
     header: 'Requesting account',
     accessorKey: 'user',
-    accessorFn: (row) => {
-      return {
-        fullname: `${row.googleGivenName} ${row.googleFamilyName}`,
-        avatar: row.googleAvatar,
-        email: row.googleEmail
-      }
-    },
-    // you can customize the cell renderer like this as an alternative to slot
-    cell: (info: any) => {
-      const fullname = info.getValue().fullname
-
+    accessorFn: row => `${row.googleGivenName} ${row.googleFamilyName}`,
+    cell: (info: CellContext<DisplayUserToAdmin, unknown>) => {
+      const fullname = info.getValue() as string
+      const avatar = info.row.original.googleAvatar
+      const email = info.row.original.googleEmail
       return h('div', {
         class: 'flex items-center'
       }, [
         h(NAvatar, {
-          src: info.getValue().avatar,
+          src: avatar || undefined,
           alt: fullname
         }),
         [
@@ -61,7 +55,7 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
             }, fullname),
             h('span', {
               class: 'text-sm text-muted'
-            }, info.getValue().email)
+            }, email)
           ])
         ]
       ])
