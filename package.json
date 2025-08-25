@@ -53,6 +53,7 @@
     "@trpc/server": "^11.4.3",
     "@una-ui/nuxt": "0.63.0",
     "h3-zod": "^0.5.3",
+    "jose": "^6.0.13",
     "luxon": "^3.7.1",
     "nuxt": "^4.0.1",
     "nuxt-auth-utils": "^0.5.20",
@@ -77,7 +78,7 @@
     "vue-tsc": "^3.0.3",
     "wrangler": "^4.26.0"
   },
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.15.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",

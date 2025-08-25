@@ -11,7 +11,6 @@ const props = defineProps<{
 
 // Handle save action
 const handleDelete = () => {
-
   const { deleteUser } = deleteUserByAdmin()
   deleteUser({
     googleId: props.googleId,

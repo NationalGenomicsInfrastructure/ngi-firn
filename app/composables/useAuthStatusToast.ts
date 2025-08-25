@@ -39,14 +39,15 @@ export const useAuthStatusToast = () => {
     if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
       const toastClass = getToastClass(newAuthStatus.kind)
       nextTick(() => {
-      toast({
-        title: newAuthStatus.title,
-        description: newAuthStatus.message,
-        closable: true,
-        duration: 6000,
-        showProgress: true,
-        ...toastClass
-      })})
+        toast({
+          title: newAuthStatus.title,
+          description: newAuthStatus.message,
+          closable: true,
+          duration: 6000,
+          showProgress: true,
+          ...toastClass
+        })
+      })
     }
   }, { immediate: true })
 
@@ -54,4 +55,4 @@ export const useAuthStatusToast = () => {
   return {
     authStatusWatcher
   }
-} 
+}

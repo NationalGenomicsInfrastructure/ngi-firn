@@ -128,7 +128,8 @@ export const UserService = {
       // Delete the user
       await couchDB.deleteDocument(user._id, user._rev!)
       return user as FirnUser
-    } else {
+    }
+    else {
       // User not found - return null to indicate that the user does not exist
       return null
     }

@@ -1,11 +1,11 @@
 /**
  * Use this composable to show consistently styled toast notifications in the application.
- * 
+ *
  * Example:
- * 
+ *
  * <script setup lang="ts">
  * const { showSuccess, showError, showWarning, showInfo } = useFirnToast()
- * 
+ *
  * const actions = [
   {
     label: 'Retry',
@@ -25,14 +25,14 @@
   },
 ]
  * </script>
- * 
+ *
  * <template>
  *  <button @click="showSuccess('User created successfully!', 'Success', { actions })">Show Success</button>
  *  <button @click="showError('Failed to save data', 'Error', { actions })">Show Error</button>
  *  <button @click="showWarning('Please check your input', 'Validation Warning', { actions })">Show Warning</button>
  *  <button @click="showInfo('Processing your request...', 'Information', { actions })">Show Info</button>
  * </template>
- * 
+ *
 */
 
 export const useFirnToast = () => {
@@ -98,6 +98,6 @@ export const useFirnToast = () => {
     showSuccess,
     showWarning,
     showError,
-    showInfo,
+    showInfo
   }
-} 
+}

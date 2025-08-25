@@ -38,14 +38,14 @@ Further sources for components can be those projects, which, however, use Tailwi
 - **[BullMQ](https://bullmq.io) for long-running asynchronous tasks (Not needed with currently planned functionality).
 - **[Luxon](https://moment.github.io/luxon/)** for dealing with dates and times.
 - **[Legid](https://github.com/shuding/legid)** to create client-side URIs safely.
-- **[Pinia](https://github.com/vuejs/pinia)** an intuitive, type safe and flexible Store for Vue as Nuxt Module.
-- **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for Pinia to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates).
+- **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for [Pinia](https://github.com/vuejs/pinia) to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates).
+- **[Vue Charts](https://github.com/dennisadriaans/vue-chrts)** for displaying charts.
 - **[Zod](https://github.com/colinhacks/zod)**: TypeScript-first schema validation with static type inference.
 
 ## Users
 
 - **[Jose](https://github.com/panva/jose)**: JWA, JWS, JWE, JWT, JWK, JWKS for Node.js, Browser, Cloudflare Workers, Deno, Bun, and other Web-interoperable runtimes. Combine with native Crypto module from NodeJS and modern browsers for crytpo-safe random numbers.
-- **[Lingui]**(https://github.com/lingui/js-lingui) for translations of the UI (probably not needed).
+- **[Lingui]**(https://github.com/lingui/js-lingui) for internationalization and translations of the UI (probably not needed).
 - **[Permask](https://github.com/dschewchenko/permask)**: A utility library for encoding authorization (access levels) with permission bitmasks.
 
 ## Search

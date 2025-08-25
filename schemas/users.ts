@@ -27,7 +27,7 @@ export const setUserAccessByAdminSchema = z.object({
 export const deleteUserByAdminSchema = z.object({
   googleId: z.number(),
   googleGivenName: z.string(),
-  googleFamilyName: z.string(),
+  googleFamilyName: z.string()
 })
 
 // Inferred types from schemas

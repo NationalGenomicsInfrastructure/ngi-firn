@@ -5,7 +5,6 @@ import { formatDate } from '~/utils/dates/formatting'
 import { deleteUserByAdmin, setUserAccessByAdmin } from '~/utils/mutations/users'
 import { NAvatar } from '#components'
 
-
 const props = defineProps<{
   users: DisplayUserToAdmin[] | undefined
   loading: boolean
@@ -33,13 +32,13 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
     }
   },
   {
-  header: 'Requesting account',
+    header: 'Requesting account',
     accessorKey: 'user',
     accessorFn: (row) => {
       return {
         fullname: `${row.googleGivenName} ${row.googleFamilyName}`,
         avatar: row.googleAvatar,
-        email: row.googleEmail,
+        email: row.googleEmail
       }
     },
     // you can customize the cell renderer like this as an alternative to slot
@@ -47,26 +46,26 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
       const fullname = info.getValue().fullname
 
       return h('div', {
-        class: 'flex items-center',
+        class: 'flex items-center'
       }, [
         h(NAvatar, {
           src: info.getValue().avatar,
-          alt: fullname,
+          alt: fullname
         }),
         [
           h('div', {
-            class: 'ml-2',
+            class: 'ml-2'
           }, [
             h('div', {
-              class: 'text-sm font-semibold leading-none',
+              class: 'text-sm font-semibold leading-none'
             }, fullname),
             h('span', {
-              class: 'text-sm text-muted',
-            }, info.getValue().email),
-          ]),
-        ],
+              class: 'text-sm text-muted'
+            }, info.getValue().email)
+          ])
+        ]
       ])
-    },
+    }
   },
   {
     header: 'Pending since',
@@ -81,42 +80,41 @@ const formattedUsers = computed(() => {
   return props.users?.map((user) => {
     return {
       ...user,
-      createdAt: formatDate(user.createdAt, { relative: true, includeWeekday: true, time: false }),
+      createdAt: formatDate(user.createdAt, { relative: true, includeWeekday: true, time: false })
     }
   })
 })
 
-
 const handleRejection = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
   const { deleteUser } = deleteUserByAdmin()
-  selectedRows?.forEach(row => {
+  selectedRows?.forEach((row) => {
     const user = row.original
-    if (user.googleId && user.googleGivenName &&user.googleFamilyName) {
-    deleteUser({
-      googleId: user.googleId,
-      googleGivenName: user.googleGivenName,
-      googleFamilyName: user.googleFamilyName,
-    })}
+    if (user.googleId && user.googleGivenName && user.googleFamilyName) {
+      deleteUser({
+        googleId: user.googleId,
+        googleGivenName: user.googleGivenName,
+        googleFamilyName: user.googleFamilyName
+      })
+    }
   })
 }
 
 const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
   const { setUserAccess } = setUserAccessByAdmin()
-  selectedRows?.forEach(row => {
+  selectedRows?.forEach((row) => {
     const user = row.original
-    if (user.googleId && user.googleGivenName &&user.googleFamilyName) { 
+    if (user.googleId && user.googleGivenName && user.googleFamilyName) {
       setUserAccess({
         googleId: user.googleId,
         googleGivenName: user.googleGivenName,
         googleFamilyName: user.googleFamilyName,
         allowLogin: true,
         isRetired: false,
-        isAdmin: user.isAdmin,
+        isAdmin: user.isAdmin
       })
     }
   })
 }
-
 </script>
 
 <template>
@@ -133,8 +131,7 @@ const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => 
       enable-row-selection
       empty-text="No pending requests"
       empty-icon="i-lucide-user-check"
-    >
-    </NTable>
+    />
     <div
       class="flex items-center justify-between px-2"
     >

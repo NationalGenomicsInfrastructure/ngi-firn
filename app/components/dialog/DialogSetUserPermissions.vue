@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { setUserAccessByAdmin } from '~/utils/mutations/users'
+
 const { user } = useUserSession()
 
 const props = defineProps<{
@@ -67,7 +68,6 @@ watch(currentUserState, (newState) => {
 
 // Handle save action
 const handleSave = () => {
-
   const { setUserAccess } = setUserAccessByAdmin()
   setUserAccess({
     googleId: props.googleId,
@@ -82,7 +82,6 @@ const handleSave = () => {
   emit('update:allowLogin', formData.value.allowLogin)
   emit('update:isRetired', formData.value.isRetired)
   emit('update:isAdmin', formData.value.isAdmin)
-
 }
 </script>
 
@@ -102,24 +101,24 @@ const handleSave = () => {
     </template>
 
     <div class="grid gap-4 p-4 ml-4">
-        <NRadioGroup
-          v-model="currentUserState"
-          :items="userStateOptions"
-        />
+      <NRadioGroup
+        v-model="currentUserState"
+        :items="userStateOptions"
+      />
 
-        <NFormGroup
-          :label="formData.isAdmin ? `${props.googleGivenName} can administer Firn.` : `${props.googleGivenName} cannot administer Firn.`"
-          class="mt-5 font-semibold"
-        >
-          <NSwitch
-            id="isAdmin"
-            v-model="formData.isAdmin"
-            size="lg"
-            checked-icon="i-lucide-key-round"
-            unchecked-icon="i-lucide-shield-off"
-            :label="`${props.googleGivenName} can administer Firn.`"
-          />
-        </NFormGroup>
+      <NFormGroup
+        :label="formData.isAdmin ? `${props.googleGivenName} can administer Firn.` : `${props.googleGivenName} cannot administer Firn.`"
+        class="mt-5 font-semibold"
+      >
+        <NSwitch
+          id="isAdmin"
+          v-model="formData.isAdmin"
+          size="lg"
+          checked-icon="i-lucide-key-round"
+          unchecked-icon="i-lucide-shield-off"
+          :label="`${props.googleGivenName} can administer Firn.`"
+        />
+      </NFormGroup>
     </div>
 
     <template #footer>

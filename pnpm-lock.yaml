@@ -41,6 +41,9 @@ importers:
       h3-zod:
         specifier: ^0.5.3
         version: 0.5.3(h3@1.15.3)(zod@4.0.8)
+      jose:
+        specifier: ^6.0.13
+        version: 6.0.13
       luxon:
         specifier: ^3.7.1
         version: 3.7.1
@@ -3983,8 +3986,8 @@ packages:
   jose@5.10.0:
     resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
-  jose@6.0.12:
-    resolution: {integrity: sha512-T8xypXs8CpmiIi78k0E+Lk7T2zlK4zDyg+o1CZ4AkOHgDg98ogdP2BeZ61lTFKFyoEwJ9RgAgN+SdM3iPgNonQ==}
+  jose@6.0.13:
+    resolution: {integrity: sha512-Yms4GpbmdANamS51kKK6w4hRlKx8KTxbWyAAKT/MhUMtqbIqh5mb2HjhTNUbk7TFL8/MBB5zWSDohL7ed4k/UA==}
 
   js-base64@3.7.7:
     resolution: {integrity: sha512-7rCnleh0z2CkXhH67J8K1Ytz0b2Y+yxTPL+/KOJoa20hfnVQ/3/T6W/KflYI4bRHRagNeXeU2bkNGI3v1oS/lw==}
@@ -10201,7 +10204,7 @@ snapshots:
 
   jose@5.10.0: {}
 
-  jose@6.0.12: {}
+  jose@6.0.13: {}
 
   js-base64@3.7.7:
     optional: true
@@ -10955,7 +10958,7 @@ snapshots:
 
   openid-client@6.6.2:
     dependencies:
-      jose: 6.0.12
+      jose: 6.0.13
       oauth4webapi: 3.6.0
 
   optionator@0.9.4:

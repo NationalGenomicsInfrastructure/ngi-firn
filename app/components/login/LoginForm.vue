@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { user, session, clear } = useUserSession()
-const { toast } = useToast()
 const route = useRoute()
 const { authStatusWatcher } = useAuthStatusToast()
 
@@ -55,7 +54,6 @@ watch(() => route.query.step, (newLoginStep, oldLoginStep) => {
 }, { immediate: true })
 
 onUnmounted(() => authStatusWatcher && authStatusWatcher())
-
 </script>
 
 <template>

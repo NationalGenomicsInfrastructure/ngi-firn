@@ -71,3 +71,31 @@ The mutation itself is a call to a REST / GraphQL endpoint or a tRPC procedure. 
 By leveraging these lifecycle hooks, you can provide a responsive and robust user experience, handling both optimistic UI updates and error recovery gracefully.
 
 > :warning: Because `useQueryCache()` requires that the pinia instance is already injected into the app, it can only be used inside the callbacks, but not outside. Therefore, the `const queryCache = useQueryCache()` has to be declared separately for each callback, if it needs to be accessed.
+
+### Interacting with the queryCache
+
+Common functions you may often need to interact with the query cache are shown below:
+
+```ts twoslash
+import { useQueryCache } from '@pinia/colada'
+import type { DisplayUserToAdmin } from '~~/types/auth'
+import { approvedUsersQuery, USERS_QUERY_KEYS } from '~/utils/queries/users'
+
+// QAccess the query cache
+const queryCache = useQueryCache()
+
+// Refresh and ensure data is present
+queryCache.refresh(queryCache.ensure(approvedUsersQuery))
+
+// get data from the cache
+const approvedUsers = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved())
+
+// write the local data to the cache. Useful after optimistic updates or as roll-back.
+queryCache.setQueryData(USERS_QUERY_KEYS.approved(), approvedUsers)
+
+// interrupt ongoing queries to the cache from other components
+queryCache.cancelQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
+
+// declare the cache contents invalid. If the data is queried, it will be fetched from the server instead.
+queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
+```

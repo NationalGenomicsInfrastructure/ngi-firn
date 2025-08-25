@@ -3,7 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { createUserByAdminSchema } from '~~/schemas/users'
 import { createUserByAdmin } from '~/utils/mutations/users'
 
-const { showError} = useFirnToast()
+const { showError } = useFirnToast()
 const toastActions = [
   {
     label: 'Retry',
@@ -11,7 +11,7 @@ const toastActions = [
     altText: 'Error',
     onClick: () => {
       onSubmit()
-    },
+    }
   },
   {
     label: 'Dismiss',
@@ -19,14 +19,14 @@ const toastActions = [
     altText: 'Error',
     onClick: () => {
       resetForm()
-    },
-  },
+    }
+  }
 ]
 
 const formSchema = toTypedSchema(createUserByAdminSchema)
 
 const { handleSubmit, validate, errors, resetForm } = useForm({
-  validationSchema: formSchema,
+  validationSchema: formSchema
 })
 const onSubmit = handleSubmit(async (values) => {
   try {
@@ -36,14 +36,15 @@ const onSubmit = handleSubmit(async (values) => {
     if (result) {
       // Success message is handled by mutation
       resetForm()
-    } else {
+    }
+    else {
       showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created.`, 'Account creation error', { actions: toastActions })
     }
-  } catch (error) {
+  }
+  catch (error) {
     showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created: ${error}`, 'Account creation error', { actions: toastActions })
   }
 })
-
 
 async function onValidating() {
   await validate()
@@ -66,7 +67,7 @@ async function onValidating() {
     class="mx-auto max-w-sm p-4 space-y-4"
     @submit.prevent="onValidating()"
   >
-  <NFormField
+    <NFormField
       name="googleGivenName"
       label="First name"
     >
@@ -96,10 +97,10 @@ async function onValidating() {
       />
     </NFormField>
 
-
-    <NButton type="submit" 
-    btn="soft-primary hover:outline-primary"
-    leading="i-lucide-user-plus"
+    <NButton
+      type="submit"
+      btn="soft-primary hover:outline-primary"
+      leading="i-lucide-user-plus"
     >
       Pre-create user account
     </NButton>

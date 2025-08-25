@@ -53,7 +53,7 @@ export default defaultConfig({
     'bg-base',
     // Toast icons - need to be available immediately for composables
     'i-lucide-circle-check',
-    'i-lucide-triangle-alert', 
+    'i-lucide-triangle-alert',
     'i-lucide-circle-x',
     'i-lucide-info'
   ],

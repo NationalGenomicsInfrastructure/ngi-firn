@@ -28,7 +28,10 @@ defineProps<{
       >
         <NSidebarMenuItem>
           <NCollapsibleTrigger as-child>
-            <NSidebarMenuButton :tooltip="item.title" btn="hover:outline-primary">
+            <NSidebarMenuButton
+              :tooltip="item.title"
+              btn="hover:outline-primary"
+            >
               <NIcon
                 v-if="item.icon"
                 :name="item.icon"

@@ -32,19 +32,19 @@ const pendingUsers = computed(() => pendingUsersState.value.status === 'success'
           :users="pendingUsers"
           :loading="isLoading"
         />
-    </div>
-    <NCard
-      title="Invite a new user to Firn"
-      description="Users with a SciLifeLab Google account can be invited to Firn and will directly be approved to login to the system"
-      card="outline"
-      :una="{
-        cardTitle: 'text-center scroll-m-20 font-semibold text-primary-700 dark:text-primary-400 text-lg lg:text-xl',
-        cardContent: 'space-y-4',
-        cardDescription: 'text-muted',
-      }"
-    >
-      <FormUserAdminInvite />
-    </NCard>
+      </div>
+      <NCard
+        title="Invite a new user to Firn"
+        description="Users with a SciLifeLab Google account can be invited to Firn and will directly be approved to login to the system"
+        card="outline"
+        :una="{
+          cardTitle: 'text-center scroll-m-20 font-semibold text-primary-700 dark:text-primary-400 text-lg lg:text-xl',
+          cardContent: 'space-y-4',
+          cardDescription: 'text-muted'
+        }"
+      >
+        <FormUserAdminInvite />
+      </NCard>
     </div>
   </div>
 </template>
