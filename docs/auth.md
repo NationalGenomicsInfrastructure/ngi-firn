@@ -42,7 +42,7 @@ NUXT_OAUTH_GITHUB_CLIENT_SECRET="my-github-oauth-app-secret"
 
 #### Google
 
-Please follow [the manual on how to configure your Google OAuth app](https://developers.google.com/identity/protocols/oauth2) here.You can [create a Google Oauth project on the developers' console](https://console.developers.google.com). In contrast to GitHub, Google allows to specify multiple URLs for the home page and callback. Hence, the same app could be used for the development and production instance. Nonetheless, it is advisable to separate the two.
+Please follow [the manual on how to configure your Google OAuth app](https://developers.google.com/identity/protocols/oauth2) here. You can [create a Google Oauth project on the developers' console](https://console.developers.google.com). In contrast to GitHub, Google allows to specify multiple URLs for the home page and callback. Hence, the same app could be used for the development and production instance. Nonetheless, it is advisable to separate the two.
 
 For the development OAuth app, you need to set in the Google developers' console:
 

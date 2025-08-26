@@ -33,6 +33,11 @@ Further sources for components can be those projects, which, however, use Tailwi
 2. **[Shadcn-Vue](https://www.shadcn-vue.com/)**, Vue UI Framework with Tailwind-styled blocks and components.
 3. **[Inspira UI](https://github.com/unovue/inspira-ui)**, another Nuxt/Vue UI framework.
 
+### User experience
+
+- **[FloatingUI](https://floating-ui.com/docs/vue)**: A library that allows to create draggable floating UI elements and provides helper functions for interactions of them. Could possibly be used to create visual representations of the freezers and allow assigning plates to positions with a drag and drop user interface.
+- **[Slate](https://github.com/ianstormtaylor/slate)**: A rich text editor that would allow using and editing Markdown in the user interface.
+
 ## Data
 
 - **[BullMQ](https://bullmq.io) for long-running asynchronous tasks (Not needed with currently planned functionality).
