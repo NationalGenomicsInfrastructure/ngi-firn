@@ -1,0 +1,10 @@
+
+// The actual token is not stored, just an ID and a timestamp for expiration
+
+export interface FirnUserToken {
+  type: 'firn-token'
+  schema: 1
+  tokenID: string
+  expiresAt: string
+  createdAt: string
+}
