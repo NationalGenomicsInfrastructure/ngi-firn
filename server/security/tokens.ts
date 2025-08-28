@@ -1,5 +1,9 @@
 import 'dotenv/config'
 import type { H3Event } from 'h3'
+import type { FirnUser } from '../../types/auth';
+import type { FirnJWTPayload, FirnUserToken } from '../../types/tokens'
+import { couchDB } from '../database/couchdb';
+import { DateTime } from 'luxon';
 
 // generates a symmetric key that can be used for signing and verifying JWTs.
 const { createSecretKey } = require('crypto');
@@ -25,6 +29,7 @@ const { jwtVerify } = require('jose-node-cjs-runtime/jwt/verify');
  * 
  * ISSUE TOKENS:
  * generateToken(userId, expiresAt) - Generate a token for the given user ID and expiration time
+ * generateTokenWithClaims(userId, audience, expiresAt) - Generate a token for the given user ID and audience and expiration time
  */
 
 export class TokenHandler {
@@ -34,13 +39,14 @@ export class TokenHandler {
     constructor() {
         // derive a symmetric key from the session password
         this.secretKey = createSecretKey(process.env.NUXT_SESSION_PASSWORD, 'utf-8');
-        this.issuer = process.env.NUXT_APP_URL || 'NGI-FIRN'
+        this.issuer = `urn:${(process.env.NUXT_APP_URL ?? 'NGI-FIRN').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        console.log('issuer', this.issuer);
     }
 
     /*
      * Extract a token from a H3 server event if it exists - typically from an API request (REST / tRPC)
      */
-    async extractTokenFromHeader(event: H3Event): Promise<string | undefined> {
+    public async extractTokenFromHeader(event: H3Event): Promise<string | undefined> {
         const authHeader = getRequestHeader(event, 'authorization');
         if (authHeader) {
             const [method, token] = authHeader.split(' ');
@@ -50,42 +56,112 @@ export class TokenHandler {
         }
     }
 
-    async verifyToken(token: string): Promise<{ success: boolean; payload?: any; error?: string }> {
+    private async verifyToken(token: string): Promise<{ success: boolean; payload?: FirnJWTPayload; error?: string }> {
         try {
             const { payload } = await jwtVerify(token, this.secretKey, {
             issuer: this.issuer,
             algorithms: ['HS256']
             });
             return { success: true, payload };
-        } catch (error: unknown) {
+        } catch (error) {
             return { success: false, error: (error as Error).message };
         }
     }
     
-    async verifyTokenWithPublicClaims(token: string, expectedAudience: string): Promise<{ success: boolean; payload?: any; error?: string }> {
+    private async verifyTokenWithPublicClaims(token: string, expectedAudience: string): Promise<{ success: boolean; payload?: FirnJWTPayload; error?: string }> {
         try {
             const { payload } = await jwtVerify(token, this.secretKey, {
             issuer: this.issuer,
-            audience: expectedAudience,
+            audience: `urn:${expectedAudience}`,
             algorithms: ['HS256']
             });
-            return { success: true, payload };
-        } catch (error: unknown) {
+            return { success: true, payload: payload };
+        } catch (error) {
             return { success: false, error: (error as Error).message };
         }
     }
 
-    // generate a JWT for the given user ID and expiration time
-    async generateTokenWithPublicClaims(payload: any, audience: string, expiresAt?: string): Promise<string> {
-        const token = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setIssuer(this.issuer)
-        .setAudience(audience)
-        .setExpirationTime(expiresAt)
-        .sign(this.secretKey);
-        return token;
+    // generate a JWT for the given audience and expiration time
+    private async generateTokenWithPublicClaims(payload: FirnJWTPayload, audience?: string, expiresAt?: string): Promise<string> {
+        let token: string;
+        // optionally a token without any specific audience to allow requesting any resource can be created
+        if (audience == ''){
+            token = await new SignJWT(payload)
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuedAt()
+            .setIssuer(this.issuer)
+            .setExpirationTime(expiresAt)
+            .sign(this.secretKey);
+        } else {
+            token = await new SignJWT(payload)
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuedAt()
+            .setIssuer(this.issuer)
+            .setAudience(`urn:${audience}`)
+            .setExpirationTime(expiresAt)
+            .sign(this.secretKey);
         }
+        return token
+    }
+    
+    public async generateFirnUserToken(user: FirnUser, audience?: string, expiresAt?: string): Promise<{jwt: string, user: FirnUser} | null> {
+
+        // retrieve existing user tokens
+        const userTokens = user.tokens as FirnUserToken[]
+
+        // get a unique token ID for that user
+        let newTokenID: string;
+        do {
+            newTokenID = Math.random().toString(36).substring(3,10);
+        } while (userTokens.some(token => token.tokenID === newTokenID));
+
+
+        // generate new token payload
+        const payload: FirnJWTPayload = {
+            tokenID: newTokenID,
+            firnUser: user._id
+        }
+
+        // default to one year
+        if (!expiresAt) {
+            expiresAt = DateTime.now().plus({ years: 1 }).toISO();
+        } 
+
+        // no specific audience given
+        if (!audience) {
+            audience = ''
+        }
+
+        const newToken: FirnUserToken = {
+            type: 'firn-token',
+            schema: 1,
+            tokenID: payload.tokenID,
+            audience: audience,
+            expiresAt: expiresAt,
+            lastUsedAt: DateTime.now().toISO(),
+            createdAt: DateTime.now().toISO()    
+        }
+
+        // update the user tokens with the new token
+        const updatedUserTokens = userTokens.concat([newToken]);
+        const updatedUser: Partial<FirnUser> = {
+            lastSeenAt: DateTime.now().toISO(),
+            tokens: updatedUserTokens
+        }
+
+        const jwt = await this.generateTokenWithPublicClaims(payload, audience, expiresAt)
+
+        if (user && jwt) {
+            // Update the user
+            const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
+            if (result) {
+                return {jwt, user: { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser}
+            }
+        }
+        return null
+    }
+
+
 }
 
 // Export a singleton instance with default configuration

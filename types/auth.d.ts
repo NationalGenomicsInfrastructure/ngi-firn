@@ -1,4 +1,5 @@
 import type { BaseDocument } from '../server/database/couchdb'
+import type { FirnUserToken } from './tokens'
 
 // Full user object as it is stored in the database
 export interface FirnUser extends BaseDocument {
@@ -26,7 +27,7 @@ export interface FirnUser extends BaseDocument {
   isRetired: boolean
   isAdmin: boolean
   permissions: string[]
-  tokens: string[]
+  tokens: FirnUserToken[]
   // User-related collections
   todos: string[]
   preferences: string[]
@@ -96,7 +97,7 @@ export interface DisplayUserToAdmin {
   isRetired: boolean
   isAdmin: boolean
   permissions: string[]
-  tokens: string[]
+  tokens: FirnUserToken[]
 }
 
 // Auth status object to render toast notifications in the UI, amended to the UserSession interface
