@@ -56,6 +56,40 @@ export class TokenHandler {
         }
     }
 
+    public async verifyFirnUserToken(token: string, expectedAudience?: string): Promise<{user: FirnUser | null, error?: string}> {
+
+        let success: boolean = false;
+        let payload: FirnJWTPayload | undefined
+        let error: string | undefined
+
+        if (expectedAudience) {
+            const { success, payload, error } = await this.verifyTokenWithPublicClaims(token, expectedAudience)
+        } else {
+            const { success, payload, error } = await this.verifyToken(token)
+        }
+
+        if (error) {
+            return { user: null, error: error }
+        }
+
+        if (success && payload) {
+            const user = await couchDB.getDocument<FirnUser>(payload.firnUser)
+            if (user) {
+                const userTokens = user.tokens as FirnUserToken[]
+                const existingToken = userTokens.find((token) => token.tokenID === payload.tokenID)
+                if (existingToken) {
+                    return { user: user }
+                } else {
+                    return { user: null, error: "Token ID not found in user tokens" }
+                }
+            } else {
+                return { user: null, error: "User not found" }
+            }
+        } else {
+            return { user: null, error: "Token verification failed" }
+        }
+    }
+
     private async verifyToken(token: string): Promise<{ success: boolean; payload?: FirnJWTPayload; error?: string }> {
         try {
             const { payload } = await jwtVerify(token, this.secretKey, {
@@ -145,7 +179,6 @@ export class TokenHandler {
         // update the user tokens with the new token
         const updatedUserTokens = userTokens.concat([newToken]);
         const updatedUser: Partial<FirnUser> = {
-            lastSeenAt: DateTime.now().toISO(),
             tokens: updatedUserTokens
         }
 
@@ -156,6 +189,31 @@ export class TokenHandler {
             const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
             if (result) {
                 return {jwt, user: { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser}
+            }
+        }
+        return null
+    }
+
+    public async deleteFirnUserToken(user: FirnUser, tokenID: string): Promise<FirnUser | null> {
+
+        // retrieve existing user tokens
+        const userTokens = user.tokens as FirnUserToken[]
+
+        const existingToken = userTokens.find((token) => token.tokenID === tokenID)
+        if (existingToken) {
+            // remove the existing token
+            userTokens.splice(userTokens.indexOf(existingToken), 1)
+        }
+
+        const updatedUser: Partial<FirnUser> = {
+            tokens: userTokens
+        }
+
+        if (user && existingToken) {
+            // Update the user
+            const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
+            if (result) {
+                return { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser
             }
         }
         return null
