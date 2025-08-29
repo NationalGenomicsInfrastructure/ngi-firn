@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { UserService } from '../crud/users'
 import type { SessionUser, SessionUserSecure, FirnUser } from '../../types/auth'
 import type { Context } from '../../types/trpc'
+import { tokenHandler } from '../security/tokens'
 
 // The tRPC context is only server-side, the client can't access it.
 // It is therefore safe to put the private parts of the session in the context.
@@ -13,10 +14,22 @@ export const createTRPCContext = async (event: H3Event): Promise<Context> => {
   const sessionUser = session?.user as SessionUser
   const sessionUserSecure = session?.secure as SessionUserSecure
 
+  // Sessions are the primary way to authenticate a user, but we also support token authentication
   if (!sessionUser && !sessionUserSecure) {
-    return {} as Context
-  }
-  else {
+    // No existing session, let's try to extract an authorization token from the request
+    const token = await tokenHandler.extractTokenFromHeader(event)
+    if (token && token.length > 0) {
+      // in the baseProcedure, we just add a transmitted authorization token to the context. 
+      // Otherwise, each tRPC request would trigger a database query to verify the token.
+      // The verification is done in the tokenAuth middleware only, so we can allow token authentication 
+      // for specific tRPC procedures only.
+        return {
+            token: token
+          } as Context
+      } else {
+        return {} as Context
+      }
+  } else {
     return {
       user: sessionUser,
       secure: sessionUserSecure
@@ -88,7 +101,45 @@ const getFirnUser = t.middleware(async ({ ctx, next }) => {
   }
 })
 
+// Middleware to authenticate a user with a token
+const hasValidToken = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.token) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authorization header required' })
+  }
+
+  // verify the token without a particular audience
+  const result = await tokenHandler.verifyFirnUserToken(ctx.token)
+
+  if (result.error) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error })
+  }
+
+  if (result.user) {
+    // convert the user object to a session user object
+    const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(result.user as FirnUser, 'token')
+
+    if(!sessionUserSecure.allowLogin) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Your user account has been suspended and is not allowed to login'})
+    }
+
+    if(sessionUserSecure.isRetired) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Your user account has been retired' })
+    }
+
+    return next({
+      // drop the token from the context, switch to session authentication
+      ctx: {
+        user: sessionUser,
+        secure: sessionUserSecure
+      }
+    })
+  } else {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token' })
+  }
+})
+
 // Export procedures with middleware
 export const authedProcedure = baseProcedure.use(isAuthed) // For endpoints that require authentication
 export const adminProcedure = baseProcedure.use(isAdmin) // For endpoints that require admin permissions
 export const firnUserProcedure = baseProcedure.use(getFirnUser) // For endpoints that need the full user object from the database
+export const tokenProcedure = baseProcedure.use(hasValidToken) // For endpoints that allow token authentication
