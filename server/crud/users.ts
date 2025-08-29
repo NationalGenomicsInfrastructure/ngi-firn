@@ -10,6 +10,7 @@
  * linkGitHubUser(user, githubUser) - Link a GitHubUser to a FirnUser
  * MATCHING - QUERYING WITH DIFFERENT INPUTS AND GET FULL USER OBJECT:
  * matchGoogleUser(oauthUser) - Match a Google OAuth user to a FirnUser based on Google ID
+ * matchGoogleUserByGoogleId(googleId) - Match a GoogleID to a FirnUser
  * matchGitHubUser(oauthUser) - Match a GitHub OAuth user to a FirnUser based on GitHub ID
  * matchSessionUserSecure(sessionUserSecure) - Match a SessionUserSecure to a FirnUser
  * LISTING USERS:
@@ -25,7 +26,7 @@
 import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
-import type { FirnUser, GoogleUser, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
+import type { FirnUser, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
 
 export const UserService = {
@@ -261,6 +262,30 @@ export const UserService = {
       }
     }
   },
+
+  /*
+   * Match a GoogleID/e-mail to a FirnUser - needed for some admin actions on other users.
+   * Returns null if no user is found, allowing for conditional handling
+   */
+    async matchGoogleUserByGoogleQuery(googleQuery: GoogleUserQuery): Promise<FirnUser | null> {
+      // First, try to find user by Google ID (Google is source of truth)
+      const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
+        type: 'user',
+        googleId: googleQuery.googleId
+      })
+
+      if (existingUserByGoogleId.length > 0) {
+          const user = existingUserByGoogleId[0] as FirnUser
+          // check if it is really the correct user based on e-mail
+          if (user.googleEmail === googleQuery.googleEmail){
+            return user as FirnUser
+          } else {
+            return null
+          }
+      } else {
+        return null
+      }
+    },
 
   /*
    * Match a GitHub OAuth user to a FirnUser based on GitHub ID

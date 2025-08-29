@@ -1,7 +1,7 @@
 import { createTRPCRouter, adminProcedure, baseProcedure, firnUserProcedure } from '../init'
 import {UserService} from '../../crud/users'
 import { tokenHandler } from '../../security/tokens'
-import type { DisplayUserToAdmin, GoogleUser, FirnUser } from '~~/types/auth'
+import type { DisplayUserToAdmin, GoogleUserQuery, FirnUser } from '~~/types/auth'
 import { generateFirnUserTokenSchema, deleteFirnUserTokenSchema, validateFirnUserTokenSchema, deleteUserTokenByAdminSchema } from '~~/schemas/tokens'
 import { TRPCError } from '@trpc/server'
 
@@ -47,19 +47,29 @@ export const tokensRouter = createTRPCRouter({
       return null
     }),
 
-  // ToDO
   deleteUserTokenByAdmin: adminProcedure
     .input(deleteUserTokenByAdminSchema)
     .mutation(async ({ input }): Promise<DisplayUserToAdmin | null> => {
-      const googleUser: Partial<GoogleUser> = {
+
+      // construct the query object to retrieve the full user object
+      const query: GoogleUserQuery = {
         provider: 'google',
         googleId: input.googleId,
         googleEmail: input.googleEmail
       }
-      const firnUser = await UserService.matchGoogleUser(googleUser)
+
+      // get the full user object by Google ID and e-mail
+      const firnUser = await UserService.matchGoogleUserByGoogleQuery(query)
+      if (!firnUser) {
+        return null
+      }
+
       const deletedTokenUser = await tokenHandler.deleteFirnUserToken(firnUser, input.tokenID)
+      
       if (deletedTokenUser) {
         return await UserService.convertToDisplayUserToAdmin(deletedTokenUser)
       }
       return null
-})
+}),
+
+}) 

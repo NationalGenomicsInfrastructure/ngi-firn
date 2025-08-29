@@ -45,6 +45,13 @@ export interface GoogleUser extends Partial<FirnUser> {
   googleEmailVerified: boolean
 }
 
+// Google user query object, used for matching a user by Google ID and e-mail
+export interface GoogleUserQuery extends Partial<FirnUser> {
+  provider: 'google'
+  googleId: number
+  googleEmail: string
+}
+
 // GitHub OAuth user object
 export interface GitHubUser extends Partial<FirnUser> {
   provider: 'github'

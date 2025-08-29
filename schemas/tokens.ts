@@ -19,6 +19,7 @@ export const validateFirnUserTokenSchema = z.object({
 // Input schema for deleting a token by an admin
 export const deleteUserTokenByAdminSchema = z.object({
     googleId: z.number(),
+    googleEmail: z.string(),
     tokenID: z.string(),
 })
 
