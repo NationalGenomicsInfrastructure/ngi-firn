@@ -56,7 +56,7 @@ export class TokenHandler {
         }
     }
 
-    public async verifyFirnUserToken(token: string, expectedAudience?: string): Promise<{user: FirnUser | null, error?: string}> {
+    public async verifyFirnUserToken(token: string, expectedAudience?: string): Promise<{user: FirnUser | null, token: FirnUserToken | null, error?: string}> {
 
         let success: boolean = false;
         let payload: FirnJWTPayload | undefined
@@ -69,7 +69,7 @@ export class TokenHandler {
         }
 
         if (error) {
-            return { user: null, error: error }
+            return { user: null, token: null, error: error }
         }
 
         if (success && payload) {
@@ -78,15 +78,15 @@ export class TokenHandler {
                 const userTokens = user.tokens as FirnUserToken[]
                 const existingToken = userTokens.find((token) => token.tokenID === payload.tokenID)
                 if (existingToken) {
-                    return { user: user }
+                    return { user: user, token: existingToken }
                 } else {
-                    return { user: null, error: "Token ID not found in user tokens" }
+                    return { user: null, token: null, error: "Token ID not found in user tokens" }
                 }
             } else {
-                return { user: null, error: "User not found" }
+                return { user: null, token: null, error: "User not found" }
             }
         } else {
-            return { user: null, error: "Token verification failed" }
+            return { user: null, token: null, error: "Token verification failed" }
         }
     }
 

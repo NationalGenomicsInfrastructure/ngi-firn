@@ -1,7 +1,8 @@
-import { createTRPCRouter, adminProcedure, baseProcedure, firnUserProcedure } from '../init'
+import { createTRPCRouter, adminProcedure, authedProcedure, firnUserProcedure } from '../init'
 import {UserService} from '../../crud/users'
 import { tokenHandler } from '../../security/tokens'
-import type { DisplayUserToAdmin, GoogleUserQuery, FirnUser } from '~~/types/auth'
+import type { DisplayUserToAdmin, GoogleUserQuery } from '~~/types/auth'
+import type { FirnUserToken } from '~~/types/tokens'
 import { generateFirnUserTokenSchema, deleteFirnUserTokenSchema, validateFirnUserTokenSchema, deleteUserTokenByAdminSchema } from '~~/schemas/tokens'
 import { TRPCError } from '@trpc/server'
 
@@ -36,13 +37,16 @@ export const tokensRouter = createTRPCRouter({
       return null
     }),
 
-  // ToDO
-  validateFirnUserToken: baseProcedure
+  // a user has authenticated with a token, this verifies the token and returns the tokens metadata stored in the database
+  validateFirnUserToken: authedProcedure
     .input(validateFirnUserTokenSchema)
-    .mutation(async ({ input }): Promise<DisplayUserToAdmin | null> => {
-      const updatedUser = await UserService.setUserAccessByAdmin(input)
-      if (updatedUser) {
-        return await UserService.convertToDisplayUserToAdmin(updatedUser)
+    .mutation(async ({ input }): Promise<FirnUserToken | null> => {
+      const result = await tokenHandler.verifyFirnUserToken(input.tokenString, input.expectedAudience)
+      if (result.user && result.token) {
+        return result.token
+      }
+      if (result.error) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error })
       }
       return null
     }),

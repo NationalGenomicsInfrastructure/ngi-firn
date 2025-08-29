@@ -13,7 +13,8 @@ export const deleteFirnUserTokenSchema = z.object({
 
 // Input schema for validating a token
 export const validateFirnUserTokenSchema = z.object({
-    tokenID: z.string(),
+    tokenString: z.string(),
+    expectedAudience: z.string().optional(),
 })
 
 // Input schema for deleting a token by an admin
