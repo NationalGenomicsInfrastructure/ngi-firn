@@ -107,8 +107,8 @@ const hasValidToken = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authorization header required' })
   }
 
-  // verify the token without a particular audience
-  const result = await tokenHandler.verifyFirnUserToken(ctx.token)
+  // verify that it is a valid user token (aka general auth token)
+  const result = await tokenHandler.verifyFirnUserToken(ctx.token, 'user')
 
   if (result.error) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error })
