@@ -1,3 +1,4 @@
+import * as jose from 'jose'
 // The actual token is not stored, just an ID and a timestamp for expiration
 
 export interface FirnUserToken {
@@ -10,7 +11,7 @@ export interface FirnUserToken {
   lastUsedAt: string
 }
 
-export interface FirnJWTPayload {
+export interface FirnJWTPayload extends jose.JWTPayload {
   tokenID: string
   firnUser: string
 }

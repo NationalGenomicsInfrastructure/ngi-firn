@@ -6,14 +6,11 @@ import { couchDB } from '../database/couchdb';
 import { DateTime } from 'luxon';
 
 // generates a symmetric key that can be used for signing and verifying JWTs.
-const { createSecretKey } = require('crypto');
+import { createSecretKey } from 'crypto';
 
 // uses the JSON Web Signature (JWS) specification to create a signature for the JWT using the previously generated symmetric key.
-const { SignJWT } = require('jose-node-cjs-runtime/jwt/sign');
-
 // provides a function to verify the signature of a JWT using the previously generated symmetric key.
-const { jwtVerify } = require('jose-node-cjs-runtime/jwt/verify');
-
+import { jwtVerify, SignJWT } from 'jose';
 
 /*
  * Token Handler - Table of Contents
@@ -38,7 +35,11 @@ export class TokenHandler {
 
     constructor() {
         // derive a symmetric key from the session password
-        this.secretKey = createSecretKey(process.env.NUXT_SESSION_PASSWORD, 'utf-8');
+        if (!process.env.NUXT_SESSION_PASSWORD) {
+            throw new Error('NUXT_SESSION_PASSWORD is not set in environment variables, cannot generate tokens');
+        }
+        const keyObject = createSecretKey(process.env.NUXT_SESSION_PASSWORD, 'utf-8');
+        this.secretKey = new Uint8Array(keyObject.export());
         this.issuer = `urn:${(process.env.NUXT_APP_URL ?? 'NGI-FIRN').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
         console.log('issuer', this.issuer);
     }
@@ -96,7 +97,7 @@ export class TokenHandler {
             issuer: this.issuer,
             algorithms: ['HS256']
             });
-            return { success: true, payload };
+            return { success: true, payload: payload as FirnJWTPayload };
         } catch (error) {
             return { success: false, error: (error as Error).message };
         }
@@ -109,7 +110,7 @@ export class TokenHandler {
             audience: `urn:${expectedAudience}`,
             algorithms: ['HS256']
             });
-            return { success: true, payload: payload };
+            return { success: true, payload: payload as FirnJWTPayload };
         } catch (error) {
             return { success: false, error: (error as Error).message };
         }
@@ -124,7 +125,7 @@ export class TokenHandler {
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
             .setIssuer(this.issuer)
-            .setExpirationTime(expiresAt)
+            .setExpirationTime(expiresAt ?? DateTime.now().plus({ years: 1 }).toISO())
             .sign(this.secretKey);
         } else {
             token = await new SignJWT(payload)
@@ -132,7 +133,7 @@ export class TokenHandler {
             .setIssuedAt()
             .setIssuer(this.issuer)
             .setAudience(`urn:${audience}`)
-            .setExpirationTime(expiresAt)
+            .setExpirationTime(expiresAt ?? DateTime.now().plus({ years: 1 }).toISO())
             .sign(this.secretKey);
         }
         return token
