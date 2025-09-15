@@ -119,8 +119,9 @@ const { setOpen, toggleSidebar } = useSidebar()
       </NSidebarHeader>
       <!-- This is the slot for the page-specific main navigation -->
       <slot name="sidebar-main-navigation" />
-      <MenuInventory v-if="activeMenu === 'inventory'" />
       <MenuAdministration v-if="activeMenu === 'administration'" />
+      <MenuInventory v-if="activeMenu === 'inventory'" />
+      <MenuSettings v-if="activeMenu === 'settings'" />
     </NSidebar>
   </NSidebar>
 </template>

@@ -28,7 +28,7 @@ const navs = [
     label: 'Tokens',
     leading: 'i-lucide-key-round',
     onClick: () => {
-      navigateTo('/tokens')
+      navigateTo('/settings/tokens')
     }
   },
   {
