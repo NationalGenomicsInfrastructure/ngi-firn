@@ -410,7 +410,7 @@ export const UserService = {
   },
 
   /*
-   * Convert a FirnUser to a DisplayUserToAdmin
+   * Convert a FirnUser to a DisplayUserToAdmin (also used for displaying comprehensive user information to self)
    */
   async convertToDisplayUserToAdmin(user: FirnUser): Promise<DisplayUserToAdmin> {
     const displayUser: DisplayUserToAdmin = {

@@ -145,6 +145,7 @@ export class TokenHandler {
         const userTokens = user.tokens as FirnUserToken[]
 
         // get a unique token ID for that user
+        // while loop continues until a unique token ID is found by randomly generating a string and checking if it is already in the user tokens
         let newTokenID: string;
         do {
             newTokenID = Math.random().toString(36).substring(3,10);

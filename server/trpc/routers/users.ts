@@ -1,10 +1,22 @@
-import { createTRPCRouter, adminProcedure } from '../init'
+import { createTRPCRouter, adminProcedure, firnUserProcedure } from '../init'
 import { UserService } from '../../crud/users'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { createUserByAdminSchema, deleteUserByAdminSchema, setUserAccessByAdminSchema } from '~~/schemas/users'
+import { TRPCError } from '@trpc/server'
 
 export const usersRouter = createTRPCRouter({
+
+  getUserInfoSelf: firnUserProcedure
+    .query(async ({ ctx }): Promise<DisplayUserToAdmin> => {
+      if (!ctx.firnUser) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
+      const user = await UserService.convertToDisplayUserToAdmin(ctx.firnUser)
+      return user
+    }),
+
   // Admin procedures for user management
+
   getPendingUsers: adminProcedure
     .query(async (): Promise<DisplayUserToAdmin[]> => {
       const users = await UserService.getPendingUsers()
