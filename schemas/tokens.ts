@@ -2,26 +2,26 @@ import { z } from 'zod'
 
 // Input schema for creating an own token
 export const generateFirnUserTokenSchema = z.object({
-    expiresAt: z.date(),
-    audience: z.string().optional()
+  expiresAt: z.date(),
+  audience: z.string().optional()
 })
 
 // Input schema for deleting an own token
 export const deleteFirnUserTokenSchema = z.object({
-    tokenID: z.string(),
+  tokenID: z.string()
 })
 
 // Input schema for validating a token
 export const validateFirnUserTokenSchema = z.object({
-    tokenString: z.string(),
-    expectedAudience: z.string().optional(),
+  tokenString: z.string(),
+  expectedAudience: z.string().optional()
 })
 
 // Input schema for deleting a token by an admin
 export const deleteUserTokenByAdminSchema = z.object({
-    googleId: z.number(),
-    googleEmail: z.string(),
-    tokenID: z.string(),
+  googleId: z.number(),
+  googleEmail: z.string(),
+  tokenID: z.string()
 })
 
 // Inferred types from schemas

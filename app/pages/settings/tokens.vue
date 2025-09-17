@@ -15,14 +15,14 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
 </script>
 
 <template>
-    <div>
-      <PageTitle
-        title="Tokens"
-        description="Manage your access tokens."
-      />
-      <PageHeadline
-        section="Your tokens"
-      />
-      {{ selfUser }}
+  <div>
+    <PageTitle
+      title="Tokens"
+      description="Manage your access tokens."
+    />
+    <PageHeadline
+      section="Your tokens"
+    />
+    {{ selfUser }}
   </div>
 </template>

@@ -1,4 +1,4 @@
-import * as jose from 'jose'
+import type * as jose from 'jose'
 // The actual token is not stored, just an ID and a timestamp for expiration
 
 export interface FirnUserToken {

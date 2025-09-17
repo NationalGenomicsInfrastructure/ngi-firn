@@ -19,17 +19,19 @@ export const createTRPCContext = async (event: H3Event): Promise<Context> => {
     // No existing session, let's try to extract an authorization token from the request
     const token = await tokenHandler.extractTokenFromHeader(event)
     if (token && token.length > 0) {
-      // in the baseProcedure, we just add a transmitted authorization token to the context. 
+      // in the baseProcedure, we just add a transmitted authorization token to the context.
       // Otherwise, each tRPC request would trigger a database query to verify the token.
-      // The verification is done in the tokenAuth middleware only, so we can allow token authentication 
+      // The verification is done in the tokenAuth middleware only, so we can allow token authentication
       // for specific tRPC procedures only.
-        return {
-            token: token
-          } as Context
-      } else {
-        return {} as Context
-      }
-  } else {
+      return {
+        token: token
+      } as Context
+    }
+    else {
+      return {} as Context
+    }
+  }
+  else {
     return {
       user: sessionUser,
       secure: sessionUserSecure
@@ -118,11 +120,11 @@ const hasValidToken = t.middleware(async ({ ctx, next }) => {
     // convert the user object to a session user object
     const [sessionUser, sessionUserSecure] = await UserService.convertToSessionUser(result.user as FirnUser, 'token')
 
-    if(!sessionUserSecure.allowLogin) {
-      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Your user account has been suspended and is not allowed to login'})
+    if (!sessionUserSecure.allowLogin) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Your user account has been suspended and is not allowed to login' })
     }
 
-    if(sessionUserSecure.isRetired) {
+    if (sessionUserSecure.isRetired) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Your user account has been retired' })
     }
 
@@ -133,7 +135,8 @@ const hasValidToken = t.middleware(async ({ ctx, next }) => {
         secure: sessionUserSecure
       }
     })
-  } else {
+  }
+  else {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token' })
   }
 })

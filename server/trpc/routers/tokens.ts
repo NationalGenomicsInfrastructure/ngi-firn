@@ -1,5 +1,5 @@
 import { createTRPCRouter, adminProcedure, authedProcedure, firnUserProcedure } from '../init'
-import {UserService} from '../../crud/users'
+import { UserService } from '../../crud/users'
 import { tokenHandler } from '../../security/tokens'
 import type { DisplayUserToAdmin, GoogleUserQuery } from '~~/types/auth'
 import type { FirnUserToken } from '~~/types/tokens'
@@ -11,7 +11,7 @@ export const tokensRouter = createTRPCRouter({
   // firnUserProcedure instead of authedProcedure because we need the full user object in tRPC context
   generateFirnUserToken: firnUserProcedure
     .input(generateFirnUserTokenSchema)
-    .mutation(async ({ input, ctx }): Promise<{jwt: string, user: DisplayUserToAdmin} | null> => {
+    .mutation(async ({ input, ctx }): Promise<{ jwt: string, user: DisplayUserToAdmin } | null> => {
       if (!ctx.firnUser) {
         throw new TRPCError({ code: 'UNAUTHORIZED' })
       }
@@ -54,7 +54,6 @@ export const tokensRouter = createTRPCRouter({
   deleteUserTokenByAdmin: adminProcedure
     .input(deleteUserTokenByAdminSchema)
     .mutation(async ({ input }): Promise<DisplayUserToAdmin | null> => {
-
       // construct the query object to retrieve the full user object
       const query: GoogleUserQuery = {
         provider: 'google',
@@ -69,11 +68,11 @@ export const tokensRouter = createTRPCRouter({
       }
 
       const deletedTokenUser = await tokenHandler.deleteFirnUserToken(firnUser, input.tokenID)
-      
+
       if (deletedTokenUser) {
         return await UserService.convertToDisplayUserToAdmin(deletedTokenUser)
       }
       return null
-}),
+    })
 
-}) 
+})
