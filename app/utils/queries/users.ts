@@ -35,7 +35,8 @@ export const USERS_QUERY_KEYS = {
   approved: () => [...USERS_QUERY_KEYS.root, 'approved'] as const,
   pending: () => [...USERS_QUERY_KEYS.root, 'pending'] as const,
   retired: () => [...USERS_QUERY_KEYS.root, 'retired'] as const,
-  self: () => [...USERS_QUERY_KEYS.root, 'self'] as const
+  self: () => [...USERS_QUERY_KEYS.root, 'self'] as const,
+  token: () => [...USERS_QUERY_KEYS.root, 'token'] as const
 } as const
 
 // Query for approved users

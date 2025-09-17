@@ -1,6 +1,7 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
 import type { GenerateFirnUserTokenInput, DeleteFirnUserTokenInput, ValidateFirnUserTokenInput, DeleteUserTokenByAdminInput } from '~~/schemas/tokens'
 import type { DisplayUserToAdmin } from '~~/types/auth'
+import { USERS_QUERY_KEYS } from '~/utils/queries/users'
 
 // Notifications
 const { showSuccess, showError } = useFirnToast()
@@ -13,11 +14,27 @@ export const generateFirnUserToken = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.generateFirnUserToken.mutate(input)
     },
-    onError(error: Error, input: GenerateFirnUserTokenInput) {
+    onMutate() {
+        const queryCache = useQueryCache()
+        const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
+        return { self_user }
+      },
+    onError(error: Error, input: GenerateFirnUserTokenInput, context: { self_user?: DisplayUserToAdmin | undefined }) {
+      const queryCache = useQueryCache()
+      if (context.self_user) {
+        queryCache.setQueryData(USERS_QUERY_KEYS.self(), context.self_user)
+      }
+      else {
+        queryCache.setQueryData(USERS_QUERY_KEYS.self(), undefined)
+      }
       showError(error.message, 'Token could not be generated.')
     },
     onSuccess(response, input: GenerateFirnUserTokenInput) {
-      showSuccess('Token generated successfully.', 'Token created')
+      const queryCache = useQueryCache()
+      queryCache.cancelQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
+      queryCache.setQueryData(USERS_QUERY_KEYS.self(), response?.user || undefined)
+      queryCache.setQueryData(USERS_QUERY_KEYS.token(), response?.jwt || undefined)
+      showSuccess(`A new token for ${response?.user?.googleGivenName} ${response?.user?.googleFamilyName} was successfully issued.`, 'New token created')
     }
   })
   return { generateToken: mutate, ...mutation }
@@ -31,11 +48,26 @@ export const deleteFirnUserToken = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.deleteFirnUserToken.mutate(input)
     },
-    onError(error: Error, input: DeleteFirnUserTokenInput) {
-      showError(error.message, 'Token could not be deleted.')
+    onMutate() {
+        const queryCache = useQueryCache()
+        const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
+        return { self_user }
+      },
+    onError(error: Error, input: DeleteFirnUserTokenInput, context: { self_user?: DisplayUserToAdmin | undefined }) {
+      const queryCache = useQueryCache()
+      if (context.self_user) {
+        queryCache.setQueryData(USERS_QUERY_KEYS.self(), context.self_user)
+      }
+      else {
+        queryCache.setQueryData(USERS_QUERY_KEYS.self(), undefined)
+      }
+      showError(error.message, 'Your token could not be deleted.')
     },
     onSuccess(response, input: DeleteFirnUserTokenInput) {
-      showSuccess('Token deleted successfully.', 'Token deleted')
+      const queryCache = useQueryCache()
+      queryCache.cancelQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
+      queryCache.setQueryData(USERS_QUERY_KEYS.self(), response || undefined)
+      showSuccess(`Your token ${input.tokenID} for user ${response?.googleGivenName} ${response?.googleFamilyName} was successfully deleted.`, 'Token deleted')
     }
   })
   return { deleteToken: mutate, ...mutation }
