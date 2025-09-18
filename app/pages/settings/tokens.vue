@@ -24,5 +24,10 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
       section="Your tokens"
     />
     {{ selfUser }}
+    <StepperTokenGeneration />
+    <TableUserTokens
+      :tokens="selfUser?.tokens"
+      :loading="isLoading"
+    />
   </div>
 </template>
