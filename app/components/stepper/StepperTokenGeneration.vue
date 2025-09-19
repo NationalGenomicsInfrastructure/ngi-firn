@@ -37,12 +37,13 @@ const stepper = useTemplateRef('tokenStepper')
 
 // Token configuration form
 
-const period = ref(7)
-const expiresAt = ref(DateTime.now().plus({ days: period.value }).toFormat('mm/dd/yyyy'))
+const expiresAt = ref(DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'))
+const period = ref([7])
 
-const onPeriodUpdate = (value: number) => {
+const onPeriodUpdate = (value: number[] | undefined) => {
+  if (!value) return
   period.value = value
-  expiresAt.value = DateTime.now().plus({ days: period.value }).toFormat('mm/dd/yyyy')
+  expiresAt.value = DateTime.now().plus({ days: period.value[0] }).toFormat('yyyy-MM-dd')
 }
 
 const formSchema = toTypedSchema(generateFirnUserTokenSchema)
@@ -121,24 +122,26 @@ const toastActions = [
           >
             <NFormField
               name="expiresAt"
-              label="Expiration date"
+              label="Pick a date"
             >
-              <NInput type="date" :value="expiresAt" />
+              <NInput type="date" v-model="expiresAt" />
             </NFormField>
             <NFormGroup
               name="period"
-              label="Expiration period (days)"
+              label="or choose an expiration period."
+              :message="`${period.toString()} days`"
             >
-              <NSlider
+              <NSlider v-model="period"
                 :min="1"
                 :max="365"
                 :step="1"
-                :value="1"
-                @update:value="onPeriodUpdate"
+                @update:model-value="onPeriodUpdate"
               />
             </NFormGroup>
           </form>
           <p>{{ item.title }}</p>
+          <p>{{ period }}</p>
+          <p>{{ expiresAt }}</p>
         </div>
       </NAspectRatio>
     </template>
