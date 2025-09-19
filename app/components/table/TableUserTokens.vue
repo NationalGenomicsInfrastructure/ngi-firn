@@ -52,7 +52,7 @@ const formattedTokens = computed(() => {
       ...token,
       createdAt: formatDate(token.createdAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
       expiresAt: formatDate(token.expiresAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
-      lastUsedAt: formatDate(token.lastUsedAt, {relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
+      lastUsedAt: formatDate(token.lastUsedAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
     }
   })
 })

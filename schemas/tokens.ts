@@ -3,9 +3,11 @@ import { z } from 'zod'
 
 // Input schema for creating an own token
 export const generateFirnUserTokenSchema = z.object({
-  expiresAt: z.string().refine((s) => /^(\d{4}-\d{2}-\d{2})$/.test(s), {
-    message: "Date must be in the format yyyy-mm-dd",
-  }).transform((s) => DateTime.fromFormat(s, 'yyyy-mm-dd').toISO()),
+  expiresAt: z.string().refine(s => /^(\d{4}-\d{2}-\d{2})$/.test(s), {
+    message: 'must be in the format yyyy-mm-dd'
+  }).refine(s => DateTime.fromFormat(s, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days >= 1 && DateTime.fromFormat(s, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days <= 365, {
+    message: 'must be between 1 and 365 days from now'
+  }).transform(s => DateTime.fromFormat(s, 'yyyy-MM-dd').toISO()),
   audience: z.string().optional()
 })
 

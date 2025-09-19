@@ -11,26 +11,26 @@ const items = [
     title: 'Configure token',
     description: 'Configure the settings for the new token',
     icon: 'i-lucide-settings',
-    stage: 1,
+    stage: 1
   },
   {
     title: 'Generate token',
     description: 'Generate the new token',
     icon: 'i-lucide-key-round',
-    stage: 2,
+    stage: 2
   },
   {
     title: 'Save token',
     description: 'Save the new token in a safe place',
     icon: 'i-lucide-qr-code',
-    stage: 3,
+    stage: 3
   },
   {
     title: 'Ready',
     description: 'You can now use the new token',
     icon: 'i-lucide-check-circle',
-    stage: 4,
-  },
+    stage: 4
+  }
 ]
 
 const stepper = useTemplateRef('tokenStepper')
@@ -39,6 +39,19 @@ const stepper = useTemplateRef('tokenStepper')
 
 const expiresAt = ref(DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'))
 const period = ref([7])
+const audience = ref('')
+
+const onDateUpdate = (value: string | undefined) => {
+  if (!value) return
+  const days = Math.floor(DateTime.fromFormat(value, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days)
+  if (days < 1 || days > 365) {
+    validate()
+    expiresAt.value = DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd')
+    return
+  }
+  expiresAt.value = value
+  period.value = [days]
+}
 
 const onPeriodUpdate = (value: number[] | undefined) => {
   if (!value) return
@@ -62,11 +75,11 @@ const onSubmit = handleSubmit(async (values) => {
       resetForm()
     }
     else {
-      showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created.`, 'Account creation error', { actions: toastActions })
+      showError(`A token for your user could not be created.`, 'Token creation error', { actions: toastActions })
     }
   }
   catch (error) {
-    showError(`User account for ${values.googleGivenName} ${values.googleFamilyName} could not be created: ${error}`, 'Account creation error', { actions: toastActions })
+    showError(`No token could be created: ${error}`, 'Token creation error', { actions: toastActions })
   }
 })
 
@@ -109,45 +122,101 @@ const toastActions = [
 </script>
 
 <template>
-  <NStepper ref="tokenStepper" :items="items">
+  <NStepper
+    ref="tokenStepper"
+    :items="items"
+  >
     <template #content="{ item }">
-      <NAspectRatio
-        :ratio="16 / 4"
-        class="mx-auto max-w-2xl"
-      >
-        <div class="h-full flex flex-col items-center justify-center p-2 sm:p-4">
-          <form
-            class="mx-auto max-w-sm p-4 space-y-4"
-            @submit.prevent="onValidating()"
-          >
-            <NFormField
-              name="expiresAt"
-              label="Pick a date"
+      <div class="h-full flex flex-col p-2 sm:p-4">
+        <form
+          class="mx-auto p-4 space-y-4 w-full"
+          @submit.prevent="onValidating()"
+          v-if="item.stage === 1"
+        >
+          <div class="flex flex-col sm:flex-row gap-2 p-auto">
+            <NCard
+              title="Token expiration"
+              description="Choose an expiration date or a validity period"
+              card="outline-gray"
+              class="flex-1 max-w-sm sm:w-1/2"
+              :una="{
+                cardContent: 'space-y-4',
+                cardDescription: 'text-accent'
+              }"
             >
-              <NInput type="date" v-model="expiresAt" />
-            </NFormField>
-            <NFormGroup
-              name="period"
-              label="or choose an expiration period."
-              :message="`${period.toString()} days`"
-            >
-              <NSlider v-model="period"
-                :min="1"
-                :max="365"
-                :step="1"
-                @update:model-value="onPeriodUpdate"
+              <NFormField
+                name="expiresAt"
+                label="Pick a date"
+              >
+                <NInput
+                  v-model="expiresAt"
+                  type="date"
+                  @update:model-value="onDateUpdate"
+                />
+              </NFormField>
+              <NSeparator
+                label="OR"
+                class="mx-2 my-4"
               />
-            </NFormGroup>
-          </form>
-          <p>{{ item.title }}</p>
-          <p>{{ period }}</p>
-          <p>{{ expiresAt }}</p>
-        </div>
-      </NAspectRatio>
+              <NFormGroup
+                name="period"
+                label="Choose a period"
+                :message="`${period.toString()} days`"
+              >
+                <NSlider
+                  v-model="period"
+                  :min="1"
+                  :max="365"
+                  :step="1"
+                  @update:model-value="onPeriodUpdate"
+                />
+              </NFormGroup>
+            </NCard>
+            <NCard
+              title="Token audience"
+              description="Optionally restrict the token to a specific functionality"
+              card="outline-gray"
+              class="flex-1 max-w-sm sm:w-1/2"
+              :una="{
+                cardContent: 'space-y-4',
+                cardDescription: 'text-accent'
+              }"
+            >
+              <NFormField
+                name="audience"
+                description="Select an audience for your new token"
+              >
+                <div class="flex flex-row gap-2">
+                  <NSelect
+                    v-model="audience"
+                    placeholder="No restriction"
+                    :items="['User Login', 'API Access']"
+                  />
+                  <NButton
+                    v-if="audience"
+                    btn="soft-error hover:outline-error"
+                    label="i-lucide-trash"
+                    icon
+                    @click="audience = ''"
+                  />
+                </div>
+              </NFormField>
+            </NCard>
+          </div>
+        </form>
+      </div>
     </template>
   </NStepper>
   <div class="mx-auto mt-4 max-w-2xl flex justify-between gap-2">
-    <NButton label="prev" leading="i-lucide-arrow-left" @click="stepper?.prevStep()" />
-    <NButton label="next" trailing="i-lucide-arrow-right" @click="stepper?.nextStep()" />
+    <NButton
+      label="prev"
+      leading="i-lucide-arrow-left"
+      @click="stepper?.prevStep()"
+    />
+    <NButton
+      label="next"
+      trailing="i-lucide-arrow-right"
+      @click="stepper?.nextStep()"
+    />
   </div>
 </template>

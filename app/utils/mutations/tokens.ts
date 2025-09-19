@@ -15,10 +15,10 @@ export const generateFirnUserToken = defineMutation(() => {
       return $trpc.tokens.generateFirnUserToken.mutate(input)
     },
     onMutate() {
-        const queryCache = useQueryCache()
-        const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
-        return { self_user }
-      },
+      const queryCache = useQueryCache()
+      const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
+      return { self_user }
+    },
     onError(error: Error, input: GenerateFirnUserTokenInput, context: { self_user?: DisplayUserToAdmin | undefined }) {
       const queryCache = useQueryCache()
       if (context.self_user) {
@@ -49,10 +49,10 @@ export const deleteFirnUserToken = defineMutation(() => {
       return $trpc.tokens.deleteFirnUserToken.mutate(input)
     },
     onMutate() {
-        const queryCache = useQueryCache()
-        const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
-        return { self_user }
-      },
+      const queryCache = useQueryCache()
+      const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
+      return { self_user }
+    },
     onError(error: Error, input: DeleteFirnUserTokenInput, context: { self_user?: DisplayUserToAdmin | undefined }) {
       const queryCache = useQueryCache()
       if (context.self_user) {

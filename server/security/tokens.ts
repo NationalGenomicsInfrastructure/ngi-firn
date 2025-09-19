@@ -41,7 +41,7 @@ export class TokenHandler {
     const keyObject = createSecretKey(process.env.NUXT_SESSION_PASSWORD, 'utf-8')
     this.secretKey = new Uint8Array(keyObject.export())
     this.issuer = `urn:${(process.env.NUXT_APP_URL ?? 'NGI-FIRN').toLowerCase().replace(/[^a-z0-9]/g, '')}`
-    console.log('issuer', this.issuer)
+    console.log('Tokens will be issued by:', this.issuer)
   }
 
   /*
