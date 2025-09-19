@@ -7,7 +7,7 @@ export const generateFirnUserTokenSchema = z.object({
     message: 'must be in the format yyyy-mm-dd'
   }).refine(s => DateTime.fromFormat(s, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days >= 1 && DateTime.fromFormat(s, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days <= 365, {
     message: 'must be between 1 and 365 days from now'
-  }).transform(s => DateTime.fromFormat(s, 'yyyy-MM-dd').toISO()),
+  }).transform(s => DateTime.fromFormat(s, 'yyyy-MM-dd').toISO() || DateTime.now().plus({ days: 7 }).toISO()),
   audience: z.string().optional()
 })
 

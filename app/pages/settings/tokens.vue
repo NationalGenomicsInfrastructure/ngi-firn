@@ -20,14 +20,37 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
       title="Tokens"
       description="Manage your access tokens."
     />
-    <PageHeadline
-      section="Your tokens"
-    />
     {{ selfUser }}
-    <StepperTokenGeneration />
-    <TableUserTokens
-      :tokens="selfUser?.tokens"
-      :loading="isLoading"
-    />
+    <slot name="tokens">
+    <NTabs default-value="list">
+      <NTabsList class="mx-auto">
+        <NTabsTrigger value="list">
+          <NIcon name="i-lucide-app-window" />
+          List tokens
+        </NTabsTrigger>
+        <NTabsTrigger value="generate">
+          <NIcon name="i-lucide-diamond-plus" />
+          Generate new token
+        </NTabsTrigger>
+      </NTabsList>
+      <NTabsContent value="list">
+        <PageHeadline
+          section="Your current tokens"
+          class="mb-4"
+        />
+        <TableUserTokens
+          :tokens="selfUser?.tokens"
+          :loading="isLoading"
+        />
+      </NTabsContent>
+      <NTabsContent value="generate">
+        <PageHeadline
+          section="Generate a new token"
+          class="mb-4"
+        />
+        <StepperTokenGeneration />
+      </NTabsContent>
+    </NTabs>
+    </slot>
   </div>
 </template>
