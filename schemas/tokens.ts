@@ -1,8 +1,11 @@
+import { DateTime } from 'luxon'
 import { z } from 'zod'
 
 // Input schema for creating an own token
 export const generateFirnUserTokenSchema = z.object({
-  expiresAt: z.date(),
+  expiresAt: z.string().refine((s) => /^(\d{2}\/\d{2}\/\d{4})$/.test(s), {
+    message: "Date must be in the format mm/dd/yyyy",
+}).transform((s) => DateTime.fromFormat(s, 'mm/dd/yyyy').toISO()),
   audience: z.string().optional()
 })
 
