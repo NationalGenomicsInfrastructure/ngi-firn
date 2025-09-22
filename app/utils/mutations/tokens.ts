@@ -27,14 +27,14 @@ export const generateFirnUserToken = defineMutation(() => {
       else {
         queryCache.setQueryData(USERS_QUERY_KEYS.self(), undefined)
       }
-      showError(error.message, 'Token could not be generated.')
+      showError(error.message, 'Token could not be generated')
     },
     onSuccess(response, input: GenerateFirnUserTokenInput) {
       const queryCache = useQueryCache()
       queryCache.cancelQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
       queryCache.setQueryData(USERS_QUERY_KEYS.self(), response?.user || undefined)
       queryCache.setQueryData(USERS_QUERY_KEYS.token(), response?.jwt || undefined)
-      showSuccess(`A new token for ${response?.user?.googleGivenName} ${response?.user?.googleFamilyName} was successfully issued.`, 'New token created')
+      showSuccess(`A new token for ${response?.user?.googleGivenName} ${response?.user?.googleFamilyName} was successfully issued`, 'New token created')
     }
   })
   return { generateToken: mutate, ...mutation }

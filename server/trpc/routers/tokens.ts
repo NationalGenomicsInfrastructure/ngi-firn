@@ -4,6 +4,7 @@ import { tokenHandler } from '../../security/tokens'
 import type { DisplayUserToAdmin, GoogleUserQuery } from '~~/types/auth'
 import type { FirnUserToken } from '~~/types/tokens'
 import { generateFirnUserTokenSchema, deleteFirnUserTokenSchema, validateFirnUserTokenSchema, deleteUserTokenByAdminSchema } from '~~/schemas/tokens'
+import { DateTime } from 'luxon'
 import { TRPCError } from '@trpc/server'
 
 export const tokensRouter = createTRPCRouter({
@@ -15,7 +16,7 @@ export const tokensRouter = createTRPCRouter({
       if (!ctx.firnUser) {
         throw new TRPCError({ code: 'UNAUTHORIZED' })
       }
-      const result = await tokenHandler.generateFirnUserToken(ctx.firnUser, input.audience, input.expiresAt.toISOString())
+      const result = await tokenHandler.generateFirnUserToken(ctx.firnUser, input.audience, DateTime.fromFormat(input.expiresAt, 'yyyy-MM-dd').toISO() ?? undefined)
       if (result?.jwt && result?.user) {
         const updatedUser = await UserService.convertToDisplayUserToAdmin(result.user)
         return { jwt: result.jwt, user: updatedUser }
