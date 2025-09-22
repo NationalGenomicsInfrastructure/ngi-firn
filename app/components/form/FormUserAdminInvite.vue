@@ -25,8 +25,14 @@ const toastActions = [
 
 const formSchema = toTypedSchema(createUserByAdminSchema)
 
-const { handleSubmit, validate, errors, resetForm } = useForm({
-  validationSchema: formSchema
+const { handleSubmit, validate, errors, resetForm} = useForm({
+  validationSchema: formSchema,
+  initialValues: {
+    googleGivenName: '',
+    googleFamilyName: '',
+    googleEmail: '',
+    isAdmin: false
+  }
 })
 const onSubmit = handleSubmit(async (values) => {
   try {
@@ -93,7 +99,6 @@ async function onValidating() {
     >
       <NCheckbox
         label="Firn administrator"
-        :default-value="false"
       />
     </NFormField>
 

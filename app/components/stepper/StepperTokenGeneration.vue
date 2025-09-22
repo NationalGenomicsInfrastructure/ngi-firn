@@ -29,38 +29,39 @@ const items = [
 
 const stepper = useTemplateRef('tokenStepper')
 
-// Token configuration form
+const formSchema = toTypedSchema(generateFirnUserTokenSchema)
 
-const tokenFormData = reactive({
-  expiresAt: DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'),
-  period: [7],
-  audience: ref('')
+// Initialize the form with default values
+const { handleSubmit, validate, errors, resetForm, values, setFieldValue } = useForm({
+  validationSchema: formSchema,
+  initialValues: {
+    expiresAt: DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'),
+    period: [7],
+    audience: ''
+  }
 })
 
-
+// Custom handlers that update both the related fields
 const onDateUpdate = (value: string | undefined) => {
   if (!value) return
   const days = Math.floor(DateTime.fromFormat(value, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days)
   if (days < 1 || days > 365) {
     validate()
-    tokenFormData.expiresAt = DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd')
+    const defaultDate = DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd')
+    setFieldValue('expiresAt', defaultDate)
+    setFieldValue('period', [7])
     return
   }
-  tokenFormData.expiresAt = value
-  tokenFormData.period = [days]
+  setFieldValue('expiresAt', value)
+  setFieldValue('period', [days])
 }
 
 const onPeriodUpdate = (value: number[] | undefined) => {
   if (!value) return
-  tokenFormData.period = value
-  tokenFormData.expiresAt = DateTime.now().plus({ days: tokenFormData.period[0] }).toFormat('yyyy-MM-dd')
+  const newDate = DateTime.now().plus({ days: value[0] }).toFormat('yyyy-MM-dd')
+  setFieldValue('period', value)
+  setFieldValue('expiresAt', newDate)
 }
-
-const formSchema = toTypedSchema(generateFirnUserTokenSchema)
-
-const { handleSubmit, validate, errors, resetForm } = useForm({
-  validationSchema: formSchema
-})
 
 const token = ref('')
 
@@ -72,7 +73,6 @@ const onSubmit = handleSubmit(async (values) => {
     const { mutateAsync } = generateFirnUserToken()
     const result = await mutateAsync(values)
     if (result) {
-      // Success message is handled by mutation
       token.value = result.jwt
       resetForm()
     }
@@ -86,9 +86,7 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 async function onValidating() {
-  console.log("Validating form...")
   await validate()
-  console.log(errors.value)
 
   const firstErrorField = Object.keys(errors.value)[0]
   if (firstErrorField) {
@@ -154,7 +152,7 @@ const toastActions = [
               >
                 <!-- The v-model shorthand is not used on this input because a custom update handler is required. See https://vuejs.org/guide/components/v-model.html#under-the-hood -->
                 <NInput
-                  :modelValue="tokenFormData.expiresAt"
+                  :modelValue="values.expiresAt"
                   type="date"
                   @update:modelValue="onDateUpdate"
                 />
@@ -166,11 +164,10 @@ const toastActions = [
               <NFormGroup
                 name="period"
                 label="Choose a period"
-                :message="`${tokenFormData.period.toString()} days`"
+                :message="`${values.period?.toString()} days`"
               >
-                <!-- No v-model shorthand as above -->
                 <NSlider
-                  :modelValue="tokenFormData.period"
+                  :modelValue="values.period"
                   :min="1"
                   :max="365"
                   :step="1"
@@ -194,16 +191,16 @@ const toastActions = [
               >
                 <div class="flex flex-row gap-2">
                   <NSelect
-                    v-model="tokenFormData.audience"
+                    v-model="values.audience"
                     placeholder="No restriction"
                     :items="['User Login', 'API Access']"
                   />
                   <NButton
-                    v-if="tokenFormData.audience"
+                    v-if="values.audience"
                     btn="soft-error hover:outline-error"
                     label="i-lucide-x-circle"
                     icon
-                    @click="tokenFormData.audience = ''"
+                    @click="setFieldValue('audience', '')"
                   />
                 </div>
               </NFormField>
