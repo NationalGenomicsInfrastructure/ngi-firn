@@ -14,22 +14,16 @@ const items = [
     stage: 1
   },
   {
-    title: 'Generate',
-    description: 'Generate the new token',
-    icon: 'i-lucide-key-round',
-    stage: 2
-  },
-  {
     title: 'Save',
     description: 'Save the new token in a safe place',
     icon: 'i-lucide-qr-code',
-    stage: 3
+    stage: 2
   },
   {
     title: 'Ready',
     description: 'You can now use the new token',
     icon: 'i-lucide-check-circle',
-    stage: 4
+    stage: 3
   }
 ]
 
@@ -37,26 +31,29 @@ const stepper = useTemplateRef('tokenStepper')
 
 // Token configuration form
 
-const expiresAt = ref(DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'))
-const period = ref([7])
-const audience = ref('')
+const tokenFormData = reactive({
+  expiresAt: DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'),
+  period: [7],
+  audience: ref('')
+})
+
 
 const onDateUpdate = (value: string | undefined) => {
   if (!value) return
   const days = Math.floor(DateTime.fromFormat(value, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days)
   if (days < 1 || days > 365) {
     validate()
-    expiresAt.value = DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd')
+    tokenFormData.expiresAt = DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd')
     return
   }
-  expiresAt.value = value
-  period.value = [days]
+  tokenFormData.expiresAt = value
+  tokenFormData.period = [days]
 }
 
 const onPeriodUpdate = (value: number[] | undefined) => {
   if (!value) return
-  period.value = value
-  expiresAt.value = DateTime.now().plus({ days: period.value[0] }).toFormat('yyyy-MM-dd')
+  tokenFormData.period = value
+  tokenFormData.expiresAt = DateTime.now().plus({ days: tokenFormData.period[0] }).toFormat('yyyy-MM-dd')
 }
 
 const formSchema = toTypedSchema(generateFirnUserTokenSchema)
@@ -89,7 +86,9 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 async function onValidating() {
+  console.log("Validating form...")
   await validate()
+  console.log(errors.value)
 
   const firstErrorField = Object.keys(errors.value)[0]
   if (firstErrorField) {
@@ -99,6 +98,8 @@ async function onValidating() {
       firstErrorFieldElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
+
+  onSubmit()
 }
 
 // Token generation
@@ -132,11 +133,11 @@ const toastActions = [
     <template #content="{ item }">
       <div class="h-full flex flex-col p-2 sm:p-4">
         <form
-          v-if="item.stage === 1 || item.stage === 2"
+          v-if="item.stage === 1"
           class="mx-auto p-4 space-y-4 w-full"
           @submit.prevent="onValidating()"
         >
-          <div v-if="item.stage === 1" class="flex flex-col sm:flex-row gap-2 p-auto">
+          <div class="flex flex-col sm:flex-row gap-2 p-auto">
             <NCard
               title="Token expiration"
               description="Choose an expiration date or a validity period"
@@ -151,10 +152,11 @@ const toastActions = [
                 name="expiresAt"
                 label="Pick a date"
               >
+                <!-- The v-model shorthand is not used on this input because a custom update handler is required. See https://vuejs.org/guide/components/v-model.html#under-the-hood -->
                 <NInput
-                  v-model="expiresAt"
+                  :modelValue="tokenFormData.expiresAt"
                   type="date"
-                  @update:model-value="onDateUpdate"
+                  @update:modelValue="onDateUpdate"
                 />
               </NFormField>
               <NSeparator
@@ -164,14 +166,15 @@ const toastActions = [
               <NFormGroup
                 name="period"
                 label="Choose a period"
-                :message="`${period.toString()} days`"
+                :message="`${tokenFormData.period.toString()} days`"
               >
+                <!-- No v-model shorthand as above -->
                 <NSlider
-                  v-model="period"
+                  :modelValue="tokenFormData.period"
                   :min="1"
                   :max="365"
                   :step="1"
-                  @update:model-value="onPeriodUpdate"
+                  @update:modelValue="onPeriodUpdate"
                 />
               </NFormGroup>
             </NCard>
@@ -191,16 +194,16 @@ const toastActions = [
               >
                 <div class="flex flex-row gap-2">
                   <NSelect
-                    v-model="audience"
+                    v-model="tokenFormData.audience"
                     placeholder="No restriction"
                     :items="['User Login', 'API Access']"
                   />
                   <NButton
-                    v-if="audience"
+                    v-if="tokenFormData.audience"
                     btn="soft-error hover:outline-error"
-                    label="i-lucide-trash"
+                    label="i-lucide-x-circle"
                     icon
-                    @click="audience = ''"
+                    @click="tokenFormData.audience = ''"
                   />
                 </div>
               </NFormField>
@@ -209,10 +212,10 @@ const toastActions = [
           <NButton
             label="Generate token"
             btn="soft-primary hover:outline-primary"
-            @click="console.log('Generate token button clicked'); onValidating().then(() => onSubmit().then(() => stepper?.nextStep()))"
+            type="submit"
           />
         </form>
-        <div v-if="item.stage === 3" class="flex flex-col sm:flex-row gap-2 p-auto">
+        <div v-if="item.stage === 2" class="flex flex-col sm:flex-row gap-2 p-auto">
           <NCard
             title="Token"
             description="The generated token"
