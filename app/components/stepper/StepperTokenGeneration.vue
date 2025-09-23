@@ -41,6 +41,9 @@ const { handleSubmit, validate, errors, resetForm, values, setFieldValue } = use
   }
 })
 
+// Use field for audience to ensure proper reactivity
+const { value: audienceValue, setValue: setAudienceValue } = useField<string>('audience')
+
 // Custom handlers that update both the related fields
 const onDateUpdate = (value: string | undefined) => {
   if (!value) return
@@ -191,16 +194,16 @@ const toastActions = [
               >
                 <div class="flex flex-row gap-2">
                   <NSelect
-                    v-model="values.audience"
+                    v-model="audienceValue"
                     placeholder="No restriction"
                     :items="['User Login', 'API Access']"
                   />
                   <NButton
-                    v-if="values.audience"
+                    v-if="audienceValue"
                     btn="soft-error hover:outline-error"
                     label="i-lucide-x-circle"
                     icon
-                    @click="setFieldValue('audience', '')"
+                    @click="setAudienceValue('')"
                   />
                 </div>
               </NFormField>
