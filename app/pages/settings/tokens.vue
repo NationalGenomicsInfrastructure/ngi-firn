@@ -25,11 +25,11 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
       <NTabsList class="mx-auto">
         <NTabsTrigger value="list">
           <NIcon name="i-lucide-app-window" />
-          List tokens
+          List your tokens
         </NTabsTrigger>
         <NTabsTrigger value="generate">
           <NIcon name="i-lucide-diamond-plus" />
-          Generate new token
+          Generate a new token
         </NTabsTrigger>
       </NTabsList>
       <NTabsContent value="list">

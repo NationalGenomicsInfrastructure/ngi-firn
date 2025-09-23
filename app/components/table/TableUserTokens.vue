@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { FirnUserToken } from '~~/types/tokens'
 import { formatDate } from '~/utils/dates/formatting'
 import { deleteFirnUserToken } from '~/utils/mutations/tokens'
+import { DateTime } from 'luxon'
+import { NKbd, NTooltip } from '#components'
 
 const props = defineProps<{
   tokens: FirnUserToken[] | undefined
@@ -26,7 +28,50 @@ const columns: ColumnDef<FirnUserToken>[] = [
   },
   {
     header: 'Expires at',
-    accessorKey: 'expiresAt'
+    accessorKey: 'expiresAt',
+    accessorFn: row => row.expiresAt,
+    cell: (info: CellContext<FirnUserToken, unknown>) => {
+      const expiresAt = info.getValue() as string
+      const expiryDate = DateTime.fromISO(expiresAt)
+      // https://moment.github.io/luxon/#/math
+      const diff = expiryDate.diff(DateTime.now(), 'days').shiftTo('days').toObject()
+      
+      const formattedDate = formatDate(expiresAt, { 
+        relative: relativeDates.value, 
+        includeWeekday: includeWeekday.value, 
+        time: displayTime.value 
+      })
+      
+      // Token has already expired
+      if (diff.days && diff.days < 0) {
+        return h(NTooltip, {
+          tooltip: 'gray',
+          content: 'The token has expired'
+        }, {
+          default: () => h(NKbd, {
+            kbd: 'solid-gray',
+            size: 'sm',
+            label: formattedDate
+          })
+        })
+      }
+      
+      // Token expires within 7 days
+      if (diff.days && diff.days <= 7) {
+        return h(NTooltip, {
+          tooltip: 'rose',
+          content: 'The token expires soon'
+        }, {
+          default: () => h(NKbd, {
+            kbd: 'solid-rose',
+            size: 'sm',
+            label: formattedDate
+          })
+        })
+      }
+      
+      return formattedDate
+    }
   },
   {
     header: 'Last used at',
@@ -51,7 +96,7 @@ const formattedTokens = computed(() => {
     return {
       ...token,
       createdAt: formatDate(token.createdAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
-      expiresAt: formatDate(token.expiresAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
+      // expiresAt formatting is handled in the cell renderer
       lastUsedAt: formatDate(token.lastUsedAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
     }
   })
