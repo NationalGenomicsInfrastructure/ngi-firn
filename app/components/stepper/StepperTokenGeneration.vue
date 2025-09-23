@@ -78,6 +78,7 @@ const onSubmit = handleSubmit(async (values) => {
     if (result) {
       token.value = result.jwt
       resetForm()
+      stepper?.value?.nextStep()
     }
     else {
       showError(`A token for your user could not be created.`, 'Token creation error', { actions: toastActions })
@@ -132,7 +133,7 @@ const toastActions = [
     :items="items"
   >
     <template #content="{ item }">
-      <div class="h-full flex flex-col p-2 sm:p-4">
+      <div class="h-full flex flex-col p-2 sm:p-4 mx-auto">
         <form
           v-if="item.stage === 1"
           class="mx-auto p-4 space-y-4 w-full"
@@ -212,8 +213,10 @@ const toastActions = [
           <NButton
             label="Generate token"
             btn="soft-primary hover:outline-primary"
+            class="w-full"
             type="submit"
-          />
+            size="md"
+            />
         </form>
         <div v-if="item.stage === 2" class="flex flex-col sm:flex-row gap-2 p-auto">
           <NCard
@@ -234,13 +237,13 @@ const toastActions = [
   <div class="mx-auto mt-4 max-w-2xl flex justify-between gap-2">
     <NButton
       label="prev"
-      btn="soft-primary hover:outline-primary"
+      btn="solid-gray hover:outline-secondary"
       leading="i-lucide-arrow-left"
       @click="stepper?.prevStep()"
     />
     <NButton
       label="next"
-      btn="soft-primary hover:outline-primary"
+      btn="solid-gray hover:outline-secondary"
       trailing="i-lucide-arrow-right"
       @click="stepper?.nextStep()"
     />
