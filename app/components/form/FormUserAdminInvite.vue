@@ -25,7 +25,7 @@ const toastActions = [
 
 const formSchema = toTypedSchema(createUserByAdminSchema)
 
-const { handleSubmit, validate, errors, resetForm} = useForm({
+const { handleSubmit, validate, errors, resetForm } = useForm({
   validationSchema: formSchema,
   initialValues: {
     googleGivenName: '',

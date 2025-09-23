@@ -57,7 +57,9 @@
     "luxon": "^3.7.1",
     "nuxt": "^4.0.1",
     "nuxt-auth-utils": "^0.5.20",
+    "pdfmake": "^0.2.20",
     "pinia": "^3.0.3",
+    "qrcode": "^1.5.4",
     "trpc-nuxt": "^1.2.0",
     "zod": "^4.0.8"
   },
@@ -78,7 +80,7 @@
     "vue-tsc": "^3.0.3",
     "wrangler": "^4.26.0"
   },
-  "packageManager": "pnpm@10.17.0",
+  "packageManager": "pnpm@10.17.1",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",

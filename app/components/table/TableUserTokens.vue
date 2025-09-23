@@ -35,13 +35,13 @@ const columns: ColumnDef<FirnUserToken>[] = [
       const expiryDate = DateTime.fromISO(expiresAt)
       // https://moment.github.io/luxon/#/math
       const diff = expiryDate.diff(DateTime.now(), 'days').shiftTo('days').toObject()
-      
-      const formattedDate = formatDate(expiresAt, { 
-        relative: relativeDates.value, 
-        includeWeekday: includeWeekday.value, 
-        time: displayTime.value 
+
+      const formattedDate = formatDate(expiresAt, {
+        relative: relativeDates.value,
+        includeWeekday: includeWeekday.value,
+        time: displayTime.value
       })
-      
+
       // Token has already expired
       if (diff.days && diff.days < 0) {
         return h(NTooltip, {
@@ -55,7 +55,7 @@ const columns: ColumnDef<FirnUserToken>[] = [
           })
         })
       }
-      
+
       // Token expires within 7 days
       if (diff.days && diff.days <= 7) {
         return h(NTooltip, {
@@ -69,7 +69,7 @@ const columns: ColumnDef<FirnUserToken>[] = [
           })
         })
       }
-      
+
       return formattedDate
     }
   },
@@ -121,7 +121,7 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
     const tokenIDs = selectedRows
       .map(row => row.original.tokenID)
       .filter((tokenID): tokenID is string => tokenID !== undefined)
-    
+
     if (tokenIDs.length > 0) {
       deleteToken({
         tokenID: tokenIDs

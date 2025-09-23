@@ -85,7 +85,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     // in this case, we use the async version of the mutation to act on the failure.
     console.log(values)
-    console.log("Submitting form...")
+    console.log('Submitting form...')
     const { mutateAsync } = generateFirnUserToken()
     const result = await mutateAsync(values)
     if (result) {
@@ -142,7 +142,6 @@ const toastActions = [
  */
 
 const { copy, copied } = useClipboard({ source: token })
-
 </script>
 
 <template>
@@ -174,9 +173,9 @@ const { copy, copied } = useClipboard({ source: token })
               >
                 <!-- The v-model shorthand is not used on this input because a custom update handler is required. See https://vuejs.org/guide/components/v-model.html#under-the-hood -->
                 <NInput
-                  :modelValue="values.expiresAt"
+                  :model-value="values.expiresAt"
                   type="date"
-                  @update:modelValue="onDateUpdate"
+                  @update:model-value="onDateUpdate"
                 />
               </NFormField>
               <NSeparator
@@ -189,11 +188,11 @@ const { copy, copied } = useClipboard({ source: token })
                 :message="`${values.period?.toString()} days`"
               >
                 <NSlider
-                  :modelValue="values.period"
+                  :model-value="values.period"
                   :min="1"
                   :max="365"
                   :step="1"
-                  @update:modelValue="onPeriodUpdate"
+                  @update:model-value="onPeriodUpdate"
                 />
               </NFormGroup>
             </NCard>
@@ -234,9 +233,12 @@ const { copy, copied } = useClipboard({ source: token })
             class="w-full"
             type="submit"
             size="md"
-            />
+          />
         </form>
-        <div v-if="item.stage === 2" class="flex flex-col sm:flex-row gap-2 p-auto">
+        <div
+          v-if="item.stage === 2"
+          class="flex flex-col sm:flex-row gap-2 p-auto"
+        >
           <NCard
             title="Your new token"
             description="This is the only time you will see this token. Copy it to your clipboard and store it in a safe place."
@@ -250,7 +252,7 @@ const { copy, copied } = useClipboard({ source: token })
                 v-model="token"
                 leading="i-lucide-key-round"
                 :una="{
-                  inputWrapper: 'w-full',
+                  inputWrapper: 'w-full'
                 }"
                 read-only
               />
