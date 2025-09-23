@@ -138,10 +138,12 @@ const toastActions = [
 ]
 
 /*
- * Token saving: Clipboard
+ * Token saving: Clipboard and QR code
  */
 
 const { copy, copied } = useClipboard({ source: token })
+const { downloadTokenQR, previewTokenQR } = useTokenQR()
+const { user: sessionUser } = useUserSession()
 </script>
 
 <template>
@@ -268,6 +270,30 @@ const { copy, copied } = useClipboard({ source: token })
                 />
               </NTooltip>
             </form>
+            <NSeparator
+                label="OR"
+                class="mx-2 my-4"
+              />
+              <ImagesQR 
+                :value="token" 
+                :image-settings="{ src: sessionUser?.name || 'Firn user' }" 
+                foreground="'#a7c947'" 
+                background="'#000000'" 
+              />
+              <div class="flex flex-row gap-2 justify-between">
+              <NButton
+                label="Open a printable QR code with your token"
+                btn="soft-primary hover:outline-primary"
+                @click="previewTokenQR(token, sessionUser?.name || 'Firn user')"
+                :disabled="!token"
+              />
+              <NButton
+                label="Download a PDF with QR code of your token"
+                btn="soft-primary hover:outline-primary"
+                @click="downloadTokenQR(token, sessionUser?.name || 'Firn user')"
+                :disabled="!token"
+              />
+            </div>
           </NCard>
         </div>
       </div>
