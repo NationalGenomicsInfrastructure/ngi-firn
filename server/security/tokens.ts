@@ -1,16 +1,17 @@
 import 'dotenv/config'
 import type { H3Event } from 'h3'
+import type { KeyObject } from 'crypto'
 import type { FirnUser } from '../../types/auth'
 import type { FirnJWTPayload, FirnUserToken } from '../../types/tokens'
 import { couchDB } from '../database/couchdb'
 import { DateTime } from 'luxon'
 
-// generates a symmetric key that can be used for signing and verifying JWTs.
-import { createSecretKey } from 'crypto'
+// generates a key that can be used for signing and verifying JWTs and encrypting and decrypting JWEs
+import { createSecretKey, scryptSync } from 'crypto'
 
 // uses the JSON Web Signature (JWS) specification to create a signature for the JWT using the previously generated symmetric key.
 // provides a function to verify the signature of a JWT using the previously generated symmetric key.
-import { jwtVerify, SignJWT } from 'jose'
+import { jwtDecrypt, EncryptJWT } from 'jose'
 
 /*
  * Token Handler - Table of Contents
@@ -31,15 +32,17 @@ import { jwtVerify, SignJWT } from 'jose'
 
 export class TokenHandler {
   private issuer: string
-  private secretKey: Uint8Array
+  private secretKey: KeyObject
 
   constructor() {
     // derive a symmetric key from the session password
     if (!process.env.NUXT_SESSION_PASSWORD) {
       throw new Error('NUXT_SESSION_PASSWORD is not set in environment variables, cannot generate tokens')
     }
-    const keyObject = createSecretKey(process.env.NUXT_SESSION_PASSWORD, 'utf-8')
-    this.secretKey = new Uint8Array(keyObject.export())
+    if (!process.env.NUXT_SESSION_SALT) {
+      throw new Error('NUXT_SESSION_SALT is not set in environment variables, cannot generate tokens')
+    }
+    this.secretKey = createSecretKey(scryptSync(process.env.NUXT_SESSION_PASSWORD, process.env.NUXT_SESSION_SALT, 32))
     this.issuer = `urn:${(process.env.NUXT_APP_URL ?? 'NGI-FIRN').toLowerCase().replace(/[^a-z0-9]/g, '')}`
     console.log('Tokens will be issued by:', this.issuer)
   }
@@ -96,9 +99,8 @@ export class TokenHandler {
 
   private async verifyToken(token: string): Promise<{ success: boolean, payload?: FirnJWTPayload, error?: string }> {
     try {
-      const { payload } = await jwtVerify(token, this.secretKey, {
-        issuer: this.issuer,
-        algorithms: ['HS256']
+      const { payload } = await jwtDecrypt(token, this.secretKey, {
+        issuer: this.issuer
       })
       return { success: true, payload: payload as FirnJWTPayload }
     }
@@ -109,10 +111,9 @@ export class TokenHandler {
 
   private async verifyTokenWithPublicClaims(token: string, expectedAudience: string): Promise<{ success: boolean, payload?: FirnJWTPayload, error?: string }> {
     try {
-      const { payload } = await jwtVerify(token, this.secretKey, {
+      const { payload } = await jwtDecrypt(token, this.secretKey, {
         issuer: this.issuer,
-        audience: `urn:${expectedAudience}`,
-        algorithms: ['HS256']
+        audience: `urn:${expectedAudience}`
       })
       return { success: true, payload: payload as FirnJWTPayload }
     }
@@ -129,21 +130,21 @@ export class TokenHandler {
     
     // optionally a token without any specific audience to allow requesting any resource can be created
     if (audience == '') {
-      token = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
+      token = await new EncryptJWT(payload)
+        .setProtectedHeader({ alg: "dir", enc: "A256GCM"})
         .setIssuedAt()
         .setIssuer(this.issuer)
         .setExpirationTime(expiresAt ? DateTime.fromISO(expiresAt).toUnixInteger() : DateTime.now().plus({ days: 7 }).toUnixInteger())
-        .sign(this.secretKey)
+        .encrypt(this.secretKey)
     }
     else {
-      token = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
+      token = await new EncryptJWT(payload)
+        .setProtectedHeader({alg: "dir", enc: "A256GCM"})
         .setIssuedAt()
         .setIssuer(this.issuer)
         .setAudience(`urn:${audienceClaim}`)
         .setExpirationTime(expiresAt ? DateTime.fromISO(expiresAt).toUnixInteger() : DateTime.now().plus({ days: 7 }).toUnixInteger())
-        .sign(this.secretKey)
+        .encrypt(this.secretKey)
     }
     return token
   }
