@@ -123,7 +123,9 @@ export class TokenHandler {
 
   // generate a JWT for the given audience and expiration time
   private async generateTokenWithPublicClaims(payload: FirnJWTPayload, audience?: string, expiresAt?: string): Promise<string> {
-    let token: string
+
+    let token: string 
+    const audienceClaim = audience ? audience.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
     
     // optionally a token without any specific audience to allow requesting any resource can be created
     if (audience == '') {
@@ -139,7 +141,7 @@ export class TokenHandler {
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setIssuer(this.issuer)
-        .setAudience(`urn:${audience}`)
+        .setAudience(`urn:${audienceClaim}`)
         .setExpirationTime(expiresAt ? DateTime.fromISO(expiresAt).toUnixInteger() : DateTime.now().plus({ days: 7 }).toUnixInteger())
         .sign(this.secretKey)
     }

@@ -23,11 +23,11 @@ const columns: ColumnDef<FirnUserToken>[] = [
     }
   },
   {
-    header: 'Created at',
+    header: 'Creation date',
     accessorKey: 'createdAt'
   },
   {
-    header: 'Expires at',
+    header: 'Expiration date',
     accessorKey: 'expiresAt',
     accessorFn: row => row.expiresAt,
     cell: (info: CellContext<FirnUserToken, unknown>) => {
@@ -59,11 +59,11 @@ const columns: ColumnDef<FirnUserToken>[] = [
       // Token expires within 7 days
       if (diff.days && diff.days <= 7) {
         return h(NTooltip, {
-          tooltip: 'rose',
+          tooltip: 'primary',
           content: 'The token expires soon'
         }, {
           default: () => h(NKbd, {
-            kbd: 'solid-rose',
+            kbd: 'solid-primary',
             size: 'sm',
             label: formattedDate
           })
@@ -74,7 +74,7 @@ const columns: ColumnDef<FirnUserToken>[] = [
     }
   },
   {
-    header: 'Last used at',
+    header: 'Last used',
     accessorKey: 'lastUsedAt'
   },
   {

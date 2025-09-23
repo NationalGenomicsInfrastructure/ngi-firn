@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DateTime } from 'luxon'
+import { useClipboard } from '@vueuse/core'
 import { toTypedSchema } from '@vee-validate/zod'
 import { generateFirnUserTokenSchema } from '~~/schemas/tokens'
 import { generateFirnUserToken } from '~/utils/mutations/tokens'
@@ -8,7 +9,7 @@ import { generateFirnUserToken } from '~/utils/mutations/tokens'
 
 const items = [
   {
-    title: 'Configure',
+    title: 'Create',
     description: 'Configure the settings for the new token',
     icon: 'i-lucide-settings',
     stage: 1
@@ -20,7 +21,7 @@ const items = [
     stage: 2
   },
   {
-    title: 'Ready',
+    title: 'Test',
     description: 'You can now use the new token',
     icon: 'i-lucide-check-circle',
     stage: 3
@@ -28,6 +29,10 @@ const items = [
 ]
 
 const stepper = useTemplateRef('tokenStepper')
+
+/*
+ * Token generation form
+ */
 
 const formSchema = toTypedSchema(generateFirnUserTokenSchema)
 
@@ -40,6 +45,10 @@ const { handleSubmit, validate, errors, resetForm, values, setFieldValue } = use
     audience: ''
   }
 })
+
+/*
+ * Token generation form: mutual interaction between fields
+ */
 
 // Use field for audience to ensure proper reactivity
 const { value: audienceValue, setValue: setAudienceValue } = useField<string>('audience')
@@ -65,6 +74,10 @@ const onPeriodUpdate = (value: number[] | undefined) => {
   setFieldValue('period', value)
   setFieldValue('expiresAt', newDate)
 }
+
+/*
+ * Token generation form: validation and submit handlers
+ */
 
 const token = ref('')
 
@@ -104,8 +117,6 @@ async function onValidating() {
   onSubmit()
 }
 
-// Token generation
-
 const { showError } = useFirnToast()
 const toastActions = [
   {
@@ -125,6 +136,13 @@ const toastActions = [
     }
   }
 ]
+
+/*
+ * Token saving: Clipboard
+ */
+
+const { copy, copied } = useClipboard({ source: token })
+
 </script>
 
 <template>
@@ -220,15 +238,34 @@ const toastActions = [
         </form>
         <div v-if="item.stage === 2" class="flex flex-col sm:flex-row gap-2 p-auto">
           <NCard
-            title="Token"
-            description="The generated token"
+            title="Your new token"
+            description="This is the only time you will see this token. Copy it to your clipboard and store it in a safe place."
             card="outline-gray"
           >
-            <NInput
-              v-model="token"
-              type="text"
-              readonly
-            />
+            <form
+              class="flex gap-2"
+              @submit.prevent="copy(token)"
+            >
+              <NInput
+                v-model="token"
+                leading="i-lucide-key-round"
+                :una="{
+                  inputWrapper: 'w-full',
+                }"
+                read-only
+              />
+              <NTooltip
+                content="Copy this token to your clipboard"
+              >
+                <NButton
+                  icon
+                  square
+                  type="submit"
+                  :btn="copied ? 'solid-primary' : 'soft-primary hover:outline-primary'"
+                  :label="!copied ? 'i-lucide-copy' : 'i-lucide-check'"
+                />
+              </NTooltip>
+            </form>
           </NCard>
         </div>
       </div>
