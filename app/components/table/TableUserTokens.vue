@@ -72,14 +72,17 @@ watch([relativeDates, includeWeekday, displayTime], () => {
 
 const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
   const { deleteToken } = deleteFirnUserToken()
-  selectedRows?.forEach((row) => {
-    const token = row.original
-    if (token.tokenID) {
+  if (selectedRows && selectedRows.length > 0) {
+    const tokenIDs = selectedRows
+      .map(row => row.original.tokenID)
+      .filter((tokenID): tokenID is string => tokenID !== undefined)
+    
+    if (tokenIDs.length > 0) {
       deleteToken({
-        tokenID: token.tokenID
+        tokenID: tokenIDs
       })
     }
-  })
+  }
 }
 </script>
 

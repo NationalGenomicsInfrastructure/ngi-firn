@@ -201,27 +201,22 @@ export class TokenHandler {
     return null
   }
 
-  public async deleteFirnUserToken(user: FirnUser, tokenID: string): Promise<FirnUser | null> {
+  public async deleteFirnUserToken(user: FirnUser, tokenID: string[]): Promise<FirnUser | null> {
     // retrieve existing user tokens
     const userTokens = user.tokens as FirnUserToken[]
 
-    const existingToken = userTokens.find(token => token.tokenID === tokenID)
-    if (existingToken) {
-      // remove the existing token
-      userTokens.splice(userTokens.indexOf(existingToken), 1)
-    }
+    // Filter out tokens that match the provided IDs
+    const updatedTokens = userTokens.filter(token => !tokenID.includes(token.tokenID))
 
     const updatedUser: Partial<FirnUser> = {
-      tokens: userTokens
+      tokens: updatedTokens
     }
 
-    if (user && existingToken) {
-      // Update the user
-      const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
-      if (result) {
-        return { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser
-      }
+    const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
+    if (result) {
+      return { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser
     }
+    
     return null
   }
 }

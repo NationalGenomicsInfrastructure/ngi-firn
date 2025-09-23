@@ -1,6 +1,7 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
 import type { GenerateFirnUserTokenInput, DeleteFirnUserTokenInput, ValidateFirnUserTokenInput, DeleteUserTokenByAdminInput } from '~~/schemas/tokens'
 import type { DisplayUserToAdmin } from '~~/types/auth'
+import { formatDate } from '~/utils/dates/formatting'
 import { USERS_QUERY_KEYS } from '~/utils/queries/users'
 
 // Notifications
@@ -61,13 +62,16 @@ export const deleteFirnUserToken = defineMutation(() => {
       else {
         queryCache.setQueryData(USERS_QUERY_KEYS.self(), undefined)
       }
-      showError(error.message, 'Your token could not be deleted.')
+      showError(error.message, 'Token deletion failed')
     },
     onSuccess(response, input: DeleteFirnUserTokenInput) {
       const queryCache = useQueryCache()
       queryCache.cancelQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
       queryCache.setQueryData(USERS_QUERY_KEYS.self(), response || undefined)
-      showSuccess(`Your token ${input.tokenID} for user ${response?.googleGivenName} ${response?.googleFamilyName} was successfully deleted.`, 'Token deleted')
+      const tokenCount = input.tokenID.length
+      const tokenText = tokenCount === 1 ? 'token' : 'tokens'
+      const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
+      showSuccess(`Your ${tokenText} ${tokenList} ${tokenCount === 1 ? 'was' : 'were'} successfully deleted, ${response?.googleGivenName}`, `${tokenCount === 1 ? 'Token' : 'Tokens'} deleted`)
     }
   })
   return { deleteToken: mutate, ...mutation }
@@ -85,7 +89,7 @@ export const validateFirnUserToken = defineMutation(() => {
       showError(error.message, 'Token could not be validated.')
     },
     onSuccess(response, input: ValidateFirnUserTokenInput) {
-      showSuccess('Token validated successfully.', 'Token validated')
+      showSuccess('The provided token is valid until ' + formatDate(response?.expiresAt, { relative: false, includeWeekday: true, time: true }), 'Token is valid')
     }
   })
   return { validateToken: mutate, ...mutation }
@@ -103,7 +107,10 @@ export const deleteUserTokenByAdmin = defineMutation(() => {
       showError(error.message, 'Token could not be deleted by admin.')
     },
     onSuccess(response, input: DeleteUserTokenByAdminInput) {
-      showSuccess('Token deleted by admin successfully.', 'Token deleted by admin')
+      const tokenCount = input.tokenID.length
+      const tokenText = tokenCount === 1 ? 'token' : 'tokens'
+      const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
+      showSuccess(`The ${tokenText} ${tokenList} for ${response?.googleGivenName} ${response?.googleFamilyName} ${tokenCount === 1 ? 'was' : 'were'} successfully deleted`, `${tokenCount === 1 ? 'Token' : 'Tokens'} deleted`)
     }
   })
   return { deleteTokenByAdmin: mutate, ...mutation }

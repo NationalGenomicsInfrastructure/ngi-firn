@@ -16,7 +16,7 @@ export const generateFirnUserTokenSchema = z.object({
 
 // Input schema for deleting an own token
 export const deleteFirnUserTokenSchema = z.object({
-  tokenID: z.string()
+  tokenID: z.array(z.string())
 })
 
 // Input schema for validating a token
@@ -29,7 +29,7 @@ export const validateFirnUserTokenSchema = z.object({
 export const deleteUserTokenByAdminSchema = z.object({
   googleId: z.number(),
   googleEmail: z.string(),
-  tokenID: z.string()
+  tokenID: z.array(z.string())
 })
 
 // Inferred types from schemas

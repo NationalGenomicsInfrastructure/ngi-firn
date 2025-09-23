@@ -20,7 +20,6 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
       title="Tokens"
       description="Manage your access tokens."
     />
-    {{ selfUser }}
     <slot name="tokens">
     <NTabs default-value="list">
       <NTabsList class="mx-auto">
