@@ -3,9 +3,37 @@ import type { GenerateFirnUserTokenInput, DeleteFirnUserTokenInput, ValidateFirn
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
 import { USERS_QUERY_KEYS } from '~/utils/queries/users'
+import type { FirnUserToken } from '~~/types/tokens'
 
 // Notifications
 const { showSuccess, showError } = useFirnToast()
+
+// Helper function to delete user token(s) from cached lists
+const deleteUserTokensFromLists = (deletedTokens: DeleteUserTokenByAdminInput, lists: Array<DisplayUserToAdmin[] | undefined>) => {
+  for (const list of lists) {
+    if (!list) continue
+    const currentList = list as DisplayUserToAdmin[]
+    const idx = currentList.findIndex(u => u.googleId === deletedTokens.googleId)
+    if (idx !== -1) {
+      // Create a shallow copy of the list
+      const next = currentList.slice()
+      const user = { ...next[idx] } as DisplayUserToAdmin
+      
+      // Retrieve existing user tokens
+      const userTokens = user.tokens as FirnUserToken[]
+      // Filter out tokens that match the provided IDs
+      const updatedTokens = userTokens.filter(token => !deletedTokens.tokenID.includes(token.tokenID))
+      
+      // Update the user with the filtered tokens
+      user.tokens = updatedTokens
+      
+      // Replace the user in the list
+      next.splice(idx, 1, user)
+      return next
+    }
+  }
+  return undefined
+}
 
 // Mutation for generating a Firn user token
 
