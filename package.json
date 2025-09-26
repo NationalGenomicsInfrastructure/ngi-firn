@@ -42,6 +42,7 @@
     "db:test": "tsx scripts/test-db-connection.ts"
   },
   "dependencies": {
+    "@ericblade/quagga2": "^1.8.4",
     "@ibm-cloud/cloudant": "^0.12.6",
     "@iconify-json/lucide": "^1.2.58",
     "@iconify-json/simple-icons": "^1.2.44",
@@ -87,6 +88,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
+      "core-js",
       "esbuild",
       "sharp",
       "unrs-resolver",
