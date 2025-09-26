@@ -31,7 +31,7 @@ export default defineOAuthGoogleEventHandler({
 
     const googleUser: GoogleUser = {
       provider: 'google',
-      googleId: user.sub,
+      googleId: Number(user.sub),
       googleName: user.name,
       googleGivenName: user.given_name,
       googleFamilyName: user.family_name,

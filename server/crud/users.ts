@@ -10,7 +10,7 @@
  * linkGitHubUser(user, githubUser) - Link a GitHubUser to a FirnUser
  * MATCHING - QUERYING WITH DIFFERENT INPUTS AND GET FULL USER OBJECT:
  * matchGoogleUser(oauthUser) - Match a Google OAuth user to a FirnUser based on Google ID
- * matchGoogleUserByGoogleId(googleId) - Match a GoogleID to a FirnUser
+ * matchGoogleUserByGoogleQuery(googleQuery) - Match a GoogleID/e-mail to a FirnUser
  * matchGitHubUser(oauthUser) - Match a GitHub OAuth user to a FirnUser based on GitHub ID
  * matchSessionUserSecure(sessionUserSecure) - Match a SessionUserSecure to a FirnUser
  * LISTING USERS:

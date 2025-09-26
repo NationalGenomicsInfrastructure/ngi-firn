@@ -42,7 +42,7 @@ export default defineOAuthGitHubEventHandler({
 
     const githubUser: GitHubUser = {
       provider: 'github',
-      githubId: user.id,
+      githubId: Number(user.id),
       githubNodeId: user.node_id,
       githubName: user.name,
       githubAvatar: user.avatar_url,
