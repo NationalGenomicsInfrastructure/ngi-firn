@@ -7,43 +7,43 @@ pdfMake.vfs = pdfFonts.vfs
 
 export function useTokenQR() {
 // Build a PDF document with a QR code and a user name
-  async function buildDoc(token: string, userName: string) {
+  async function buildDoc(token: string, tokenID: string, userName: string) {
     const qrDataUrl = await QRCode.toDataURL(token)
 
     return {
       content: [
-        { text: 'Firn Token', style: 'header' as const },
+        { text: `Firn Token of ${userName}`, style: 'header' as const },
         {
           image: qrDataUrl,
-          width: 200,
+          width: 100,
           alignment: 'center' as const,
-          margin: [0, 20, 0, 20] as Margins
+          margin: [0, 0, 0, 0] as Margins
         },
-        { text: userName, fontSize: 12, color: 'gray', alignment: 'center' as const }
+        { text: tokenID, fontSize: 10, color: 'gray', alignment: 'center' as const }
       ],
       styles: {
         header: {
-          fontSize: 18,
+          fontSize: 12,
           bold: true,
           alignment: 'center' as const,
-          margin: [0, 0, 0, 10] as Margins
+          margin: [0, 0, 0, 0] as Margins
         }
       },
       defaultStyle: {
-        fontSize: 12
+        fontSize: 10
       }
     }
   }
 
   // Download the QR code as a PDF
-  async function downloadTokenQR(token: string, userName: string) {
-    const docDefinition = await buildDoc(token, userName)
+  async function downloadTokenQR(token: string, tokenID: string, userName: string) {
+    const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).download('token.pdf')
   }
 
   // Preview the QR code in a new tab
-  async function previewTokenQR(token: string, userName: string) {
-    const docDefinition = await buildDoc(token, userName)
+  async function previewTokenQR(token: string, tokenID: string, userName: string) {
+    const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).open()
   }
 

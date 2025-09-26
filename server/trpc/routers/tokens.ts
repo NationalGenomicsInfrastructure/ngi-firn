@@ -12,14 +12,14 @@ export const tokensRouter = createTRPCRouter({
   // firnUserProcedure instead of authedProcedure because we need the full user object in tRPC context
   generateFirnUserToken: firnUserProcedure
     .input(generateFirnUserTokenSchema)
-    .mutation(async ({ input, ctx }): Promise<{ jwt: string, user: DisplayUserToAdmin } | null> => {
+    .mutation(async ({ input, ctx }): Promise<{ jwt: string, tokenID: string, user: DisplayUserToAdmin } | null> => {
       if (!ctx.firnUser) {
         throw new TRPCError({ code: 'UNAUTHORIZED' })
       }
       const result = await tokenHandler.generateFirnUserToken(ctx.firnUser, input.audience, DateTime.fromFormat(input.expiresAt, 'yyyy-MM-dd').toISO() ?? undefined)
       if (result?.jwt && result?.user) {
         const updatedUser = await UserService.convertToDisplayUserToAdmin(result.user)
-        return { jwt: result.jwt, user: updatedUser }
+        return { jwt: result.jwt, tokenID: result.tokenID, user: updatedUser }
       }
       return null
     }),

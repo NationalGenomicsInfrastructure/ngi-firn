@@ -154,7 +154,7 @@ export class TokenHandler {
     return token
   }
 
-  public async generateFirnUserToken(user: FirnUser, audience?: string, expiresAt?: string): Promise<{ jwt: string, user: FirnUser } | null> {
+  public async generateFirnUserToken(user: FirnUser, audience?: string, expiresAt?: string): Promise<{ jwt: string, tokenID: string, user: FirnUser } | null> {
     // retrieve existing user tokens
     const userTokens = user.tokens as FirnUserToken[]
 
@@ -203,7 +203,7 @@ export class TokenHandler {
       // Update the user
       const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
       if (result) {
-        return { jwt, user: { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser }
+        return { jwt, tokenID: newTokenID, user: { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser }
       }
     }
     return null

@@ -80,6 +80,7 @@ const onPeriodUpdate = (value: number[] | undefined) => {
  */
 
 const token = ref('')
+const tokenID = ref('')
 
 const onSubmit = handleSubmit(async (values) => {
   try {
@@ -90,6 +91,7 @@ const onSubmit = handleSubmit(async (values) => {
     const result = await mutateAsync(values)
     if (result) {
       token.value = result.jwt
+      tokenID.value = result.tokenID
       resetForm()
       stepper?.value?.nextStep()
     }
@@ -278,19 +280,19 @@ const { user: sessionUser } = useUserSession()
                 :value="token" 
                 foreground="var(--una-primary-hex)" 
                 background="var(--c-background)"
-                class="mx-auto"
+                class="mx-auto my-15 scale-150"
               />
               <div class="flex flex-row gap-2 justify-between">
               <NButton
                 label="Open a printable QR code with your token"
                 btn="soft-primary hover:outline-primary"
-                @click="previewTokenQR(token, sessionUser?.name || 'Firn user')"
+                @click="previewTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
                 :disabled="!token"
               />
               <NButton
                 label="Download a PDF with QR code of your token"
                 btn="soft-primary hover:outline-primary"
-                @click="downloadTokenQR(token, sessionUser?.name || 'Firn user')"
+                @click="downloadTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
                 :disabled="!token"
               />
             </div>
