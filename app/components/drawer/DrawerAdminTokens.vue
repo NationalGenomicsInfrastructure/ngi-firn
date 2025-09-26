@@ -144,12 +144,12 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
               class="transition delay-300 ease-in-out"
               btn="soft-primary hover:outline-primary"
               trailing="i-lucide-qr-code"
+              :disabled="!props.tokens || props.tokens.length === 0"
       />
     </NDrawerTrigger>
     <NDrawerContent>
       <NDrawerHeader>
-        <NDrawerTitle>Manage tokens</NDrawerTitle>
-        <NDrawerDescription>Manage the tokens for {{ props.googleGivenName }} {{ props.googleFamilyName }}.</NDrawerDescription>
+        <NDrawerTitle>Administer {{ props.googleGivenName }} {{ props.googleFamilyName }}'s tokens</NDrawerTitle>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <NFormGroup
@@ -186,7 +186,7 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
             tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
           }"
           enable-row-selection
-          empty-text="No issued tokens for your account"
+          empty-text="No issued tokens for this user"
           empty-icon="i-lucide-construction"
         />
         <div
@@ -201,19 +201,22 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
       </div>
     </div>
     <NDrawerFooter>
-      <div class="flex gap-4 justify-end mt-4">
+      <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
+          <NDrawerClose as-child>
+            <NButton
+            label="Cancel"
+            class="transition delay-300 ease-in-out"
+            btn="soft-gray hover:outline-gray"
+            trailing="i-lucide-x"
+            />
+          </NDrawerClose>
           <NButton
-            label="Delete"
+            :label="`Delete ${props.googleGivenName} ${props.googleFamilyName}'s ${table?.getFilteredSelectedRowModel().rows.length === 1 ? 'token' : 'tokens'}`"
             class="transition delay-300 ease-in-out"
             btn="soft-error hover:outline-error"
             trailing="i-lucide-banknote-x"
             @click="handleDeletion(table?.getFilteredSelectedRowModel().rows)"
           />
-          <NDrawerClose as-child>
-              <NButton btn="solid-gray">
-                Cancel
-              </NButton>
-          </NDrawerClose>
         </div>            
     </NDrawerFooter>
     </NDrawerContent>
