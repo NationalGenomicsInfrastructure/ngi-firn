@@ -276,9 +276,9 @@ const { user: sessionUser } = useUserSession()
               />
               <ImagesQR 
                 :value="token" 
-                :image-settings="{ src: sessionUser?.name || 'Firn user' }" 
-                foreground="'#a7c947'" 
-                background="'#000000'" 
+                foreground="var(--una-primary-hex)" 
+                background="var(--c-background)"
+                class="mx-auto"
               />
               <div class="flex flex-row gap-2 justify-between">
               <NButton

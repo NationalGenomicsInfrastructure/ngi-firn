@@ -23,12 +23,7 @@
       background: '#000000',
       foreground: '#a7c947',
       margin: 0,
-      imageSettings: () => ({
-        src: 'NGIFirn.jpg',
-        width: 200,
-        height: 200,
-        excavate: true,
-      }),
+      imageSettings: undefined,
       gradient: false,
       gradientType: 'linear',
       gradientStartColor: '#2E86EF',

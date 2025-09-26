@@ -180,11 +180,12 @@ watch([relativeDates, includeWeekday, displayTime], () => {
               :google-given-name="row.original.googleGivenName"
               :google-family-name="row.original.googleFamilyName"
             />
-            <NButton
-              label="Administer tokens"
-              class="transition delay-300 ease-in-out"
-              btn="soft-primary hover:outline-primary"
-              trailing="i-lucide-qr-code"
+            <DrawerAdminTokens
+              :tokens="row.original.tokens"
+              :google-id="row.original.googleId"
+              :google-email="row.original.googleEmail"
+              :google-given-name="row.original.googleGivenName"
+              :google-family-name="row.original.googleFamilyName"
             />
             <DialogDeleteUser
               :google-id="row.original.googleId"
