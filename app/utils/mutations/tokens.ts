@@ -131,8 +131,44 @@ export const deleteUserTokenByAdmin = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.deleteUserTokenByAdmin.mutate(input)
     },
-    onError(error: Error, input: DeleteUserTokenByAdminInput) {
-      showError(error.message, 'Token could not be deleted by admin.')
+    onMutate(input: DeleteUserTokenByAdminInput) {
+      const queryCache = useQueryCache()
+      const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || []
+      const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired()) || []
+
+      const updatedApproved = deleteUserTokensFromLists(input, [approved])
+      if (updatedApproved) {
+        queryCache.cancelQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
+        queryCache.setQueryData(USERS_QUERY_KEYS.approved(), updatedApproved)
+      }
+
+      const updatedRetired = deleteUserTokensFromLists(input, [retired])
+      if (updatedRetired) {
+        queryCache.cancelQueries({ key: USERS_QUERY_KEYS.retired(), exact: true })
+        queryCache.setQueryData(USERS_QUERY_KEYS.retired(), updatedRetired)
+      }
+
+      return { approved, retired, updatedApproved, updatedRetired }
+    },
+    onSettled() {
+      const queryCache = useQueryCache()
+      queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
+      queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.retired(), exact: true })
+      queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
+    },
+    onError(error: Error, input: DeleteUserTokenByAdminInput, context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[] }) {
+      const queryCache = useQueryCache()
+      // rollback the optimistic updates if possible
+      if (context.approved) {
+        queryCache.setQueryData(USERS_QUERY_KEYS.approved(), context.approved)
+      }
+      if (context.retired) {
+        queryCache.setQueryData(USERS_QUERY_KEYS.retired(), context.retired)
+      }
+      const tokenCount = input.tokenID.length
+      const tokenText = tokenCount === 1 ? 'token' : 'tokens'
+      const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
+      showError(error.message, `The ${tokenText} ${tokenList} for ${input.googleEmail} ${tokenCount === 1 ? 'was' : 'were'} not deleted.`)
     },
     onSuccess(response, input: DeleteUserTokenByAdminInput) {
       const tokenCount = input.tokenID.length
