@@ -4,7 +4,6 @@ import { validateFirnUserTokenSchema } from '~~/schemas/tokens'
 import { validateFirnUserToken } from '~/utils/mutations/tokens'
 
 const props = defineProps<{
-  token: string
   audienceItems: string[]
 }>()
 
@@ -19,7 +18,7 @@ const formSchemaTest = toTypedSchema(validateFirnUserTokenSchema)
 const { handleSubmit: handleSubmitTest, values: valuesTest } = useForm({
   validationSchema: formSchemaTest,
   initialValues: {
-    tokenString: props.token,
+    tokenString: '',
     expectedAudience: ''
   }
 })

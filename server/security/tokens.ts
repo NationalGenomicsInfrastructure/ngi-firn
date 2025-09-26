@@ -65,13 +65,14 @@ export class TokenHandler {
     let payload: FirnJWTPayload | undefined
     let error: string | undefined
 
+    const audienceClaim = expectedAudience ? expectedAudience.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
+
     if (expectedAudience) {
-      const result = await this.verifyTokenWithPublicClaims(token, expectedAudience)
+      const result = await this.verifyTokenWithPublicClaims(token, audienceClaim)
       success = result.success
       payload = result.payload
       error = result.error
-    }
-    else {
+    } else {
       const result = await this.verifyToken(token)
       success = result.success
       payload = result.payload
@@ -80,6 +81,10 @@ export class TokenHandler {
 
     if (error) {
       return { user: null, token: null, error: error }
+    }
+
+    if (audienceClaim && payload?.aud !== `urn:${audienceClaim}`) {
+      return { user: null, token: null, error: 'Token audience does not match expected audience' }
     }
 
     if (success && payload) {
@@ -115,11 +120,11 @@ export class TokenHandler {
     }
   }
 
-  private async verifyTokenWithPublicClaims(token: string, expectedAudience: string): Promise<{ success: boolean, payload?: FirnJWTPayload, error?: string }> {
+  private async verifyTokenWithPublicClaims(token: string, normalizedAudience: string): Promise<{ success: boolean, payload?: FirnJWTPayload, error?: string }> {
     try {
       const { payload } = await jwtDecrypt(token, this.secretKey, {
         issuer: this.issuer,
-        audience: `urn:${expectedAudience}`
+        audience: `urn:${normalizedAudience}`
       })
       return { success: true, payload: payload as FirnJWTPayload }
     }

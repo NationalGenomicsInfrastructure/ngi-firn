@@ -300,7 +300,7 @@ const { user: sessionUser } = useUserSession()
             </div>
           </NCard>
         </div>
-          <FormValidateToken  v-if="item.stage === 3" :token="token" :audienceItems="audienceItems" />
+          <FormValidateToken  v-if="item.stage === 3"  :audienceItems="audienceItems" />
       </div>
     </template>
   </NStepper>
