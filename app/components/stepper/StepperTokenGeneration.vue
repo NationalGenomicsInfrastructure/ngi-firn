@@ -28,6 +28,8 @@ const items = [
   }
 ]
 
+const audienceItems = ['User Login', 'API Access']
+
 const stepper = useTemplateRef('tokenStepper')
 
 /*
@@ -218,7 +220,7 @@ const { user: sessionUser } = useUserSession()
                   <NSelect
                     v-model="audienceValue"
                     placeholder="No restriction"
-                    :items="['User Login', 'API Access']"
+                    :items="audienceItems"
                   />
                   <NButton
                     v-if="audienceValue"
@@ -241,7 +243,7 @@ const { user: sessionUser } = useUserSession()
         </form>
         <div
           v-if="item.stage === 2"
-          class="flex flex-col sm:flex-row gap-2 p-auto"
+          class="flex flex-col gap-2 p-auto"
         >
           <NCard
             title="Your new token"
@@ -298,6 +300,7 @@ const { user: sessionUser } = useUserSession()
             </div>
           </NCard>
         </div>
+          <FormValidateToken  v-if="item.stage === 3" :token="token" :audienceItems="audienceItems" />
       </div>
     </template>
   </NStepper>
