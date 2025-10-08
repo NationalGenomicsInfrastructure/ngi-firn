@@ -279,7 +279,8 @@ const { user: sessionUser } = useUserSession()
                 class="mx-2 my-4"
               />
               <ImagesQR 
-                :value="token" 
+                v-if="token"
+                :value="token"
                 foreground="var(--una-primary-hex)" 
                 background="var(--c-background)"
                 class="mx-auto my-15 scale-150"

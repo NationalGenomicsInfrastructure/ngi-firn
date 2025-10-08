@@ -102,16 +102,16 @@ const formattedTokens = computed(() => {
   })
 })
 
-// Watch for date formatting options changes
+// Formatting options watcher
 watch([relativeDates, includeWeekday, displayTime], () => {
   // When relativeDates is enabled, turn off includeWeekday and time.
   // When either includeWeekday or time is enabled, turn off relativeDates.
   if (relativeDates.value) {
     if (includeWeekday.value) includeWeekday.value = false
     if (displayTime.value) displayTime.value = false
-  }
-  else if (includeWeekday.value || displayTime.value) {
-    if (relativeDates.value) relativeDates.value = false
+  } else {
+    if (includeWeekday.value && relativeDates.value) includeWeekday.value = false
+    if (displayTime.value && relativeDates.value) displayTime.value = false
   }
 })
 
