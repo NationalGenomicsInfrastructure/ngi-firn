@@ -7,10 +7,9 @@ definePageMeta({
 <template>
   <main class="mx-auto max-w-lg px-4 py-8 lg:px-8 sm:px-6">
     Logged in!
-    <ImagesQR 
-                value="Firntokendksfölskföldskföldsjfoösadjaösodjasoödkasöodkasdoöas" 
-                foreground="#000000" 
-                background="#ffffff" 
+    <DialogBarcodeReader
+      type="LiveStream"
+      :readerTypes="['ean_reader']"
     />
   </main>
 </template>

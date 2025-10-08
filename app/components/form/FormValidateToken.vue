@@ -50,10 +50,12 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
             >
             <NFormField
                 name="tokenString"
-                description="Enter your token here"
+                description="Enter your token here:"
             >
             <NInput
                 type="textarea"
+                rows="6"
+                class="w-full"
                 leading="i-lucide-key-round"
                 placeholder="Enter your token here"
                 :una="{
