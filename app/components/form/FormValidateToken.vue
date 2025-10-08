@@ -7,7 +7,7 @@ const props = defineProps<{
   audienceItems: string[]
 }>()
 
-const { value: expectedAudienceValue, setValue: setExpectedAudienceValue } = useField<string>('expectedAudience')
+
 
 /*
  * Token test: Submit to validation
@@ -15,13 +15,20 @@ const { value: expectedAudienceValue, setValue: setExpectedAudienceValue } = use
 
 const formSchemaTest = toTypedSchema(validateFirnUserTokenSchema)
 
-const { handleSubmit: handleSubmitTest, values: valuesTest } = useForm({
+const { handleSubmit: handleSubmitTest, setFieldValue } = useForm({
   validationSchema: formSchemaTest,
   initialValues: {
     tokenString: '',
     expectedAudience: ''
   }
 })
+
+const { value: expectedAudienceValue, setValue: setExpectedAudienceValue } = useField<string>('expectedAudience')
+
+const onExpectedAudienceUpdate = (value: string | undefined) => {
+  if (!value) return
+  setFieldValue('expectedAudience', value)
+}
 
 const onTokenTest = handleSubmitTest(async (valuesTest) => {
     try {
@@ -44,23 +51,29 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
             class="flex flex-col gap-4"
             @submit.prevent="onTokenTest()"
             >
+            <NFormField
+                name="tokenString"
+                description="Enter your token here"
+            >
             <NInput
-                v-model="valuesTest.tokenString"
+                type="textarea"
                 leading="i-lucide-key-round"
                 placeholder="Enter your token here"
                 :una="{
                 inputWrapper: 'w-full'
                 }"
             />
+            </NFormField>
             <NFormField
-                name="audienceTest"
+                name="expectedAudience"
                 description="Validate a proper audience restriction for your token"
             >
                 <div class="flex flex-row gap-2">
                 <NSelect
-                    v-model="expectedAudienceValue"
+                    :model-value="expectedAudienceValue"
                     placeholder="No restriction"
                     :items="props.audienceItems"
+                    @update:model-value="onExpectedAudienceUpdate"
                 />
                 <NButton
                     v-if="expectedAudienceValue"

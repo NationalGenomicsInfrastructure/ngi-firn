@@ -99,7 +99,7 @@ export const deleteFirnUserToken = defineMutation(() => {
       const tokenCount = input.tokenID.length
       const tokenText = tokenCount === 1 ? 'token' : 'tokens'
       const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
-      showSuccess(`Your ${tokenText} ${tokenList} ${tokenCount === 1 ? 'was' : 'were'} successfully deleted, ${response?.googleGivenName}`, `${tokenCount === 1 ? 'Token' : 'Tokens'} deleted`)
+      showSuccess(`Your ${tokenText} ${tokenList} ${tokenCount === 1 ? 'was' : 'were'} successfully deleted.`, `${tokenCount === 1 ? 'Token' : 'Tokens'} deleted`)
     }
   })
   return { deleteToken: mutate, ...mutation }
@@ -114,7 +114,7 @@ export const validateFirnUserToken = defineMutation(() => {
       return $trpc.tokens.validateFirnUserToken.mutate(input)
     },
     onError(error: Error, input: ValidateFirnUserTokenInput) {
-      showError(error.message, 'Token could not be validated.')
+      showError(error.message, 'Invalid token')
     },
     onSuccess(response, input: ValidateFirnUserTokenInput) {
       showSuccess('The provided token is valid until ' + formatDate(response?.expiresAt, { relative: false, includeWeekday: true, time: true }), 'Token is valid')
