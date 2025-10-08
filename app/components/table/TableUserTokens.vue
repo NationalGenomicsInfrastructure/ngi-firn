@@ -82,6 +82,11 @@ const columns: ColumnDef<FirnUserToken>[] = [
   }
 ]
 
+const pagination = ref({
+  pageSize: 10,
+  pageIndex: 0,
+})
+
 const select = ref<RowSelectionState>()
 const table = useTemplateRef<Table<FirnUserToken>>('table')
 
@@ -166,13 +171,40 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
       :una="{
         tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
       }"
+      :default-sort="{
+        id: 'expiresAt',
+        desc: true
+      }"
+      :pagination="pagination"
       enable-row-selection
+      enable-sorting
+      enable-multi-sort
       empty-text="No issued tokens for your account"
       empty-icon="i-lucide-construction"
     />
+    <!-- pagination -->
+    <div
+      class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
+    >
+      <div
+        class="flex items-center justify-center text-sm font-medium"
+      >
+        Page {{ (table?.getState().pagination.pageIndex ?? 0) + 1 }} of
+        {{ table?.getPageCount().toLocaleString() }}
+      </div>
+
+      <NPagination
+        :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
+        :total="table?.getFilteredRowModel().rows.length"
+        show-edges
+        :items-per-page="table?.getState().pagination.pageSize ?? 5"
+        @update:page="table?.setPageIndex($event - 1)"
+      />
+    </div>
     <div
       class="flex items-center justify-between px-2"
     >
+    <!-- selection and deletion button -->
       <div
         class="flex-1 text-sm text-muted"
       >
