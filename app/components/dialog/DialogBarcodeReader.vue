@@ -7,90 +7,28 @@ const props = defineProps<{
     readerTypes: QuaggaJSCodeReader[]
 }>()
 
-type BarcodeFinding = {
-  id: string
-  code: string
-  format: string
-  confidence?: number
-  count: number
-  // geometry from latest detection
-  lastBox?: unknown
-  lastLine?: unknown
-  // small ring buffer of recent samples
-  samples: Array<{
-    confidence?: number
-    box?: unknown
-    line?: unknown
-  }>
-}
-
 const barcodeData = ref('')
-const findingsById = reactive<Record<string, BarcodeFinding>>({})
+const findingsPagination = ref({ pageSize: 5, pageIndex: 0 })
 
-function normalizeDetection(result: any): BarcodeFinding | null {
-  const code: string | undefined = result?.codeResult?.code
-  const format: string | undefined = result?.codeResult?.format
-  const confidence: number | undefined =
-    typeof result?.codeResult?.confidence === 'number'
-      ? result.codeResult.confidence
-      : undefined
+// Use the barcode findings composable
+const {
+  findingsById,
+  upsertFinding,
+  removeFinding,
+  clearFindings,
+  topFindingCode,
+  findingsCount,
+  sortedFindings,
+} = useBarcodeFindings()
 
-  if (!code || !format) return null
-
-  const id = `${format}:${code}`
-
-  return {
-    id,
-    code,
-    format,
-    confidence,
-    count: 1,
-    lastBox: result?.box,
-    lastLine: result?.line,
-    samples: [
-      {
-        confidence,
-        box: result?.box,
-        line: result?.line,
-      },
-    ],
-  }
-}
-
-function upsertFinding(result: any) {
-  const normalized = normalizeDetection(result)
-  if (!normalized) return
-
-  const existing = findingsById[normalized.id]
-  if (!existing) {
-    findingsById[normalized.id] = normalized
-    return
-  }
-
-  existing.count += 1
-  existing.confidence = normalized.confidence ?? existing.confidence
-  existing.lastBox = normalized.lastBox
-  existing.lastLine = normalized.lastLine
-  existing.samples.push({
-    confidence: normalized.confidence,
-    box: normalized.lastBox,
-    line: normalized.lastLine,
-  })
-  if (existing.samples.length > 5) existing.samples.shift()
-}
+watch(topFindingCode, (code) => {
+  barcodeData.value = code || ''
+}, { immediate: true })
 
 function handleDetected(result: any) {
   upsertFinding(result)
   const code: string | undefined = result?.codeResult?.code
   if (code) barcodeData.value = code
-}
-
-function removeFinding(id: string) {
-  if (id in findingsById) delete findingsById[id]
-}
-
-function clearFindings() {
-  for (const key of Object.keys(findingsById)) delete findingsById[key]
 }
 
 defineExpose({ findingsById, removeFinding })
@@ -122,14 +60,14 @@ const { copy, copied } = useClipboard({ source: barcodeData })
 
     <NDivider label="Findings" />
 
-    <div v-if="Object.keys(findingsById).length === 0" class="text-sm text-muted">
+    <div v-if="findingsCount === 0" class="text-sm text-muted">
       No findings yet. Point your camera at a barcode.
     </div>
 
     <div v-else class="w-full overflow-x-auto">
       <div class="flex items-center justify-between mb-2">
         <div class="text-sm text-muted">
-          {{ Object.keys(findingsById).length }} unique finding(s)
+          {{ findingsCount }} unique finding(s)
         </div>
         <NButton
           btn="soft-error"
@@ -145,12 +83,24 @@ const { copy, copied } = useClipboard({ source: barcodeData })
           { header: 'Code', accessorKey: 'code' },
           { header: 'Detections', accessorKey: 'count' },
         ]"
-        :data="Object.values(findingsById).sort((a, b) => b.count - a.count)"
-        :pagination="{ pageSize: 5, pageIndex: 0 }"
+        :data="sortedFindings"
+        :pagination="findingsPagination"
         :default-sort="{ id: 'count', desc: true }"
         enable-sorting
         empty-text="No findings"
       />
+      <div
+        v-if="findingsCount > findingsPagination.pageSize"
+        class="flex items-center justify-end mt-3"
+      >
+        <NPagination
+          :page="findingsPagination.pageIndex + 1"
+          :total="findingsCount"
+          :items-per-page="findingsPagination.pageSize"
+          show-edges
+          @update:page="(p:number) => findingsPagination.pageIndex = p - 1"
+        />
+      </div>
     </div>
 
     <form
