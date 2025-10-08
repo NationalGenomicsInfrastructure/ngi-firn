@@ -11,7 +11,8 @@ alwaysApply: false
 ## Mutation Organization
 
 Organize mutations by domain in separate files:
-```
+
+```bash
 ./app/utils/mutations
 ├── boards.ts
 ├── documents.ts

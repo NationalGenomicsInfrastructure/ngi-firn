@@ -87,8 +87,6 @@ const tokenID = ref('')
 const onSubmit = handleSubmit(async (values) => {
   try {
     // in this case, we use the async version of the mutation to act on the failure.
-    console.log(values)
-    console.log('Submitting form...')
     const { mutateAsync } = generateFirnUserToken()
     const result = await mutateAsync(values)
     if (result) {

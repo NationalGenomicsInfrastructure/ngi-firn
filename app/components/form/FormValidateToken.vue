@@ -32,11 +32,8 @@ const onExpectedAudienceUpdate = (value: string | undefined) => {
 
 const onTokenTest = handleSubmitTest(async (valuesTest) => {
     try {
-        const { mutateAsync } = validateFirnUserToken()
-        const result = await mutateAsync(valuesTest)
-        if (result) {
-            console.log(result)
-        }
+        const { validateToken } = validateFirnUserToken()
+        validateToken(valuesTest)
     }
     catch (error) {
       console.error(error)
