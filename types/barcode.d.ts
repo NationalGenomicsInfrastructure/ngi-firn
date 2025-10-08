@@ -1,4 +1,4 @@
-export type BarcodeFinding = {
+export type BarcodeDetection = {
     id: string
     code: string
     format: string

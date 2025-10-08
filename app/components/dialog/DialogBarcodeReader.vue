@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
 import type { QuaggaJSCodeReader, InputStreamType } from "@ericblade/quagga2";
+import type { Table } from '@tanstack/vue-table'
+import type { BarcodeDetection } from '../../../types/barcode'
 
 const props = defineProps<{
     type: InputStreamType
@@ -8,30 +10,26 @@ const props = defineProps<{
 }>()
 
 const barcodeData = ref('')
-const findingsPagination = ref({ pageSize: 5, pageIndex: 0 })
+const findingsPagination = ref({ pageSize: 3, pageIndex: 0 })
+const enableDetection = ref(true)
+const table = useTemplateRef<Table<BarcodeDetection>>('table')
 
-// Use the barcode findings composable
+// Use the barcode detections composable
 const {
   findingsById,
-  upsertFinding,
-  removeFinding,
-  clearFindings,
-  topFindingCode,
-  findingsCount,
-  sortedFindings,
-} = useBarcodeFindings()
+  upsertDetection,
+  removeDetection,
+  clearDetections,
+  mostDetectedCode,
+  detectionCount,
+  sortedDetections,
+} = useBarcodeDetections()
 
-watch(topFindingCode, (code) => {
+watch(mostDetectedCode, (code) => {
   barcodeData.value = code || ''
 }, { immediate: true })
 
-function handleDetected(result: any) {
-  upsertFinding(result)
-  const code: string | undefined = result?.codeResult?.code
-  if (code) barcodeData.value = code
-}
-
-defineExpose({ findingsById, removeFinding })
+defineExpose({ findingsById, removeDetection })
 const { copy, copied } = useClipboard({ source: barcodeData })
 </script>
 
@@ -42,6 +40,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     :_dialog-footer="{
       class: 'sm:justify-start',
     }"
+    scrollable
   >
     <template #trigger>
       <NButton btn="solid-gray">
@@ -49,57 +48,74 @@ const { copy, copied } = useClipboard({ source: barcodeData })
       </NButton>
     </template>
     <NAspectRatio
-        :ratio="16 / 9"
+        :ratio="4 / 3"
+        v-if="enableDetection"
       >
         <BarcodeReader
-        :on-detected="handleDetected"
+        :on-detected="upsertDetection"
         :reader-types="props.readerTypes"
         :type="props.type"
         />
     </NAspectRatio>
+    <NAspectRatio
+        :ratio="4 / 3"
+        v-else
+      >
+        <div class="flex items-center justify-center h-full">
+          <NButton btn="solid-gray" @click="enableDetection = true">
+            Enable Detection
+          </NButton>
+        </div>
+      </NAspectRatio>
 
-    <NDivider label="Findings" />
+    <NDivider label="Detections" />
 
-    <div v-if="findingsCount === 0" class="text-sm text-muted">
+    <div v-if="detectionCount === 0" class="text-sm text-muted">
       No findings yet. Point your camera at a barcode.
     </div>
 
     <div v-else class="w-full overflow-x-auto">
       <div class="flex items-center justify-between mb-2">
         <div class="text-sm text-muted">
-          {{ findingsCount }} unique finding(s)
+          {{ detectionCount }} unique detection(s)
         </div>
         <NButton
           btn="soft-error"
           size="sm"
           label="Delete all"
           leading="i-lucide-trash-2"
-          @click="clearFindings()"
+          @click="clearDetections()"
+        />
+        <NButton
+          btn="soft-gray"
+          size="sm"
+          label="Disable Detection"
+          leading="i-lucide-x"
+          @click="enableDetection = false"
         />
       </div>
       <NTable
+        ref="table"
         :columns="[
           { header: 'Format', accessorKey: 'format' },
           { header: 'Code', accessorKey: 'code' },
           { header: 'Detections', accessorKey: 'count' },
         ]"
-        :data="sortedFindings"
+        :data="sortedDetections"
         :pagination="findingsPagination"
-        :default-sort="{ id: 'count', desc: true }"
-        enable-sorting
-        empty-text="No findings"
+        empty-text="No detections"
       />
       <div
-        v-if="findingsCount > findingsPagination.pageSize"
+        v-if="detectionCount > findingsPagination.pageSize"
         class="flex items-center justify-end mt-3"
       >
         <NPagination
-          :page="findingsPagination.pageIndex + 1"
-          :total="findingsCount"
-          :items-per-page="findingsPagination.pageSize"
-          show-edges
-          @update:page="(p:number) => findingsPagination.pageIndex = p - 1"
-        />
+        :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
+        :total="table?.getFilteredRowModel().rows.length"
+        show-edges
+        :items-per-page="table?.getState().pagination.pageSize ?? 5"
+        @update:page="table?.setPageIndex($event - 1)"
+      />
       </div>
     </div>
 

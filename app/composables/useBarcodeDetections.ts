@@ -1,17 +1,17 @@
-import type { BarcodeFinding } from '../../types/barcode'
+import type { BarcodeDetection } from '../../types/barcode'
 
 /**
  * Composable for managing barcode detection findings
  * Tracks multiple detections of the same barcode and aggregates them
  */
 
-export function useBarcodeFindings() {
-  const findingsById = reactive<Record<string, BarcodeFinding>>({})
+export function useBarcodeDetections() {
+  const findingsById = reactive<Record<string, BarcodeDetection>>({})
 
   /**
-   * Normalizes a raw detection result into a BarcodeFinding object
+   * Normalizes a raw detection result into a BarcodeDetection object
    */
-  function normalizeDetection(result: any): BarcodeFinding | null {
+  function normalizeDetection(result: any): BarcodeDetection | null {
     const code: string | undefined = result?.codeResult?.code
     const format: string | undefined = result?.codeResult?.format
     const confidence: number | undefined =
@@ -45,7 +45,7 @@ export function useBarcodeFindings() {
    * Updates or inserts a finding based on a detection result
    * Aggregates multiple detections of the same barcode
    */
-  function upsertFinding(result: any) {
+  function upsertDetection(result: any) {
     const normalized = normalizeDetection(result)
     if (!normalized) return
 
@@ -70,51 +70,49 @@ export function useBarcodeFindings() {
   /**
    * Removes a finding by its ID
    */
-  function removeFinding(id: string) {
+  function removeDetection(id: string) {
     if (id in findingsById) delete findingsById[id]
   }
 
   /**
    * Clears all findings
    */
-  function clearFindings() {
+  function clearDetections() {
     for (const key of Object.keys(findingsById)) delete findingsById[key]
   }
 
   /**
    * Gets the code of the barcode with the most detections
    */
-  const topFindingCode = computed(() => {
+  const mostDetectedCode = computed(() => {
     const items = Object.values(findingsById)
     if (!items || items.length === 0) return ''
-    let top: BarcodeFinding | null = null
-    for (let i = 0; i < items.length; i++) {
-      const current: BarcodeFinding = items[i] as BarcodeFinding
-      if (!top || current.count > top.count) top = current
-    }
+    let top: BarcodeDetection | undefined
+    items.sort((a, b) => b.count - a.count)
+    top = items[0]
     return top ? top.code : ''
   })
 
   /**
    * Gets the count of unique findings
    */
-  const findingsCount = computed(() => Object.keys(findingsById).length)
+  const detectionCount = computed(() => Object.keys(findingsById).length)
 
   /**
    * Gets all findings sorted by detection count (descending)
    */
-  const sortedFindings = computed(() =>
+  const sortedDetections = computed(() =>
     Object.values(findingsById).sort((a, b) => b.count - a.count)
   )
 
   return {
     findingsById,
-    upsertFinding,
-    removeFinding,
-    clearFindings,
-    topFindingCode,
-    findingsCount,
-    sortedFindings,
+    upsertDetection,
+    removeDetection,
+    clearDetections,
+    mostDetectedCode,
+    detectionCount,
+    sortedDetections,
   }
 }
 
