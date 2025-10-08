@@ -65,16 +65,17 @@ const formattedUsers = computed(() => {
 })
 
 // Watch for date formatting options changes
-watch([relativeDates, includeWeekday, displayTime], () => {
-  // When relativeDates is enabled, turn off includeWeekday and time.
-  // When either includeWeekday or time is enabled, turn off relativeDates.
-  if (relativeDates.value) {
-    if (includeWeekday.value) includeWeekday.value = false
-    if (displayTime.value) displayTime.value = false
-  }
-  else if (includeWeekday.value || displayTime.value) {
-    if (relativeDates.value) relativeDates.value = false
-  }
+// If relative is turned on, force others off
+watch(relativeDates, (isRelative) => {
+  if (!isRelative) return
+  if (includeWeekday.value) includeWeekday.value = false
+  if (displayTime.value) displayTime.value = false
+})
+
+// If either absolute option is turned on, force relative off
+watch([includeWeekday, displayTime], ([weekday, time]) => {
+  if (!(weekday || time)) return
+  if (relativeDates.value) relativeDates.value = false
 })
 </script>
 
