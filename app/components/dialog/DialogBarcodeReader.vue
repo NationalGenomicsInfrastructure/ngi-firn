@@ -7,7 +7,93 @@ const props = defineProps<{
     readerTypes: QuaggaJSCodeReader[]
 }>()
 
+type BarcodeFinding = {
+  id: string
+  code: string
+  format: string
+  confidence?: number
+  count: number
+  // geometry from latest detection
+  lastBox?: unknown
+  lastLine?: unknown
+  // small ring buffer of recent samples
+  samples: Array<{
+    confidence?: number
+    box?: unknown
+    line?: unknown
+  }>
+}
+
 const barcodeData = ref('')
+const findingsById = reactive<Record<string, BarcodeFinding>>({})
+
+function normalizeDetection(result: any): BarcodeFinding | null {
+  const code: string | undefined = result?.codeResult?.code
+  const format: string | undefined = result?.codeResult?.format
+  const confidence: number | undefined =
+    typeof result?.codeResult?.confidence === 'number'
+      ? result.codeResult.confidence
+      : undefined
+
+  if (!code || !format) return null
+
+  const id = `${format}:${code}`
+
+  return {
+    id,
+    code,
+    format,
+    confidence,
+    count: 1,
+    lastBox: result?.box,
+    lastLine: result?.line,
+    samples: [
+      {
+        confidence,
+        box: result?.box,
+        line: result?.line,
+      },
+    ],
+  }
+}
+
+function upsertFinding(result: any) {
+  const normalized = normalizeDetection(result)
+  if (!normalized) return
+
+  const existing = findingsById[normalized.id]
+  if (!existing) {
+    findingsById[normalized.id] = normalized
+    return
+  }
+
+  existing.count += 1
+  existing.confidence = normalized.confidence ?? existing.confidence
+  existing.lastBox = normalized.lastBox
+  existing.lastLine = normalized.lastLine
+  existing.samples.push({
+    confidence: normalized.confidence,
+    box: normalized.lastBox,
+    line: normalized.lastLine,
+  })
+  if (existing.samples.length > 5) existing.samples.shift()
+}
+
+function handleDetected(result: any) {
+  upsertFinding(result)
+  const code: string | undefined = result?.codeResult?.code
+  if (code) barcodeData.value = code
+}
+
+function removeFinding(id: string) {
+  if (id in findingsById) delete findingsById[id]
+}
+
+function clearFindings() {
+  for (const key of Object.keys(findingsById)) delete findingsById[key]
+}
+
+defineExpose({ findingsById, removeFinding })
 const { copy, copied } = useClipboard({ source: barcodeData })
 </script>
 
@@ -28,11 +114,44 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         :ratio="16 / 9"
       >
         <BarcodeReader
-        :on-detected="(data) => barcodeData = data"
+        :on-detected="handleDetected"
         :reader-types="props.readerTypes"
         :type="props.type"
         />
     </NAspectRatio>
+
+    <NDivider label="Findings" />
+
+    <div v-if="Object.keys(findingsById).length === 0" class="text-sm text-muted">
+      No findings yet. Point your camera at a barcode.
+    </div>
+
+    <div v-else class="w-full overflow-x-auto">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm text-muted">
+          {{ Object.keys(findingsById).length }} unique finding(s)
+        </div>
+        <NButton
+          btn="soft-error"
+          size="sm"
+          label="Delete all"
+          leading="i-lucide-trash-2"
+          @click="clearFindings()"
+        />
+      </div>
+      <NTable
+        :columns="[
+          { header: 'Format', accessorKey: 'format' },
+          { header: 'Code', accessorKey: 'code' },
+          { header: 'Detections', accessorKey: 'count' },
+        ]"
+        :data="Object.values(findingsById).sort((a, b) => b.count - a.count)"
+        :pagination="{ pageSize: 5, pageIndex: 0 }"
+        :default-sort="{ id: 'count', desc: true }"
+        enable-sorting
+        empty-text="No findings"
+      />
+    </div>
 
     <form
       class="flex gap-2"
@@ -40,8 +159,9 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     >
       <NInput
         v-model="barcodeData"
-        type="textarea"
-        leading="i-radix-icons-link-2"
+        leading="i-lucide-barcode"
+        type="text"
+        size="lg"
         :una="{
           inputWrapper: 'w-full',
         }"
