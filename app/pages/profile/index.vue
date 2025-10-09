@@ -11,5 +11,6 @@ definePageMeta({
       type="LiveStream"
       :readerTypes="['code_128_reader', 'code_39_reader', 'code_93_reader', 'codabar_reader']"
     />
+    <DialogZxingReader />
   </main>
 </template>
