@@ -63,7 +63,8 @@
     "qrcode": "^1.5.4",
     "qrcode.vue": "^3.6.0",
     "trpc-nuxt": "^1.2.0",
-    "zod": "^4.0.8"
+    "zod": "^4.0.8",
+    "zxing-wasm": "^2.2.2"
   },
   "devDependencies": {
     "@iconify-json/radix-icons": "^1.2.2",
@@ -78,6 +79,7 @@
     "dotenv": "^17.2.0",
     "esbuild": "^0.25.8",
     "eslint": "^9.31.0",
+    "form-data": "2.5.5",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "unocss": "66.3.3",
