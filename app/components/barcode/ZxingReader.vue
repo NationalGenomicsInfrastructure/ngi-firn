@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { readBarcodes, type ReaderOptions, setZXingModuleOverrides } from 'zxing-wasm/reader'
+import { readBarcodes, type ReaderOptions, prepareZXingModule } from 'zxing-wasm/reader'
 import type { DetectedCode, ScannerState } from '../../../types/barcode'
 
 type TorchConstraint = MediaTrackConstraints & { advanced?: Array<{ torch?: boolean }> }
@@ -297,14 +297,18 @@ ctx.restore()
     loop()
     }
 
-    function applyWasmOverride() {
-    if (props.wasmUrl) {
-        setZXingModuleOverrides({
+function applyWasmOverride() {
+  if (props.wasmUrl) {
+    prepareZXingModule({
+      overrides: {
         locateFile: () => props.wasmUrl
-        })
-        props.debug && console.log('[ZXING OVERRIDE] wasmUrl =', props.wasmUrl)
-    }
-    }
+      },
+      equalityFn: Object.is,
+      fireImmediately: false,
+    })
+    props.debug && console.log('[ZXING OVERRIDE] wasmUrl =', props.wasmUrl)
+  }
+}
 
     // ===== engine init =====
     async function initDetector() {
