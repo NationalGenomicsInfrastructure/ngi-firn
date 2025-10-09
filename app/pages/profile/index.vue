@@ -9,7 +9,7 @@ definePageMeta({
     Logged in!
     <DialogBarcodeReader
       type="LiveStream"
-      :readerTypes="['ean_reader']"
+      :readerTypes="['code_128_reader', 'code_39_reader', 'code_93_reader', 'codabar_reader']"
     />
   </main>
 </template>
