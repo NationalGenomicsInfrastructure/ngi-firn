@@ -36,21 +36,22 @@ const { copy, copied } = useClipboard({ source: barcodeData })
 
 <template>
   <NDialog
-    title="Scan QR Code"
-    description="Use the camera to scan a QR code"
+    title="Scan QR Code or barcode"
+    description="Use the camera to scan a QR code or barcode"
     :_dialog-footer="{
       class: 'sm:justify-start',
     }"
     scrollable
   >
     <template #trigger>
-      <NButton btn="solid-gray">
+      <NButton btn="soft-primary hover:outline-primary" leading="i-lucide-qr-code">
         Scan QR Code
       </NButton>
     </template>
     <NAspectRatio
         :ratio="4 / 3"
         v-if="enableDetection"
+        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
       >
       <BarcodeZxingReader v-slot:controls="{ state, toggleTorch, switchCamera }"
         :video-width="400"
@@ -70,40 +71,53 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     <NAspectRatio
         :ratio="4 / 3"
         v-else
+        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
       >
         <div class="flex items-center justify-center h-full">
-          <NButton btn="solid-gray" @click="enableDetection = true">
-            Enable Detection
-          </NButton>
+          <NTooltip content="Enable camera" tooltip="primary">
+            <NButton
+              label="i-lucide-camera"
+              icon
+              size="lg"
+              btn="soft-primary hover:outline-primary"
+              class="group rounded-full"
+              @click="enableDetection = true"
+            />
+          </NTooltip>
         </div>
       </NAspectRatio>
 
-    <NDivider label="Detections" />
+      <div class="flex items-center justify-between mb-2">
+      <div class="text-sm text-muted">
+        {{ detectionCount }} unique detection(s)
+      </div>
+      <NButton
+        btn="soft-error hover:outline-error"
+        size="sm"
+        label="Delete all"
+        leading="i-lucide-trash-2"
+        @click="clearDetections()"
+      />
+      <NButton
+        btn="soft-primary hover:outline-primary"
+        size="sm"
+        label="Disable camera"
+        leading="i-lucide-camera-off"
+        :disabled="!enableDetection"
+        @click="enableDetection = false"
+      />
+    </div>
+
+    <NSeparator
+      label="Detected QR codes and barcodes"
+      class="mx-2 my-4"
+    />
 
     <div v-if="detectionCount === 0" class="text-sm text-muted">
-      No findings yet. Point your camera at a barcode.
+      No findings yet. Point your camera at a QR code or barcode.
     </div>
 
     <div v-else class="w-full overflow-x-auto">
-      <div class="flex items-center justify-between mb-2">
-        <div class="text-sm text-muted">
-          {{ detectionCount }} unique detection(s)
-        </div>
-        <NButton
-          btn="soft-error"
-          size="sm"
-          label="Delete all"
-          leading="i-lucide-trash-2"
-          @click="clearDetections()"
-        />
-        <NButton
-          btn="soft-gray"
-          size="sm"
-          label="Disable Detection"
-          leading="i-lucide-x"
-          @click="enableDetection = false"
-        />
-      </div>
       <NTable
         ref="table"
         :columns="[
@@ -130,7 +144,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     </div>
 
     <NSeparator
-      label="Copy most detected barcode"
+      label="Copy the most often detected code"
       class="mx-2 my-4"
     />
 
@@ -154,17 +168,27 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         square
         type="submit"
         :btn="copied ? 'outline' : 'solid'"
-        :label="!copied ? 'i-radix-icons-copy' : 'i-radix-icons-check'"
+        :label="!copied ? 'i-lucide-copy' : 'i-lucide-check'"
       />
     </form>
 
     <template #footer>
       <NDialogClose>
+        <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
         <NButton
-          btn="soft-gray"
-        >
-          Close
-        </NButton>
+            label="Cancel"
+            class="transition delay-300 ease-in-out"
+            btn="soft-gray hover:outline-gray"
+            trailing="i-lucide-x"
+        />
+        <NButton
+            label="Copy and close"
+            class="transition delay-300 ease-in-out"
+            btn="soft-primary hover:outline-primary"
+            trailing="i-lucide-copy"
+            @click="copy(barcodeData)"
+        />
+        </div>
       </NDialogClose>
     </template>
   </NDialog>
