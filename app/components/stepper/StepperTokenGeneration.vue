@@ -309,12 +309,14 @@ const { user: sessionUser } = useUserSession()
       btn="solid-gray hover:outline-secondary"
       leading="i-lucide-arrow-left"
       @click="stepper?.prevStep()"
+      :disabled="!stepper?.hasPrev()"
     />
     <NButton
       label="next"
       btn="solid-gray hover:outline-secondary"
       trailing="i-lucide-arrow-right"
       @click="stepper?.nextStep()"
+      :disabled="!stepper?.hasNext()"
     />
   </div>
 </template>

@@ -10,6 +10,7 @@ const props = defineProps<{
 
 const enableDetection = ref(false)
 const zxingReaderRef = useTemplateRef<ZxingReaderInstance>('zxingReaderRef')
+const detectedCode = ref(false)
 
 // Use the barcode detections composable
 const {
@@ -17,12 +18,12 @@ const {
   mostDetectedItem,
 } = useBarcodeDetections()
 
-function onDetect(codes: DetectedCode[]) {
+function onDetect(codes: DetectedCode[]) {  
   // Process each detected code
   codes.forEach(code => {
     upsertZxingDetection(code)
   })
-}
+  
 
 watch(mostDetectedItem, (detection) => {
   if (!detection) return
@@ -30,9 +31,17 @@ watch(mostDetectedItem, (detection) => {
   if (detection.format === 'QRCode' && detection.code.length > 50) {
     setFieldValue('tokenString', detection.code)
     enableDetection.value = false // Disable camera after successful detection
+    // Show success animation
+    detectedCode.value = true
     return
   }
 }, { immediate: true })
+
+// Reset animation after delay
+setTimeout(() => {
+    detectedCode.value = false
+  }, 1500)
+}
 
 /*
  * Token test: Submit to validation
@@ -90,10 +99,10 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
             <div class="flex items-center justify-center h-full">
             <NTooltip content="Enable camera" tooltip="primary">
                 <NButton
-                label="i-lucide-camera"
+                :label="detectedCode ? 'i-lucide-check-circle' : 'i-lucide-camera'"
                 icon
-                size="lg"
-                btn="soft-primary hover:outline-primary"
+                :size="detectedCode ? '4xl' : 'lg'"
+                :btn="detectedCode ? 'solid-success' : 'soft-primary hover:outline-primary'"
                 class="group rounded-full"
                 @click="enableDetection = true"
                 />
@@ -101,14 +110,6 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
             </div>
         </NAspectRatio>
         <div class="flex items-center justify-between gap-2 mb-2 mt-2">
-            <NButton
-                btn="soft-secondary hover:outline-secondary"
-                size="sm"
-                :label="zxingReaderRef.state.torch ? 'Torch ON' : 'Torch OFF'"
-                :leading="zxingReaderRef.state.torch ? 'i-lucide-flashlight' : 'i-lucide-flashlight-off'"
-                v-if="enableDetection && zxingReaderRef" 
-                @click="zxingReaderRef.toggleTorch()"
-            />
             <NButton
                 btn="soft-secondary hover:outline-secondary"
                 size="sm"
