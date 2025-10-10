@@ -7,18 +7,67 @@ const enableDetection = ref(false)
 const zxingReaderRef = useTemplateRef<ZxingReaderInstance>('zxingReaderRef')
 const detectedCode = ref(false)
 const isSubmitting = ref(false)
+const isDialogOpen = ref(false)
+const hasProcessedToken = ref(false)
 
 // Use the barcode detections composable
 const {
   upsertZxingDetection,
   mostDetectedItem,
+  clearDetections,
 } = useBarcodeDetections()
 
+// Clear detections and reset state when dialog opens
+function onDialogOpenChange(open: boolean) {
+  isDialogOpen.value = open
+  if (open) {
+    clearDetections()
+    hasProcessedToken.value = false
+    detectedCode.value = false
+    isSubmitting.value = false
+    setFieldValue('tokenString', '')
+  } else {
+    // Clean up when dialog closes
+    enableDetection.value = false
+  }
+}
+
 function onDetect(codes: DetectedCode[]) {  
+  console.log('[DialogTokenLogin] Detected codes:', codes)
+  
+  // Skip if already processing
+  if (hasProcessedToken.value || isSubmitting.value) {
+    console.log('[DialogTokenLogin] Already processing, skipping')
+    return
+  }
+  
   // Process each detected code
   codes.forEach(code => {
+    console.log('[DialogTokenLogin] Processing code:', { format: code.format, length: code.rawValue?.length, value: code.rawValue?.substring(0, 20) + '...' })
     upsertZxingDetection(code)
   })
+  
+  // Check the state after upserting
+  console.log('[DialogTokenLogin] After upsert - mostDetectedItem:', mostDetectedItem.value)
+  
+  // Directly process the most detected item
+  const detection = mostDetectedItem.value
+  if (detection && detection.format === 'QRCode' && detection.code.length > 50) {
+    console.log('[DialogTokenLogin] Valid token detected, proceeding with submission')
+    setFieldValue('tokenString', detection.code)
+    enableDetection.value = false // Disable camera after successful detection
+    // Show success animation
+    detectedCode.value = true
+    
+    // Reset animation after delay, then submit
+    setTimeout(async () => {
+      detectedCode.value = false
+      // Automatically submit the token
+      await onSubmit()
+    }, 1500)
+  } else {
+    console.log('[DialogTokenLogin] Detection did not meet criteria:', detection)
+  }
 }
 
 const formSchema = toTypedSchema(validateFirnUserTokenSchema)
@@ -33,10 +82,11 @@ const { handleSubmit, setFieldValue } = useForm({
 
 // Submit function that POSTs to the token endpoint
 const onSubmit = handleSubmit(async (values) => {
-  if (isSubmitting.value) return
+  if (isSubmitting.value || hasProcessedToken.value) return
   
   try {
     isSubmitting.value = true
+    hasProcessedToken.value = true
     
     // POST to the token endpoint with the token in the Authorization header
     await $fetch('/api/auth/token', {
@@ -51,28 +101,12 @@ const onSubmit = handleSubmit(async (values) => {
   } catch (error) {
     console.error('Error during token authentication:', error)
     // The endpoint sets the auth status in the session, which will be displayed via toast
+    // Reset the flag so user can try again
+    hasProcessedToken.value = false
   } finally {
     isSubmitting.value = false
   }
 })
-
-watch(mostDetectedItem, async (detection) => {
-  if (!detection) return
-  // Only process if it's a QR code and the string is long enough to be a likely token (>50 chars)
-  if (detection.format === 'QRCode' && detection.code.length > 50) {
-    setFieldValue('tokenString', detection.code)
-    enableDetection.value = false // Disable camera after successful detection
-    // Show success animation
-    detectedCode.value = true
-    
-    // Reset animation after delay, then submit
-    setTimeout(async () => {
-      detectedCode.value = false
-      // Automatically submit the token
-      await onSubmit()
-    }, 1500)
-  }
-}, { immediate: true })
 </script>
 <template>
     <NDialog
@@ -82,6 +116,7 @@ watch(mostDetectedItem, async (detection) => {
     class: 'sm:justify-start',
     }"
     scrollable
+    @update:model-value="onDialogOpenChange"
     >
     <template #trigger>
           <NButton
@@ -101,7 +136,7 @@ watch(mostDetectedItem, async (detection) => {
         <BarcodeZxingReader
             ref="zxingReaderRef"
             :video-width="400"
-            :video-height="400"
+            :video-height="300"
             :prefer-wasm="true"
             @detect="onDetect"
         />
