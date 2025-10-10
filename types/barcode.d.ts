@@ -19,7 +19,18 @@ export type BarcodeDetection = {
     }>
   }
 
-// Zxing wrapper types
+
+  // Zxing wrapper types
+
+// Type for an exposed ZxingReader instance
+export type ZxingReaderInstance = {
+  toggleTorch: () => Promise<void>
+  switchCamera: () => Promise<void>
+  pause: () => Promise<void>
+  resume: () => Promise<void>
+  togglePause: () => Promise<void>
+  state: { running: boolean; usingBack: boolean; torch: boolean }
+}
 
 export type CornerPoint = { x: number; y: number }
 export type DetectedCode = {
@@ -28,7 +39,6 @@ export type DetectedCode = {
   corners?: CornerPoint[]
 }
 
-
 export type QrScannerEvents = {
   /** Fired whenever one or more barcodes are detected on a frame */
   detect: DetectedCode[]
@@ -36,13 +46,11 @@ export type QrScannerEvents = {
   error: Error
 }
 
-
 export type ScannerState = {
   running: boolean
   usingBack: boolean
   torch: boolean
 }
-
 
 export type ScannerOptions = {
   /** Prefered formats; used for BarcodeDetector if available. */

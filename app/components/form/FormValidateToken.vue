@@ -2,12 +2,37 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { validateFirnUserTokenSchema } from '~~/schemas/tokens'
 import { validateFirnUserToken } from '~/utils/mutations/tokens'
+import type { DetectedCode, ZxingReaderInstance } from '../../../types/barcode'
 
 const props = defineProps<{
   audienceItems: string[]
 }>()
 
+const enableDetection = ref(false)
+const zxingReaderRef = useTemplateRef<ZxingReaderInstance>('zxingReaderRef')
 
+// Use the barcode detections composable
+const {
+  upsertZxingDetection,
+  mostDetectedItem,
+} = useBarcodeDetections()
+
+function onDetect(codes: DetectedCode[]) {
+  // Process each detected code
+  codes.forEach(code => {
+    upsertZxingDetection(code)
+  })
+}
+
+watch(mostDetectedItem, (detection) => {
+  if (!detection) return
+  // Only set the field if it's a QR code and the string is long enough to be a likely token (>50 chars)
+  if (detection.format === 'QRCode' && detection.code.length > 50) {
+    setFieldValue('tokenString', detection.code)
+    enableDetection.value = false // Disable camera after successful detection
+    return
+  }
+}, { immediate: true })
 
 /*
  * Token test: Submit to validation
@@ -42,22 +67,80 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
 </script>
 
 <template>
-<div class="flex flex-col gap-4 p-4">
-        <NCard title="Test your token" description="Paste or type your token here and validate it">
+<div class="flex flex-col sm:flex-row gap-2 p-auto">
+    <NCard title="Scan a token's QR code" description="Use your camera to scan the QR code of your token">
+        <NAspectRatio
+        :ratio="4 / 3"
+        v-if="enableDetection"
+        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+        >
+        <BarcodeZxingReader
+            ref="zxingReaderRef"
+            :video-width="400"
+            :video-height="400"
+            :prefer-wasm="true"
+            @detect="onDetect"
+        />
+        </NAspectRatio>
+        <NAspectRatio
+            :ratio="4 / 3"
+            v-else
+            class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+        >
+            <div class="flex items-center justify-center h-full">
+            <NTooltip content="Enable camera" tooltip="primary">
+                <NButton
+                label="i-lucide-camera"
+                icon
+                size="lg"
+                btn="soft-primary hover:outline-primary"
+                class="group rounded-full"
+                @click="enableDetection = true"
+                />
+            </NTooltip>
+            </div>
+        </NAspectRatio>
+        <div class="flex items-center justify-between gap-2 mb-2 mt-2">
+            <NButton
+                btn="soft-secondary hover:outline-secondary"
+                size="sm"
+                :label="zxingReaderRef.state.torch ? 'Torch ON' : 'Torch OFF'"
+                :leading="zxingReaderRef.state.torch ? 'i-lucide-flashlight' : 'i-lucide-flashlight-off'"
+                v-if="enableDetection && zxingReaderRef" 
+                @click="zxingReaderRef.toggleTorch()"
+            />
+            <NButton
+                btn="soft-secondary hover:outline-secondary"
+                size="sm"
+                :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
+                leading="i-lucide-repeat"
+                v-if="enableDetection && zxingReaderRef"
+                @click="zxingReaderRef.switchCamera()"
+            />
+            <NButton
+                btn="soft-primary hover:outline-primary"
+                size="sm"
+                label="Disable camera"
+                leading="i-lucide-camera-off"
+                :disabled="!enableDetection"
+                @click="enableDetection = false"
+            />
+        </div>
+        </NCard>
+        <NCard title="Test your token" description="Scan or paste your token here and validate it">
             <form
             class="flex flex-col gap-4"
             @submit.prevent="onTokenTest()"
             >
             <NFormField
                 name="tokenString"
-                description="Enter your token here:"
             >
             <NInput
                 type="textarea"
-                rows="6"
+                rows=5
                 class="w-full"
                 leading="i-lucide-key-round"
-                placeholder="Enter your token here"
+                placeholder="Token to validate"
                 :una="{
                 inputWrapper: 'w-full'
                 }"

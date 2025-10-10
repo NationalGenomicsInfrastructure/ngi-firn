@@ -127,15 +127,20 @@ export function useBarcodeDetections() {
   }
 
   /**
+   * Gets the full barcode detection with the most detections
+   */
+  const mostDetectedItem = computed<BarcodeDetection | null>(() => {
+    const items = Object.values(findingsById)
+    if (!items || items.length === 0) return null
+    items.sort((a, b) => b.count - a.count)
+    return items[0] || null
+  })
+
+  /**
    * Gets the code of the barcode with the most detections
    */
   const mostDetectedCode = computed(() => {
-    const items = Object.values(findingsById)
-    if (!items || items.length === 0) return ''
-    let top: BarcodeDetection | undefined
-    items.sort((a, b) => b.count - a.count)
-    top = items[0]
-    return top ? top.code : ''
+    return mostDetectedItem.value?.code || ''
   })
 
   /**
@@ -156,6 +161,7 @@ export function useBarcodeDetections() {
     upsertZxingDetection,
     removeDetection,
     clearDetections,
+    mostDetectedItem,
     mostDetectedCode,
     detectionCount,
     sortedDetections,

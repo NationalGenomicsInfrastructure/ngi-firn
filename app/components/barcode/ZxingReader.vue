@@ -566,6 +566,16 @@ function applyWasmOverride() {
 function pause()  { return pauseInternal() }
 function resume() { return resumeInternal() }
 function togglePause() { return props.paused ? resumeInternal() : pauseInternal() }
+
+// Expose functions and state for external access
+defineExpose({
+  toggleTorch,
+  switchCamera,
+  pause,
+  resume,
+  togglePause,
+  state
+})
 </script>
 
 <template>
