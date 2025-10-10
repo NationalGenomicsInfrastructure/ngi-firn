@@ -23,7 +23,7 @@ function onDetect(codes: DetectedCode[]) {
   codes.forEach(code => {
     upsertZxingDetection(code)
   })
-  
+}
 
 watch(mostDetectedItem, (detection) => {
   if (!detection) return
@@ -33,15 +33,13 @@ watch(mostDetectedItem, (detection) => {
     enableDetection.value = false // Disable camera after successful detection
     // Show success animation
     detectedCode.value = true
-    return
+    
+    // Reset animation after delay
+    setTimeout(() => {
+      detectedCode.value = false
+    }, 1500)
   }
 }, { immediate: true })
-
-// Reset animation after delay
-setTimeout(() => {
-    detectedCode.value = false
-  }, 1500)
-}
 
 /*
  * Token test: Submit to validation

@@ -98,6 +98,7 @@ onUnmounted(() => authStatusWatcher && authStatusWatcher())
             to="/api/auth/github"
             external
           />
+          <DialogTokenLogin />
         </div>
       </div>
 
