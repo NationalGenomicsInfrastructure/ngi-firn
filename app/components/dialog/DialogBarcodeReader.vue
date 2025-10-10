@@ -34,7 +34,7 @@ const table = useTemplateRef<Table<BarcodeDetection>>('table')
 // Use the barcode detections composable
 const {
   findingsById,
-  upsertDetection,
+  upsertQuaggaDetection,
   removeDetection,
   clearDetections,
   mostDetectedCode,
@@ -69,7 +69,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         v-if="enableDetection"
       >
         <BarcodeReader
-        :on-detected="upsertDetection"
+        :on-detected="upsertQuaggaDetection"
         :reader-types="props.readerTypes"
         :type="props.type"
         />

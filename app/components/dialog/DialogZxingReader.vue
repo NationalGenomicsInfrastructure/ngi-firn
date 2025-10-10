@@ -3,23 +3,6 @@ import { useClipboard } from '@vueuse/core'
 import type { Table } from '@tanstack/vue-table'
 import type { BarcodeDetection, DetectedCode } from '../../../types/barcode'
 
-/*
- * Properties
- * *********************************
- * type: The type of input stream to use (e.g. "LiveStream", "Image")
- * readerTypes: The types of readers to use (e.g. ["code_128_reader", "code_39_reader"])
- * 
- * Codabar - Older format used in libraries, blood banks, and logistics. Can encode numbers and a few special characters.
- * Code 32 (Italian Pharmacode) - Used specifically for pharmaceutical products in Italy.
- * Code 39 - Can encode letters, numbers, and some special characters. Common in automotive, defense, and healthcare industries.
- * Code 39 VIN - Specialized for Vehicle Identification Numbers.
- * Code 93 - Similar to Code 39 but more compact. Used by Canada Post and in logistics.
- * Code 128 - A high-density barcode that can encode all 128 ASCII characters. Very versatile and commonly used in shipping, packaging, and logistics.
- * EAN (European Article Number) - Used primarily for retail products. EAN-13 (13 digits) is the most common, EAN-8 is a shorter version for small packages.
- * EAN-5 and EAN-2 - Supplemental barcodes used alongside main barcodes on books and magazines for price/issue information.
- * Interleaved 2 of 5 and Standard 2 of 5 - Numeric-only barcodes used in warehousing and industrial applications.
- * UPC (Universal Product Code) - The North American equivalent of EAN, commonly seen on retail products. UPC-A is 12 digits, UPC-E is a compressed version.
- */
 const barcodeData = ref('')
 const findingsPagination = ref({ pageSize: 3, pageIndex: 0 })
 const enableDetection = ref(true)
@@ -28,7 +11,7 @@ const table = useTemplateRef<Table<BarcodeDetection>>('table')
 // Use the barcode detections composable
 const {
   findingsById,
-  upsertDetection,
+  upsertZxingDetection,
   removeDetection,
   clearDetections,
   mostDetectedCode,
@@ -41,7 +24,10 @@ watch(mostDetectedCode, (code) => {
 }, { immediate: true })
 
 function onDetect(codes: DetectedCode[]) {
-  console.log('Detected code:', codes[0]?.rawValue)
+  // Process each detected code
+  codes.forEach(code => {
+    upsertZxingDetection(code)
+  })
 }
 
 defineExpose({ findingsById, removeDetection })
