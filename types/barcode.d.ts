@@ -1,17 +1,21 @@
+// Quagga2 types - re-export from @ericblade/quagga2
+import type { QuaggaJSResultObject } from '@ericblade/quagga2'
+export type { QuaggaJSResultObject }
+
+// Barcode detection tracking
+
 export type BarcodeDetection = {
     id: string
     code: string
     format: string
-    confidence?: number
     count: number
     // geometry from latest detection
-    lastBox?: unknown
-    lastLine?: unknown
+    lastBox?: number[][]
+    lastLine?: { x: number; y: number }[]
     // small ring buffer of recent samples
     samples: Array<{
-      confidence?: number
-      box?: unknown
-      line?: unknown
+      box?: number[][]
+      line?: { x: number; y: number }[]
     }>
   }
 

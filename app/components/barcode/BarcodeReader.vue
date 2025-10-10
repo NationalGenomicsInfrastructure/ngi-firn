@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, reactive, watch } from "vue";
 import Quagga from "@ericblade/quagga2";
-import type { InputStreamType, QuaggaJSCodeReader, QuaggaJSConfigObject, QuaggaJSResultCallbackFunction } from "@ericblade/quagga2";
+import type { InputStreamType, QuaggaJSCodeReader, QuaggaJSConfigObject, QuaggaJSResultCallbackFunction, QuaggaJSResultObject } from "@ericblade/quagga2";
 
 const props = withDefaults(
   defineProps<{
-    onDetected?: (result: any) => void;
-    onProcessed?: (data: QuaggaJSResultCallbackFunction) => void;
+    onDetected?: (result: QuaggaJSResultObject) => void;
+    onProcessed?: (data: QuaggaJSResultObject) => void;
     type?: InputStreamType;
     readerTypes?: QuaggaJSCodeReader[];
     constraints?: MediaTrackConstraintSet;
@@ -16,10 +16,10 @@ const props = withDefaults(
     facingMode?: string;
   }>(),
   {
-    onDetected: (result: any) => {
+    onDetected: (result: QuaggaJSResultObject) => {
       console.log("detected: ", result);
     },
-    onProcessed: (result: any) => {
+    onProcessed: (result: QuaggaJSResultObject) => {
       let drawingCtx = Quagga.canvas.ctx.overlay;
       let drawingCanvas = Quagga.canvas.dom.overlay;
 
@@ -32,8 +32,8 @@ const props = withDefaults(
             parseInt(drawingCanvas?.getAttribute("height")!),
           );
           result.boxes
-            .filter((box: any) => box !== result.box)
-            .forEach((box: any) => {
+            .filter((box) => box !== result.box)
+            .forEach((box) => {
               Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx, {
                 color: "green",
                 lineWidth: 2,
@@ -103,11 +103,9 @@ watch(
   () => props.onProcessed,
   (newValue, oldValue) => {
     if (oldValue)
-      Quagga.offProcessed(
-        oldValue as unknown as QuaggaJSResultCallbackFunction,
-      );
+      Quagga.offProcessed(oldValue);
     if (newValue)
-      Quagga.onProcessed(newValue as unknown as QuaggaJSResultCallbackFunction);
+      Quagga.onProcessed(newValue);
   },
 );
 
@@ -119,17 +117,12 @@ onMounted(() => {
     Quagga.start();
   });
   Quagga.onDetected(props.onDetected);
-  Quagga.onProcessed(
-    props.onProcessed as unknown as QuaggaJSResultCallbackFunction,
-  );
+  Quagga.onProcessed(props.onProcessed);
 });
 
 onBeforeUnmount(() => {
   if (props.onDetected) Quagga.offDetected(props.onDetected);
-  if (props.onProcessed)
-    Quagga.offProcessed(
-      props.onProcessed as unknown as QuaggaJSResultCallbackFunction,
-    );
+  if (props.onProcessed) Quagga.offProcessed(props.onProcessed);
   Quagga.stop();
 });
 </script>

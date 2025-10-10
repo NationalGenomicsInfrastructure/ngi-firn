@@ -1,4 +1,4 @@
-import type { BarcodeDetection } from '../../types/barcode'
+import type { BarcodeDetection, QuaggaJSResultObject } from '../../types/barcode'
 
 /**
  * Composable for managing barcode detection findings
@@ -11,13 +11,9 @@ export function useBarcodeDetections() {
   /**
    * Normalizes a raw detection result into a BarcodeDetection object
    */
-  function normalizeDetection(result: any): BarcodeDetection | null {
-    const code: string | undefined = result?.codeResult?.code
+  function normalizeDetection(result: QuaggaJSResultObject): BarcodeDetection | null {
+    const code: string | null | undefined = result?.codeResult?.code
     const format: string | undefined = result?.codeResult?.format
-    const confidence: number | undefined =
-      typeof result?.codeResult?.confidence === 'number'
-        ? result.codeResult.confidence
-        : undefined
 
     if (!code || !format) return null
 
@@ -27,13 +23,11 @@ export function useBarcodeDetections() {
       id,
       code,
       format,
-      confidence,
       count: 1,
       lastBox: result?.box,
       lastLine: result?.line,
       samples: [
         {
-          confidence,
           box: result?.box,
           line: result?.line,
         },
@@ -45,7 +39,7 @@ export function useBarcodeDetections() {
    * Updates or inserts a finding based on a detection result
    * Aggregates multiple detections of the same barcode
    */
-  function upsertDetection(result: any) {
+  function upsertDetection(result: QuaggaJSResultObject) {
     const normalized = normalizeDetection(result)
     if (!normalized) return
 
@@ -56,11 +50,9 @@ export function useBarcodeDetections() {
     }
 
     existing.count += 1
-    existing.confidence = normalized.confidence ?? existing.confidence
     existing.lastBox = normalized.lastBox
     existing.lastLine = normalized.lastLine
     existing.samples.push({
-      confidence: normalized.confidence,
       box: normalized.lastBox,
       line: normalized.lastLine,
     })
