@@ -98,7 +98,7 @@ export const deleteFirnUserToken = defineMutation(() => {
       queryCache.setQueryData(USERS_QUERY_KEYS.self(), response || undefined)
       const tokenCount = input.tokenID.length
       const tokenText = tokenCount === 1 ? 'token' : 'tokens'
-      const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
+      const tokenList = tokenCount <= 5 ? input.tokenID.join(', ') : ''
       showSuccess(`Your ${tokenText} ${tokenList} ${tokenCount === 1 ? 'was' : 'were'} successfully deleted.`, `${tokenCount === 1 ? 'Token' : 'Tokens'} deleted`)
     }
   })
@@ -167,13 +167,13 @@ export const deleteUserTokenByAdmin = defineMutation(() => {
       }
       const tokenCount = input.tokenID.length
       const tokenText = tokenCount === 1 ? 'token' : 'tokens'
-      const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
+      const tokenList = tokenCount <= 5 ? input.tokenID.join(', ') : ''
       showError(error.message, `The ${tokenText} ${tokenList} for ${input.googleEmail} ${tokenCount === 1 ? 'was' : 'were'} not deleted.`)
     },
     onSuccess(response, input: DeleteUserTokenByAdminInput) {
       const tokenCount = input.tokenID.length
       const tokenText = tokenCount === 1 ? 'token' : 'tokens'
-      const tokenList = tokenCount <= 3 ? input.tokenID.join(', ') : `${tokenCount} tokens`
+      const tokenList = tokenCount <= 5 ? input.tokenID.join(', ') : ''
       showSuccess(`The ${tokenText} ${tokenList} for ${response?.googleGivenName} ${response?.googleFamilyName} ${tokenCount === 1 ? 'was' : 'were'} successfully deleted`, `${tokenCount === 1 ? 'Token' : 'Tokens'} deleted`)
     }
   })
