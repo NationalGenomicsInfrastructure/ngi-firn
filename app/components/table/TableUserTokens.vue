@@ -129,6 +129,7 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
       .filter((tokenID): tokenID is string => tokenID !== undefined)
 
     if (tokenIDs.length > 0) {
+      select.value = undefined // clear selection in the table
       deleteToken({
         tokenID: tokenIDs
       })

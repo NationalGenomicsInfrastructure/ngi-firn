@@ -91,6 +91,7 @@ const handleRejection = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) =>
       })
     }
   })
+  select.value = undefined // clear selection in the table
 }
 
 const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
@@ -108,6 +109,7 @@ const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => 
       })
     }
   })
+  select.value = undefined // clear selection in the table
 }
 </script>
 
