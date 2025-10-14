@@ -1,6 +1,9 @@
-export const useAuthStatusToast = () => {
+export const useAuthStatusToast = (options?: { showSuccessMessages?: boolean }) => {
   const { session } = useUserSession()
   const { toast } = useToast()
+  
+  // Default to showing success messages if not specified
+  const showSuccessMessages = options?.showSuccessMessages ?? true
 
   // Function to get hardcoded toast classes for each auth status kind
   const getToastClass = (kind: string) => {
@@ -37,6 +40,11 @@ export const useAuthStatusToast = () => {
   // The watch function returns a StopHandle function that can be called to stop the watcher
   const authStatusWatcher = watch(() => session.value?.authStatus, (newAuthStatus, oldAuthStatus) => {
     if (newAuthStatus && newAuthStatus !== oldAuthStatus) {
+      // Skip success messages if showSuccessMessages is false
+      if (newAuthStatus.kind === 'success' && !showSuccessMessages) {
+        return
+      }
+      
       const toastClass = getToastClass(newAuthStatus.kind)
       nextTick(() => {
         toast({

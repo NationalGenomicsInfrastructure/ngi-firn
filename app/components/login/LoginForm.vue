@@ -1,7 +1,10 @@
 <script setup lang="ts">
 const { user, session, clear } = useUserSession()
 const route = useRoute()
-const { authStatusWatcher } = useAuthStatusToast()
+
+// Display of success messages is disabled in this component to prevent duplicate messages
+// and defer the display to the /firn page.
+const { authStatusWatcher } = useAuthStatusToast({ showSuccessMessages: false })
 
 // Stages of the registration process to render the correct UI
 const stage = ref<'register-google' | 'link-github' | 'pending-approval'>('register-google')

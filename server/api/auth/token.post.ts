@@ -7,8 +7,6 @@ export default defineEventHandler(async (event: H3Event) => {
   // retrieve the token from the authorization header
   const token = await tokenHandler.extractTokenFromHeader(event)
 
-  console.log('token', token)
-
   if (token && token.length > 0) {
     // check that it is a valid user token (aka general auth token)
     const result = await tokenHandler.verifyFirnUserToken(token, 'User Login')
