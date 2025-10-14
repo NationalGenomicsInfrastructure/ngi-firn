@@ -3,6 +3,9 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { validateFirnUserTokenSchema } from '~~/schemas/tokens'
 import type { DetectedCode, ZxingReaderInstance } from '../../../types/barcode'
 
+const { loggedIn, fetch: fetchUserSession, clear: clearUserSession } = useUserSession()
+const { showError, showWarning } = useFirnToast()
+
 const enableDetection = ref(false)
 const zxingReaderRef = useTemplateRef<ZxingReaderInstance>('zxingReaderRef')
 const detectedCode = ref(false)
@@ -33,27 +36,20 @@ function onDialogOpenChange(open: boolean) {
 }
 
 function onDetect(codes: DetectedCode[]) {  
-  console.log('[DialogTokenLogin] Detected codes:', codes)
   
   // Skip if already processing
   if (hasProcessedToken.value || isSubmitting.value) {
-    console.log('[DialogTokenLogin] Already processing, skipping')
     return
   }
   
   // Process each detected code
   codes.forEach(code => {
-    console.log('[DialogTokenLogin] Processing code:', { format: code.format, length: code.rawValue?.length, value: code.rawValue?.substring(0, 20) + '...' })
     upsertZxingDetection(code)
   })
-  
-  // Check the state after upserting
-  console.log('[DialogTokenLogin] After upsert - mostDetectedItem:', mostDetectedItem.value)
-  
+    
   // Directly process the most detected item
   const detection = mostDetectedItem.value
   if (detection && detection.format === 'QRCode' && detection.code.length > 50) {
-    console.log('[DialogTokenLogin] Valid token detected, proceeding with submission')
     setFieldValue('tokenString', detection.code)
     enableDetection.value = false // Disable camera after successful detection
     // Show success animation
@@ -66,7 +62,7 @@ function onDetect(codes: DetectedCode[]) {
       await onSubmit()
     }, 1500)
   } else {
-    console.log('[DialogTokenLogin] Detection did not meet criteria:', detection)
+    showWarning('The QR code is apparently not a valid Firn token.', 'Invalid token')
   }
 }
 
@@ -87,20 +83,24 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     isSubmitting.value = true
     hasProcessedToken.value = true
+
+    if (loggedIn.value) {
+      await clearUserSession()
+    }
     
     // POST to the token endpoint with the token in the Authorization header
-    await $fetch('/api/auth/token', {
+    await $fetch('/api/auth/token?redirectUrl=/firn', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${values.tokenString}`
       }
     })
-    
-    // The endpoint handles the redirect automatically
+
+    await fetchUserSession()
     await navigateTo('/firn')
+
   } catch (error) {
-    console.error('Error during token authentication:', error)
-    // The endpoint sets the auth status in the session, which will be displayed via toast
+    showError('An error occurred during token authentication: ' + error, 'Error')
     // Reset the flag so user can try again
     hasProcessedToken.value = false
   } finally {
