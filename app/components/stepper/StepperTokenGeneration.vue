@@ -273,33 +273,36 @@ const { user: sessionUser } = useUserSession()
               </NTooltip>
             </form>
             <NSeparator
-                label="OR"
-                class="mx-2 my-4"
-              />
-              <ImagesQR 
-                v-if="token"
-                :value="token"
-                foreground="var(--una-primary-hex)" 
-                background="var(--c-background)"
-                class="mx-auto my-15 scale-150"
-              />
-              <div class="flex flex-row gap-2 justify-between">
+              label="OR"
+              class="mx-2 my-4"
+            />
+            <ImagesQR
+              v-if="token"
+              :value="token"
+              foreground="var(--una-primary-hex)"
+              background="var(--c-background)"
+              class="mx-auto my-15 scale-150"
+            />
+            <div class="flex flex-row gap-2 justify-between">
               <NButton
                 label="Open a printable QR code with your token"
                 btn="soft-primary hover:outline-primary"
-                @click="previewTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
                 :disabled="!token"
+                @click="previewTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
               />
               <NButton
                 label="Download a PDF with QR code of your token"
                 btn="soft-primary hover:outline-primary"
-                @click="downloadTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
                 :disabled="!token"
+                @click="downloadTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
               />
             </div>
           </NCard>
         </div>
-          <FormValidateToken  v-if="item.stage === 3"  :audienceItems="audienceItems" />
+        <FormValidateToken
+          v-if="item.stage === 3"
+          :audience-items="audienceItems"
+        />
       </div>
     </template>
   </NStepper>
@@ -308,15 +311,15 @@ const { user: sessionUser } = useUserSession()
       label="prev"
       btn="solid-gray hover:outline-secondary"
       leading="i-lucide-arrow-left"
-      @click="stepper?.prevStep()"
       :disabled="!stepper?.hasPrev()"
+      @click="stepper?.prevStep()"
     />
     <NButton
       label="next"
       btn="solid-gray hover:outline-secondary"
       trailing="i-lucide-arrow-right"
-      @click="stepper?.nextStep()"
       :disabled="!stepper?.hasNext()"
+      @click="stepper?.nextStep()"
     />
   </div>
 </template>

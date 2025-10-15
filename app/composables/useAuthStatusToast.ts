@@ -1,7 +1,7 @@
 export const useAuthStatusToast = (options?: { showSuccessMessages?: boolean }) => {
   const { session } = useUserSession()
   const { toast } = useToast()
-  
+
   // Default to showing success messages if not specified
   const showSuccessMessages = options?.showSuccessMessages ?? true
 
@@ -44,7 +44,7 @@ export const useAuthStatusToast = (options?: { showSuccessMessages?: boolean }) 
       if (newAuthStatus.kind === 'success' && !showSuccessMessages) {
         return
       }
-      
+
       const toastClass = getToastClass(newAuthStatus.kind)
       nextTick(() => {
         toast({

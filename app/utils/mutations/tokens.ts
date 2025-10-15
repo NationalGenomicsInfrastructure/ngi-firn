@@ -18,15 +18,15 @@ const deleteUserTokensFromLists = (deletedTokens: DeleteUserTokenByAdminInput, l
       // Create a shallow copy of the list
       const next = currentList.slice()
       const user = { ...next[idx] } as DisplayUserToAdmin
-      
+
       // Retrieve existing user tokens
       const userTokens = user.tokens as FirnUserToken[]
       // Filter out tokens that match the provided IDs
       const updatedTokens = userTokens.filter(token => !deletedTokens.tokenID.includes(token.tokenID))
-      
+
       // Update the user with the filtered tokens
       user.tokens = updatedTokens
-      
+
       // Replace the user in the list
       next.splice(idx, 1, user)
       return next
@@ -58,7 +58,7 @@ export const generateFirnUserToken = defineMutation(() => {
       }
       showError(error.message, 'Token could not be generated')
     },
-    onSuccess(response, input: GenerateFirnUserTokenInput) {
+    onSuccess(response, _input: GenerateFirnUserTokenInput) {
       const queryCache = useQueryCache()
       queryCache.cancelQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
       queryCache.setQueryData(USERS_QUERY_KEYS.self(), response?.user || undefined)
@@ -113,10 +113,10 @@ export const validateFirnUserToken = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.validateFirnUserToken.mutate(input)
     },
-    onError(error: Error, input: ValidateFirnUserTokenInput) {
+    onError(error: Error, _input: ValidateFirnUserTokenInput) {
       showError(error.message, 'Invalid token')
     },
-    onSuccess(response, input: ValidateFirnUserTokenInput) {
+    onSuccess(response, _input: ValidateFirnUserTokenInput) {
       showSuccess('The provided token is valid until ' + formatDate(response?.expiresAt, { relative: false, includeWeekday: true, time: true }), 'Token is valid')
     }
   })

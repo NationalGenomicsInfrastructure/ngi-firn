@@ -137,14 +137,17 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
 </script>
 
 <template>
-  <NDrawer direction="bottom" scrollable>
+  <NDrawer
+    direction="bottom"
+    scrollable
+  >
     <NDrawerTrigger as-child>
       <NButton
-              label="Administer tokens"
-              class="transition delay-300 ease-in-out"
-              btn="soft-primary hover:outline-primary"
-              trailing="i-lucide-qr-code"
-              :disabled="!props.tokens || props.tokens.length === 0"
+        label="Administer tokens"
+        class="transition delay-300 ease-in-out"
+        btn="soft-primary hover:outline-primary"
+        trailing="i-lucide-qr-code"
+        :disabled="!props.tokens || props.tokens.length === 0"
       />
     </NDrawerTrigger>
     <NDrawerContent>
@@ -174,8 +177,7 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
             />
           </NFormGroup>
         </div>
-
-    </NDrawerHeader>
+      </NDrawerHeader>
       <div class="w-full overflow-x-auto">
         <NTable
           ref="table"
@@ -198,16 +200,16 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
             {{ table?.getFilteredSelectedRowModel().rows.length }} of
             {{ table?.getFilteredRowModel().rows.length }} token(s) selected.
           </div>
+        </div>
       </div>
-    </div>
-    <NDrawerFooter>
-      <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
+      <NDrawerFooter>
+        <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
           <NDrawerClose as-child>
             <NButton
-            label="Cancel"
-            class="transition delay-300 ease-in-out"
-            btn="soft-gray hover:outline-gray"
-            trailing="i-lucide-x"
+              label="Cancel"
+              class="transition delay-300 ease-in-out"
+              btn="soft-gray hover:outline-gray"
+              trailing="i-lucide-x"
             />
           </NDrawerClose>
           <NButton
@@ -217,8 +219,8 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
             trailing="i-lucide-banknote-x"
             @click="handleDeletion(table?.getFilteredSelectedRowModel().rows)"
           />
-        </div>            
-    </NDrawerFooter>
+        </div>
+      </NDrawerFooter>
     </NDrawerContent>
   </NDrawer>
 </template>

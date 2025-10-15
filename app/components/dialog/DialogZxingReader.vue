@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
 import type { Table } from '@tanstack/vue-table'
-import type { ZxingReaderInstance } from '../../../types/barcode'
-import type { BarcodeDetection, DetectedCode } from '../../../types/barcode'
+import type { ZxingReaderInstance, BarcodeDetection, DetectedCode } from '../../../types/barcode'
 
 const barcodeData = ref('')
 const findingsPagination = ref({ pageSize: 3, pageIndex: 0 })
@@ -18,7 +17,7 @@ const {
   clearDetections,
   mostDetectedCode,
   detectionCount,
-  sortedDetections,
+  sortedDetections
 } = useBarcodeDetections()
 
 watch(mostDetectedCode, (code) => {
@@ -27,7 +26,7 @@ watch(mostDetectedCode, (code) => {
 
 function onDetect(codes: DetectedCode[]) {
   // Process each detected code
-  codes.forEach(code => {
+  codes.forEach((code) => {
     upsertZxingDetection(code)
   })
 }
@@ -41,20 +40,23 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     title="Scan QR Code or barcode"
     description="Use the camera to scan a QR code or barcode"
     :_dialog-footer="{
-      class: 'sm:justify-start',
+      class: 'sm:justify-start'
     }"
     scrollable
   >
     <template #trigger>
-      <NButton btn="soft-primary hover:outline-primary" leading="i-lucide-qr-code">
+      <NButton
+        btn="soft-primary hover:outline-primary"
+        leading="i-lucide-qr-code"
+      >
         Scan QR Code
       </NButton>
     </template>
     <NAspectRatio
-        :ratio="4 / 3"
-        v-if="enableDetection"
-        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-      >
+      v-if="enableDetection"
+      :ratio="4 / 3"
+      class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+    >
       <BarcodeZxingReader
         ref="zxingReaderRef"
         :video-width="400"
@@ -64,25 +66,28 @@ const { copy, copied } = useClipboard({ source: barcodeData })
       />
     </NAspectRatio>
     <NAspectRatio
-        :ratio="4 / 3"
-        v-else
-        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-      >
-        <div class="flex items-center justify-center h-full">
-          <NTooltip content="Enable camera" tooltip="primary">
-            <NButton
-              label="i-lucide-camera"
-              icon
-              size="lg"
-              btn="soft-primary hover:outline-primary"
-              class="group rounded-full"
-              @click="enableDetection = true"
-            />
-          </NTooltip>
-        </div>
-      </NAspectRatio>
+      v-else
+      :ratio="4 / 3"
+      class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+    >
+      <div class="flex items-center justify-center h-full">
+        <NTooltip
+          content="Enable camera"
+          tooltip="primary"
+        >
+          <NButton
+            label="i-lucide-camera"
+            icon
+            size="lg"
+            btn="soft-primary hover:outline-primary"
+            class="group rounded-full"
+            @click="enableDetection = true"
+          />
+        </NTooltip>
+      </div>
+    </NAspectRatio>
 
-      <div class="flex items-center justify-between mb-2">
+    <div class="flex items-center justify-between mb-2">
       <NButton
         btn="soft-error hover:outline-error"
         size="sm"
@@ -91,22 +96,22 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         @click="clearDetections()"
       />
       <NButton
-          btn="soft-primary hover:outline-primary"
-          size="sm"
-          :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
-          leading="i-lucide-repeat"
-          v-if="zxingReaderRef"
-          :disabled="!enableDetection"
-          @click="zxingReaderRef.switchCamera()"
+        v-if="zxingReaderRef"
+        btn="soft-primary hover:outline-primary"
+        size="sm"
+        :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
+        leading="i-lucide-repeat"
+        :disabled="!enableDetection"
+        @click="zxingReaderRef.switchCamera()"
       />
       <!-- Dummy button to show the 'switch camera' button even when we don't have a zxingReaderRef. Purely visual to prevent layout shift with jumping buttons -->
       <NButton
-          btn="soft-primary hover:outline-primary"
-          size="sm"
-          label="Switch camera"
-          leading="i-lucide-repeat"
-          v-else
-          :disabled="true"
+        v-else
+        btn="soft-primary hover:outline-primary"
+        size="sm"
+        label="Switch camera"
+        leading="i-lucide-repeat"
+        :disabled="true"
       />
       <NButton
         btn="soft-primary hover:outline-primary"
@@ -123,17 +128,23 @@ const { copy, copied } = useClipboard({ source: barcodeData })
       class="mx-2 my-4"
     />
 
-    <div v-if="detectionCount === 0" class="text-sm text-muted">
+    <div
+      v-if="detectionCount === 0"
+      class="text-sm text-muted"
+    >
       No findings yet. Point your camera at a QR code or barcode.
     </div>
 
-    <div v-else class="w-full overflow-x-auto">
+    <div
+      v-else
+      class="w-full overflow-x-auto"
+    >
       <NTable
         ref="table"
         :columns="[
           { header: 'Format', accessorKey: 'format' },
           { header: 'Detections', accessorKey: 'count' },
-          { header: 'Code', accessorKey: 'code' },
+          { header: 'Code', accessorKey: 'code' }
         ]"
         :data="sortedDetections"
         :pagination="findingsPagination"
@@ -144,12 +155,12 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         class="flex items-center justify-end mt-3"
       >
         <NPagination
-        :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
-        :total="table?.getFilteredRowModel().rows.length"
-        show-edges
-        :items-per-page="table?.getState().pagination.pageSize ?? 5"
-        @update:page="table?.setPageIndex($event - 1)"
-      />
+          :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
+          :total="table?.getFilteredRowModel().rows.length"
+          show-edges
+          :items-per-page="table?.getState().pagination.pageSize ?? 5"
+          @update:page="table?.setPageIndex($event - 1)"
+        />
       </div>
     </div>
 
@@ -168,7 +179,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         type="text"
         size="lg"
         :una="{
-          inputWrapper: 'w-full',
+          inputWrapper: 'w-full'
         }"
         read-only
       />
@@ -185,22 +196,21 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     <template #footer>
       <NDialogClose>
         <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
-        <NButton
+          <NButton
             label="Cancel"
             class="transition delay-300 ease-in-out"
             btn="soft-gray hover:outline-gray"
             trailing="i-lucide-x"
-        />
-        <NButton
+          />
+          <NButton
             label="Copy and close"
             class="transition delay-300 ease-in-out"
             btn="soft-primary hover:outline-primary"
             trailing="i-lucide-copy"
             @click="copy(barcodeData)"
-        />
+          />
         </div>
       </NDialogClose>
     </template>
   </NDialog>
 </template>
-

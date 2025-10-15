@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
-import type { QuaggaJSCodeReader, InputStreamType } from "@ericblade/quagga2";
+import type { QuaggaJSCodeReader, InputStreamType } from '@ericblade/quagga2'
 import type { Table } from '@tanstack/vue-table'
 import type { BarcodeDetection } from '../../../types/barcode'
 
@@ -9,7 +9,7 @@ import type { BarcodeDetection } from '../../../types/barcode'
  * *********************************
  * type: The type of input stream to use (e.g. "LiveStream", "Image")
  * readerTypes: The types of readers to use (e.g. ["code_128_reader", "code_39_reader"])
- * 
+ *
  * Codabar - Older format used in libraries, blood banks, and logistics. Can encode numbers and a few special characters.
  * Code 32 (Italian Pharmacode) - Used specifically for pharmaceutical products in Italy.
  * Code 39 - Can encode letters, numbers, and some special characters. Common in automotive, defense, and healthcare industries.
@@ -22,8 +22,8 @@ import type { BarcodeDetection } from '../../../types/barcode'
  * UPC (Universal Product Code) - The North American equivalent of EAN, commonly seen on retail products. UPC-A is 12 digits, UPC-E is a compressed version.
  */
 const props = defineProps<{
-    type: InputStreamType
-    readerTypes: QuaggaJSCodeReader[]
+  type: InputStreamType
+  readerTypes: QuaggaJSCodeReader[]
 }>()
 
 const barcodeData = ref('')
@@ -39,7 +39,7 @@ const {
   clearDetections,
   mostDetectedCode,
   detectionCount,
-  sortedDetections,
+  sortedDetections
 } = useBarcodeDetections()
 
 watch(mostDetectedCode, (code) => {
@@ -55,45 +55,51 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     title="Scan Barcode"
     description="Use the camera to scan a barcode"
     :_dialog-footer="{
-      class: 'sm:justify-start',
+      class: 'sm:justify-start'
     }"
     scrollable
   >
     <template #trigger>
-      <NButton btn="soft-primary hover:outline-primary" leading="i-lucide-barcode">
+      <NButton
+        btn="soft-primary hover:outline-primary"
+        leading="i-lucide-barcode"
+      >
         Scan Barcode
       </NButton>
     </template>
     <NAspectRatio
-        :ratio="4 / 3"
-        v-if="enableDetection"
-        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-      >
-        <BarcodeQuaggaReader
+      v-if="enableDetection"
+      :ratio="4 / 3"
+      class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+    >
+      <BarcodeQuaggaReader
         :on-detected="upsertQuaggaDetection"
         :reader-types="props.readerTypes"
         :type="props.type"
-        />
+      />
     </NAspectRatio>
     <NAspectRatio
-        :ratio="4 / 3"
-        v-else
-        class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-      >
-        <div class="flex items-center justify-center h-full">
-          <NTooltip content="Enable camera" tooltip="primary">
-            <NButton
-              label="i-lucide-camera"
-              icon
-              size="lg"
-              btn="soft-primary hover:outline-primary"
-              class="group rounded-full"
-              @click="enableDetection = true"
-            />
-          </NTooltip>
-        </div>
-      </NAspectRatio>
-    
+      v-else
+      :ratio="4 / 3"
+      class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+    >
+      <div class="flex items-center justify-center h-full">
+        <NTooltip
+          content="Enable camera"
+          tooltip="primary"
+        >
+          <NButton
+            label="i-lucide-camera"
+            icon
+            size="lg"
+            btn="soft-primary hover:outline-primary"
+            class="group rounded-full"
+            @click="enableDetection = true"
+          />
+        </NTooltip>
+      </div>
+    </NAspectRatio>
+
     <div class="flex items-center justify-between mb-2">
       <div class="text-sm text-muted">
         {{ detectionCount }} unique detection(s)
@@ -120,17 +126,23 @@ const { copy, copied } = useClipboard({ source: barcodeData })
       class="mx-2 my-4"
     />
 
-    <div v-if="detectionCount === 0" class="text-sm text-muted">
+    <div
+      v-if="detectionCount === 0"
+      class="text-sm text-muted"
+    >
       No findings yet. Point your camera at a barcode.
     </div>
 
-    <div v-else class="w-full overflow-x-auto">
+    <div
+      v-else
+      class="w-full overflow-x-auto"
+    >
       <NTable
         ref="table"
         :columns="[
           { header: 'Format', accessorKey: 'format' },
           { header: 'Detections', accessorKey: 'count' },
-          { header: 'Code', accessorKey: 'code' },
+          { header: 'Code', accessorKey: 'code' }
         ]"
         :data="sortedDetections"
         :pagination="findingsPagination"
@@ -141,12 +153,12 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         class="flex items-center justify-end mt-3"
       >
         <NPagination
-        :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
-        :total="table?.getFilteredRowModel().rows.length"
-        show-edges
-        :items-per-page="table?.getState().pagination.pageSize ?? 5"
-        @update:page="table?.setPageIndex($event - 1)"
-      />
+          :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
+          :total="table?.getFilteredRowModel().rows.length"
+          show-edges
+          :items-per-page="table?.getState().pagination.pageSize ?? 5"
+          @update:page="table?.setPageIndex($event - 1)"
+        />
       </div>
     </div>
 
@@ -165,7 +177,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         type="text"
         size="lg"
         :una="{
-          inputWrapper: 'w-full',
+          inputWrapper: 'w-full'
         }"
         read-only
       />
@@ -182,22 +194,21 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     <template #footer>
       <NDialogClose>
         <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
-        <NButton
+          <NButton
             label="Cancel"
             class="transition delay-300 ease-in-out"
             btn="soft-gray hover:outline-gray"
             trailing="i-lucide-x"
-        />
-        <NButton
+          />
+          <NButton
             label="Copy and close"
             class="transition delay-300 ease-in-out"
             btn="soft-primary hover:outline-primary"
             trailing="i-lucide-copy"
             @click="copy(barcodeData)"
-        />
+          />
         </div>
       </NDialogClose>
     </template>
   </NDialog>
 </template>
-

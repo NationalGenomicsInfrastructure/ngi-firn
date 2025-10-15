@@ -1,26 +1,26 @@
 // Quagga2 types - re-export from @ericblade/quagga2
 import type { QuaggaJSResultObject } from '@ericblade/quagga2'
+
 export type { QuaggaJSResultObject }
 
 // Barcode detection tracking
 
 export type BarcodeDetection = {
-    id: string
-    code: string
-    format: string
-    count: number
-    // geometry from latest detection
-    lastBox?: number[][]
-    lastLine?: { x: number; y: number }[]
-    // small ring buffer of recent samples
-    samples: Array<{
-      box?: number[][]
-      line?: { x: number; y: number }[]
-    }>
-  }
+  id: string
+  code: string
+  format: string
+  count: number
+  // geometry from latest detection
+  lastBox?: number[][]
+  lastLine?: { x: number, y: number }[]
+  // small ring buffer of recent samples
+  samples: Array<{
+    box?: number[][]
+    line?: { x: number, y: number }[]
+  }>
+}
 
-
-  // Zxing wrapper types
+// Zxing wrapper types
 
 // Type for an exposed ZxingReader instance
 export type ZxingReaderInstance = {
@@ -29,10 +29,10 @@ export type ZxingReaderInstance = {
   pause: () => Promise<void>
   resume: () => Promise<void>
   togglePause: () => Promise<void>
-  state: { running: boolean; usingBack: boolean; torch: boolean }
+  state: { running: boolean, usingBack: boolean, torch: boolean }
 }
 
-export type CornerPoint = { x: number; y: number }
+export type CornerPoint = { x: number, y: number }
 export type DetectedCode = {
   rawValue: string
   format?: string

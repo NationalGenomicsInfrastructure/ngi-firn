@@ -61,16 +61,11 @@ export class TokenHandler {
   }
 
   public async verifyFirnUserToken(token: string, expectedAudience?: string): Promise<{ user: FirnUser | null, token: FirnUserToken | null, error?: string }> {
-    let success: boolean = false
-    let payload: FirnJWTPayload | undefined
-    let error: string | undefined
-
     const audienceClaim = expectedAudience ? expectedAudience.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
-
     const result = await this.verifyToken(token)
-    success = result.success
-    payload = result.payload
-    error = result.error
+    const success = result.success
+    const payload = result.payload
+    const error = result.error
 
     if (error) {
       return { user: null, token: null, error: error }

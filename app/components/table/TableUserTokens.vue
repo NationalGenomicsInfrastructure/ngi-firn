@@ -84,7 +84,7 @@ const columns: ColumnDef<FirnUserToken>[] = [
 
 const pagination = ref({
   pageSize: 10,
-  pageIndex: 0,
+  pageIndex: 0
 })
 
 const select = ref<RowSelectionState>()
@@ -205,7 +205,7 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
     <div
       class="flex items-center justify-between px-2"
     >
-    <!-- selection and deletion button -->
+      <!-- selection and deletion button -->
       <div
         class="flex-1 text-sm text-muted"
       >

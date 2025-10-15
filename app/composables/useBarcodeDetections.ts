@@ -30,9 +30,9 @@ export function useBarcodeDetections() {
       samples: [
         {
           box: result?.box,
-          line: result?.line,
-        },
-      ],
+          line: result?.line
+        }
+      ]
     }
   }
 
@@ -60,9 +60,9 @@ export function useBarcodeDetections() {
       samples: [
         {
           box,
-          line: result?.corners,
-        },
-      ],
+          line: result?.corners
+        }
+      ]
     }
   }
 
@@ -84,7 +84,7 @@ export function useBarcodeDetections() {
     existing.lastLine = normalized.lastLine
     existing.samples.push({
       box: normalized.lastBox,
-      line: normalized.lastLine,
+      line: normalized.lastLine
     })
     if (existing.samples.length > 5) existing.samples.shift()
   }
@@ -107,7 +107,7 @@ export function useBarcodeDetections() {
     existing.lastLine = normalized.lastLine
     existing.samples.push({
       box: normalized.lastBox,
-      line: normalized.lastLine,
+      line: normalized.lastLine
     })
     if (existing.samples.length > 5) existing.samples.shift()
   }
@@ -164,7 +164,6 @@ export function useBarcodeDetections() {
     mostDetectedItem,
     mostDetectedCode,
     detectionCount,
-    sortedDetections,
+    sortedDetections
   }
 }
-

@@ -49,39 +49,39 @@ export const UserService = {
   async createUserByAdmin(user: CreateUserByAdminInput): Promise<FirnUser | null> {
     // Create a new user with the admin's input
     const newFirnUser: Omit<FirnUser, '_id' | '_rev'>
-    = {
-      type: 'user',
-      schema: 1,
-      // Google-specific fields
-      // Generate a random provisional googleId (9-digit number in a reserved range)
-      googleId: Math.floor(900000000 + Math.random() * 100000000),
-      googleName: '',
-      googleGivenName: user.googleGivenName,
-      googleFamilyName: user.googleFamilyName,
-      googleAvatar: '',
-      googleEmail: user.googleEmail,
-      googleEmailVerified: true,
-      // GitHub-specific fields (null for new users)
-      githubId: null,
-      githubNodeId: null,
-      githubName: null,
-      githubAvatar: null,
-      githubEmail: null,
-      githubUrl: null,
-      // Timestamps
-      createdAt: DateTime.now().toISO(),
-      lastSeenAt: DateTime.now().toISO(),
-      // User properties (new users are not approved by default)
-      allowLogin: true,
-      isRetired: false,
-      isAdmin: user.isAdmin,
-      permissions: [],
-      tokens: [],
-      sessions: [],
-      // User-related collections
-      todos: [],
-      preferences: []
-    }
+      = {
+        type: 'user',
+        schema: 1,
+        // Google-specific fields
+        // Generate a random provisional googleId (9-digit number in a reserved range)
+        googleId: Math.floor(900000000 + Math.random() * 100000000),
+        googleName: '',
+        googleGivenName: user.googleGivenName,
+        googleFamilyName: user.googleFamilyName,
+        googleAvatar: '',
+        googleEmail: user.googleEmail,
+        googleEmailVerified: true,
+        // GitHub-specific fields (null for new users)
+        githubId: null,
+        githubNodeId: null,
+        githubName: null,
+        githubAvatar: null,
+        githubEmail: null,
+        githubUrl: null,
+        // Timestamps
+        createdAt: DateTime.now().toISO(),
+        lastSeenAt: DateTime.now().toISO(),
+        // User properties (new users are not approved by default)
+        allowLogin: true,
+        isRetired: false,
+        isAdmin: user.isAdmin,
+        permissions: [],
+        tokens: [],
+        sessions: [],
+        // User-related collections
+        todos: [],
+        preferences: []
+      }
 
     // Since the GoogleID is provisional and random, there is a tiny chance that the ID is already taken.
     // If so, we need to generate a new one.
@@ -442,38 +442,38 @@ export const UserService = {
   async convertGoogleUserToFirnUser(googleUser: GoogleUser): Promise<FirnUser> {
     // Create new user from GoogleUser with all required FirnUser fields
     const newFirnUser: Omit<FirnUser, '_id' | '_rev'>
-    = {
-      type: 'user',
-      schema: 1,
-      // Google-specific fields
-      googleId: googleUser.googleId,
-      googleName: googleUser.googleName,
-      googleGivenName: googleUser.googleGivenName,
-      googleFamilyName: googleUser.googleFamilyName,
-      googleAvatar: googleUser.googleAvatar,
-      googleEmail: googleUser.googleEmail,
-      googleEmailVerified: googleUser.googleEmailVerified,
-      // GitHub-specific fields (null for new users)
-      githubId: null,
-      githubNodeId: null,
-      githubName: null,
-      githubAvatar: null,
-      githubEmail: null,
-      githubUrl: null,
-      // Timestamps
-      createdAt: DateTime.now().toISO(),
-      lastSeenAt: DateTime.now().toISO(),
-      // User properties (new users are not approved by default)
-      allowLogin: false,
-      isRetired: false,
-      isAdmin: false,
-      permissions: [],
-      tokens: [],
-      sessions: [],
-      // User-related collections
-      todos: [],
-      preferences: []
-    }
+      = {
+        type: 'user',
+        schema: 1,
+        // Google-specific fields
+        googleId: googleUser.googleId,
+        googleName: googleUser.googleName,
+        googleGivenName: googleUser.googleGivenName,
+        googleFamilyName: googleUser.googleFamilyName,
+        googleAvatar: googleUser.googleAvatar,
+        googleEmail: googleUser.googleEmail,
+        googleEmailVerified: googleUser.googleEmailVerified,
+        // GitHub-specific fields (null for new users)
+        githubId: null,
+        githubNodeId: null,
+        githubName: null,
+        githubAvatar: null,
+        githubEmail: null,
+        githubUrl: null,
+        // Timestamps
+        createdAt: DateTime.now().toISO(),
+        lastSeenAt: DateTime.now().toISO(),
+        // User properties (new users are not approved by default)
+        allowLogin: false,
+        isRetired: false,
+        isAdmin: false,
+        permissions: [],
+        tokens: [],
+        sessions: [],
+        // User-related collections
+        todos: [],
+        preferences: []
+      }
     return newFirnUser as FirnUser
   }
 }
