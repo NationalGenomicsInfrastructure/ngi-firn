@@ -21,6 +21,9 @@ import { jwtDecrypt, EncryptJWT } from 'jose'
  * INCOMING REQUEST HANDLING:
  * extractTokenFromHeader(event) - Extract a token from a H3 server event if it exists - typically from an API request (REST / tRPC)
  *
+ * CRYPTOGRAPHY:
+ * generateCustomKey() - Generate a symmetric key for a user-specific encryption and decryption (if the actual token will be stored in the database instead of being ephemeral)
+ *
  * VERIFY TOKENS:
  * verifyToken(token) - Verify the signature of a token
  * verifyTokenWithClaims(token, expectedAudience) - Verify the signature of a token with expected audience (we always verify the issuer)
@@ -60,9 +63,16 @@ export class TokenHandler {
     }
   }
 
-  public async verifyFirnUserToken(token: string, expectedAudience?: string): Promise<{ user: FirnUser | null, token: FirnUserToken | null, error?: string }> {
+  public async generateCustomKey(keySource: string): Promise<KeyObject> {
+    if (!process.env.NUXT_SESSION_SALT) {
+      throw new Error('NUXT_SESSION_SALT is not set in environment variables, cannot generate keys')
+    }
+    return createSecretKey(scryptSync(keySource, process.env.NUXT_SESSION_SALT, 32))
+  }
+
+  public async verifyFirnUserToken(token: string, expectedAudience?: string, keySource?: string): Promise<{ user: FirnUser | null, token: FirnUserToken | null, error?: string }> {
     const audienceClaim = expectedAudience ? expectedAudience.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
-    const result = await this.verifyToken(token)
+    const result = await this.verifyToken(token, keySource ? await this.generateCustomKey(keySource) : undefined)
     const success = result.success
     const payload = result.payload
     const error = result.error
@@ -76,10 +86,10 @@ export class TokenHandler {
     }
 
     if (success && payload) {
-      const user = await couchDB.getDocument<FirnUser>(payload.firnUser)
+      const user = await couchDB.getDocument<FirnUser>(payload.udoc)
       if (user) {
         const userTokens = user.tokens as FirnUserToken[]
-        const existingToken = userTokens.find(token => token.tokenID === payload.tokenID)
+        const existingToken = userTokens.find(token => token.tokenID === payload.tid)
         if (existingToken) {
           return { user: user, token: existingToken }
         }
@@ -96,9 +106,9 @@ export class TokenHandler {
     }
   }
 
-  private async verifyToken(token: string): Promise<{ success: boolean, payload?: FirnJWTPayload, error?: string }> {
+  private async verifyToken(token: string, customKey?: KeyObject): Promise<{ success: boolean, payload?: FirnJWTPayload, error?: string }> {
     try {
-      const { payload } = await jwtDecrypt(token, this.secretKey, {
+      const { payload } = await jwtDecrypt(token, customKey ?? this.secretKey, {
         issuer: this.issuer
       })
       return { success: true, payload: payload as FirnJWTPayload }
@@ -109,7 +119,7 @@ export class TokenHandler {
   }
 
   // generate a JWT for the given audience and expiration time
-  private async generateTokenWithPublicClaims(payload: FirnJWTPayload, audience?: string, expiresAt?: string): Promise<string> {
+  private async generateTokenWithPublicClaims(payload: FirnJWTPayload, audience?: string, expiresAt?: string, customKey?: KeyObject): Promise<string> {
     let token: string
     const audienceClaim = audience ? audience.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
 
@@ -120,7 +130,7 @@ export class TokenHandler {
         .setIssuedAt()
         .setIssuer(this.issuer)
         .setExpirationTime(expiresAt ? DateTime.fromISO(expiresAt).toUnixInteger() : DateTime.now().plus({ days: 7 }).toUnixInteger())
-        .encrypt(this.secretKey)
+        .encrypt(customKey ?? this.secretKey)
     }
     else {
       token = await new EncryptJWT(payload)
@@ -129,12 +139,12 @@ export class TokenHandler {
         .setIssuer(this.issuer)
         .setAudience(`urn:${audienceClaim}`)
         .setExpirationTime(expiresAt ? DateTime.fromISO(expiresAt).toUnixInteger() : DateTime.now().plus({ days: 7 }).toUnixInteger())
-        .encrypt(this.secretKey)
+        .encrypt(customKey ?? this.secretKey)
     }
     return token
   }
 
-  public async generateFirnUserToken(user: FirnUser, audience?: string, expiresAt?: string): Promise<{ jwt: string, tokenID: string, user: FirnUser } | null> {
+  public async generateFirnUserToken(user: FirnUser, audience?: string, expiresAt?: string, keySource?: string): Promise<{ jwt: string, tokenID: string, user: FirnUser } | null> {
     // retrieve existing user tokens
     const userTokens = user.tokens as FirnUserToken[]
 
@@ -147,8 +157,8 @@ export class TokenHandler {
 
     // generate new token payload
     const payload: FirnJWTPayload = {
-      tokenID: newTokenID,
-      firnUser: user._id
+      tid: newTokenID,
+      udoc: user._id
     }
 
     // default to one week
@@ -164,7 +174,7 @@ export class TokenHandler {
     const newToken: FirnUserToken = {
       type: 'firn-token',
       schema: 1,
-      tokenID: payload.tokenID,
+      tokenID: payload.tid,
       audience: audience,
       expiresAt: expiresAt,
       lastUsedAt: DateTime.now().toISO(),
@@ -177,7 +187,7 @@ export class TokenHandler {
       tokens: updatedUserTokens
     }
 
-    const jwt = await this.generateTokenWithPublicClaims(payload, audience, expiresAt)
+    const jwt = await this.generateTokenWithPublicClaims(payload, audience, expiresAt, keySource ? await this.generateCustomKey(keySource) : undefined)
 
     if (user && jwt) {
       // Update the user

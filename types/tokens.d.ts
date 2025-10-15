@@ -12,6 +12,6 @@ export interface FirnUserToken {
 }
 
 export interface FirnJWTPayload extends jose.JWTPayload {
-  tokenID: string
-  firnUser: string
+  tid: string
+  udoc: string
 }
