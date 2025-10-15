@@ -100,7 +100,7 @@ const onSubmit = handleSubmit(async (values) => {
     await navigateTo('/firn')
 
   } catch (error) {
-    showError('An error occurred during token authentication: ' + error, 'Error')
+    showError('Your token could not be validated.', 'Login rejected')
     // Reset the flag so user can try again
     hasProcessedToken.value = false
   } finally {
@@ -161,15 +161,33 @@ const onSubmit = handleSubmit(async (values) => {
             </NTooltip>
             </div>
         </NAspectRatio>
-        <div class="flex items-center justify-between gap-2 mb-2 mt-2">
+    <template #footer>
+      <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
+        <NDialogClose>
+          <NButton
+              label="Cancel"
+              class="transition delay-300 ease-in-out"
+              btn="soft-gray hover:outline-gray"
+              trailing="i-lucide-x"
+          />
+        </NDialogClose>
             <NButton
-                btn="soft-secondary hover:outline-secondary"
+                btn="soft-primary hover:outline-primary"
                 size="sm"
                 :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
                 leading="i-lucide-repeat"
-                v-if="enableDetection && zxingReaderRef"
-                :disabled="isSubmitting"
+                v-if="zxingReaderRef"
+                :disabled="!enableDetection || isSubmitting"
                 @click="zxingReaderRef.switchCamera()"
+            />
+            <!-- Dummy button to show the 'switch camera' button even when we don't have a zxingReaderRef. Purely visual to prevent layout shift with jumping buttons -->
+            <NButton
+                btn="soft-primary hover:outline-primary"
+                size="sm"
+                label="Switch camera"
+                leading="i-lucide-repeat"
+                v-else
+                :disabled="true"
             />
             <NButton
                 btn="soft-primary hover:outline-primary"
@@ -180,18 +198,6 @@ const onSubmit = handleSubmit(async (values) => {
                 @click="enableDetection = false"
             />
         </div>
-
-    <template #footer>
-        <NDialogClose>
-            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full">
-            <NButton
-                label="Cancel"
-                class="transition delay-300 ease-in-out"
-                btn="soft-gray hover:outline-gray"
-                trailing="i-lucide-x"
-            />
-            </div>
-        </NDialogClose>
         </template>
     </NDialog>
 </template>

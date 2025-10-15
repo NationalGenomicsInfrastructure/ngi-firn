@@ -20,10 +20,7 @@ export default defineEventHandler(async (event: H3Event) => {
           message: result.error
         }
       })
-      throw createError({
-        statusCode: 400,
-        message: result.error
-      })
+      return sendRedirect(event, '/', 403)
     }
 
     if (result.user) {
@@ -39,10 +36,7 @@ export default defineEventHandler(async (event: H3Event) => {
             message: 'Your user account has been suspended and is not allowed to login.'
           }
         })
-        throw createError({
-          statusCode: 403,
-          message: 'Your user account has been suspended and is not allowed to login.'
-        })
+        return sendRedirect(event, '/', 403)
       }
 
       if (sessionUserSecure.isRetired) {
@@ -54,10 +48,7 @@ export default defineEventHandler(async (event: H3Event) => {
             message: 'Your user account has been retired.'
           }
         })
-        throw createError({
-          statusCode: 403,
-          message: 'Your user account has been retired.'
-        })
+        return sendRedirect(event, '/', 403)
       }
 
       await replaceUserSession(event, {
@@ -83,10 +74,7 @@ export default defineEventHandler(async (event: H3Event) => {
           message: 'The token is invalid or has expired.'
         }
       })
-      throw createError({
-        statusCode: 401,
-        message: 'Invalid token'
-      })
+      return sendRedirect(event, '/', 401)
     }
   }
   else {
@@ -98,9 +86,6 @@ export default defineEventHandler(async (event: H3Event) => {
         message: 'The token is invalid or has expired.'
       }
     })
-    throw createError({
-      statusCode: 401,
-      message: 'Invalid token'
-    })
+    return sendRedirect(event, '/', 401)
   }
 })

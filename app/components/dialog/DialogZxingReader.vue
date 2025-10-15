@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
 import type { Table } from '@tanstack/vue-table'
+import type { ZxingReaderInstance } from '../../../types/barcode'
 import type { BarcodeDetection, DetectedCode } from '../../../types/barcode'
 
 const barcodeData = ref('')
 const findingsPagination = ref({ pageSize: 3, pageIndex: 0 })
 const enableDetection = ref(true)
 const table = useTemplateRef<Table<BarcodeDetection>>('table')
+const zxingReaderRef = useTemplateRef<ZxingReaderInstance>('zxingReaderRef')
 
 // Use the barcode detections composable
 const {
@@ -53,20 +55,13 @@ const { copy, copied } = useClipboard({ source: barcodeData })
         v-if="enableDetection"
         class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
       >
-      <BarcodeZxingReader v-slot:controls="{ state, toggleTorch, switchCamera }"
+      <BarcodeZxingReader
+        ref="zxingReaderRef"
         :video-width="400"
-        :video-height="400"
+        :video-height="300"
         :prefer-wasm="true"
-        @detect="onDetect">
-          <div class="controls">
-            <button @click="toggleTorch">
-              🔦 Torch: {{ state.torch ? 'ON' : 'OFF' }}
-            </button>
-            <button @click="switchCamera">
-              🔄 Switch to {{ state.usingBack ? 'Front' : 'Back' }} Camera
-            </button>
-          </div>
-      </BarcodeZxingReader>
+        @detect="onDetect"
+      />
     </NAspectRatio>
     <NAspectRatio
         :ratio="4 / 3"
@@ -88,15 +83,30 @@ const { copy, copied } = useClipboard({ source: barcodeData })
       </NAspectRatio>
 
       <div class="flex items-center justify-between mb-2">
-      <div class="text-sm text-muted">
-        {{ detectionCount }} unique detection(s)
-      </div>
       <NButton
         btn="soft-error hover:outline-error"
         size="sm"
         label="Delete all"
         leading="i-lucide-trash-2"
         @click="clearDetections()"
+      />
+      <NButton
+          btn="soft-primary hover:outline-primary"
+          size="sm"
+          :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
+          leading="i-lucide-repeat"
+          v-if="zxingReaderRef"
+          :disabled="!enableDetection"
+          @click="zxingReaderRef.switchCamera()"
+      />
+      <!-- Dummy button to show the 'switch camera' button even when we don't have a zxingReaderRef. Purely visual to prevent layout shift with jumping buttons -->
+      <NButton
+          btn="soft-primary hover:outline-primary"
+          size="sm"
+          label="Switch camera"
+          leading="i-lucide-repeat"
+          v-else
+          :disabled="true"
       />
       <NButton
         btn="soft-primary hover:outline-primary"
@@ -109,7 +119,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
     </div>
 
     <NSeparator
-      label="Detected QR codes and barcodes"
+      :label="`${detectionCount} unique detections`"
       class="mx-2 my-4"
     />
 
