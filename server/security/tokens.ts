@@ -25,8 +25,8 @@ import { jwtDecrypt, EncryptJWT } from 'jose'
  * generateCustomKey() - Generate a symmetric key for a user-specific encryption and decryption (if the actual token will be stored in the database instead of being ephemeral)
  *
  * VERIFY TOKENS:
- * verifyToken(token) - Verify the signature of a token
- * verifyTokenWithClaims(token, expectedAudience) - Verify the signature of a token with expected audience (we always verify the issuer)
+ * verifyFirnUserToken(token, expectedAudience?, keySource?) - Verify a user token with the given expected audience and an optional key source
+ * verifyToken(token, customKey?) - Verify the signature of a token
  *
  * ISSUE TOKENS:
  * generateToken(userId, expiresAt) - Generate a token for the given user ID and expiration time
