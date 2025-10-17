@@ -135,8 +135,28 @@ export default defineOAuthGoogleEventHandler({
     }
   },
 
-  async onError(event) {
-    console.error('Error in Google OAuth handler:')
+  async onError(event, error) {
+    console.error('Error in Google OAuth handler:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      cause: error?.cause
+    })
+    
+    if (error?.message?.includes('state mismatch')) {
+      console.error('OAuth State Mismatch Debug Info:')
+      console.error('- Request URL:', event.node.req.url)
+      console.error('- Request method:', event.node.req.method)
+      console.error('- User agent:', event.node.req.headers['user-agent'])
+      console.error('- Referer:', event.node.req.headers.referer)
+      console.error('- Query parameters:', getQuery(event))
+      console.error('- Request headers:', {
+        cookie: event.node.req.headers.cookie,
+        'x-forwarded-for': event.node.req.headers['x-forwarded-for'],
+        'x-real-ip': event.node.req.headers['x-real-ip']
+      })
+    }
+    
     await clearUserSession(event)
     await setUserSession(event, {
       authStatus: {
