@@ -16,7 +16,7 @@ export const tokensRouter = createTRPCRouter({
       if (!ctx.firnUser) {
         throw new TRPCError({ code: 'UNAUTHORIZED' })
       }
-      const result = await tokenHandler.generateFirnUserToken(ctx.firnUser, input.audience, DateTime.fromFormat(input.expiresAt, 'yyyy-MM-dd').toISO() ?? undefined)
+      const result = await tokenHandler.generateFirnUserToken(ctx.firnUser, input.tokenType, input.audience, DateTime.fromFormat(input.expiresAt, 'yyyy-MM-dd').toISO() ?? undefined)
       if (result?.jwt && result?.user) {
         const updatedUser = await UserService.convertToDisplayUserToAdmin(result.user)
         return { jwt: result.jwt, tokenID: result.tokenID, user: updatedUser }

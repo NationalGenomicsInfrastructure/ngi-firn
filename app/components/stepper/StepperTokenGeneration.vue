@@ -34,7 +34,6 @@ const tokenTypeItems = [
   { value: 'barcode' as const, label: 'Barcode', description: 'Can be used with the external barcode scanner and recognized by the camera.' },
   { value: 'qrcode' as const, label: 'QR Code', description: 'Can only be used on a device with a camera.' }
 ]
-const { value: tokenTypeValue } = useField<'barcode' | 'qrcode'>('tokenType')
 
 const stepper = useTemplateRef('tokenStepper')
 
@@ -252,7 +251,7 @@ const { user: sessionUser } = useUserSession()
               name="tokenType"
             >
               <NRadioGroup
-                v-model="tokenTypeValue"
+                :model-value="values.tokenType || 'barcode'"
                 :items="tokenTypeItems"
               />
             </NFormField>

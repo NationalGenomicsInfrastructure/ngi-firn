@@ -285,9 +285,11 @@ export const UserService = {
       }
     }
     else {
-      // No user found by Google ID, try by e-mail address (only for Google, only for pre-created users)
-      // When an admin creates a user in advance, they know the e-mail address, but not the Google ID
-      // When a user self-registers, we can get the GoogleID directly from the OAuth response.
+      /*
+      * No user found by Google ID, try by e-mail address (only for Google, only for pre-created users)
+      * When an admin creates a user in advance, they know the e-mail address, but not the Google ID
+      * When a user self-registers, we can get the GoogleID directly from the OAuth response.
+      */
       const existingUserByEmail = await couchDB.queryDocuments<FirnUser>({
         type: 'firnUser',
         googleEmail: oauthUser.googleEmail
