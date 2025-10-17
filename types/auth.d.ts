@@ -3,8 +3,9 @@ import type { FirnUserToken } from './tokens'
 
 // Full user object as it is stored in the database
 export interface FirnUser extends BaseDocument {
-  type: 'user'
+  type: 'firnUser'
   schema: 1
+  firnId: string
   googleId: number
   googleName: string
   googleGivenName: string

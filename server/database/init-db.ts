@@ -29,7 +29,7 @@ export async function initializeDatabase() {
 
     // Check if we need to create the first admin user
     const adminUsers = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       isAdmin: true
     })
 
@@ -47,7 +47,7 @@ export async function initializeDatabase() {
 
       // Create first admin user
       const firstAdmin: Omit<FirnUser, '_id' | '_rev'> = {
-        type: 'user',
+        type: 'firnUser',
         googleId: 0, // Will be updated when user first logs in from Google OAuth user.
         googleName: '',
         googleGivenName: '',

@@ -30,6 +30,40 @@ import type { FirnUser, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, Se
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
 
 export const UserService = {
+  /**
+   * Generate unique firnId and googleId for a new user. The firnId is a short unique identifier for the user
+   * and is used for the barcode login and share links. 
+   * The true googleID is provided by and stored upon the first successful Google OAuth login,
+   * but in order to pre-create user accounts, we need to generate a unique fake googleId as placeholder.
+   * @returns A promise that resolves to an object containing the unique firnId and googleId.
+   */
+  async generateUniqueFirnIdAndGoogleId(): Promise<{ firnId: string, googleId: number }> {
+    // Query all user documents to find existing firnIds and googleIds.
+    const users = await couchDB.queryDocuments<FirnUser>({ type: 'firnUser' })
+
+    const existingFirnIds: string[] = []
+    const existingGoogleIds: number[] = []
+
+    for (const user of users) {
+      existingFirnIds.push(user.firnId)
+      existingGoogleIds.push(user.googleId)
+    }
+    
+    // Generate a unique firnId
+    let newFirnId: string
+    do {
+      newFirnId = Math.random().toString(36).substring(3, 10)
+    } while (existingFirnIds.some(firnId => firnId === newFirnId))
+
+    // Generate a random provisional GoogleID (9-digit number in a reserved range)
+    let newGoogleId: number
+    do {
+      newGoogleId = Math.floor(900000000 + Math.random() * 100000000)
+    } while (existingGoogleIds.some(googleId => googleId === newGoogleId))
+
+    return { firnId: newFirnId, googleId: newGoogleId }
+  },
+
   /*
    * Create a new FirnUser
    */
@@ -37,7 +71,7 @@ export const UserService = {
     const document = await couchDB.createDocument(user)
     // query the new user by document id
     const newUser = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       _id: document.id
     })
     return newUser[0] as FirnUser
@@ -47,14 +81,18 @@ export const UserService = {
    * Create a new, partially filled FirnUser by an admin
    */
   async createUserByAdmin(user: CreateUserByAdminInput): Promise<FirnUser | null> {
+
+    // Generate a unique firnId and googleId for the new user
+    const { firnId, googleId } = await UserService.generateUniqueFirnIdAndGoogleId()
+
     // Create a new user with the admin's input
     const newFirnUser: Omit<FirnUser, '_id' | '_rev'>
       = {
-        type: 'user',
+        type: 'firnUser',
         schema: 1,
+        firnId: firnId,
         // Google-specific fields
-        // Generate a random provisional googleId (9-digit number in a reserved range)
-        googleId: Math.floor(900000000 + Math.random() * 100000000),
+        googleId: googleId,
         googleName: '',
         googleGivenName: user.googleGivenName,
         googleFamilyName: user.googleFamilyName,
@@ -83,20 +121,9 @@ export const UserService = {
         preferences: []
       }
 
-    // Since the GoogleID is provisional and random, there is a tiny chance that the ID is already taken.
-    // If so, we need to generate a new one.
-    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
-      googleId: newFirnUser.googleId
-    })
-    if (existingUserByGoogleId.length > 0) {
-      // Generate a new random GoogleID
-      newFirnUser.googleId = Math.floor(900000000 + Math.random() * 100000000)
-    }
-
     // Check if the user already exists by e-mail address
     const existingUserByGoogleMail = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       googleEmail: newFirnUser.googleEmail
     })
     if (existingUserByGoogleMail.length > 0) {
@@ -108,7 +135,7 @@ export const UserService = {
     const document = await couchDB.createDocument(newFirnUser)
     // query the new user by document id
     const newUser = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       _id: document.id
     })
     return newUser[0] as FirnUser
@@ -120,7 +147,7 @@ export const UserService = {
   async deleteUserByAdmin(user: DeleteUserByAdminInput): Promise<FirnUser | null> {
     // First, try to find user by Google ID
     const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       googleId: user.googleId
     })
 
@@ -142,7 +169,7 @@ export const UserService = {
   async setUserAccessByAdmin(userSettings: SetUserAccessByAdminInput): Promise<FirnUser | null> {
     // First, try to find user by Google ID (Google is source of truth)
     const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       googleId: userSettings.googleId
     })
 
@@ -198,7 +225,7 @@ export const UserService = {
   async matchGoogleUser(oauthUser: GoogleUser): Promise<FirnUser | null> {
     // First, try to find user by Google ID (Google is source of truth)
     const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       googleId: oauthUser.googleId
     })
 
@@ -230,7 +257,7 @@ export const UserService = {
       // When an admin creates a user in advance, they know the e-mail address, but not the Google ID
       // When a user self-registers, we can get the GoogleID directly from the OAuth response.
       const existingUserByEmail = await couchDB.queryDocuments<FirnUser>({
-        type: 'user',
+        type: 'firnUser',
         googleEmail: oauthUser.googleEmail
       })
 
@@ -270,7 +297,7 @@ export const UserService = {
   async matchGoogleUserByGoogleQuery(googleQuery: GoogleUserQuery): Promise<FirnUser | null> {
     // First, try to find user by Google ID (Google is source of truth)
     const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       googleId: googleQuery.googleId
     })
 
@@ -296,7 +323,7 @@ export const UserService = {
   async matchGitHubUser(oauthUser: GitHubUser): Promise<FirnUser | null> {
     // Find user by GitHub ID, matching based on the e-mail address is too flaky.
     const existingUserByGitHubId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       githubId: oauthUser.githubId
     })
 
@@ -334,7 +361,7 @@ export const UserService = {
   async matchSessionUserSecure(sessionUserSecure: SessionUserSecure): Promise<FirnUser | null> {
     // First, try to find user by Document ID
     const existingUserByDocumentId = await couchDB.queryDocuments<FirnUser>({
-      type: 'user',
+      type: 'firnUser',
       _id: sessionUserSecure.id
     })
 
@@ -346,7 +373,7 @@ export const UserService = {
    */
   async getPendingUsers(): Promise<FirnUser[]> {
     const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'user'
+      type: 'firnUser'
     })
     return users.filter(user => !user.allowLogin && !user.isRetired)
   },
@@ -356,7 +383,7 @@ export const UserService = {
    */
   async getRetiredUsers(): Promise<FirnUser[]> {
     const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'user'
+      type: 'firnUser'
     })
     return users.filter(user => user.isRetired)
   },
@@ -366,7 +393,7 @@ export const UserService = {
    */
   async getApprovedUsers(): Promise<FirnUser[]> {
     const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'user'
+      type: 'firnUser'
     })
     return users.filter(user => user.allowLogin)
   },
@@ -443,7 +470,7 @@ export const UserService = {
     // Create new user from GoogleUser with all required FirnUser fields
     const newFirnUser: Omit<FirnUser, '_id' | '_rev'>
       = {
-        type: 'user',
+        type: 'firnUser',
         schema: 1,
         // Google-specific fields
         googleId: googleUser.googleId,
