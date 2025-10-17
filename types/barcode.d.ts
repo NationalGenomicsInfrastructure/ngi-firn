@@ -1,6 +1,5 @@
 // Quagga2 types - re-export from @ericblade/quagga2
 import type { QuaggaJSResultObject } from '@ericblade/quagga2'
-
 export type { QuaggaJSResultObject }
 
 // Barcode detection tracking
@@ -59,4 +58,28 @@ export type ScannerOptions = {
   frameInterval?: number
   /** Set true to mirror overlay when using front camera. */
   mirrorWhenUser?: boolean
+}
+
+// Define the barcode options interface based on JsBarcode documentation
+export type BarcodeOptions = {
+  format?: string
+  width?: number
+  height?: number
+  displayValue?: boolean
+  font?: string
+  fontOptions?: string
+  fontPosition?: string
+  fontSize?: number
+  textMargin?: number
+  textAlign?: string
+  textPosition?: string
+  text?: string
+  background?: string
+  lineColor?: string
+  margin?: number
+  marginTop?: number
+  marginBottom?: number
+  marginLeft?: number
+  marginRight?: number
+  valid?: (valid: boolean) => void
 }
