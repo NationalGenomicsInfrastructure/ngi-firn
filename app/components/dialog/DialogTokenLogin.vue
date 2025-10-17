@@ -49,7 +49,9 @@ function onDetect(codes: DetectedCode[]) {
 
   // Directly process the most detected item
   const detection = mostDetectedItem.value
-  if (detection && detection.format === 'QRCode' && detection.code.length > 50) {
+  if (detection && (detection.format === 'QRCode' && detection.code.length > 50
+  || detection.format === 'Code128' && detection.code.startsWith('fbt'))
+  ) {
     setFieldValue('tokenString', detection.code)
     enableDetection.value = false // Disable camera after successful detection
     // Show success animation
@@ -63,7 +65,7 @@ function onDetect(codes: DetectedCode[]) {
     }, 1500)
   }
   else {
-    showWarning('The QR code is apparently not a valid Firn token.', 'Invalid token')
+    showWarning('The scanned code is apparently not a valid Firn token.', 'Invalid token')
   }
 }
 
@@ -114,8 +116,8 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
   <NDialog
-    title="Scan your QR code"
-    description="Use the camera to scan a QR code of your Firn token"
+    title="Scan your barcode or QR code"
+    description="Use the camera to scan a barcode or QR code of your Firn token"
     :_dialog-footer="{
       class: 'sm:justify-start'
     }"

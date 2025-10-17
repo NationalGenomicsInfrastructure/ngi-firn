@@ -28,7 +28,8 @@ function onDetect(codes: DetectedCode[]) {
 watch(mostDetectedItem, (detection) => {
   if (!detection) return
   // Only set the field if it's a QR code and the string is long enough to be a likely token (>50 chars)
-  if (detection.format === 'QRCode' && detection.code.length > 50) {
+  // or if it's a barcode and the string starts with 'fbt'
+  if (detection.format === 'QRCode' && detection.code.length > 50 || detection.format === 'Code128' && detection.code.startsWith('fbt')) {
     setFieldValue('tokenString', detection.code)
     enableDetection.value = false // Disable camera after successful detection
     // Show success animation
