@@ -11,7 +11,8 @@ export const generateFirnUserTokenSchema = z.object({
     message: 'must be between 1 and 365 days from now'
   }),
   period: z.array(z.number()).min(1).max(365).optional(), // not required by the API, but improves the user experience and is required for the form validation to pass.
-  audience: z.string().optional()
+  audience: z.string().optional(),
+  tokenType: z.enum(['barcode', 'qrcode'])
 })
 
 // Input schema for deleting an own token

@@ -30,6 +30,12 @@ const items = [
 
 const audienceItems = ['User Login', 'API Access']
 
+const tokenTypeItems = [
+  { value: 'barcode' as const, label: 'Barcode', description: 'Can be used with the external barcode scanner and recognized by the camera.' },
+  { value: 'qrcode' as const, label: 'QR Code', description: 'Can only be used on a device with a camera.' }
+]
+const { value: tokenTypeValue } = useField<'barcode' | 'qrcode'>('tokenType')
+
 const stepper = useTemplateRef('tokenStepper')
 
 /*
@@ -44,7 +50,8 @@ const { handleSubmit, validate, errors, resetForm, values, setFieldValue } = use
   initialValues: {
     expiresAt: DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd'),
     period: [7],
-    audience: ''
+    audience: '',
+    tokenType: 'barcode'
   }
 })
 
@@ -231,6 +238,25 @@ const { user: sessionUser } = useUserSession()
               </NFormField>
             </NCard>
           </div>
+          <NCard
+              title="Token representation"
+              description="Choose between a compact and a verbose representation of the token"
+              card="outline-gray"
+              class="flex-1 w-full"
+              :una="{
+                cardContent: 'space-y-4',
+                cardDescription: 'text-accent'
+              }"
+            >
+            <NFormField
+              name="tokenType"
+            >
+              <NRadioGroup
+                v-model="tokenTypeValue"
+                :items="tokenTypeItems"
+              />
+            </NFormField>
+          </NCard>
           <NButton
             label="Generate token"
             btn="soft-primary hover:outline-primary"
