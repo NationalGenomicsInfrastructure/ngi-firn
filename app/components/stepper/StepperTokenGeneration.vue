@@ -151,6 +151,7 @@ const toastActions = [
 
 const { copy, copied } = useClipboard({ source: token })
 const { downloadTokenQR, previewTokenQR } = useTokenQR()
+const { downloadTokenBarcode, previewTokenBarcode } = useTokenBarcode()
 const { user: sessionUser } = useUserSession()
 </script>
 
@@ -333,6 +334,20 @@ const { user: sessionUser } = useUserSession()
                 lineColor: 'var(--una-primary-hex)',
                 displayValue: true}"
               />
+              <div class="flex flex-row gap-2 justify-between">
+              <NButton
+                label="Open a printable QR code with your token"
+                btn="soft-primary hover:outline-primary"
+                :disabled="!token"
+                @click="previewTokenBarcode(token, tokenID, sessionUser?.name || 'incognito')"
+              />
+              <NButton
+                label="Download a PDF with QR code of your token"
+                btn="soft-primary hover:outline-primary"
+                :disabled="!token"
+                @click="downloadTokenBarcode(token, tokenID, sessionUser?.name || 'incognito')"
+              />
+              </div>
             </div>
           </NCard>
         </div>
