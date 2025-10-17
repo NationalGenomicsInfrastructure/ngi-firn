@@ -18,6 +18,37 @@ const props = withDefaults(defineProps<Props>(), {
 
 const elementRef = ref<HTMLElement>()
 
+// Utility function to resolve CSS variables to their computed values
+const resolveCSSVariable = (value: string, element: HTMLElement): string => {
+  if (value.startsWith('var(')) {
+    // Extract the CSS variable name from var(--variable-name)
+    const match = value.match(/var\(([^)]+)\)/)
+    if (match && match[1]) {
+      const cssVar = match[1].trim()
+      const computedStyle = getComputedStyle(element)
+      return computedStyle.getPropertyValue(cssVar).trim()
+    }
+  }
+  return value
+}
+
+// Process options to resolve any CSS variables to their computed values
+const processOptions = (options: BarcodeOptions, element: HTMLElement): BarcodeOptions => {
+  const processedOptions = { ...options }
+  
+  // Process color properties that might contain CSS variables
+  const colorProperties = ['background', 'lineColor']
+  
+  colorProperties.forEach(prop => {
+    if (processedOptions[prop as keyof BarcodeOptions]) {
+      const value = processedOptions[prop as keyof BarcodeOptions] as string
+      processedOptions[prop as keyof BarcodeOptions] = resolveCSSVariable(value, element) as any
+    }
+  })
+  
+  return processedOptions
+}
+
 // Generate barcode using JsBarcode library
 const generate = async () => {
   // If the element reference is not set or the value is not set, return
@@ -26,7 +57,8 @@ const generate = async () => {
   await nextTick()
   // Try to generate the barcode using JsBarcode library
   try {
-    JsBarcode(elementRef.value, String(props.value), props.options)
+    const processedOptions = processOptions(props.options, elementRef.value)
+    JsBarcode(elementRef.value, String(props.value), processedOptions)
   } catch (error) {
     console.error('Error generating barcode:', error)
   }

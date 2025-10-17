@@ -301,6 +301,7 @@ const { user: sessionUser } = useUserSession()
               label="OR"
               class="mx-2 my-4"
             />
+            <div v-if="values.tokenType === 'qrcode'">
             <ImagesQR
               v-if="token"
               :value="token"
@@ -320,6 +321,17 @@ const { user: sessionUser } = useUserSession()
                 btn="soft-primary hover:outline-primary"
                 :disabled="!token"
                 @click="downloadTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
+              />
+              </div>
+            </div>
+            <div v-else>
+              <ImagesBarcode
+                v-if="token"
+                :value="token"
+                :options="{ format: 'CODE128', 
+                background: 'var(--c-background)', 
+                lineColor: 'var(--una-primary-hex)',
+                displayValue: true}"
               />
             </div>
           </NCard>
