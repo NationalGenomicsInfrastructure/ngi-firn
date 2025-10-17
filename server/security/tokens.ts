@@ -126,9 +126,19 @@ export class TokenHandler {
         const userTokens = user.tokens as FirnUserToken[]
         const existingToken = userTokens.find(token => token.tokenID === payload.tid)
         if (existingToken) {
-          return { user: user, token: existingToken }
-        }
-        else {
+          // Update the last used at timestamp, so a user can monitor the usage of their tokens
+          existingToken.lastUsedAt = DateTime.now().toISO()
+          const updatedUserTokens = userTokens.map(token => token.tokenID === payload.tid ? { ...token, lastUsedAt: DateTime.now().toISO() } : token)
+          const updatedUser: Partial<FirnUser> = {
+            tokens: updatedUserTokens
+          }
+          const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
+          if (result) {
+            return { user: { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser, token: existingToken }
+          } else {
+            return { user: null, token: null, error: 'Failed to update user tokens' }
+          }
+        } else {
           return { user: null, token: null, error: 'Token ID not found in user tokens' }
         }
       }
