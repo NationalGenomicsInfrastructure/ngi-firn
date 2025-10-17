@@ -148,6 +148,10 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
           <!-- Column 2: Textual information -->
           <div class="flex flex-col gap-2 text-sm flex-1">
             <div>
+              <span class="font-semibold mr-2">Firn ID:</span>
+              <span> {{ row.original.firnId ?? '—' }}</span>
+            </div>
+            <div>
               <span class="font-semibold mr-2">Google ID:</span>
               <span> {{ row.original.googleId ?? '—' }}</span>
             </div>

@@ -34,6 +34,11 @@ export interface FirnUser extends BaseDocument {
   preferences: string[]
 }
 
+// Firn user query object, used for matching a user by firnId
+export interface FirnUserQuery extends Partial<FirnUser> {
+  firnId: string
+}
+
 // Google OAuth user object
 export interface GoogleUser extends Partial<FirnUser> {
   provider: 'google'
@@ -73,8 +78,6 @@ export interface SessionUser {
   avatar: string | null
   linkedGitHub: boolean
   // Purely informational fields for UI rendering, not to be used for authentication!
-  allowLoginClientside: boolean
-  isRetiredClientside: boolean
   isAdminClientside: boolean
 }
 
@@ -90,6 +93,7 @@ export interface SessionUserSecure {
 
 // Display user object, used for displaying user information about other users to an admin
 export interface DisplayUserToAdmin {
+  firnId: string
   googleId?: number
   googleName?: string
   googleGivenName?: string

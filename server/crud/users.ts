@@ -3,12 +3,14 @@
  * *********************************
  *
  * CREATION AND ADMINISTRATION:
+ * generateUniqueFirnIdAndGoogleId() - Generate a unique firnId and googleId for a new user
  * createUser(user) - Create a new FirnUser with all required fields
  * createUserByAdmin(user) - Create a new, partially filled FirnUser by an admin
  * deleteUserByAdmin(user) - Delete a user by an admin
  * setUserAccessByAdmin(user) - Set access of a user by an admin: Allow login, retire, or promote to admin
  * linkGitHubUser(user, githubUser) - Link a GitHubUser to a FirnUser
  * MATCHING - QUERYING WITH DIFFERENT INPUTS AND GET FULL USER OBJECT:
+ * matchFirnUserByFirnQuery(firnQuery) - Match a FirnUser by firnId
  * matchGoogleUser(oauthUser) - Match a Google OAuth user to a FirnUser based on Google ID
  * matchGoogleUserByGoogleQuery(googleQuery) - Match a GoogleID/e-mail to a FirnUser
  * matchGitHubUser(oauthUser) - Match a GitHub OAuth user to a FirnUser based on GitHub ID
@@ -26,7 +28,7 @@
 import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
-import type { FirnUser, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
+import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
 
 export const UserService = {
@@ -216,6 +218,36 @@ export const UserService = {
       return { ...user, ...linkedAccount, _id: result.id, _rev: result.rev } as FirnUser
     }
     return null
+  },
+
+  /*
+   * Match a FirnUser by firnId
+   */
+  async matchFirnUserByFirnQuery(firnQuery: FirnUserQuery): Promise<FirnUser | null> {
+
+    const existingUserByFirnId = await couchDB.queryDocuments<FirnUser>({
+      type: 'firnUser',
+      firnId: firnQuery.firnId
+    })
+
+    if (existingUserByFirnId.length > 0) {
+      const user = existingUserByFirnId[0]
+      if (user.firnId === firnQuery.firnId) {
+        // Update last login
+        const updates: Partial<FirnUser> = {
+          lastSeenAt: DateTime.now().toISO()
+        }
+        const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+        return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+      }
+      else {
+        return null
+      }
+    }
+    else {
+      // No user found by firnId - return null to indicate new, unknown user
+      return null
+    }
   },
 
   /*
@@ -421,8 +453,6 @@ export const UserService = {
       familyName: user.googleFamilyName,
       avatar: avatar,
       linkedGitHub: user.githubId ? true : false,
-      allowLoginClientside: user.allowLogin,
-      isRetiredClientside: user.isRetired,
       isAdminClientside: user.isAdmin
     }
 
@@ -443,6 +473,7 @@ export const UserService = {
    */
   async convertToDisplayUserToAdmin(user: FirnUser): Promise<DisplayUserToAdmin> {
     const displayUser: DisplayUserToAdmin = {
+      firnId: user.firnId,
       googleId: user.googleId,
       googleName: user.googleName,
       googleGivenName: user.googleGivenName,
@@ -467,11 +498,16 @@ export const UserService = {
    * Convert a GoogleUser to a FirnUser
    */
   async convertGoogleUserToFirnUser(googleUser: GoogleUser): Promise<FirnUser> {
+
+    // Generate a unique firnId
+    const { firnId } = await UserService.generateUniqueFirnIdAndGoogleId()
+
     // Create new user from GoogleUser with all required FirnUser fields
     const newFirnUser: Omit<FirnUser, '_id' | '_rev'>
       = {
         type: 'firnUser',
         schema: 1,
+        firnId: firnId,
         // Google-specific fields
         googleId: googleUser.googleId,
         googleName: googleUser.googleName,
