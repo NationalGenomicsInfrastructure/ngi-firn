@@ -30,10 +30,17 @@ const items = [
 
 const audienceItems = ['User Login', 'API Access']
 
+
+const renderAsQR = ref(false)
 const tokenTypeItems = [
   { value: 'barcode' as const, label: 'Barcode', description: 'Can be used with the external barcode scanner and recognized by the camera.' },
   { value: 'qrcode' as const, label: 'QR Code', description: 'Can only be used on a device with a camera.' }
 ]
+
+const onRenderAsUpdate = (value: string | undefined) => {
+  if (!value) return
+  renderAsQR.value = value === 'qrcode'
+}
 
 const stepper = useTemplateRef('tokenStepper')
 
@@ -254,6 +261,7 @@ const { user: sessionUser } = useUserSession()
               <NRadioGroup
                 :model-value="values.tokenType || 'barcode'"
                 :items="tokenTypeItems"
+                @update:model-value="onRenderAsUpdate"
               />
             </NFormField>
           </NCard>
@@ -302,7 +310,7 @@ const { user: sessionUser } = useUserSession()
               label="OR"
               class="mx-2 my-4"
             />
-            <div v-if="values.tokenType === 'qrcode'">
+            <div v-if="renderAsQR">
             <ImagesQR
               v-if="token"
               :value="token"
