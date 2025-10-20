@@ -6,7 +6,7 @@ import type { DetectedCode, ZxingReaderInstance } from '../../../types/barcode'
 const { loggedIn, fetch: fetchUserSession, clear: clearUserSession } = useUserSession()
 const { showError, showWarning } = useFirnToast()
 
-const enableDetection = ref(false)
+const enableDetection = ref(true)
 const zxingReaderRef = useTemplateRef<ZxingReaderInstance>('zxingReaderRef')
 const detectedCode = ref(false)
 const isSubmitting = ref(false)
@@ -69,15 +69,40 @@ function onDetect(codes: DetectedCode[]) {
   }
 }
 
+// This function is called on every "keystroke" in the barcode input field.
+// It debounces the input to prevent multiple calls to the submission logic.
+let debounceTimer: NodeJS.Timeout | null = null
+const handleBarcodeInput = (value: string | undefined) => {
+  // Clear existing timer
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+  
+  // Set new timer to wait for input to settle
+  debounceTimer = setTimeout(async () => {
+    // Skip if already processing or no value was provided
+    if (!value || hasProcessedToken.value || isSubmitting.value) {
+      return
+    }
+    // Check if the value looks like a valid token (QR code or barcode format)
+    if (value.length > 50 || value.startsWith('fbt')) {    
+      // Automatically submit the token
+      await onSubmit()
+    }
+  }, 300) // Wait 300ms after last keystroke
+}
+
 const formSchema = toTypedSchema(validateFirnUserTokenSchema)
 
-const { handleSubmit, setFieldValue } = useForm({
+const { handleSubmit, setFieldValue} = useForm({
   validationSchema: formSchema,
   initialValues: {
     tokenString: '',
     expectedAudience: ''
   }
 })
+
+const { value: tokenStringValue, resetField: resetTokenStringValue } = useField<string>('tokenString')
 
 // Submit function that POSTs to the token endpoint
 const onSubmit = handleSubmit(async (values) => {
@@ -109,6 +134,7 @@ const onSubmit = handleSubmit(async (values) => {
     hasProcessedToken.value = false
   }
   finally {
+    resetTokenStringValue()
     isSubmitting.value = false
   }
 })
@@ -156,16 +182,28 @@ const onSubmit = handleSubmit(async (values) => {
               <NFormField
                 name="tokenString"
               >
-                <NInput
-                  type="text"
-                  class="w-full bg-background"
-                  leading="i-lucide-scan-barcode"
-                  placeholder="Login token"
-                  size="lg"
-                  :una="{
-                    inputWrapper: 'w-full'
-                  }"
-                />
+                <div class="flex flex-row gap-2">
+                    <NInput
+                      v-model="tokenStringValue"
+                      autofocus
+                      type="text"
+                      class="w-full bg-background"
+                      leading="i-lucide-scan-barcode"
+                      placeholder="Login token"
+                      size="lg"
+                      :una="{
+                        inputWrapper: 'w-full'
+                      }"
+                      @update:model-value="handleBarcodeInput"
+                    />
+                  <NButton
+                    btn="soft-error hover:outline-error"
+                    label="i-lucide-trash-2"
+                    icon
+                    size="lg"
+                    @click="resetTokenStringValue()"
+                  />
+                </div>
               </NFormField>
             </div>
             </NAspectRatio>
