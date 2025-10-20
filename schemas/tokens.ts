@@ -22,7 +22,7 @@ export const deleteFirnUserTokenSchema = z.object({
 
 // Input schema for validating a token
 export const validateFirnUserTokenSchema = z.object({
-  tokenString: z.string().min(1, { message: 'No token was provided!' }),
+  tokenString: z.string({ error: 'No token was provided!' }).min(1, { message: 'No token was provided!' }),
   expectedAudience: z.string().optional()
 })
 
