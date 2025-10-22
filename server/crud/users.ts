@@ -54,7 +54,7 @@ export const UserService = {
     // Generate a unique firnId
     let newFirnId: string
     do {
-      newFirnId = Math.random().toString(36).substring(3, 10)
+      newFirnId = Math.random().toString(36).substring(3, 7)
     } while (existingFirnIds.some(firnId => firnId === newFirnId))
 
     // Generate a random provisional GoogleID (9-digit number in a reserved range)

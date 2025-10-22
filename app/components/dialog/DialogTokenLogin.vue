@@ -50,7 +50,7 @@ function onDetect(codes: DetectedCode[]) {
   // Directly process the most detected item
   const detection = mostDetectedItem.value
   if (detection && (detection.format === 'QRCode' && detection.code.length > 50
-  || detection.format === 'Code128' && detection.code.startsWith('fbt'))
+  || detection.format === 'Code128' && detection.code.startsWith('ft'))
   ) {
     setFieldValue('tokenString', detection.code)
     enableDetection.value = false // Disable camera after successful detection
@@ -85,7 +85,7 @@ const handleBarcodeInput = (value: string | undefined) => {
       return
     }
     // Check if the value looks like a valid token (QR code or barcode format)
-    if (value.length > 50 || value.startsWith('fbt')) {    
+    if (value.length > 50 || value.startsWith('ft')) {    
       // Automatically submit the token
       await onSubmit()
     }

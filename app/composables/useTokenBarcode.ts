@@ -17,7 +17,7 @@ export function useTokenBarcode() {
         JsBarcode(canvas, token, {
           format: 'CODE128',
           width: 3,
-          height: 100,
+          height: 150,
           displayValue: false,
           margin: 5
         })
@@ -40,7 +40,7 @@ export function useTokenBarcode() {
         { text: `Firn Token of ${userName}`, style: 'header' as const },
         {
           image: barcodeDataUrl,
-          width: 300,
+          width: 250,
           alignment: 'center' as const,
           margin: [0, 0, 0, 0] as Margins
         },
