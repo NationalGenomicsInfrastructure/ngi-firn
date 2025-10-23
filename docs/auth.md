@@ -14,7 +14,7 @@ Because SciLifeLab runs on Google's IT infrastructure, the `@scilifelab.se` Goog
 
 After a successful authentication via Google, users can optionally link their GitHub accounts to the new Firn account. Subsequently GitHub instead of Google can be used to authenticate, but both will refer to the same user account.
 
-Inside Firn, users have the option to issue login tokens for their account, which contain all relevant information to log in as this particular user. These tokens should therefore be treated as confidential valuable information, yet can be revoked if the information has been lost or was obtained by others.
+Inside Firn, users have the option to issue login tokens for their account, which contain all relevant information to log in as this particular user. These tokens should therefore be treated as confidential credentials, yet can be revoked if the information has been lost or was obtained by others.
 
 ### OAuth authentication
 
@@ -73,9 +73,7 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET="my-google-oauth-app-secret"
 
 ### Token authentication
 
-To simplify usage on shared computers and tablets specifically in the lab, we provide a custom token-based authentication method as well.
-
-[Jose](https://medium.com/@hasindusithmin64/creating-and-verifying-jwts-using-npm-jose-a-step-by-step-guide-e07c4fdb3346) is used for JWT handling.
+To simplify usage on shared computers and tablets specifically in the lab, we provide a custom token-based authentication method as well. All relevant information is contained in a [separate documentation](./tokens.md).
 
 ## Authorization
 
