@@ -45,6 +45,7 @@ This name was chosen for the application as it aptly reflects the cold storage c
 #### Users
 
 - [Authentication and authorization](docs/auth.md)
+- [Tokens](docs/tokens.md)
 
 ### Running the application
 

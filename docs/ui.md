@@ -246,7 +246,7 @@ In our Nuxt application, we leverage these Vue concepts along with additional UI
 
 The following list highlights a few features of our UI libraries that you may use quite frequently.
 
-#### Properties for interactive
+#### Properties for interactivity
 
 ```html
  <NSidebarMenuButton
