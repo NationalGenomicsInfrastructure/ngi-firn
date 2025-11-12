@@ -42,6 +42,7 @@
     "typecheck": "npx nuxi typecheck",
     "lint": "eslint .",
     "postinstall": "nuxt prepare",
+    "module:add": "nuxi module add",
     "db:init": "tsx scripts/init-db.ts",
     "db:test": "tsx scripts/test-db-connection.ts"
   },
@@ -63,6 +64,7 @@
     "luxon": "^3.7.1",
     "nuxt": "^4.1.3",
     "nuxt-auth-utils": "^0.5.20",
+    "nuxt-processor": "0.0.12",
     "pdfmake": "^0.2.20",
     "pinia": "^3.0.3",
     "qrcode": "^1.5.4",
