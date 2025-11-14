@@ -1,0 +1,15 @@
+
+.dockerignore
+.git
+.gitignore
+**/.nitro
+**/.nuxt
+**/.output
+**/*.env
+**/*.md
+**/dist
+**/node_modules
+**/nuxt-bridge
+Dockerfile
+npm-debug.log
+README.md
