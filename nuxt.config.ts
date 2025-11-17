@@ -5,7 +5,6 @@ export default defineNuxtConfig({
   // Directly loaded Nuxt modules
   modules: [
     '@nuxt/eslint',
-    '@nuxthub/core',
     'nuxt-auth-utils',
     '@pinia/nuxt',
     '@pinia/colada-nuxt',
@@ -49,5 +48,10 @@ export default defineNuxtConfig({
     prefix: 'N',
     themeable: true,
     global: true
+  },
+
+  // Nitro configuration for standard Node.js SSR
+  nitro: {
+    preset: 'node-server'
   }
 })

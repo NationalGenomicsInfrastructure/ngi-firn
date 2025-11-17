@@ -35,6 +35,7 @@
     "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
     "build": "nuxi build",
+    "start": "node .output/server/index.mjs",
     "typecheck": "npx nuxi typecheck",
     "lint": "eslint .",
     "postinstall": "nuxt prepare",
