@@ -85,7 +85,7 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
         :ratio="4 / 3"
         class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
       >
-        <BarcodeZxingReader
+        <LazyBarcodeZxingReader
           ref="zxingReaderRef"
           :video-width="400"
           :video-height="400"

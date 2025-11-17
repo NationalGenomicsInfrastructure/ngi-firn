@@ -53,5 +53,31 @@ export default defineNuxtConfig({
   // Nitro configuration for standard Node.js SSR
   nitro: {
     preset: 'node-server'
+  },
+
+  // Vite configuration for heavy client-only dependencies
+    /* 
+    pdfmake - PDF generation (DOM/Canvas dependent)
+    jsbarcode - Barcode generation (Canvas dependent)
+    qrcode - QR code generation (Canvas dependent)
+    zxing-wasm - WASM barcode scanner (browser API dependent)
+    @ericblade/quagga2 - Barcode scanner (browser API dependent)
+    */
+  vite: {
+    optimizeDeps: {
+      // Pre-bundle these heavy dependencies to avoid constant reoptimization
+      include: [
+        'jsbarcode',
+        'qrcode',
+        'pdfmake/build/pdfmake',
+        'pdfmake/build/vfs_fonts',
+        'luxon',
+        'zxing-wasm/reader',
+        '@ericblade/quagga2',
+        '@vee-validate/zod'
+      ],
+      // Force these to be excluded from pre-bundling (they have special requirements)
+      exclude: ['zxing-wasm']
+    }
   }
 })

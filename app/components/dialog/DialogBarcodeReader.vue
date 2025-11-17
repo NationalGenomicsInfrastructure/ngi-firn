@@ -72,7 +72,7 @@ const { copy, copied } = useClipboard({ source: barcodeData })
       :ratio="4 / 3"
       class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
     >
-      <BarcodeQuaggaReader
+      <LazyBarcodeQuaggaReader
         :on-detected="upsertQuaggaDetection"
         :reader-types="props.readerTypes"
         :type="props.type"

@@ -34,6 +34,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
+    "dev-build": "node --env-file=.env .output/server/index.mjs",
     "build": "nuxi build",
     "start": "node .output/server/index.mjs",
     "typecheck": "npx nuxi typecheck",

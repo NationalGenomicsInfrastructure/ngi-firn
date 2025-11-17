@@ -1,13 +1,20 @@
-import QRCode from 'qrcode'
-import pdfMake from 'pdfmake/build/pdfmake'
-import pdfFonts from 'pdfmake/build/vfs_fonts'
 import type { Margins, TDocumentDefinitions } from 'pdfmake/interfaces'
 
-pdfMake.vfs = pdfFonts.vfs
-
 export function useTokenQR() {
-// Build a PDF document with a QR code and a user name
+  // Lazy-load browser-only dependencies
+  const loadDependencies = async () => {
+    const [{ default: QRCode }, { default: pdfMake }, { default: pdfFonts }] = await Promise.all([
+      import('qrcode'),
+      import('pdfmake/build/pdfmake'),
+      import('pdfmake/build/vfs_fonts')
+    ])
+    pdfMake.vfs = pdfFonts.vfs
+    return { QRCode, pdfMake }
+  }
+
+  // Build a PDF document with a QR code and a user name
   async function buildDoc(token: string, tokenID: string, userName: string) {
+    const { QRCode } = await loadDependencies()
     const qrDataUrl = await QRCode.toDataURL(token)
 
     return {
@@ -37,12 +44,14 @@ export function useTokenQR() {
 
   // Download the QR code as a PDF
   async function downloadTokenQR(token: string, tokenID: string, userName: string) {
+    const { pdfMake } = await loadDependencies()
     const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).download('token.pdf')
   }
 
   // Preview the QR code in a new tab
   async function previewTokenQR(token: string, tokenID: string, userName: string) {
+    const { pdfMake } = await loadDependencies()
     const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).open()
   }

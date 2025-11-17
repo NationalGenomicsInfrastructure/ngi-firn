@@ -1,13 +1,19 @@
-import JsBarcode from 'jsbarcode'
-import pdfMake from 'pdfmake/build/pdfmake'
-import pdfFonts from 'pdfmake/build/vfs_fonts'
 import type { Margins, TDocumentDefinitions } from 'pdfmake/interfaces'
 
-pdfMake.vfs = pdfFonts.vfs
-
 export function useTokenBarcode() {
+  // Lazy-load browser-only dependencies
+  const loadDependencies = async () => {
+    const [{ default: JsBarcode }, { default: pdfMake }, { default: pdfFonts }] = await Promise.all([
+      import('jsbarcode'),
+      import('pdfmake/build/pdfmake'),
+      import('pdfmake/build/vfs_fonts')
+    ])
+    pdfMake.vfs = pdfFonts.vfs
+    return { JsBarcode, pdfMake }
+  }
   // Generate barcode as data URL using JSBarcode
   async function generateBarcodeDataUrl(token: string): Promise<string> {
+    const { JsBarcode } = await loadDependencies()
     return new Promise((resolve, reject) => {
       try {
         // Create a temporary canvas element
@@ -63,12 +69,14 @@ export function useTokenBarcode() {
 
   // Download the barcode as a PDF
   async function downloadTokenBarcode(token: string, tokenID: string, userName: string) {
+    const { pdfMake } = await loadDependencies()
     const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).download('token.pdf')
   }
 
   // Preview the barcode in a new tab
   async function previewTokenBarcode(token: string, tokenID: string, userName: string) {
+    const { pdfMake } = await loadDependencies()
     const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).open()
   }
