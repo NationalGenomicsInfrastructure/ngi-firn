@@ -146,7 +146,7 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
         >
           <NInput
             type="textarea"
-            rows="5"
+            :rows="5"
             class="w-full"
             leading="i-lucide-key-round"
             placeholder="Token to validate"

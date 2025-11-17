@@ -153,15 +153,15 @@ export const UserService = {
     })
 
     if (existingUserByGoogleId.length > 0) {
-      const user = existingUserByGoogleId[0]
-      // Delete the user
-      await couchDB.deleteDocument(user._id, user._rev!)
-      return user as FirnUser
+      const foundUser = existingUserByGoogleId[0]
+      if (foundUser) {
+        // Delete the user
+        await couchDB.deleteDocument(foundUser._id, foundUser._rev!)
+        return foundUser as FirnUser
+      }
     }
-    else {
-      // User not found - return null to indicate that the user does not exist
-      return null
-    }
+    // User not found - return null to indicate that the user does not exist
+    return null
   },
 
   /*
@@ -230,7 +230,7 @@ export const UserService = {
 
     if (existingUserByFirnId.length > 0) {
       const user = existingUserByFirnId[0]
-      if (user.firnId === firnQuery.firnId) {
+      if (user && user.firnId === firnQuery.firnId) {
         // Update last login
         const updates: Partial<FirnUser> = {
           lastSeenAt: DateTime.now().toISO()
@@ -238,14 +238,9 @@ export const UserService = {
         const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
         return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
       }
-      else {
-        return null
-      }
     }
-    else {
-      // No user found by firnId - return null to indicate new, unknown user
-      return null
-    }
+    // No user found by firnId - return null to indicate new, unknown user
+    return null
   },
 
   /*
