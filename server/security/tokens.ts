@@ -72,7 +72,6 @@ export class TokenHandler {
   }
 
   public async verifyFirnUserToken(token: string, expectedAudience?: string): Promise<{ user: FirnUser | null, token: FirnUserToken | null, error?: string }> {
-    
     /*
     * If the token is a barcode token, it consists of four parts:
     * - the prefix "ft" followed by the user's Firn ID and a random string.
@@ -99,13 +98,14 @@ export class TokenHandler {
       // If there is no encrypted token found or the custom key was not generated, return an error
       if (!existingToken && !customKey) {
         return { user: null, token: null, error: 'Invalid barcode token' }
-      } else {
+      }
+      else {
         token = existingToken
       }
     }
-    
+
     // If the token is not a barcode token, verify the token as usual
-    
+
     const audienceClaim = expectedAudience ? expectedAudience.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
     const result = await this.verifyToken(token, customKey)
     const success = result.success
@@ -135,10 +135,12 @@ export class TokenHandler {
           const result = await couchDB.updateDocument(user._id, { ...user, ...updatedUser }, user._rev!)
           if (result) {
             return { user: { ...user, ...updatedUser, _id: result.id, _rev: result.rev } as FirnUser, token: existingToken }
-          } else {
+          }
+          else {
             return { user: null, token: null, error: 'Failed to update user tokens' }
           }
-        } else {
+        }
+        else {
           return { user: null, token: null, error: 'Token ID not found in user tokens' }
         }
       }
@@ -235,7 +237,7 @@ export class TokenHandler {
 
     /*
     * There is no barcode standard that could accommodate the JWT, so we need to store it instead in the database.
-    * If the JWT itself is ephemeral, we encrypt it symmetrically with the standard key derived 
+    * If the JWT itself is ephemeral, we encrypt it symmetrically with the standard key derived
     * from the Nuxt session password (this.secretKey). If the JWT needs to be stored, we generate a custom key
     * for each token. Instead of the actual JWT, we encode the ephemeral string that is used to generate the key
     * in the barcode instead. Only the possession of the barcode therefore allows to decrypt the JWT and potentially
@@ -243,7 +245,7 @@ export class TokenHandler {
     */
 
     let jwt: string
-    
+
     if (tokenType === 'barcode') {
     // Use a cryptographically secure random string generator via randomBytes.
       const randomString = randomBytes(3).toString('hex')
@@ -253,7 +255,8 @@ export class TokenHandler {
       // Store the actual JWT in the database, return the barcode string instead
       newToken.encryptedToken = jwt
       jwt = barcodeString
-    } else {
+    }
+    else {
       // For QR codes, we can use the JWT directly
       jwt = await this.generateTokenWithPublicClaims(payload, audience, expiresAt, undefined)
     }

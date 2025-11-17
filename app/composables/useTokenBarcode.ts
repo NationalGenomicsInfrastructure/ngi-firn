@@ -12,7 +12,7 @@ export function useTokenBarcode() {
       try {
         // Create a temporary canvas element
         const canvas = document.createElement('canvas')
-        
+
         // Generate barcode on canvas
         JsBarcode(canvas, token, {
           format: 'CODE128',
@@ -21,11 +21,12 @@ export function useTokenBarcode() {
           displayValue: false,
           margin: 5
         })
-        
+
         // Convert canvas to data URL
         const dataUrl = canvas.toDataURL('image/png')
         resolve(dataUrl)
-      } catch (error) {
+      }
+      catch (error) {
         reject(error)
       }
     })

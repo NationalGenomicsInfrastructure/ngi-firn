@@ -34,7 +34,7 @@ import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdm
 export const UserService = {
   /**
    * Generate unique firnId and googleId for a new user. The firnId is a short unique identifier for the user
-   * and is used for the barcode login and share links. 
+   * and is used for the barcode login and share links.
    * The true googleID is provided by and stored upon the first successful Google OAuth login,
    * but in order to pre-create user accounts, we need to generate a unique fake googleId as placeholder.
    * @returns A promise that resolves to an object containing the unique firnId and googleId.
@@ -50,7 +50,7 @@ export const UserService = {
       existingFirnIds.push(user.firnId)
       existingGoogleIds.push(user.googleId)
     }
-    
+
     // Generate a unique firnId
     let newFirnId: string
     do {
@@ -83,7 +83,6 @@ export const UserService = {
    * Create a new, partially filled FirnUser by an admin
    */
   async createUserByAdmin(user: CreateUserByAdminInput): Promise<FirnUser | null> {
-
     // Generate a unique firnId and googleId for the new user
     const { firnId, googleId } = await UserService.generateUniqueFirnIdAndGoogleId()
 
@@ -224,7 +223,6 @@ export const UserService = {
    * Match a FirnUser by firnId
    */
   async matchFirnUserByFirnQuery(firnQuery: FirnUserQuery): Promise<FirnUser | null> {
-
     const existingUserByFirnId = await couchDB.queryDocuments<FirnUser>({
       type: 'firnUser',
       firnId: firnQuery.firnId
@@ -500,7 +498,6 @@ export const UserService = {
    * Convert a GoogleUser to a FirnUser
    */
   async convertGoogleUserToFirnUser(googleUser: GoogleUser): Promise<FirnUser> {
-
     // Generate a unique firnId
     const { firnId } = await UserService.generateUniqueFirnIdAndGoogleId()
 

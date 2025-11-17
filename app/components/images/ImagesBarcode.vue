@@ -2,7 +2,6 @@
 import JsBarcode from 'jsbarcode'
 import type { BarcodeOptions } from '../../../types/barcode'
 
-
 interface Props {
   value?: string // The value of the bar code
   options?: BarcodeOptions // The options for the barcode generator
@@ -35,17 +34,18 @@ const resolveCSSVariable = (value: string, element: HTMLElement): string => {
 // Process options to resolve any CSS variables to their computed values
 const processOptions = (options: BarcodeOptions, element: HTMLElement): BarcodeOptions => {
   const processedOptions = { ...options }
-  
+
   // Process color properties that might contain CSS variables
   const colorProperties = ['background', 'lineColor']
-  
-  colorProperties.forEach(prop => {
+
+  colorProperties.forEach((prop) => {
     if (processedOptions[prop as keyof BarcodeOptions]) {
       const value = processedOptions[prop as keyof BarcodeOptions] as string
-      processedOptions[prop as keyof BarcodeOptions] = resolveCSSVariable(value, element) as any
+      const resolved = resolveCSSVariable(value, element);
+      (processedOptions[prop as keyof BarcodeOptions] as string) = resolved
     }
   })
-  
+
   return processedOptions
 }
 
@@ -59,7 +59,8 @@ const generate = async () => {
   try {
     const processedOptions = processOptions(props.options, elementRef.value)
     JsBarcode(elementRef.value, String(props.value), processedOptions)
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Error generating barcode:', error)
   }
 }
@@ -80,8 +81,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <component 
-    :is="tag" 
+  <component
+    :is="tag"
     ref="elementRef"
     v-bind="$attrs"
   />

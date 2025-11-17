@@ -30,7 +30,6 @@ const items = [
 
 const audienceItems = ['User Login', 'API Access']
 
-
 const renderAsQR = ref(false)
 const tokenTypeItems = [
   { value: 'barcode' as const, label: 'Barcode', description: 'Can be used with the external barcode scanner and recognized by the camera.' },
@@ -246,15 +245,15 @@ const { user: sessionUser } = useUserSession()
             </NCard>
           </div>
           <NCard
-              title="Token representation"
-              description="Choose between a compact and a verbose representation of the token"
-              card="outline-gray"
-              class="flex-1 w-full"
-              :una="{
-                cardContent: 'space-y-4',
-                cardDescription: 'text-accent'
-              }"
-            >
+            title="Token representation"
+            description="Choose between a compact and a verbose representation of the token"
+            card="outline-gray"
+            class="flex-1 w-full"
+            :una="{
+              cardContent: 'space-y-4',
+              cardDescription: 'text-accent'
+            }"
+          >
             <NFormField
               name="tokenType"
             >
@@ -311,50 +310,50 @@ const { user: sessionUser } = useUserSession()
               class="mx-2 my-4"
             />
             <div v-if="renderAsQR">
-            <ImagesQR
-              v-if="token"
-              :value="token"
-              foreground="var(--una-primary-hex)"
-              background="var(--c-background)"
-              class="mx-auto my-15 scale-150"
-            />
-            <div class="flex flex-row gap-2 justify-between">
-              <NButton
-                label="Open a printable QR code with your token"
-                btn="soft-primary hover:outline-primary"
-                :disabled="!token"
-                @click="previewTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
+              <ImagesQR
+                v-if="token"
+                :value="token"
+                foreground="var(--una-primary-hex)"
+                background="var(--c-background)"
+                class="mx-auto my-15 scale-150"
               />
-              <NButton
-                label="Download a PDF with QR code of your token"
-                btn="soft-primary hover:outline-primary"
-                :disabled="!token"
-                @click="downloadTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
-              />
+              <div class="flex flex-row gap-2 justify-between">
+                <NButton
+                  label="Open a printable QR code with your token"
+                  btn="soft-primary hover:outline-primary"
+                  :disabled="!token"
+                  @click="previewTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
+                />
+                <NButton
+                  label="Download a PDF with QR code of your token"
+                  btn="soft-primary hover:outline-primary"
+                  :disabled="!token"
+                  @click="downloadTokenQR(token, tokenID, sessionUser?.name || 'incognito')"
+                />
               </div>
             </div>
             <div v-else>
               <ImagesBarcode
                 v-if="token"
                 :value="token"
-                :options="{ format: 'CODE128', 
-                background: 'var(--c-background)', 
-                lineColor: 'var(--una-primary-hex)',
-                displayValue: true}"
+                :options="{ format: 'CODE128',
+                            background: 'var(--c-background)',
+                            lineColor: 'var(--una-primary-hex)',
+                            displayValue: true }"
               />
               <div class="flex flex-row gap-2 justify-between">
-              <NButton
-                label="Open a printable QR code with your token"
-                btn="soft-primary hover:outline-primary"
-                :disabled="!token"
-                @click="previewTokenBarcode(token, tokenID, sessionUser?.name || 'incognito')"
-              />
-              <NButton
-                label="Download a PDF with QR code of your token"
-                btn="soft-primary hover:outline-primary"
-                :disabled="!token"
-                @click="downloadTokenBarcode(token, tokenID, sessionUser?.name || 'incognito')"
-              />
+                <NButton
+                  label="Open a printable QR code with your token"
+                  btn="soft-primary hover:outline-primary"
+                  :disabled="!token"
+                  @click="previewTokenBarcode(token, tokenID, sessionUser?.name || 'incognito')"
+                />
+                <NButton
+                  label="Download a PDF with QR code of your token"
+                  btn="soft-primary hover:outline-primary"
+                  :disabled="!token"
+                  @click="downloadTokenBarcode(token, tokenID, sessionUser?.name || 'incognito')"
+                />
               </div>
             </div>
           </NCard>

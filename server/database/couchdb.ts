@@ -102,8 +102,9 @@ export class CouchDBConnector {
       })
       return response.result as T
     }
-    catch (error: any) {
-      if (error.code === 404) {
+    catch (error: unknown) {
+      const err = error as { code?: number, message?: string }
+      if (err.code === 404) {
         return null
       }
       console.error('Error getting document:', error)
@@ -146,7 +147,7 @@ export class CouchDBConnector {
   }
 
   // Query documents using Mango queries
-  async queryDocuments<T extends CloudantV1.Document>(selector: any, fields?: string[]): Promise<T[]> {
+  async queryDocuments<T extends CloudantV1.Document>(selector: Record<string, unknown>, fields?: string[]): Promise<T[]> {
     try {
       const response = await this.client.postFind({
         db: this.database,
@@ -186,8 +187,9 @@ export class CouchDBConnector {
         console.log(`"${this.database}" database created.`)
       }
     }
-    catch (error: any) {
-      if (error.code === 412) {
+    catch (error: unknown) {
+      const err = error as { code?: number, message?: string }
+      if (err.code === 412) {
         console.log(`Cannot create "${this.database}" database, it already exists.`)
       }
       else {
@@ -222,31 +224,32 @@ export class CouchDBConnector {
       })
       return true
     }
-    catch (error: any) {
+    catch (error: unknown) {
+      const err = error as { code?: number | string, message?: string }
       // Check for specific connection errors
-      if (this.isConnectionError(error)) {
-        console.error('❌ Database connection failed:', error.message)
+      if (this.isConnectionError(err)) {
+        console.error('❌ Database connection failed:', err.message)
         console.error('   This indicates the database server is not available.')
         console.error('   Please ensure CouchDB is running and accessible.')
         return false
       }
 
       // If it's a 404, the database doesn't exist but the server is reachable
-      if (error.code === 404) {
+      if (err.code === 404) {
         console.log(`Database "${this.database}" does not exist, but server is reachable.`)
         return true
       }
 
       // For other errors, log but don't treat as connection failure
-      console.error('Database test failed with error:', error.message)
+      console.error('Database test failed with error:', err.message)
       return false
     }
   }
 
   // Check if an error is a connection error
-  private isConnectionError(error: any): boolean {
+  private isConnectionError(error: { code?: number | string, message?: string }): boolean {
     const errorMessage = error.message?.toLowerCase() || ''
-    const errorCode = error.code?.toLowerCase() || ''
+    const errorCode = error.code?.toString().toLowerCase() || ''
 
     // Common connection error patterns
     const connectionErrorPatterns = [

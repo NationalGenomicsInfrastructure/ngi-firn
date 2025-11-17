@@ -142,7 +142,7 @@ export default defineOAuthGoogleEventHandler({
       name: error?.name,
       cause: error?.cause
     })
-    
+
     if (error?.message?.includes('state mismatch')) {
       console.error('OAuth State Mismatch Debug Info:')
       console.error('- Request URL:', event.node.req.url)
@@ -151,12 +151,12 @@ export default defineOAuthGoogleEventHandler({
       console.error('- Referer:', event.node.req.headers.referer)
       console.error('- Query parameters:', getQuery(event))
       console.error('- Request headers:', {
-        cookie: event.node.req.headers.cookie,
+        'cookie': event.node.req.headers.cookie,
         'x-forwarded-for': event.node.req.headers['x-forwarded-for'],
         'x-real-ip': event.node.req.headers['x-real-ip']
       })
     }
-    
+
     await clearUserSession(event)
     await setUserSession(event, {
       authStatus: {

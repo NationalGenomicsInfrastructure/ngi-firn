@@ -49,8 +49,8 @@ function onDetect(codes: DetectedCode[]) {
 
   // Directly process the most detected item
   const detection = mostDetectedItem.value
-  if (detection && (detection.format === 'QRCode' && detection.code.length > 50
-  || detection.format === 'Code128' && detection.code.startsWith('ft'))
+  if (detection && ((detection.format === 'QRCode' && detection.code.length > 50)
+    || (detection.format === 'Code128' && detection.code.startsWith('ft')))
   ) {
     setFieldValue('tokenString', detection.code)
     enableDetection.value = false // Disable camera after successful detection
@@ -77,7 +77,7 @@ const handleBarcodeInput = (value: string | undefined) => {
   if (debounceTimer) {
     clearTimeout(debounceTimer)
   }
-  
+
   // Set new timer to wait for input to settle
   debounceTimer = setTimeout(async () => {
     // Skip if already processing or no value was provided
@@ -85,7 +85,7 @@ const handleBarcodeInput = (value: string | undefined) => {
       return
     }
     // Check if the value looks like a valid token (QR code or barcode format)
-    if (value.length > 50 || value.startsWith('ft')) {    
+    if (value.length > 50 || value.startsWith('ft')) {
       // Automatically submit the token
       await onSubmit()
     }
@@ -94,7 +94,7 @@ const handleBarcodeInput = (value: string | undefined) => {
 
 const formSchema = toTypedSchema(validateFirnUserTokenSchema)
 
-const { handleSubmit, setFieldValue} = useForm({
+const { handleSubmit, setFieldValue } = useForm({
   validationSchema: formSchema,
   initialValues: {
     tokenString: '',
@@ -160,42 +160,42 @@ const onSubmit = handleSubmit(async (values) => {
     </template>
 
     <NTabs default-value="external">
-        <NTabsList class="mx-auto border-b border-primary bg-primary-50 dark:bg-primary/10">
-          <NTabsTrigger value="external">
-            <NIcon name="i-lucide-ruler-dimension-line" />
-            Use an external reader
-          </NTabsTrigger>
-          <NTabsTrigger value="camera">
-            <NIcon name="i-lucide-fullscreen" />
-            Use the device camera
-          </NTabsTrigger>
-        </NTabsList>
-        <NTabsContent value="external">
-          <form
-              @submit.prevent="onSubmit()"
-            >
-            <NAspectRatio
-              :ratio="4 / 3"
-              class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-            >
+      <NTabsList class="mx-auto border-b border-primary bg-primary-50 dark:bg-primary/10">
+        <NTabsTrigger value="external">
+          <NIcon name="i-lucide-ruler-dimension-line" />
+          Use an external reader
+        </NTabsTrigger>
+        <NTabsTrigger value="camera">
+          <NIcon name="i-lucide-fullscreen" />
+          Use the device camera
+        </NTabsTrigger>
+      </NTabsList>
+      <NTabsContent value="external">
+        <form
+          @submit.prevent="onSubmit()"
+        >
+          <NAspectRatio
+            :ratio="4 / 3"
+            class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+          >
             <div class="flex items-center justify-center h-full">
               <NFormField
                 name="tokenString"
               >
                 <div class="flex flex-row gap-2">
-                    <NInput
-                      v-model="tokenStringValue"
-                      autofocus
-                      type="text"
-                      class="w-full bg-background"
-                      leading="i-lucide-scan-barcode"
-                      placeholder="Login token"
-                      size="lg"
-                      :una="{
-                        inputWrapper: 'w-full'
-                      }"
-                      @update:model-value="handleBarcodeInput"
-                    />
+                  <NInput
+                    v-model="tokenStringValue"
+                    autofocus
+                    type="text"
+                    class="w-full bg-background"
+                    leading="i-lucide-scan-barcode"
+                    placeholder="Login token"
+                    size="lg"
+                    :una="{
+                      inputWrapper: 'w-full'
+                    }"
+                    @update:model-value="handleBarcodeInput"
+                  />
                   <NButton
                     btn="soft-error hover:outline-error"
                     label="i-lucide-trash-2"
@@ -206,100 +206,99 @@ const onSubmit = handleSubmit(async (values) => {
                 </div>
               </NFormField>
             </div>
-            </NAspectRatio>
-            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full mt-2">
-              <NDialogClose>
-                <NButton
-                  label="Cancel"
-                  class="transition delay-300 ease-in-out"
-                  btn="soft-gray hover:outline-gray"
-                  trailing="i-lucide-x"
-                />
-              </NDialogClose>
+          </NAspectRatio>
+          <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full mt-2">
+            <NDialogClose>
               <NButton
-                  label="Submit token"
-                  btn="soft-primary hover:outline-primary"
-                  type="submit"
-                />
-            </div>
-          </form>
-        </NTabsContent>
-        <NTabsContent value="camera">
-          <NAspectRatio
-            v-if="enableDetection"
-            :ratio="4 / 3"
-            class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-          >
-            <BarcodeZxingReader
-              ref="zxingReaderRef"
-              :video-width="400"
-              :video-height="300"
-              :prefer-wasm="true"
-              @detect="onDetect"
+                label="Cancel"
+                class="transition delay-300 ease-in-out"
+                btn="soft-gray hover:outline-gray"
+                trailing="i-lucide-x"
+              />
+            </NDialogClose>
+            <NButton
+              label="Submit token"
+              btn="soft-primary hover:outline-primary"
+              type="submit"
             />
-          </NAspectRatio>
-          <NAspectRatio
+          </div>
+        </form>
+      </NTabsContent>
+      <NTabsContent value="camera">
+        <NAspectRatio
+          v-if="enableDetection"
+          :ratio="4 / 3"
+          class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+        >
+          <BarcodeZxingReader
+            ref="zxingReaderRef"
+            :video-width="400"
+            :video-height="300"
+            :prefer-wasm="true"
+            @detect="onDetect"
+          />
+        </NAspectRatio>
+        <NAspectRatio
+          v-else
+          :ratio="4 / 3"
+          class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
+        >
+          <div class="flex items-center justify-center h-full">
+            <NTooltip
+              :content="isSubmitting ? 'Authenticating...' : 'Enable camera'"
+              tooltip="primary"
+            >
+              <NButton
+                :label="isSubmitting ? 'i-lucide-loader-circle' : (detectedCode ? 'i-lucide-check-circle' : 'i-lucide-camera')"
+                icon
+                :size="detectedCode || isSubmitting ? '4xl' : 'lg'"
+                :btn="isSubmitting ? 'solid-primary' : (detectedCode ? 'solid-success' : 'soft-primary hover:outline-primary')"
+                :class="isSubmitting ? 'animate-spin' : ''"
+                class="group rounded-full"
+                :disabled="isSubmitting"
+                @click="enableDetection = true"
+              />
+            </NTooltip>
+          </div>
+        </NAspectRatio>
+        <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full mt-2">
+          <NDialogClose>
+            <NButton
+              label="Cancel"
+              class="transition delay-300 ease-in-out"
+              btn="soft-gray hover:outline-gray"
+              trailing="i-lucide-x"
+            />
+          </NDialogClose>
+          <NButton
+            v-if="zxingReaderRef"
+            btn="soft-primary hover:outline-primary"
+            size="sm"
+            :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
+            leading="i-lucide-repeat"
+            :disabled="!enableDetection || isSubmitting"
+            @click="zxingReaderRef.switchCamera()"
+          />
+          <!-- Dummy button to show the 'switch camera' button even when we don't have a zxingReaderRef. Purely visual to prevent layout shift with jumping buttons -->
+          <NButton
             v-else
-            :ratio="4 / 3"
-            class="border-0.5 border-gray-200 dark:border-gray-800 rounded-lg"
-          >
-            <div class="flex items-center justify-center h-full">
-              <NTooltip
-                :content="isSubmitting ? 'Authenticating...' : 'Enable camera'"
-                tooltip="primary"
-              >
-                <NButton
-                  :label="isSubmitting ? 'i-lucide-loader-circle' : (detectedCode ? 'i-lucide-check-circle' : 'i-lucide-camera')"
-                  icon
-                  :size="detectedCode || isSubmitting ? '4xl' : 'lg'"
-                  :btn="isSubmitting ? 'solid-primary' : (detectedCode ? 'solid-success' : 'soft-primary hover:outline-primary')"
-                  :class="isSubmitting ? 'animate-spin' : ''"
-                  class="group rounded-full"
-                  :disabled="isSubmitting"
-                  @click="enableDetection = true"
-                />
-              </NTooltip>
-            </div>
-          </NAspectRatio>
-            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between shrink-0 w-full mt-2">
-              <NDialogClose>
-                <NButton
-                  label="Cancel"
-                  class="transition delay-300 ease-in-out"
-                  btn="soft-gray hover:outline-gray"
-                  trailing="i-lucide-x"
-                />
-              </NDialogClose>
-              <NButton
-                v-if="zxingReaderRef"
-                btn="soft-primary hover:outline-primary"
-                size="sm"
-                :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
-                leading="i-lucide-repeat"
-                :disabled="!enableDetection || isSubmitting"
-                @click="zxingReaderRef.switchCamera()"
-              />
-              <!-- Dummy button to show the 'switch camera' button even when we don't have a zxingReaderRef. Purely visual to prevent layout shift with jumping buttons -->
-              <NButton
-                v-else
-                btn="soft-primary hover:outline-primary"
-                size="sm"
-                label="Switch camera"
-                leading="i-lucide-repeat"
-                :disabled="true"
-              />
-              <NButton
-                btn="soft-primary hover:outline-primary"
-                size="sm"
-                label="Disable camera"
-                leading="i-lucide-camera-off"
-                :disabled="!enableDetection || isSubmitting"
-                @click="enableDetection = false"
-              />
-            </div>
-        </NTabsContent>
-      </NTabs>
-    <template #footer>
-    </template>
+            btn="soft-primary hover:outline-primary"
+            size="sm"
+            label="Switch camera"
+            leading="i-lucide-repeat"
+            :disabled="true"
+          />
+          <NButton
+            btn="soft-primary hover:outline-primary"
+            size="sm"
+            label="Disable camera"
+            leading="i-lucide-camera-off"
+            :disabled="!enableDetection || isSubmitting"
+            @click="enableDetection = false"
+          />
+        </div>
+      </NTabsContent>
+    </NTabs>
+    <template #footer />
   </NDialog>
 </template>

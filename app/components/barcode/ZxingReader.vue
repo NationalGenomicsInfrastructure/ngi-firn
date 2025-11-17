@@ -109,7 +109,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'detect', value: DetectedCode[]): void
-  (e: 'error', value: any): void
+  (e: 'error', value: Error | unknown): void
   (e: 'engine-change', value: 'barcode-detector' | 'wasm'): void
 }>()
 
@@ -119,6 +119,7 @@ const state = reactive<ScannerState>({ running: false, usingBack: true, torch: f
 
 let stream: MediaStream | undefined
 let raf = 0
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let detector: any // BarcodeDetector | null
 let usingBarcodeAPI = false
 let frameCount = 0
@@ -145,16 +146,26 @@ function centroid(pts: Pt[]): Pt {
 function roiRect(cvs: HTMLCanvasElement) {
   const shortSide = Math.min(cvs.width, cvs.height)
   const base = Math.max(0, Math.floor(shortSide * props.roiSizeRatio)) // sisi persegi dasar
-  let w = base, h = base
+  let w = base
+  let h = base
   if (props.roiShape === 'rect') {
     const aspect = Math.max(0.01, props.roiAspect) // w/h
-    if (aspect >= 1) { w = base; h = Math.floor(base / aspect) }
-    else { w = Math.floor(base * aspect); h = base }
+    if (aspect >= 1) {
+      w = base
+      h = Math.floor(base / aspect)
+    }
+    else {
+      w = Math.floor(base * aspect)
+      h = base
+    }
   }
   let x = Math.floor((cvs.width - w) / 2)
   let y = Math.floor((cvs.height - h) / 2)
   const pad = Math.max(0, props.roiPadding)
-  x += pad; y += pad; w = Math.max(0, w - 2 * pad); h = Math.max(0, h - 2 * pad)
+  x += pad
+  y += pad
+  w = Math.max(0, w - 2 * pad)
+  h = Math.max(0, h - 2 * pad)
   return { x, y, w, h }
 }
 
@@ -278,8 +289,12 @@ function drawCornerBorder(
 async function pauseInternal() {
   cancelAnimationFrame(raf)
   if (video.value && !video.value.paused) {
-    try { await video.value.pause() }
-    catch {}
+    try {
+      await video.value.pause()
+    }
+    catch {
+      // Ignore pause errors
+    }
   }
   if (props.releaseOnPause) {
     stream?.getTracks().forEach(t => t.stop())
@@ -296,8 +311,12 @@ async function resumeInternal() {
   }
   // stream still exists: continue
   if (video.value?.paused) {
-    try { await video.value.play() }
-    catch {}
+    try {
+      await video.value.play()
+    }
+    catch {
+      // Ignore play errors
+    }
   }
   state.running = true
   loop()
@@ -312,7 +331,9 @@ function applyWasmOverride() {
       equalityFn: Object.is,
       fireImmediately: false
     })
-    props.debug && console.log('[ZXING OVERRIDE] wasmUrl =', props.wasmUrl)
+    if (props.debug) {
+      console.log('[ZXING OVERRIDE] wasmUrl =', props.wasmUrl)
+    }
   }
 }
 
@@ -325,19 +346,23 @@ async function initDetector() {
 
   if (!props.preferWasm) {
     try {
-      // @ts-ignore
+      // @ts-expect-error - BarcodeDetector may not be available in all browsers
       if (globalThis.BarcodeDetector) {
-        // @ts-ignore
+        // @ts-expect-error - BarcodeDetector may not be available in all browsers
         detector = new BarcodeDetector({ formats: props.formats })
         usingBarcodeAPI = true
         bdStartTs = performance.now()
-        props.debug && console.log('[engine] BarcodeDetector')
+        if (props.debug) {
+          console.log('[engine] BarcodeDetector')
+        }
         emit('engine-change', 'barcode-detector')
         return
       }
     }
     catch (e) {
-      props.debug && console.warn('[engine] BD init failed → WASM', e)
+      if (props.debug) {
+        console.warn('[engine] BD init failed → WASM', e)
+      }
     }
   }
 
@@ -346,7 +371,9 @@ async function initDetector() {
 
   usingBarcodeAPI = false
   detector = null
-  props.debug && console.log('[engine] WASM')
+  if (props.debug) {
+    console.log('[engine] WASM')
+  }
   emit('engine-change', 'wasm')
 }
 
@@ -422,7 +449,10 @@ function drawOverlay(results: DetectedCode[]) {
     const corners = results[0]!.corners!
     smoothCorners = emaCorners(smoothCorners, corners)
     ctx.save()
-    if (shouldMirror) { ctx.scale(-1, 1); ctx.translate(-cvs.width, 0) }
+    if (shouldMirror) {
+      ctx.scale(-1, 1)
+      ctx.translate(-cvs.width, 0)
+    }
     ctx.lineWidth = 3
     ctx.strokeStyle = props.roiBorderColorActive
     ctx.beginPath()
@@ -448,7 +478,9 @@ async function readFrame(): Promise<DetectedCode[]> {
     if (byTime || byStreak) {
       usingBarcodeAPI = false
       detector = null
-      props.debug && console.warn('[engine] fallback → WASM (time:', byTime, 'streak:', zeroFrameStreak, ')')
+      if (props.debug) {
+        console.warn('[engine] fallback → WASM (time:', byTime, 'streak:', zeroFrameStreak, ')')
+      }
       emit('engine-change', 'wasm')
       return true
     }
@@ -458,22 +490,29 @@ async function readFrame(): Promise<DetectedCode[]> {
   // BarcodeDetector path
   if (usingBarcodeAPI) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nativeResults: any[] = await detector.detect(video.value!)
       zeroFrameStreak = nativeResults.length ? 0 : (zeroFrameStreak + 1)
-      props.debug && console.log('[BD] results=', nativeResults.length, 'streak=', zeroFrameStreak)
+      if (props.debug) {
+        console.log('[BD] results=', nativeResults.length, 'streak=', zeroFrameStreak)
+      }
       if (!nativeResults.length && maybeFallbackToWasm()) {
         // fallback to WASM in the same frame (continue below)
       }
       else {
-        return nativeResults.map(r => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return nativeResults.map((r: any) => ({
           rawValue: r.rawValue,
           format: r.format,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           corners: r.cornerPoints?.map((p: any) => ({ x: p.x, y: p.y }))
         }))
       }
     }
     catch (e) {
-      props.debug && console.warn('[BD] detect error → WASM', e)
+      if (props.debug) {
+        console.warn('[BD] detect error → WASM', e)
+      }
       usingBarcodeAPI = false
       detector = null
       emit('engine-change', 'wasm')
@@ -487,19 +526,29 @@ async function readFrame(): Promise<DetectedCode[]> {
   cvs.height = vid.videoHeight
   ctx.drawImage(vid, 0, 0, cvs.width, cvs.height)
 
-  let sx = 0, sy = 0, sw = cvs.width, sh = cvs.height
+  let sx = 0
+  let sy = 0
+  let sw = cvs.width
+  let sh = cvs.height
   if (props.useRoi) {
     const r = roiRect(cvs)
-    sx = r.x; sy = r.y; sw = r.w; sh = r.h
+    sx = r.x
+    sy = r.y
+    sw = r.w
+    sh = r.h
   }
 
   const img = ctx.getImageData(sx, sy, sw, sh)
   const opts: ReaderOptions = { tryHarder: true, maxNumberOfSymbols: 4 }
   const results = await readBarcodes(img, opts)
-  props.debug && console.log('[WASM] results=', results.length)
+  if (props.debug) {
+    console.log('[WASM] results=', results.length)
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return results.map((b: any) => ({
     rawValue: b.text,
     format: b.format || 'qr_code',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     corners: b.cornerPoints?.map((p: any) => ({ x: p.x + sx, y: p.y + sy }))
   }))
 }
@@ -531,7 +580,7 @@ async function loop() {
 
     drawOverlay(results)
   }
-  catch (e: any) {
+  catch (e: unknown) {
     emit('error', e)
   }
   raf = requestAnimationFrame(loop)
@@ -540,6 +589,7 @@ async function loop() {
 // ===== controls =====
 async function toggleTorch() {
   const track = stream?.getVideoTracks()[0]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const caps: any = track?.getCapabilities?.()
   if (!track || !caps?.torch) return
   state.torch = !state.torch
@@ -555,8 +605,13 @@ async function switchCamera() {
 
 // ===== lifecycle =====
 onMounted(async () => {
-  try { await initDetector(); await start() }
-  catch (e: any) { emit('error', e) }
+  try {
+    await initDetector()
+    await start()
+  }
+  catch (e: unknown) {
+    emit('error', e)
+  }
 })
 onBeforeUnmount(() => stop())
 
@@ -575,9 +630,15 @@ watchEffect(() => {
   ro.observe(vid)
 })
 
-function pause() { return pauseInternal() }
-function resume() { return resumeInternal() }
-function togglePause() { return props.paused ? resumeInternal() : pauseInternal() }
+function pause() {
+  return pauseInternal()
+}
+function resume() {
+  return resumeInternal()
+}
+function togglePause() {
+  return props.paused ? resumeInternal() : pauseInternal()
+}
 
 // Expose functions and state for external access
 defineExpose({

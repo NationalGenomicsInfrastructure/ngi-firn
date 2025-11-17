@@ -116,14 +116,20 @@ export function useBarcodeDetections() {
    * Removes a finding by its ID
    */
   function removeDetection(id: string) {
-    if (id in findingsById) delete findingsById[id]
+    if (id in findingsById) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete findingsById[id]
+    }
   }
 
   /**
    * Clears all findings
    */
   function clearDetections() {
-    for (const key of Object.keys(findingsById)) delete findingsById[key]
+    for (const key of Object.keys(findingsById)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete findingsById[key]
+    }
   }
 
   /**

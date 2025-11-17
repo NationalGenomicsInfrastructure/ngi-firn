@@ -15,7 +15,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  authStatusWatcher && authStatusWatcher()
+  if (authStatusWatcher) {
+    authStatusWatcher()
+  }
 })
 </script>
 

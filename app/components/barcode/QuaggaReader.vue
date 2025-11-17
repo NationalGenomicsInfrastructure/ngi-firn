@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, reactive, watch } from 'vue'
 import Quagga from '@ericblade/quagga2'
-import type { InputStreamType, QuaggaJSCodeReader, QuaggaJSConfigObject, QuaggaJSResultCallbackFunction, QuaggaJSResultObject } from '@ericblade/quagga2'
+import type { InputStreamType, QuaggaJSCodeReader, QuaggaJSConfigObject, QuaggaJSResultObject } from '@ericblade/quagga2'
 
 const props = withDefaults(
   defineProps<{
@@ -25,11 +25,13 @@ const props = withDefaults(
 
       if (result) {
         if (result.boxes) {
+          const width = drawingCanvas?.getAttribute('width')
+          const height = drawingCanvas?.getAttribute('height')
           drawingCtx.clearRect(
             0,
             0,
-            parseInt(drawingCanvas?.getAttribute('width')!),
-            parseInt(drawingCanvas?.getAttribute('height')!)
+            parseInt(width || '0'),
+            parseInt(height || '0')
           )
           result.boxes
             .filter(box => box !== result.box)
@@ -110,7 +112,7 @@ watch(
 )
 
 onMounted(() => {
-  Quagga.init(quaggaState, (err: any) => {
+  Quagga.init(quaggaState, (err: Error | null) => {
     if (err) {
       return console.error(err)
     }

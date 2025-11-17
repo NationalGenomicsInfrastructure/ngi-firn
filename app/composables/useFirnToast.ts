@@ -38,7 +38,7 @@
 export const useFirnToast = () => {
   const { toast } = useToast()
 
-  const showSuccess = (message: string, title?: string, additionalProps?: Record<string, any>) => {
+  const showSuccess = (message: string, title?: string, additionalProps?: Record<string, unknown>) => {
     toast({
       title: title || 'Success',
       description: message,
@@ -52,7 +52,7 @@ export const useFirnToast = () => {
     })
   }
 
-  const showWarning = (message: string, title?: string, additionalProps?: Record<string, any>) => {
+  const showWarning = (message: string, title?: string, additionalProps?: Record<string, unknown>) => {
     toast({
       title: title || 'Warning',
       description: message,
@@ -66,7 +66,7 @@ export const useFirnToast = () => {
     })
   }
 
-  const showError = (message: string, title?: string, additionalProps?: Record<string, any>) => {
+  const showError = (message: string, title?: string, additionalProps?: Record<string, unknown>) => {
     toast({
       title: title || 'Error',
       description: message,
@@ -80,7 +80,7 @@ export const useFirnToast = () => {
     })
   }
 
-  const showInfo = (message: string, title?: string, additionalProps?: Record<string, any>) => {
+  const showInfo = (message: string, title?: string, additionalProps?: Record<string, unknown>) => {
     toast({
       title: title || 'Information',
       description: message,
