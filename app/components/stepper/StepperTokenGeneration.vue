@@ -368,14 +368,14 @@ const { user: sessionUser } = useUserSession()
   <div class="mx-auto mt-4 max-w-2xl flex justify-between gap-2">
     <NButton
       label="prev"
-      btn="solid-gray hover:outline-secondary"
+      btn="solid-gray hover:outline-gray"
       leading="i-lucide-arrow-left"
       :disabled="!stepper?.hasPrev()"
       @click="stepper?.prevStep()"
     />
     <NButton
       label="next"
-      btn="solid-gray hover:outline-secondary"
+      btn="solid-gray hover:outline-gray"
       trailing="i-lucide-arrow-right"
       :disabled="!stepper?.hasNext()"
       @click="stepper?.nextStep()"

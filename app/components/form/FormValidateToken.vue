@@ -117,7 +117,7 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
       <div class="flex items-center justify-between gap-2 mb-2 mt-2">
         <NButton
           v-if="enableDetection && zxingReaderRef"
-          btn="soft-secondary hover:outline-secondary"
+          btn="soft-gray hover:outline-gray"
           size="sm"
           :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
           leading="i-lucide-repeat"
