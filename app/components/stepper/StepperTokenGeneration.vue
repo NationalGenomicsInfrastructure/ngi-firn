@@ -310,7 +310,7 @@ const { user: sessionUser } = useUserSession()
               class="mx-2 my-4"
             />
             <div v-if="renderAsQR">
-              <ImagesQR
+              <LazyImagesQR
                 v-if="token"
                 :value="token"
                 foreground="var(--una-primary-hex)"
@@ -333,7 +333,7 @@ const { user: sessionUser } = useUserSession()
               </div>
             </div>
             <div v-else>
-              <ImagesBarcode
+              <LazyImagesBarcode
                 v-if="token"
                 :value="token"
                 :options="{ format: 'CODE128',
@@ -358,7 +358,7 @@ const { user: sessionUser } = useUserSession()
             </div>
           </NCard>
         </div>
-        <FormValidateToken
+        <LazyFormValidateToken
           v-if="item.stage === 3"
           :audience-items="audienceItems"
         />

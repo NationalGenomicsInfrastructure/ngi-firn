@@ -34,9 +34,11 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
-    "dev-build": "node --env-file=.env .output/server/index.mjs",
+    "dev-build-node": "node --env-file=.env .output/server/index.mjs",
+    "dev-build-bun": "bun --env-file=.env .output/server/index.mjs",
     "build": "nuxi build",
     "start": "node .output/server/index.mjs",
+    "start-bun": "bun .output/server/index.mjs",
     "typecheck": "npx nuxi typecheck",
     "lint": "eslint .",
     "postinstall": "nuxt prepare",
@@ -83,13 +85,14 @@
     "esbuild": "^0.25.8",
     "eslint": "^9.31.0",
     "form-data": "2.5.5",
+    "rollup-plugin-visualizer": "^6.0.5",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "unocss": "66.3.3",
     "vue-tsc": "^3.0.3",
     "wrangler": "^4.26.0"
   },
-  "packageManager": "pnpm@10.18.3",
+  "packageManager": "pnpm@10.22.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",

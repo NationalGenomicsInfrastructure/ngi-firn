@@ -1,3 +1,6 @@
+import 'dotenv/config'
+import { visualizer } from 'rollup-plugin-visualizer'
+
 export default defineNuxtConfig({
 
   // required for tRPC: transpile the tRPC Nuxt module
@@ -13,7 +16,11 @@ export default defineNuxtConfig({
 
   // Enable Nuxt Developer Tools
   devtools: {
-    enabled: true
+    enabled: true,
+
+    timeline: {
+      enabled: true
+    }
   },
   build: {
     transpile: ['trpc-nuxt']
@@ -50,9 +57,9 @@ export default defineNuxtConfig({
     global: true
   },
 
-  // Nitro configuration for standard Node.js SSR
+  // Nitro configuration for running the server with Bun
   nitro: {
-    preset: 'node-server'
+    preset: 'bun'
   },
 
   // Vite configuration for heavy client-only dependencies
@@ -65,19 +72,17 @@ export default defineNuxtConfig({
     */
   vite: {
     optimizeDeps: {
-      // Pre-bundle these heavy dependencies to avoid constant reoptimization
-      include: [
-        'jsbarcode',
-        'qrcode',
-        'pdfmake/build/pdfmake',
-        'pdfmake/build/vfs_fonts',
-        'luxon',
-        'zxing-wasm/reader',
-        '@ericblade/quagga2',
-        '@vee-validate/zod'
-      ],
-      // Force these to be excluded from pre-bundling (they have special requirements)
-      exclude: ['zxing-wasm']
-    }
+      // Force these to be excluded from bundling
+      exclude: ['jose', 'crypto', 'zxing-wasm', '@ericblade/quagga2']
+    },
+    plugins: [
+      // Visualize the build stats to identify performance bottlenecks and large chunks
+      visualizer({
+        filename: 'build-size-stats.html',
+        template: 'treemap',
+        gzipSize: true,
+        brotliSize: true
+      })
+    ]
   }
 })

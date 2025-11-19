@@ -1,4 +1,4 @@
-import type * as jose from 'jose'
+import type { JWTPayload } from 'jose'
 
 // By default, the actual token is not stored, just an ID and a timestamp for expiration
 
@@ -18,7 +18,7 @@ export interface FirnUserToken {
   encryptedToken: string | null
 }
 
-export interface FirnJWTPayload extends jose.JWTPayload {
+export interface FirnJWTPayload extends JWTPayload {
   tid: string
   udoc: string
 }

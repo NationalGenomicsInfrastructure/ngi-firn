@@ -37,7 +37,7 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
             section="Your current tokens"
             class="mb-4"
           />
-          <TableUserTokens
+          <LazyTableUserTokens
             :tokens="selfUser?.tokens"
             :loading="isLoading"
           />
@@ -47,7 +47,7 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
             section="Generate a new token"
             class="mb-4"
           />
-          <StepperTokenGeneration />
+          <LazyStepperTokenGeneration />
         </NTabsContent>
       </NTabs>
     </slot>
