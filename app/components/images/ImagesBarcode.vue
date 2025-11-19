@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import JsBarcode from 'jsbarcode'
 import type { BarcodeOptions } from '../../../types/barcode'
 
 interface Props {
@@ -57,6 +56,8 @@ const generate = async () => {
   await nextTick()
   // Try to generate the barcode using JsBarcode library
   try {
+    // Lazy-load JsBarcode for better code-splitting
+    const { default: JsBarcode } = await import('jsbarcode')
     const processedOptions = processOptions(props.options, elementRef.value)
     JsBarcode(elementRef.value, String(props.value), processedOptions)
   }
