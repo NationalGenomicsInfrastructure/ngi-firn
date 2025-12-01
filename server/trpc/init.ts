@@ -1,9 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { H3Event } from 'h3'
-import { UserService } from '../crud/users'
 import type { SessionUser, SessionUserSecure, FirnUser } from '../../types/auth'
 import type { Context } from '../../types/trpc'
-import { tokenHandler } from '../security/tokens'
 
 // The tRPC context is only server-side, the client can't access it.
 // It is therefore safe to put the private parts of the session in the context.
@@ -16,6 +14,9 @@ export const createTRPCContext = async (event: H3Event): Promise<Context> => {
 
   // Sessions are the primary way to authenticate a user, but we also support token authentication
   if (!sessionUser && !sessionUserSecure) {
+    // dynamic import to avoid bundling heavy crypto libraries into client
+    const { tokenHandler } = await import('../security/tokens.server')
+
     // No existing session, let's try to extract an authorization token from the request
     const token = await tokenHandler.extractTokenFromHeader(event)
     if (token && token.length > 0) {
@@ -87,6 +88,8 @@ const getFirnUser = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
   }
 
+  const { UserService } = await import('../crud/users.server')
+
   // Match the session user to the database user and return the full user object in context
   const firnUser = await UserService.matchSessionUserSecure(ctx.secure)
 
@@ -108,6 +111,10 @@ const hasValidToken = t.middleware(async ({ ctx, next }) => {
   if (!ctx.token) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authorization header required' })
   }
+
+  // dynamic import to avoid bundling heavy crypto libraries into client
+  const { UserService } = await import('../crud/users.server')
+  const { tokenHandler } = await import('../security/tokens.server')
 
   // verify that it is a valid user token (aka general auth token)
   const result = await tokenHandler.verifyFirnUserToken(ctx.token, 'user')

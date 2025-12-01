@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
-import { UserService } from '../../crud/users'
-import { tokenHandler } from '../../security/tokens'
+import { UserService } from '../../crud/users.server'
+import { tokenHandler } from '../../security/tokens.server'
 import type { FirnUser } from '../../../types/auth'
 
 export default defineEventHandler(async (event: H3Event) => {

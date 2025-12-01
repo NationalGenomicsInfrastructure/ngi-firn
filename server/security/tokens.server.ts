@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import type { KeyObject } from 'crypto'
 import type { FirnUser } from '../../types/auth'
 import type { FirnJWTPayload, FirnUserToken } from '../../types/tokens'
-import { UserService } from '../crud/users'
+import { UserService } from '../crud/users.server'
 import { couchDB } from '../database/couchdb'
 import { DateTime } from 'luxon'
 
@@ -103,9 +103,10 @@ export class TokenHandler {
         else {
           token = existingToken
         }
-      } else {
+      }
+      else {
         return { user: null, token: null, error: 'Invalid barcode token' }
-    }
+      }
     }
 
     // If the token is not a barcode token, verify the token as usual
