@@ -35,6 +35,34 @@ export default defineNuxtConfig({
   // Nuxt compatibility date
   compatibilityDate: '2025-04-02',
 
+  // Nitro configuration for running the server with Bun
+  nitro: {
+    preset: 'bun'
+  },
+
+  vite: {
+    optimizeDeps: {
+      // Pre-bundle these heavy dependencies to avoid constant reoptimization
+      include: [
+        'jsbarcode',
+        'qrcode',
+        'luxon',
+        '@vee-validate/zod'
+      ],
+      // Force these to be excluded from bundling
+      exclude: ['jose', 'crypto', 'zxing-wasm']
+    },
+    plugins: [
+      // Visualize the build stats to identify performance bottlenecks and large chunks
+      visualizer({
+        filename: 'build-size-stats.html',
+        template: 'treemap',
+        gzipSize: true,
+        brotliSize: true
+      })
+    ]
+  },
+
   // Enable type checking during the build process.
   // For performance reasons, we don't enable it during development. Run `pnpm typecheck` to run it manually.
   typescript: {
@@ -56,32 +84,4 @@ export default defineNuxtConfig({
     themeable: true,
     global: true
   },
-
-  // Nitro configuration for running the server with Bun
-  nitro: {
-    preset: 'bun'
-  },
-
-  // Vite configuration for heavy client-only dependencies
-    /* 
-    pdfmake - PDF generation (DOM/Canvas dependent)
-    jsbarcode - Barcode generation (Canvas dependent)
-    qrcode - QR code generation (Canvas dependent)
-    zxing-wasm - WASM barcode scanner (browser API dependent)
-    */
-  vite: {
-    optimizeDeps: {
-      // Force these to be excluded from bundling
-      exclude: ['jose', 'crypto', 'zxing-wasm']
-    },
-    plugins: [
-      // Visualize the build stats to identify performance bottlenecks and large chunks
-      visualizer({
-        filename: 'build-size-stats.html',
-        template: 'treemap',
-        gzipSize: true,
-        brotliSize: true
-      })
-    ]
-  }
 })
