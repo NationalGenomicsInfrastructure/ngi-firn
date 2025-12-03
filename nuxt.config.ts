@@ -68,12 +68,11 @@ export default defineNuxtConfig({
     jsbarcode - Barcode generation (Canvas dependent)
     qrcode - QR code generation (Canvas dependent)
     zxing-wasm - WASM barcode scanner (browser API dependent)
-    @ericblade/quagga2 - Barcode scanner (browser API dependent)
     */
   vite: {
     optimizeDeps: {
       // Force these to be excluded from bundling
-      exclude: ['jose', 'crypto', 'zxing-wasm', '@ericblade/quagga2']
+      exclude: ['jose', 'crypto', 'zxing-wasm']
     },
     plugins: [
       // Visualize the build stats to identify performance bottlenecks and large chunks

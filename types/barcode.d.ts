@@ -1,8 +1,3 @@
-// Quagga2 types - re-export from @ericblade/quagga2
-import type { QuaggaJSResultObject } from '@ericblade/quagga2'
-
-export type { QuaggaJSResultObject }
-
 // Barcode detection tracking
 
 export type BarcodeDetection = {

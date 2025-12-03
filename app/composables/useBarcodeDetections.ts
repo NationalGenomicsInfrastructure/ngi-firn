@@ -1,4 +1,4 @@
-import type { BarcodeDetection, QuaggaJSResultObject, DetectedCode } from '../../types/barcode'
+import type { BarcodeDetection, DetectedCode } from '../../types/barcode'
 
 /**
  * Composable for managing barcode detection findings
@@ -8,34 +8,6 @@ import type { BarcodeDetection, QuaggaJSResultObject, DetectedCode } from '../..
 
 export function useBarcodeDetections() {
   const findingsById = reactive<Record<string, BarcodeDetection>>({})
-
-  /**
-   * Normalizes a Quagga2 detection result into a BarcodeDetection object
-   */
-  function normalizeQuaggaDetection(result: QuaggaJSResultObject): BarcodeDetection | null {
-    const code: string | null | undefined = result?.codeResult?.code
-    const format: string | undefined = result?.codeResult?.format
-
-    if (!code || !format) return null
-
-    const id = `${format}:${code}`
-
-    return {
-      id,
-      code,
-      format,
-      count: 1,
-      lastBox: result?.box,
-      lastLine: result?.line,
-      samples: [
-        {
-          box: result?.box,
-          line: result?.line
-        }
-      ]
-    }
-  }
-
   /**
    * Normalizes a ZXing detection result into a BarcodeDetection object
    */
@@ -64,29 +36,6 @@ export function useBarcodeDetections() {
         }
       ]
     }
-  }
-
-  /**
-   * Updates or inserts a Quagga2 finding based on a detection result
-   */
-  function upsertQuaggaDetection(result: QuaggaJSResultObject) {
-    const normalized = normalizeQuaggaDetection(result)
-    if (!normalized) return
-
-    const existing = findingsById[normalized.id]
-    if (!existing) {
-      findingsById[normalized.id] = normalized
-      return
-    }
-
-    existing.count += 1
-    existing.lastBox = normalized.lastBox
-    existing.lastLine = normalized.lastLine
-    existing.samples.push({
-      box: normalized.lastBox,
-      line: normalized.lastLine
-    })
-    if (existing.samples.length > 5) existing.samples.shift()
   }
 
   /**
@@ -163,7 +112,6 @@ export function useBarcodeDetections() {
 
   return {
     findingsById,
-    upsertQuaggaDetection,
     upsertZxingDetection,
     removeDetection,
     clearDetections,
