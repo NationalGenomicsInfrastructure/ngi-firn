@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
 import { deleteUserByAdmin, setUserAccessByAdmin } from '~/utils/mutations/users'
-import { NAvatar } from '#components'
+
+// Extended type for formatted users with pre-computed display values
+interface FormattedUser extends Omit<DisplayUserToAdmin, 'createdAt'> {
+  createdAt: string
+  fullName: string
+}
 
 const props = defineProps<{
   users: DisplayUserToAdmin[] | undefined
   loading: boolean
 }>()
 
-const columns: ColumnDef<DisplayUserToAdmin>[] = [
+const columns: ColumnDef<FormattedUser>[] = [
   {
     header: 'First Name',
     accessorKey: 'googleGivenName',
@@ -33,33 +38,8 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
   },
   {
     header: 'Requesting account',
-    accessorKey: 'user',
-    accessorFn: row => `${row.googleGivenName} ${row.googleFamilyName}`,
-    cell: (info: CellContext<DisplayUserToAdmin, unknown>) => {
-      const fullname = info.getValue() as string
-      const avatar = info.row.original.googleAvatar
-      const email = info.row.original.googleEmail
-      return h('div', {
-        class: 'flex items-center'
-      }, [
-        h(NAvatar, {
-          src: avatar || undefined,
-          alt: fullname
-        }),
-        [
-          h('div', {
-            class: 'ml-2'
-          }, [
-            h('div', {
-              class: 'text-sm font-semibold leading-none'
-            }, fullname),
-            h('span', {
-              class: 'text-sm text-muted'
-            }, email)
-          ])
-        ]
-      ])
-    }
+    accessorKey: 'fullName',
+    id: 'user'
   },
   {
     header: 'Pending since',
@@ -68,18 +48,19 @@ const columns: ColumnDef<DisplayUserToAdmin>[] = [
 ]
 
 const select = ref<RowSelectionState>()
-const table = useTemplateRef<Table<DisplayUserToAdmin>>('table')
+const table = useTemplateRef<Table<FormattedUser>>('table')
 
-const formattedUsers = computed(() => {
+const formattedUsers = computed((): FormattedUser[] | undefined => {
   return props.users?.map((user) => {
     return {
       ...user,
-      createdAt: formatDate(user.createdAt, { relative: true, includeWeekday: true, time: false })
+      createdAt: formatDate(user.createdAt, { relative: true, includeWeekday: true, time: false }),
+      fullName: `${user.googleGivenName} ${user.googleFamilyName}`
     }
   })
 })
 
-const handleRejection = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
+const handleRejection = (selectedRows: Row<FormattedUser>[] | undefined) => {
   const { deleteUser } = deleteUserByAdmin()
   selectedRows?.forEach((row) => {
     const user = row.original
@@ -94,7 +75,7 @@ const handleRejection = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) =>
   select.value = undefined // clear selection in the table
 }
 
-const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => {
+const handleApproval = (selectedRows: Row<FormattedUser>[] | undefined) => {
   const { setUserAccess } = setUserAccessByAdmin()
   selectedRows?.forEach((row) => {
     const user = row.original
@@ -127,7 +108,25 @@ const handleApproval = (selectedRows: Row<DisplayUserToAdmin>[] | undefined) => 
       enable-row-selection
       empty-text="No pending requests"
       empty-icon="i-lucide-user-check"
-    />
+    >
+      <!-- Custom cell for user with avatar and email -->
+      <template #cell-user="{ row }">
+        <div class="flex items-center">
+          <NAvatar
+            :src="row.original.googleAvatar || undefined"
+            :alt="row.original.fullName"
+          />
+          <div class="ml-2">
+            <div class="text-sm font-semibold leading-none">
+              {{ row.original.fullName }}
+            </div>
+            <span class="text-sm text-muted">
+              {{ row.original.googleEmail }}
+            </span>
+          </div>
+        </div>
+      </template>
+    </NTable>
     <div
       class="flex items-center justify-between px-2"
     >

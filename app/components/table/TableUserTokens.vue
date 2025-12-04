@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { FirnUserToken } from '~~/types/tokens'
-import { formatDate } from '~/utils/dates/formatting'
+import { formatDate, getExpirationStatus, type ExpirationStatus } from '~/utils/dates/formatting'
 import { deleteFirnUserToken } from '~/utils/mutations/tokens'
-import { DateTime } from 'luxon'
-import { NKbd, NTooltip } from '#components'
+
+// Extended type for formatted tokens with pre-computed expiration status
+interface FormattedToken extends Omit<FirnUserToken, 'createdAt' | 'lastUsedAt'> {
+  createdAt: string
+  lastUsedAt: string
+  expiresAtFormatted: string
+  expirationStatus: ExpirationStatus
+}
 
 const props = defineProps<{
   tokens: FirnUserToken[] | undefined
   loading: boolean
 }>()
 
-const columns: ColumnDef<FirnUserToken>[] = [
+const columns: ColumnDef<FormattedToken>[] = [
   {
     header: 'Token ID',
     accessorKey: 'tokenID',
@@ -28,49 +34,8 @@ const columns: ColumnDef<FirnUserToken>[] = [
   },
   {
     header: 'Expiration date',
-    accessorKey: 'expiresAt',
-    cell: (info: CellContext<FirnUserToken, unknown>) => {
-      const expiresAt = info.getValue() as string
-      const expiryDate = DateTime.fromISO(expiresAt)
-      // https://moment.github.io/luxon/#/math
-      const diff = expiryDate.diff(DateTime.now(), 'days').shiftTo('days').toObject()
-
-      const formattedDate = formatDate(expiresAt, {
-        relative: relativeDates.value,
-        includeWeekday: includeWeekday.value,
-        time: displayTime.value
-      })
-
-      // Token has already expired
-      if (diff.days && diff.days < 0) {
-        return h(NTooltip, {
-          tooltip: 'gray',
-          content: 'The token has expired'
-        }, {
-          default: () => h(NKbd, {
-            kbd: 'solid-gray',
-            size: 'sm',
-            label: formattedDate
-          })
-        })
-      }
-
-      // Token expires within 7 days
-      if (diff.days && diff.days <= 7) {
-        return h(NTooltip, {
-          tooltip: 'primary',
-          content: 'The token expires soon'
-        }, {
-          default: () => h(NKbd, {
-            kbd: 'solid-primary',
-            size: 'sm',
-            label: formattedDate
-          })
-        })
-      }
-
-      return formattedDate
-    }
+    accessorKey: 'expiresAtFormatted',
+    id: 'expiresAt'
   },
   {
     header: 'Last used',
@@ -88,20 +53,27 @@ const pagination = ref({
 })
 
 const select = ref<RowSelectionState>()
-const table = useTemplateRef<Table<FirnUserToken>>('table')
+const table = useTemplateRef<Table<FormattedToken>>('table')
 
 // Date formatting options
 const relativeDates = ref(false)
 const includeWeekday = ref(false)
 const displayTime = ref(false)
 
-const formattedTokens = computed(() => {
+const formattedTokens = computed((): FormattedToken[] | undefined => {
   return props.tokens?.map((token) => {
+    const formatOptions = {
+      relative: relativeDates.value,
+      includeWeekday: includeWeekday.value,
+      time: displayTime.value
+    }
     return {
       ...token,
-      createdAt: formatDate(token.createdAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
-      // expiresAt formatting is handled in the cell renderer
-      lastUsedAt: formatDate(token.lastUsedAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
+      createdAt: formatDate(token.createdAt, formatOptions),
+      lastUsedAt: formatDate(token.lastUsedAt, formatOptions),
+      // Pre-compute expiration status and formatted date
+      expiresAtFormatted: formatDate(token.expiresAt, formatOptions),
+      expirationStatus: getExpirationStatus(token.expiresAt)
     }
   })
 })
@@ -121,7 +93,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
   if (relativeDates.value) relativeDates.value = false
 })
 
-const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
+const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
   const { deleteToken } = deleteFirnUserToken()
   if (selectedRows && selectedRows.length > 0) {
     const tokenIDs = selectedRows
@@ -182,7 +154,24 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
       enable-multi-sort
       empty-text="No issued tokens for your account"
       empty-icon="i-lucide-construction"
-    />
+    >
+      <!-- Custom cell for expiration date with status indicators -->
+      <template #cell-expiresAt="{ row }">
+        <template v-if="row.original.expirationStatus === 'expired'">
+          <NTooltip tooltip="gray" content="The token has expired">
+            <NKbd kbd="solid-gray" size="sm" :label="row.original.expiresAtFormatted" />
+          </NTooltip>
+        </template>
+        <template v-else-if="row.original.expirationStatus === 'expiring-soon'">
+          <NTooltip tooltip="primary" content="The token expires soon">
+            <NKbd kbd="solid-primary" size="sm" :label="row.original.expiresAtFormatted" />
+          </NTooltip>
+        </template>
+        <template v-else>
+          {{ row.original.expiresAtFormatted }}
+        </template>
+      </template>
+    </NTable>
     <!-- pagination -->
     <div
       class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
