@@ -24,6 +24,9 @@ export async function createIndexes() {
   await couchDB.createIndex(['type', 'githubId'])
   await couchDB.createIndex(['type', 'permissions'])
   await couchDB.createIndex(['type', 'isAdmin'])
+  await couchDB.createIndex(['type', 'allowLogin'])
+  await couchDB.createIndex(['type', 'isRetired'])
+  await couchDB.createIndex(['type', 'allowLogin', 'isRetired'])
   await couchDB.createIndex(['type', 'createdAt'])
 }
 

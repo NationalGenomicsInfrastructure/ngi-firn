@@ -400,9 +400,11 @@ export const UserService = {
    */
   async getPendingUsers(): Promise<FirnUser[]> {
     const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser'
+      type: 'firnUser',
+      allowLogin: false,
+      isRetired: false
     })
-    return users.filter(user => !user.allowLogin && !user.isRetired)
+    return users
   },
 
   /*
@@ -410,9 +412,10 @@ export const UserService = {
    */
   async getRetiredUsers(): Promise<FirnUser[]> {
     const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser'
+      type: 'firnUser',
+      isRetired: true
     })
-    return users.filter(user => user.isRetired)
+    return users
   },
 
   /*
@@ -420,9 +423,10 @@ export const UserService = {
    */
   async getApprovedUsers(): Promise<FirnUser[]> {
     const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser'
+      type: 'firnUser',
+      allowLogin: true
     })
-    return users.filter(user => user.allowLogin)
+    return users
   },
 
   /*
