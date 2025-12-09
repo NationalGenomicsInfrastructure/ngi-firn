@@ -56,11 +56,11 @@ export default defineNuxtConfig({
       // Visualize the build stats to identify performance bottlenecks and large chunks
       visualizer({
         filename: 'build-size-stats.html',
-        template: 'treemap',
+        template: 'sunburst',
         gzipSize: true,
         brotliSize: true
       })
-    ]
+    ],
   },
 
   // Enable type checking during the build process.

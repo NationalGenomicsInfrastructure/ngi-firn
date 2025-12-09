@@ -36,7 +36,7 @@
     "dev": "nuxi dev",
     "dev-build-node": "node --env-file=.env .output/server/index.mjs",
     "dev-build-bun": "bun --env-file=.env .output/server/index.mjs",
-    "build": "nuxi build",
+    "build": "NITRO_ANALYZE=1 NITRO_DEBUG=1 nuxi build",
     "start": "node .output/server/index.mjs",
     "start-bun": "bun .output/server/index.mjs",
     "typecheck": "npx nuxi typecheck",
