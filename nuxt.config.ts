@@ -52,17 +52,6 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    optimizeDeps: {
-      // Pre-bundle these heavy dependencies to avoid constant reoptimization
-      include: [
-        'jsbarcode',
-        'qrcode',
-        'luxon',
-        '@vee-validate/zod'
-      ],
-      // Force these to be excluded from bundling
-      exclude: ['jose', 'crypto', 'zxing-wasm']
-    },
     plugins: [
       // Visualize the build stats to identify performance bottlenecks and large chunks
       visualizer({
