@@ -7,7 +7,7 @@
 > :warning: This application is a work in progress.
 
 <p>
-    <i>A Nuxt3 web application for the <a href="https://ngisweden.scilifelab.se">National Genomics Infrastructure of Sweden</a>. It serves as laboratory inventory management system and a visualization layer for the data infrastructure.</i>
+    <i>A Nuxt4 web application for the <a href="https://ngisweden.scilifelab.se">National Genomics Infrastructure of Sweden</a>. It serves as laboratory inventory management system and a visualization layer for the data infrastructure.</i>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-0056b3.svg)](https://opensource.org/licenses/MIT)

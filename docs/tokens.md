@@ -19,7 +19,9 @@ JWT, JWS, and JWE in brief:
 Inside the token's container, Firn embeds two claims: The database document ID of the relevant FirnUser document (`udoc`) and a short tokenID (`tid`). Due to carrying an ID claim, tokens can be revoked before their expiration date, if they have been compromised or a print went missing.
 
 ```ts
-export interface FirnJWTPayload extends jose.JWTPayload {
+import type { JWTPayload } from 'jose'
+
+export interface FirnJWTPayload extends JWTPayload {
   tid: string
   udoc: string
 }
