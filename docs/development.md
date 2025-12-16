@@ -62,7 +62,7 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 
 ## Database setup
 
-Firn uses [CouchDB](./couchDatabase.md) to store information about users and the inventory. For development, a [local installation of CouchDB is recommended](https://couchdb.apache.org). After you have completed the installation and created an account, fill in the credentials in your environment file.
+Firn uses [CouchDB](./couchDatabase.md) to store information about users and the inventory. For development, a [local installation of CouchDB is recommended since it allows to use HTTP connections i n development](https://couchdb.apache.org). After you have completed the installation and created an account, fill in the credentials in your environment file.
 
 ### Configuration
 
@@ -74,6 +74,10 @@ The database connection is configured through environment variables:
 - `CLOUDANT_DATABASE`: Database name (default: 'firn')
 
 Set these in your application's environment, e.g. by using the `.env`.
+
+### HTTPS-Configuration
+
+In order to use the development instance of StatusDB during, you will need to configure HTTPS for your local development instance. Please see the [extra documentation](./development-https.md) in case this is relevant.
 
 ### Testing Database Connection
 
