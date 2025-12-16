@@ -1,9 +1,8 @@
-
 .data
 .debug
 .debug/*
 .DS_Store
-.env
+.env*
 .history
 .netlify
 .nuxt
@@ -11,6 +10,7 @@
 .vercel
 .wrangler
 *.log
+*.pem
 build-size-stats.html
 db.sqlite
 db.sqlite-*

@@ -34,6 +34,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
+    "dev-https": "export NODE_EXTRA_CA_CERTS=\"$(mkcert -CAROOT)/rootCA.pem\" && nuxi dev",
     "dev-build-node": "node --env-file=.env .output/server/index.mjs",
     "dev-build-bun": "bun --env-file=.env .output/server/index.mjs",
     "build": "NITRO_ANALYZE=1 NITRO_DEBUG=1 nuxi build",
