@@ -103,14 +103,26 @@ Once configured, Nuxt will automatically detect the environment variables and en
 
 The server will then start on `https://localhost:3000` instead of `http://localhost:3000`.
 
-#### 6. Start the development mode with `pnpm dev-https` instead of `dev`
+#### 6. Update URL in OAuth apps
+
+When you enable HTTPS for local development, you must update the callback or redirect URLs in your OAuth app settings (on Google and optionally GitHub) to use `https://` instead of `http://`. This ensures the OAuth provider will redirect you back to your local secure server successfully.
+
+Google supports multiple URLs, so the same OAuth app can support both protocols. But for GitHub, you will loose the option to use it in HTTP mode or will need to define a separate app with distinct `NUXT_OAUTH_GITHUB_CLIENT_ID` and `NUXT_OAUTH_GITHUB_CLIENT_SECRET` values.
+
+For more information on configuring OAuth apps for development, see:
+
+- [GitHub OAuth app setup](./auth.md#creating-and-configuring-githubs-oauth-app)
+- [Google OAuth app setup](./auth.md#creating-and-configuring-googles-oauth-app)
+
+#### 7. Start the development mode with `pnpm dev-https` instead of `dev`
 
 Use the dedicated `dev-https` script which also sets up Node.js to trust the mkcert CA:
 
 ```bash
 pnpm dev-https
 ```
-instead of
+
+instead of `pnpm dev`.
 
 This script:
 
@@ -150,3 +162,131 @@ If Node.js (used by the server) doesn't trust the certificate: `unable to verify
 - Use the `pnpm dev-https` script which sets `NODE_EXTRA_CA_CERTS`
 - Or manually export the variable: `export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"`
 
+## Configure local CouchDB for HTTPS
+
+[To enable HTTPS in CouchDB, you need to configure SSL/TLS certificates and CORS settings](http://127.0.0.1:5984/_utils/docs/config/http.html#https-tls-options). This section explains how to configure CouchDB to work with your HTTPS-enabled Nuxt development server.
+
+### View Configuration
+
+You can view the current CouchDB configuration using curl:
+
+```bash
+curl http://localhost:5984/_node/_local/_config
+```
+
+To view a specific configuration section:
+
+```bash
+curl http://localhost:5984/_node/_local/_config/cors
+```
+
+### Set Configuration Values at Runtime for transient testing
+
+You can set configuration values at runtime using curl:
+
+```bash
+curl -X PUT http://localhost:5984/_node/_local/_config/cors/enable_cors \
+     -d '"true"'
+```
+
+⚠️ **Important:** Runtime changes do not persist across restarts unless written to disk. For permanent configuration, you should edit the CouchDB configuration file directly.
+
+### Required Configuration
+
+Add the following configuration sections to your CouchDB configuration file. The location of this file depends on your installation:
+
+- **macOS (Homebrew):** `/opt/homebrew/etc/couchdb/local.ini` or `/usr/local/etc/couchdb/local.ini`
+- **macOS (App):** `~/Library/Application Support/CouchDB/etc/couchdb/local.ini`
+- **Linux:** `/etc/couchdb/local.ini`
+
+#### CORS Configuration
+
+```ini
+[cors]
+credentials = true
+enable_cors = true
+headers=accept, authorization, content-type, origin, referer, user-agent, x-ibmcloud-sdk-analytics, content-encoding
+origins = https://localhost:3000
+```
+
+The extra headers `user-agent`, `x-ibmcloud-sdk-analytics`, `content-encoding` [are required by IBMs Cloudant SDK which Firn uses](https://github.com/IBM/cloudant-node-sdk?tab=readme-ov-file#cors).
+
+#### SSL Configuration
+
+```ini
+[ssl]
+enable = true
+cert_file = /path/to/localhost.pem
+key_file = /path/to/localhost-key.pem
+```
+
+**Note:** Use the same certificate files generated for Nuxt (see [HTTPS Certificate setup steps](#https-certificate-setup-steps)). Update the paths to match your certificate location (e.g., `/Users/yourusername/certs/localhost.pem`).
+
+#### HTTP Configuration
+
+```ini
+[httpd]
+port = 5984
+bind_address = 127.0.0.1
+```
+
+#### HTTPS Configuration
+
+```ini
+[httpsd]
+port = 6984
+bind_address = 127.0.0.1
+```
+
+### Restart CouchDB
+
+After making configuration changes, restart CouchDB to apply them.
+
+#### For macOS App
+
+```bash
+osascript -e 'quit app "Apache CouchDB"'
+open -a "Apache CouchDB"
+```
+
+#### For Homebrew Installation
+
+```bash
+brew services restart couchdb
+```
+
+#### For Systemd (Linux)
+
+```bash
+sudo systemctl restart couchdb
+```
+
+### Verify HTTPS Works
+
+Test that CouchDB is responding over HTTPS:
+
+```bash
+curl https://localhost:6984
+```
+
+You should see a JSON response indicating CouchDB is running. If you see certificate warnings, you may need to use the `-k` flag for testing:
+
+```bash
+curl -k https://localhost:6984
+```
+
+Check listening ports, if no output is shown, CouchDB is not bound to HTTPS yet.
+
+```bash
+lsof -iTCP -sTCP:LISTEN -n -P | grep 6984
+```
+
+### Update Your Nuxt App to Use HTTPS CouchDB
+
+Update your `.env` file to use the HTTPS endpoint of CouchDB:
+
+```bash
+COUCHDB_URL=https://localhost:6984
+```
+
+Make sure to use the HTTPS port (`6984`) instead of the HTTP port (`5984`).
