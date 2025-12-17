@@ -7,6 +7,7 @@ interface CouchDBConfig {
   username?: string
   password?: string
   database: string
+  enableGzipCompression?: boolean
 }
 
 // Base document interface extending CloudantV1.Document
@@ -15,13 +16,21 @@ interface BaseDocument extends CloudantV1.Document {
   _rev: string
 }
 
+// Parse CLOUDANT_COMPRESSION environment variable
+function parseCompressionEnv(): boolean | undefined {
+  const envValue = process.env.CLOUDANT_COMPRESSION
+  if (envValue === undefined) return undefined
+  return envValue.toLowerCase() === 'true' || envValue === '1'
+}
+
 // Initialize Cloudant client
 function createCloudantClient(config: CouchDBConfig): CloudantV1 {
   console.log('Creating Cloudant client with config:', {
     url: config.url,
     username: config.username ? '****** (set)' : '- (not set)',
     password: config.password ? '****** (set)' : '- (not set)',
-    database: config.database
+    database: config.database,
+    enableGzipCompression: config.enableGzipCompression ?? false
   })
 
   // Set environment variables for IBM Cloudant SDK
@@ -39,6 +48,9 @@ function createCloudantClient(config: CouchDBConfig): CloudantV1 {
 
   // Create client using IBM Cloudant SDK pattern
   const client = CloudantV1.newInstance({})
+
+  // Set gzip compression based on config (defaults to false if not specified)
+  client.setEnableGzipCompression(config.enableGzipCompression ?? false)
   return client
 }
 
@@ -53,7 +65,8 @@ export class CouchDBConnector {
       url: config?.url || process.env.CLOUDANT_URL || process.env.COUCHDB_URL || 'http://localhost:5984',
       username: config?.username || process.env.CLOUDANT_USERNAME,
       password: config?.password || process.env.CLOUDANT_PASSWORD,
-      database: config?.database || process.env.CLOUDANT_DATABASE || 'firn'
+      database: config?.database || process.env.CLOUDANT_DATABASE || 'firn',
+      enableGzipCompression: config?.enableGzipCompression ?? parseCompressionEnv()
     }
 
     // Validate required configuration
@@ -71,7 +84,8 @@ export class CouchDBConnector {
       url: process.env.CLOUDANT_URL || process.env.COUCHDB_URL || 'http://localhost:5984',
       username: process.env.CLOUDANT_USERNAME,
       password: process.env.CLOUDANT_PASSWORD,
-      database: databaseName
+      database: databaseName,
+      enableGzipCompression: parseCompressionEnv()
     })
   }
 
