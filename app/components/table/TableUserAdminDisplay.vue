@@ -119,7 +119,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
     <template #isAdmin-cell="{ cell }">
         <NBadge
           :una="{
-            badgeDefaultVariant: cell.row.original.isAdmin ? 'badge-soft-error' : 'badge-soft' }"
+            badgeDefaultVariant: cell.row.original.isAdmin ? 'badge-soft' : 'badge-soft-gray' }"
           class="capitalize"
           :label="cell.row.original.isAdmin ? 'Administrator' : 'User'"
         />

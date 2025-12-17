@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { FirnUserToken } from '~~/types/tokens'
 import { formatDate } from '~/utils/dates/formatting'
 import { deleteUserTokenByAdmin } from '~/utils/mutations/tokens'
 import { DateTime } from 'luxon'
-import { NKbd, NTooltip } from '#components'
 
 const props = defineProps<{
   googleId: number
@@ -32,49 +31,7 @@ const columns: ColumnDef<FirnUserToken>[] = [
   {
     header: 'Expiration date',
     accessorKey: 'expiresAt',
-    accessorFn: row => row.expiresAt,
-    cell: (info: CellContext<FirnUserToken, unknown>) => {
-      const expiresAt = info.getValue() as string
-      const expiryDate = DateTime.fromISO(expiresAt)
-      // https://moment.github.io/luxon/#/math
-      const diff = expiryDate.diff(DateTime.now(), 'days').shiftTo('days').toObject()
-
-      const formattedDate = formatDate(expiresAt, {
-        relative: relativeDates.value,
-        includeWeekday: includeWeekday.value,
-        time: displayTime.value
-      })
-
-      // Token has already expired
-      if (diff.days && diff.days < 0) {
-        return h(NTooltip, {
-          tooltip: 'gray',
-          content: 'The token has expired'
-        }, {
-          default: () => h(NKbd, {
-            kbd: 'solid-gray',
-            size: 'sm',
-            label: formattedDate
-          })
-        })
-      }
-
-      // Token expires within 7 days
-      if (diff.days && diff.days <= 7) {
-        return h(NTooltip, {
-          tooltip: 'primary',
-          content: 'The token expires soon'
-        }, {
-          default: () => h(NKbd, {
-            kbd: 'solid-primary',
-            size: 'sm',
-            label: formattedDate
-          })
-        })
-      }
-
-      return formattedDate
-    }
+    accessorFn: row => row.expiresAt
   },
   {
     header: 'Last used',
@@ -99,7 +56,7 @@ const formattedTokens = computed(() => {
     return {
       ...token,
       createdAt: formatDate(token.createdAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value }),
-      // expiresAt formatting is handled in the cell renderer
+      // expiresAt formatting is handled in the template slot
       lastUsedAt: formatDate(token.lastUsedAt, { relative: relativeDates.value, includeWeekday: includeWeekday.value, time: displayTime.value })
     }
   })
@@ -133,6 +90,21 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
       })
     }
   }
+}
+
+// Helper function to get expiration status for a given date
+const getExpirationStatus = (expiresAt: string) => {
+  const expiryDate = DateTime.fromISO(expiresAt)
+  // https://moment.github.io/luxon/#/math
+  const diff = expiryDate.diff(DateTime.now(), 'days').shiftTo('days').toObject()
+  
+  if (diff.days && diff.days < 0) {
+    return 'expired'
+  }
+  if (diff.days && diff.days <= 7) {
+    return 'expiring-soon'
+  }
+  return 'valid'
 }
 </script>
 
@@ -190,7 +162,53 @@ const handleDeletion = (selectedRows: Row<FirnUserToken>[] | undefined) => {
           enable-row-selection
           empty-text="No issued tokens for this user"
           empty-icon="i-lucide-construction"
-        />
+        >
+          <template #expiresAt-cell="{ cell }">
+            <template
+              v-if="getExpirationStatus(cell.row.original.expiresAt) === 'expired'"
+            >
+              <NTooltip
+                tooltip="gray"
+                content="The token has expired"
+              >
+                <NKbd
+                  kbd="solid-gray"
+                  size="sm"
+                  :label="formatDate(cell.row.original.expiresAt, {
+                    relative: relativeDates,
+                    includeWeekday: includeWeekday,
+                    time: displayTime
+                  })"
+                />
+              </NTooltip>
+            </template>
+            <template
+              v-else-if="getExpirationStatus(cell.row.original.expiresAt) === 'expiring-soon'"
+            >
+              <NTooltip
+                tooltip="primary"
+                content="The token expires soon"
+              >
+                <NKbd
+                  kbd="solid-primary"
+                  size="sm"
+                  :label="formatDate(cell.row.original.expiresAt, {
+                    relative: relativeDates,
+                    includeWeekday: includeWeekday,
+                    time: displayTime
+                  })"
+                />
+              </NTooltip>
+            </template>
+            <template v-else>
+              {{ formatDate(cell.row.original.expiresAt, {
+                relative: relativeDates,
+                includeWeekday: includeWeekday,
+                time: displayTime
+              }) }}
+            </template>
+          </template>
+        </NTable>
         <div
           class="flex items-center justify-between px-2"
         >

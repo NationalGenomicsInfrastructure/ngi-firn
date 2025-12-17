@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { FirnUserToken } from '~~/types/tokens'
 import { formatDate, getExpirationStatus, type ExpirationStatus } from '~/utils/dates/formatting'
 import { deleteFirnUserToken } from '~/utils/mutations/tokens'
-import { NKbd, NTooltip } from '#components'
 
 // Extended type for formatted tokens with pre-computed expiration status
 interface FormattedToken extends Omit<FirnUserToken, 'createdAt' | 'lastUsedAt'> {
@@ -36,41 +35,6 @@ const columns: ColumnDef<FormattedToken>[] = [
   {
     header: 'Expiration date',
     accessorKey: 'expiresAtFormatted',
-    id: 'expiresAt',
-    cell: (info: CellContext<FormattedToken, unknown>) => {
-      const formattedDate = info.getValue() as string
-      const status = info.row.original.expirationStatus
-
-      // Token has already expired
-      if (status === 'expired') {
-        return h(NTooltip, {
-          tooltip: 'gray',
-          content: 'The token has expired'
-        }, {
-          default: () => h(NKbd, {
-            kbd: 'solid-gray',
-            size: 'sm',
-            label: formattedDate
-          })
-        })
-      }
-
-      // Token expires within 7 days
-      if (status === 'expiring-soon') {
-        return h(NTooltip, {
-          tooltip: 'primary',
-          content: 'The token expires soon'
-        }, {
-          default: () => h(NKbd, {
-            kbd: 'solid-primary',
-            size: 'sm',
-            label: formattedDate
-          })
-        })
-      }
-
-      return formattedDate
-    }
   },
   {
     header: 'Last used',
@@ -189,7 +153,35 @@ const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
       enable-multi-sort
       empty-text="No issued tokens for your account"
       empty-icon="i-lucide-construction"
-    />
+    >
+      <template #expiresAtFormatted-cell="{ cell }">
+        <NTooltip
+          v-if="cell.row.original.expirationStatus === 'expired'"
+          tooltip="gray"
+          content="The token has expired"
+        >
+          <NKbd
+            kbd="solid-gray"
+            size="sm"
+            :label="cell.row.original.expiresAtFormatted"
+          />
+        </NTooltip>
+        <NTooltip
+          v-else-if="cell.row.original.expirationStatus === 'expiring-soon'"
+          tooltip="primary"
+          content="The token expires soon"
+        >
+          <NKbd
+            kbd="solid-primary"
+            size="sm"
+            :label="cell.row.original.expiresAtFormatted"
+          />
+        </NTooltip>
+        <template v-else>
+          {{ cell.row.original.expiresAtFormatted }}
+        </template>
+      </template>
+    </NTable>
     <!-- pagination -->
     <div
       class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
