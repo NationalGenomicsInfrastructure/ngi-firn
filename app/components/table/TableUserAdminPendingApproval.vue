@@ -17,28 +17,13 @@ const props = defineProps<{
 
 const columns: ColumnDef<FormattedUser>[] = [
   {
-    header: 'First Name',
-    accessorKey: 'googleGivenName',
-    meta: {
-      una: {
-        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
-        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
-      }
-    }
-  },
-  {
-    header: 'Last Name',
-    accessorKey: 'googleFamilyName',
-    meta: {
-      una: {
-        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
-        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
-      }
-    }
-  },
-  {
     header: 'Requesting account',
     accessorKey: 'fullName',
+    meta: {
+      una: {
+        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+      }
+    }
   },
   {
     header: 'Pending since',
@@ -115,7 +100,7 @@ const handleApproval = (selectedRows: Row<FormattedUser>[] | undefined) => {
             :alt="cell.row.original.fullName"
           />
           <div class="ml-2">
-            <div class="text-sm font-semibold leading-none">
+            <div class="text-primary-700 dark:text-primary-400 font-semibold leading-none">
               {{ cell.row.original.fullName }}
             </div>
             <span class="text-sm text-muted">

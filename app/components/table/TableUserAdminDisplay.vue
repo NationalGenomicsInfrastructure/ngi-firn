@@ -115,6 +115,16 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
       empty-text="No users"
       empty-icon="i-lucide-user-search"
     >
+
+    <template #isAdmin-cell="{ cell }">
+        <NBadge
+          :una="{
+            badgeDefaultVariant: cell.row.original.isAdmin ? 'badge-soft-error' : 'badge-soft' }"
+          class="capitalize"
+          :label="cell.row.original.isAdmin ? 'Administrator' : 'User'"
+        />
+      </template>
+
       <template #expanded="{ row }">
         <div class="p-2 flex flex-row items-start gap-4">
           <!-- Column 1: Avatars and badges -->
@@ -131,18 +141,6 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
                 :alt="row.original.githubName"
               />
             </NAvatarGroup>
-            <div class="flex flex-wrap gap-2 justify-center">
-              <NBadge
-                v-if="row.original.isAdmin"
-                badge="solid"
-                label="Administrator"
-              />
-              <NBadge
-                v-if="row.original.isRetired"
-                badge="outline"
-                label="Retired"
-              />
-            </div>
           </div>
 
           <!-- Column 2: Textual information -->
