@@ -47,7 +47,6 @@
     "db:test": "tsx scripts/test-db-connection.ts"
   },
   "dependencies": {
-    "@ericblade/quagga2": "^1.11.0",
     "@ibm-cloud/cloudant": "^0.12.13",
     "@iconify-json/lucide": "^1.2.81",
     "@iconify-json/simple-icons": "^1.2.63",
