@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { CellContext, ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
 import { deleteUserByAdmin, setUserAccessByAdmin } from '~/utils/mutations/users'
-import { NAvatar } from '#components'
 
 // Extended type for formatted users with pre-computed display values
 interface FormattedUser extends Omit<DisplayUserToAdmin, 'createdAt'> {
@@ -40,30 +39,6 @@ const columns: ColumnDef<FormattedUser>[] = [
   {
     header: 'Requesting account',
     accessorKey: 'fullName',
-    id: 'user',
-    cell: (info: CellContext<FormattedUser, unknown>) => {
-      const fullName = info.getValue() as string
-      const avatar = info.row.original.googleAvatar
-      const email = info.row.original.googleEmail
-      return h('div', {
-        class: 'flex items-center'
-      }, [
-        h(NAvatar, {
-          src: avatar || undefined,
-          alt: fullName
-        }),
-        h('div', {
-          class: 'ml-2'
-        }, [
-          h('div', {
-            class: 'text-sm font-semibold leading-none'
-          }, fullName),
-          h('span', {
-            class: 'text-sm text-muted'
-          }, email)
-        ])
-      ])
-    }
   },
   {
     header: 'Pending since',
@@ -132,7 +107,24 @@ const handleApproval = (selectedRows: Row<FormattedUser>[] | undefined) => {
       enable-row-selection
       empty-text="No pending requests"
       empty-icon="i-lucide-user-check"
-    />
+    >
+      <template #fullName-cell="{ cell }">
+        <div class="flex items-center">
+          <NAvatar
+            :src="cell.row.original.googleAvatar || undefined"
+            :alt="cell.row.original.fullName"
+          />
+          <div class="ml-2">
+            <div class="text-sm font-semibold leading-none">
+              {{ cell.row.original.fullName }}
+            </div>
+            <span class="text-sm text-muted">
+              {{ cell.row.original.googleEmail }}
+            </span>
+          </div>
+        </div>
+      </template>
+    </NTable>
     <div
       class="flex items-center justify-between px-2"
     >
