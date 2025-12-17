@@ -48,7 +48,7 @@ export default defineNuxtConfig({
 
   // Nitro configuration for running the server with Bun
   nitro: {
-    preset: 'bun'
+    preset: 'node-server'
   },
 
   vite: {
