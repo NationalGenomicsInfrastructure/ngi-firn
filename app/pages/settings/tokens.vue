@@ -38,7 +38,7 @@ const selfUser = computed(() => selfUserState.value.status === 'success' ? selfU
             class="mb-4"
           />
           <LazyTableUserTokens
-            :tokens="selfUser?.tokens"
+            :tokens="selfUser?.tokens ?? []"
             :loading="isLoading"
           />
         </NTabsContent>

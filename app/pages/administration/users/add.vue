@@ -29,7 +29,7 @@ const pendingUsers = computed(() => pendingUsersState.value.status === 'success'
           Approve users who self-requested access to the system.
         </p>
         <TableUserAdminPendingApproval
-          :users="pendingUsers"
+          :users="pendingUsers ?? []"
           :loading="isLoading"
         />
       </div>
