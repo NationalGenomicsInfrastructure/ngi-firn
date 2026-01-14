@@ -26,6 +26,7 @@ This name was chosen for the application as it aptly reflects the cold storage c
 
 - [Typescript primer](docs/typescript.md)
 - [Initial Setup](docs/development.md)
+- [Containerized setup and development](docs/container.md)
 - [Debugging](docs/debugging.md)
 - [Building the user interface](docs/ui.md)
 

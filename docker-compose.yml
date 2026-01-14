@@ -1,0 +1,79 @@
+
+networks:
+  ngi_firn:
+
+services:
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: container-images/FrontendDevelopment.dockerfile
+    container_name: ngi-firn-dev
+    profiles:
+      - dev
+      - dev-local-db
+    networks:
+      - ngi_firn
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for live reloading
+      - ../app:/app/app:ro
+      - ../server:/app/server:ro
+      - ../shared:/app/shared:ro
+      - ../types:/app/types:ro
+      - ../schemas:/app/schemas:ro
+      - ../nuxt.config.ts:/app/nuxt.config.ts:ro
+      - ../uno.config.ts:/app/uno.config.ts:ro
+      - ../tsconfig.json:/app/tsconfig.json:ro
+      - ../eslint.config.mjs:/app/eslint.config.mjs:ro
+      # Exclude node_modules from volume mount (use container's node_modules)
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      - PORT=3000
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+
+
+  frontend-prod:
+    build:
+      context: .
+      dockerfile: container-images/FrontendProduction.dockerfile
+    container_name: ngi-firn-prod
+    profiles:
+      - staging
+      - staging-local-db
+    networks:
+      - ngi_firn
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      - PORT=3000
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+
+  database-dev:
+    image: couchdb:latest
+    container_name: ngi-firn-db-dev
+    profiles:
+      - dev-local-db
+      - staging-local-db
+    networks:
+      - ngi_firn
+    ports:
+      - "5984:5984"
+    volumes:
+      - ngi_firn_db_data:/var/lib/couchdb
+    restart: always
+
+volumes:
+  ngi_firn_db_data:
