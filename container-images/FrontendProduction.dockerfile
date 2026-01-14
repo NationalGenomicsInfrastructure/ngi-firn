@@ -25,10 +25,17 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 
 # STAGE: Build stage with all dependencies installed
 FROM base AS build
+# Install dependencies without running postinstall (which runs nuxt prepare)
+# Before the source code is copied, so Nuxt can't generate type definitions and auto-imports.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --ignore-scripts
+    
 # Copy the application source code
 COPY . .
+
+# Run nuxt prepare to generate type definitions and auto-imports
+RUN pnpm exec nuxt prepare
+
 # Build the application (runs the build script defined in package.json)
 RUN pnpm run build
 
