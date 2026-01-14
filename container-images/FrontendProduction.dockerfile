@@ -14,6 +14,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 
 # Install pnpm with specific version from package.json
+# Set CI=true to make corepack non-interactive during build
+ENV CI=true
 RUN corepack prepare pnpm@10.22.0 --activate
 
 # STAGE: Production dependencies stage (mind the --prod flag)
@@ -39,9 +41,14 @@ COPY --from=prod-deps /app/node_modules /app/node_modules
 # Copy built application from the build stage
 COPY --from=build /app/.output /app/.output
 
-# Create non-root user for security
+# Create non-root user for security hardening
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 firn
+    adduser --system --uid 1001 --home /home/firn firn && \
+    mkdir -p /home/firn && \
+    chown -R firn:nodejs /home/firn /app/node_modules
+
+# Set HOME environment variable for the user
+ENV HOME=/home/firn
 
 # Switch to non-root user
 USER firn
