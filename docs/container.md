@@ -26,7 +26,7 @@ This will only start the Vite development server with live-reload. You can also 
 docker-compose --profile dev-local-db up --build
 ```
 
-In both cases, the environment variables need to be configured properly, the `$CLOUDANT_URL` must point to `http://127.0.0.1:5984` when running with a local database.
+Alternatively, you can also use a containerized CouchDB instance (`--profile dev-containerized-db`) or our StatusDB development instance (`--profile dev-remote-db`)
 
 #### Using Docker directly
 
@@ -67,7 +67,7 @@ This will only start the node server serving the frontend application. You can a
 docker-compose --profile staging-local-db up --build
 ```
 
-In both cases, the environment variables such as passwords need to be configured properly, the `$CLOUDANT_URL` must point to `http://127.0.0.1:5984` when running with a local database.
+Alternatively, you can also use a containerized CouchDB instance (`--profile staging-containerized-db`) or our StatusDB development instance (`--profile staging-remote-db`)
 
 #### Using Docker directly for staging
 

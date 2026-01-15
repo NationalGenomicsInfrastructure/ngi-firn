@@ -79,32 +79,72 @@ services:
       - NODE_ENV=development
       - HOST=0.0.0.0
       - PORT=3000
+      - CLOUDANT_COMPRESSION=false
     env_file:
       - .env-remote
 
-  # Frontend production service base configuration
-  frontend-prod:
+    # Frontend staging (production build test) service base configuration
+  frontend-staging:
     build:
       context: .
       dockerfile: container-images/FrontendProduction.dockerfile
-    container_name: ngi-firn-prod
+    container_name: ngi-firn-staging
     profiles:
       - staging
-      - staging-local-db
     networks:
       - ngi_firn
     ports:
       - "3000:3000"
+
+  # Frontend staging (production build test) service with various profiles for different database configurations
+  frontend-staging-local-db:
+    extends:
+      service: frontend-staging
+    container_name: ngi-firn-staging-local-db
+    profiles:
+      - staging-local-db
+    # Required for local non-containerized database access
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
+      - CLOUDANT_URL=http://host.docker.internal:5984
     env_file:
-      - .env
-    stdin_open: true
-    tty: true
+      - .env-local
+  
+  frontend-staging-containerized-db:
+    extends:
+      service: frontend-staging
+    container_name: ngi-firn-staging-containerized-db
+    profiles:
+      - staging-containerized-db
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - CLOUDANT_URL=http://localhost:5984
+    env_file:
+      - .env-local
+    depends_on:
+      - database-dev
+  
+  frontend-staging-remote-db:
+    extends:
+      service: frontend-staging
+    container_name: ngi-firn-staging-remote-db
+    profiles:
+      - staging-remote-db
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - CLOUDANT_COMPRESSION=false
+    env_file:
+      - .env-remote
+
+
 
   database-dev:
     image: couchdb:latest
