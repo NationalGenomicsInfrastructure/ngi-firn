@@ -4,11 +4,11 @@ networks:
 
 services:
   # Frontend development service base configuration
-  frontend-dev:
+  frontend_dev:
     build:
       context: .
-      dockerfile: container-images/FrontendDevelopment.dockerfile
-    container_name: ngi-firn-dev
+      dockerfile: container_images/FrontendDevelopment.dockerfile
+    container_name: ngi_firn_dev
     profiles:
       - dev
     networks:
@@ -32,14 +32,14 @@ services:
       - /app/.output
     stdin_open: true
     tty: true
-  
+
   # Frontend development service with various profiles for different database configurations
-  frontend-dev-local-db:
+  frontend_dev_local_db:
     extends:
-      service: frontend-dev
-    container_name: ngi-firn-dev-local-db
+      service: frontend_dev
+    container_name: ngi_firn_dev_local_db
     profiles:
-      - dev-local-db
+      - dev_local_db
     # Required for local non-containerized database access
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -53,12 +53,12 @@ services:
     stdin_open: true
     tty: true
   
-  frontend-dev-containerized-db:
+  frontend_dev_containerized_db:
     extends:
-      service: frontend-dev
-    container_name: ngi-firn-dev-containerized-db
+      service: frontend_dev
+    container_name: ngi_firn_dev_containerized_db
     profiles:
-      - dev-containerized-db
+      - dev_containerized_db
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
@@ -67,14 +67,14 @@ services:
     env_file:
       - .env-local
     depends_on:
-      - database-dev
+      - database_dev
   
-  frontend-dev-remote-db:
+  frontend_dev_remote_db:
     extends:
-          service: frontend-dev
-    container_name: ngi-firn-dev-remote-db
+          service: frontend_dev
+    container_name: ngi_firn_dev_remote_db
     profiles:
-      - dev-remote-db
+      - dev_remote_db
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
@@ -84,11 +84,11 @@ services:
       - .env-remote
 
     # Frontend staging (production build test) service base configuration
-  frontend-staging:
+  frontend_staging:
     build:
       context: .
-      dockerfile: container-images/FrontendProduction.dockerfile
-    container_name: ngi-firn-staging
+      dockerfile: container_images/FrontendProduction.dockerfile
+    container_name: ngi_firn_staging
     profiles:
       - staging
     networks:
@@ -97,12 +97,12 @@ services:
       - "3000:3000"
 
   # Frontend staging (production build test) service with various profiles for different database configurations
-  frontend-staging-local-db:
+  frontend_staging_local_db:
     extends:
-      service: frontend-staging
-    container_name: ngi-firn-staging-local-db
+      service: frontend_staging
+    container_name: ngi_firn_staging_local_db
     profiles:
-      - staging-local-db
+      - staging_local_db
     # Required for local non-containerized database access
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -114,12 +114,12 @@ services:
     env_file:
       - .env-local
   
-  frontend-staging-containerized-db:
+  frontend_staging_containerized_db:
     extends:
-      service: frontend-staging
-    container_name: ngi-firn-staging-containerized-db
+      service: frontend_staging
+    container_name: ngi_firn_staging_containerized_db
     profiles:
-      - staging-containerized-db
+      - staging_containerized_db
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
@@ -130,12 +130,12 @@ services:
     depends_on:
       - database-dev
   
-  frontend-staging-remote-db:
+  frontend_staging_remote_db:
     extends:
-      service: frontend-staging
-    container_name: ngi-firn-staging-remote-db
+      service: frontend_staging
+    container_name: ngi_firn_staging_remote_db
     profiles:
-      - staging-remote-db
+      - staging_remote_db
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
@@ -146,12 +146,12 @@ services:
 
 
 
-  database-dev:
+  database_dev:
     image: couchdb:latest
     container_name: ngi-firn-db-dev
     profiles:
-      - dev-containerized-db
-      - staging-containerized-db
+      - dev_containerized_db
+      - staging_containerized_db
     networks:
       - ngi_firn
     ports:

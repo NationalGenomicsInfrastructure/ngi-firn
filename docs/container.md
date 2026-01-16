@@ -1,13 +1,13 @@
 # Container Images for NGI Firn
 
-The directory `container-images` contains container images for building and running the NGI Firn application in different environments.
+The directory `container_images` contains container images for building and running the NGI Firn application in different environments.
 
 ## Docker
 
 ### Relevant files
 
-- `./container-images/FrontendProduction.dockerfile` - Production-optimized multi-stage build
-- `./container-images/FrontendDevelopment.dockerfile` - Development environment with live reload support
+- `./container_images/FrontendProduction.dockerfile` - Production-optimized multi-stage build
+- `./container_images/FrontendDevelopment.dockerfile` - Development environment with live reload support
 - `docker-compose.dev.yml` - Docker Compose configuration for easy development setup
 
 ### Development
@@ -20,13 +20,13 @@ The easiest way to run the development preview for the frontend:
 docker-compose --profile dev up --build
 ```
 
-This will only start the Vite development server with live-reload. You can also opt to run a containerized CouchDB instance using the `dev-local-db` profile instead of the `dev` profile:
+This will only start the Vite development server with live-reload. You can also opt to run a containerized CouchDB instance using the `dev_local_db` profile instead of the `dev` profile:
 
 ```bash
-docker-compose --profile dev-local-db up --build
+docker-compose --profile dev_local_db up --build
 ```
 
-Alternatively, you can also use a containerized CouchDB instance (`--profile dev-containerized-db`) or our StatusDB development instance (`--profile dev-remote-db`)
+Alternatively, you can also use a containerized CouchDB instance (`--profile dev_containerized_db`) or our StatusDB development instance (`--profile dev_remote_db`)
 
 #### Using Docker directly
 
@@ -34,7 +34,7 @@ In case you prefer to launch the image manually, you need to bind the source cod
 
 ```bash
 # Build the development image
-docker build -f ./container-images/FrontendDevelopment.dockerfile -t ngi-firn:dev .
+docker build -f ./container_images/FrontendDevelopment.dockerfile -t ngi-firn:dev .
 
 # Run with volume mounts for live reloading
 docker run -p 3000:3000 \
@@ -61,20 +61,20 @@ You can try out the production build of the web application using Docker with
 docker-compose --profile staging up --build
 ```
 
-This will only start the node server serving the frontend application. You can also opt to run an additional containerized CouchDB instance using the `staging-local-db` profile instead of the `staging` profile:
+This will only start the node server serving the frontend application. You can also opt to run an additional containerized CouchDB instance using the `staging_local_db` profile instead of the `staging` profile:
 
 ```bash
-docker-compose --profile staging-local-db up --build
+docker-compose --profile staging_local_db up --build
 ```
 
-Alternatively, you can also use a containerized CouchDB instance (`--profile staging-containerized-db`) or our StatusDB development instance (`--profile staging-remote-db`)
+Alternatively, you can also use a containerized CouchDB instance (`--profile staging_containerized_db`) or our StatusDB development instance (`--profile staging_remote_db`)
 
 #### Using Docker directly for staging
 
 You can build a production preview with:
 
 ```bash
-docker build -f container-images/FrontendProduction.dockerfile -t ngi-firn:latest .
+docker build -f container_images/FrontendProduction.dockerfile -t ngi-firn:latest .
 ```
 
 and then directly run it without Compose:
