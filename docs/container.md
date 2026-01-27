@@ -85,3 +85,31 @@ docker run -p 3000:3000 \
   -e OTHER_ENV_VAR="value" \
   ngi-firn:latest
 ```
+
+### Containerized CouchDB
+
+You can use a local installation of CouchDB, our remote StatusDB development instance or a containerized CouchDB for developing Firn. In the latter case, the [CouchDB's official image](https://hub.docker.com/_/couchdb) is being used.
+
+#### Automatic Setup (Docker Compose)
+
+When using the Docker Compose profiles (`dev_containerized_db` or `staging_containerized_db`), CouchDB is automatically configured:
+
+- The `single_node=true` setting in `data/couchdb_config/docker.ini` tells CouchDB to automatically create the required system databases (`_users`, `_replicator`, `_global_changes`) on first startup
+- A healthcheck ensures the frontend service only starts after CouchDB is fully initialized
+- No manual intervention required - just run the compose command
+
+#### Manual Setup (Standalone containerized CouchDB)
+
+If you're starting the containerized CouchDB outside of Docker Compose for the first time, the official image [lacks system databases](https://hub.docker.com/_/couchdb#no-system-databases-until-the-installation-is-finalized) until configured. You can either:
+
+1. **Set `single_node=true`** in your CouchDB configuration (recommended)
+2. **Use the Setup Wizard** at `http://127.0.0.1:5984/_utils#setup`
+3. **Create databases manually** using the API ([documentation](https://docs.couchdb.org/en/stable/setup/single-node.html)):
+
+```bash
+curl -X PUT http://adm:pass@127.0.0.1:5984/_users
+curl -X PUT http://adm:pass@127.0.0.1:5984/_replicator
+curl -X PUT http://adm:pass@127.0.0.1:5984/_global_changes
+```
+
+Note: The `_global_changes` database is optional if you don't need the global changes feed.

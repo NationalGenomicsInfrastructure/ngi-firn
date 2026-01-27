@@ -47,6 +47,10 @@ Further sources for components can be those projects, which, however, use Tailwi
 - **[Vue Charts](https://github.com/dennisadriaans/vue-chrts)** for displaying charts.
 - **[Zod](https://github.com/colinhacks/zod)**: TypeScript-first schema validation with static type inference.
 
+## Monitoring
+
+- **[EvLog](https://github.com/HugoRCD/evlog)** is a logger that generates one log per request with all context included.
+
 ## Users
 
 - **[Jose](https://github.com/panva/jose)**: JWA, JWS, JWE, JWT, JWK, JWKS for Node.js, Browser, Cloudflare Workers, Deno, Bun, and other Web-interoperable runtimes. Combine with native Crypto module from NodeJS and modern browsers for crytpo-safe random numbers.

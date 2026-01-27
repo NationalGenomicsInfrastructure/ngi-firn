@@ -63,11 +63,12 @@ services:
       - NODE_ENV=development
       - HOST=0.0.0.0
       - PORT=3000
-      - CLOUDANT_URL=http://localhost:5984
+      - CLOUDANT_URL=http://database_dev:5984
     env_file:
-      - .env-local
+      - .env
     depends_on:
-      - database_dev
+      database_dev:
+        condition: service_healthy
   
   frontend_dev_remote_db:
     extends:
@@ -79,6 +80,7 @@ services:
       - NODE_ENV=development
       - HOST=0.0.0.0
       - PORT=3000
+      # Important since the version of the remote database is older and does not support compression.
       - CLOUDANT_COMPRESSION=false
     env_file:
       - .env-remote
@@ -124,11 +126,12 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
-      - CLOUDANT_URL=http://localhost:5984
+      - CLOUDANT_URL=http://database_dev:5984
     env_file:
-      - .env-local
+      - .env
     depends_on:
-      - database-dev
+      database_dev:
+        condition: service_healthy
   
   frontend_staging_remote_db:
     extends:
@@ -140,15 +143,15 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
+    # Important since the version of the remote StatusDB database is older and does not support compression.
       - CLOUDANT_COMPRESSION=false
     env_file:
       - .env-remote
 
-
-
+  # Database development service
   database_dev:
     image: couchdb:latest
-    container_name: ngi-firn-db-dev
+    container_name: ngi_firn_db_dev
     profiles:
       - dev_containerized_db
       - staging_containerized_db
@@ -157,8 +160,24 @@ services:
     ports:
       - "5984:5984"
     volumes:
-      - ngi_firn_db_data:/var/lib/couchdb
+      - ./data/couchdb_config:/opt/couchdb/etc/local.d
+      - ./data/couchdb_log:/opt/couchdb/var/log
+    # - ./data/couchdb_data:/var/lib/couchdb/data
+    # Instead of mounting a local folder, a Docker volume can be used instead
+      # - ngi_firn_db_data:/var/lib/couchdb/data
     restart: always
-
-volumes:
-  ngi_firn_db_data:
+    env_file:
+      - .env
+    environment:
+      - COUCHDB_USER=${CLOUDANT_USERNAME}
+      - COUCHDB_PASSWORD=${CLOUDANT_PASSWORD}
+    healthcheck:
+      # Check that CouchDB is responding and system databases exist (created by single_node=true)
+      test: ["CMD-SHELL", "curl -sf http://$${COUCHDB_USER}:$${COUCHDB_PASSWORD}@localhost:5984/_users || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+# Activate this volume if you want to persist the data between container restarts with a volume instead of a local folder.
+# volumes:
+  #ngi_firn_db_data:

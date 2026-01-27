@@ -14,6 +14,8 @@
 build-size-stats.html
 db.sqlite
 db.sqlite-*
+data/couchdb_data
+data/couchdb_logs
 dist
 node_modules
 nuxt.d.ts
