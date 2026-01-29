@@ -24,14 +24,16 @@ export default defineNuxtConfig({
   },
 
   // Enable HTTPS in development if LOCALHOST_HTTPS_KEY and LOCALHOST_HTTPS_CERT are set
-  ...(process.env.LOCALHOST_HTTPS_KEY && process.env.LOCALHOST_HTTPS_CERT ? {
-    devServer: {
-      https: {
-        key: process.env.LOCALHOST_HTTPS_KEY,
-        cert: process.env.LOCALHOST_HTTPS_CERT
+  ...(process.env.LOCALHOST_HTTPS_KEY && process.env.LOCALHOST_HTTPS_CERT
+    ? {
+        devServer: {
+          https: {
+            key: process.env.LOCALHOST_HTTPS_KEY,
+            cert: process.env.LOCALHOST_HTTPS_CERT
+          }
+        }
       }
-    }
-  } : {}),
+    : {}),
 
   build: {
     transpile: ['trpc-nuxt']
@@ -60,7 +62,7 @@ export default defineNuxtConfig({
         gzipSize: true,
         brotliSize: true
       })
-    ],
+    ]
   },
 
   // Enable type checking during the build process.
@@ -83,5 +85,5 @@ export default defineNuxtConfig({
     prefix: 'N',
     themeable: true,
     global: true
-  },
+  }
 })

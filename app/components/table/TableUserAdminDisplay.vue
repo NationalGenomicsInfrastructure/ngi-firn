@@ -115,8 +115,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
       empty-text="No users"
       empty-icon="i-lucide-user-search"
     >
-
-    <template #isAdmin-cell="{ cell }">
+      <template #isAdmin-cell="{ cell }">
         <NBadge
           :una="{
             badgeDefaultVariant: cell.row.original.isAdmin ? 'badge-soft' : 'badge-soft-gray' }"

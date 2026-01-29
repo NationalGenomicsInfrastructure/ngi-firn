@@ -34,7 +34,7 @@ const columns: ColumnDef<FormattedToken>[] = [
   },
   {
     header: 'Expiration date',
-    accessorKey: 'expiresAtFormatted',
+    accessorKey: 'expiresAtFormatted'
   },
   {
     header: 'Last used',

@@ -97,7 +97,7 @@ const getExpirationStatus = (expiresAt: string) => {
   const expiryDate = DateTime.fromISO(expiresAt)
   // https://moment.github.io/luxon/#/math
   const diff = expiryDate.diff(DateTime.now(), 'days').shiftTo('days').toObject()
-  
+
   if (diff.days && diff.days < 0) {
     return 'expired'
   }
