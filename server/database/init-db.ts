@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { DateTime } from 'luxon'
 import { couchDB } from './couchdb'
 import { createIndexes } from '../crud/indices'
+import { UserService } from '../crud/users.server'
 import type { FirnUser } from '../../types/auth'
 
 export async function initializeDatabase() {
@@ -45,10 +46,15 @@ export async function initializeDatabase() {
         throw new Error('FIRST_ADMIN_EMAIL must be a SciLifeLab email address.')
       }
 
+      // Generate a unique firnId and googleId for the first admin user
+      const { firnId, googleId } = await UserService.generateUniqueFirnIdAndGoogleId()
+
       // Create first admin user
       const firstAdmin: Omit<FirnUser, '_id' | '_rev'> = {
         type: 'firnUser',
-        googleId: 0, // Will be updated when user first logs in from Google OAuth user.
+        schema: 1,
+        firnId: firnId,
+        googleId: googleId,
         googleName: '',
         googleGivenName: '',
         googleFamilyName: '',
