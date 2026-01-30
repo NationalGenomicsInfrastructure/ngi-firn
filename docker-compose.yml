@@ -19,6 +19,7 @@ services:
       # Mount source code for live reloading
       - ./app:/app/app:ro
       - ./server:/app/server:ro
+      - ./scripts:/app/scripts:ro
       - ./shared:/app/shared:ro
       - ./types:/app/types:ro
       - ./schemas:/app/schemas:ro
@@ -69,6 +70,13 @@ services:
     depends_on:
       database_dev:
         condition: service_healthy
+    healthcheck:
+      # Ensure firn DB exists (run init: indexes + first admin if needed), then verify app responds
+      test: ["CMD-SHELL", "pnpm db:init && curl -sf http://localhost:3000 || exit 1"]
+      interval: 15s
+      timeout: 30s
+      retries: 5
+      start_period: 45s
   
   frontend_dev_remote_db:
     extends:
@@ -162,22 +170,25 @@ services:
     volumes:
       - ./data/couchdb_config:/opt/couchdb/etc/local.d
       - ./data/couchdb_log:/opt/couchdb/var/log
-    # - ./data/couchdb_data:/var/lib/couchdb/data
+      # - ./data/couchdb_data:/var/lib/couchdb/data
     # Instead of mounting a local folder, a Docker volume can be used instead
-      # - ngi_firn_db_data:/var/lib/couchdb/data
+      - ngi_firn_db_data:/var/lib/couchdb/data
     restart: always
     env_file:
       - .env
     environment:
       - COUCHDB_USER=${CLOUDANT_USERNAME}
       - COUCHDB_PASSWORD=${CLOUDANT_PASSWORD}
+    post_start:
+      # Create the empty firn database once after CouchDB has started
+      - command: sh -c "until curl -sf http://$${COUCHDB_USER}:$${COUCHDB_PASSWORD}@localhost:5984/_users; do sleep 2; done; code=$$(curl -s -o /dev/null -w \"%{http_code}\" -X PUT http://$${COUCHDB_USER}:$${COUCHDB_PASSWORD}@localhost:5984/firn); test \"$$code\" = \"201\" || test \"$$code\" = \"412\" || exit 1"
     healthcheck:
-      # Check that CouchDB is responding and system databases exist (created by single_node=true)
-      test: ["CMD-SHELL", "curl -sf http://$${COUCHDB_USER}:$${COUCHDB_PASSWORD}@localhost:5984/_users || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      # Check that CouchDB is responding, system DBs exist, and firn DB exists (post_start creates it once)
+      test: ["CMD-SHELL", "curl -sf http://$${COUCHDB_USER}:$${COUCHDB_PASSWORD}@localhost:5984/_users && curl -sf http://$${COUCHDB_USER}:$${COUCHDB_PASSWORD}@localhost:5984/firn || exit 1"]
+      interval: 5m
+      timeout: 1m
+      retries: 3
+      start_period: 1m
 # Activate this volume if you want to persist the data between container restarts with a volume instead of a local folder.
-# volumes:
-  #ngi_firn_db_data:
+volumes:
+  ngi_firn_db_data:

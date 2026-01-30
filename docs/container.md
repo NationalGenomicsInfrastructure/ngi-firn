@@ -94,9 +94,13 @@ You can use a local installation of CouchDB, our remote StatusDB development ins
 
 When using the Docker Compose profiles (`dev_containerized_db` or `staging_containerized_db`), CouchDB is automatically configured:
 
-- The `single_node=true` setting in `data/couchdb_config/docker.ini` tells CouchDB to automatically create the required system databases (`_users`, `_replicator`, `_global_changes`) on first startup
-- A healthcheck ensures the frontend service only starts after CouchDB is fully initialized
-- No manual intervention required - just run the compose command
+- The `single_node=true` setting in `data/couchdb_config/docker.ini` tells CouchDB to automatically create the required system databases (`_users`, `_replicator`, `_global_changes`) on first startup.
+- A `post_start` hook on the database container creates an empty `firn` database once after CouchDB has started.
+- A healthcheck ensures the frontend service only starts after CouchDB is fully initialized and the `firn` database exists.
+
+**Development profile (`dev_containerized_db`):** The frontend healthcheck ensures the `firn` database is fully initialized (indexes and first admin user if needed) by running `pnpm db:init` when the DB is empty. Set `FIRST_ADMIN_EMAIL` (e.g. in `.env`) when using an empty database so the first admin user can be created.
+
+**Staging/production profile (`staging_containerized_db`):** The production image does not include init scripts (kept lean and safe). Initialize the database separately before or after starting the stack, e.g. run `pnpm db:init` once from the host or a one-off container with access to the same CouchDB URL and credentials. Ensure `FIRST_ADMIN_EMAIL` is set when creating the first admin.
 
 #### Manual Setup (Standalone containerized CouchDB)
 
