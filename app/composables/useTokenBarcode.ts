@@ -3,12 +3,13 @@ import type { Margins, TDocumentDefinitions } from 'pdfmake/interfaces'
 export function useTokenBarcode() {
   // Lazy-load browser-only dependencies
   const loadDependencies = async () => {
-    const [{ default: JsBarcode }, { default: pdfMake }, { default: pdfFonts }] = await Promise.all([
+    const [{ default: JsBarcode }, { default: pdfMake }, pdfFontsModule] = await Promise.all([
       import('jsbarcode'),
       import('pdfmake/build/pdfmake'),
       import('pdfmake/build/vfs_fonts')
     ])
-    pdfMake.vfs = pdfFonts.vfs
+    // pdfmake bundle only has a default export; addVirtualFileSystem is a method on that instance
+    ;(pdfMake as { addVirtualFileSystem: (vfs: Record<string, unknown>) => void }).addVirtualFileSystem(pdfFontsModule.default)
     return { JsBarcode, pdfMake }
   }
   // Generate barcode as data URL using JSBarcode

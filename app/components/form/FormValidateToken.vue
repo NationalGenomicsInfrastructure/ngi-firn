@@ -58,8 +58,8 @@ const { handleSubmit: handleSubmitTest, setFieldValue } = useForm({
 
 const { value: expectedAudienceValue, setValue: setExpectedAudienceValue } = useField<string>('expectedAudience')
 
-const onExpectedAudienceUpdate = (value: string | undefined) => {
-  if (!value) return
+function onExpectedAudienceUpdate(value: unknown) {
+  if (typeof value !== 'string' || value === '') return
   setFieldValue('expectedAudience', value)
 }
 
