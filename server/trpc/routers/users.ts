@@ -15,6 +15,19 @@ export const usersRouter = createTRPCRouter({
       return user
     }),
 
+  unlinkGitHubUserSelf: firnUserProcedure
+    .mutation(async ({ ctx }): Promise<DisplayUserToAdmin | null> => {
+      if (!ctx.firnUser) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
+      const { UserService } = await import('../../crud/users.server')
+      const unlinkedUser = await UserService.unlinkGitHubUser(ctx.firnUser)
+      if (unlinkedUser) {
+        return await UserService.convertToDisplayUserToAdmin(unlinkedUser)
+      }
+      return null
+    }),
+
   // Admin procedures for user management
 
   getPendingUsers: adminProcedure

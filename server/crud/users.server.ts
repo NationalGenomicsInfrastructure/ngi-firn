@@ -9,6 +9,7 @@
  * deleteUserByAdmin(user) - Delete a user by an admin
  * setUserAccessByAdmin(user) - Set access of a user by an admin: Allow login, retire, or promote to admin
  * linkGitHubUser(user, githubUser) - Link a GitHubUser to a FirnUser
+ * unlinkGitHubUser(user) - Unlink a GitHubUser from a FirnUser
  * MATCHING - QUERYING WITH DIFFERENT INPUTS AND GET FULL USER OBJECT:
  * matchFirnUserByFirnQuery(firnQuery) - Match a FirnUser by firnId
  * matchGoogleUser(oauthUser) - Match a Google OAuth user to a FirnUser based on Google ID
@@ -218,6 +219,29 @@ export const UserService = {
     }
     return null
   },
+
+  /*
+   * Unlink a GitHubUser from a FirnUser
+   */
+    async unlinkGitHubUser(user: FirnUser): Promise<FirnUser | null> {
+      // Update user information and last login
+      const unlinkedAccount: Partial<FirnUser> = {
+        lastSeenAt: DateTime.now().toISO(),
+        githubId: null,
+        githubNodeId: null,
+        githubName: null,
+        githubAvatar: null,
+        githubEmail: null,
+        githubUrl: null
+      }
+  
+      if (user) {
+        // Update the user
+        const result = await couchDB.updateDocument(user._id, { ...user, ...unlinkedAccount }, user._rev!)
+        return { ...user, ...unlinkedAccount, _id: result.id, _rev: result.rev } as FirnUser
+      }
+      return null
+    },
 
   /*
    * Match a FirnUser by firnId
