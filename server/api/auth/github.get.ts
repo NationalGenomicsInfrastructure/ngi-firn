@@ -1,7 +1,35 @@
+/**
+ * GitHub OAuth handler with optional redirect URL support.
+ *
+ * To redirect users back to a specific page after login/linking, append the
+ * redirectUrl query parameter when initiating the flow:
+ *
+ *   /api/auth/github?redirectUrl=/settings/tokens
+ *
+ * Only relative paths (starting with /) are accepted to prevent open redirects.
+ */
+import type { H3Event } from 'h3'
+import { getCookie, getQuery, deleteCookie, setCookie } from 'h3'
 import { UserService } from '../../crud/users.server'
 import type { GitHubUser, SessionUser, SessionUserSecure } from '../../../types/auth'
 
-export default defineOAuthGitHubEventHandler({
+const OAUTH_REDIRECT_COOKIE = 'oauth-github-redirect'
+const OAUTH_COOKIE_MAX_AGE = 60 * 10 // 10 minutes, aligned with OAuth state
+
+/**
+ * Get and clear the redirect URL stored when initiating the OAuth flow.
+ * Only returns relative paths (starting with /) to prevent open redirects.
+ */
+function getAndClearRedirectUrl(event: H3Event): string | null {
+  const redirectUrl = getCookie(event, OAUTH_REDIRECT_COOKIE)
+  deleteCookie(event, OAUTH_REDIRECT_COOKIE, { path: '/' })
+  if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+    return redirectUrl
+  }
+  return null
+}
+
+const githubHandler = defineOAuthGitHubEventHandler({
   async onSuccess(event, { user }) {
     /* user object example:
     * login: '[[:letters:]]+',
@@ -77,7 +105,8 @@ export default defineOAuthGitHubEventHandler({
               message: 'Your account is not approved yet for access to Firn. Please contact the admin to get access.'
             }
           })
-          return sendRedirect(event, '/?step=pending-approval', 401)
+          const redirectUrl = getAndClearRedirectUrl(event) ?? '/?step=pending-approval'
+          return sendRedirect(event, redirectUrl, 401)
         }
         else {
         // User is approved, set session and redirect to main app (case 1)
@@ -96,7 +125,8 @@ export default defineOAuthGitHubEventHandler({
 
           })
 
-          return sendRedirect(event, '/firn', 201)
+          const redirectUrl = getAndClearRedirectUrl(event) ?? '/firn'
+          return sendRedirect(event, redirectUrl, 201)
         }
       }
       else { // no FirnUser found in the database based on the GitHub ID -> this is likely a linking attempt
@@ -115,7 +145,8 @@ export default defineOAuthGitHubEventHandler({
                 message: 'Your account is already linked to a different GitHub account. Please contact an admin to delete the existing link.'
               }
             })
-            return sendRedirect(event, '/', 401)
+            const redirectUrl = getAndClearRedirectUrl(event) ?? '/'
+            return sendRedirect(event, redirectUrl, 401)
           }
           else {
             // The sessionUser is not linked to a GitHub user, so we can link it to the current OAuth GitHub user
@@ -146,7 +177,8 @@ export default defineOAuthGitHubEventHandler({
                     message: `Successfully linked your Firn user account ${sessionUser.name} to your GitHub account.`
                   }
                 })
-                return sendRedirect(event, '/?step=pending-approval', 201)
+                const redirectUrl = getAndClearRedirectUrl(event) ?? '/?step=pending-approval'
+                return sendRedirect(event, redirectUrl, 201)
               }
               else { // the linking failed, likely a database issue with updating the document then.
                 // error linking the FirnUser to the OAuth GitHub user
@@ -158,7 +190,8 @@ export default defineOAuthGitHubEventHandler({
                     message: 'An error occurred while linking your GitHub account. Please try again.'
                   }
                 })
-                return sendRedirect(event, '/', 401)
+                const redirectUrl = getAndClearRedirectUrl(event) ?? '/'
+                return sendRedirect(event, redirectUrl, 401)
               }
             }
             else { // no reference user found. There is no document in the database with the same Document ID as the sessionUserSecure.
@@ -171,7 +204,8 @@ export default defineOAuthGitHubEventHandler({
                   message: 'An error occurred while loading your Firn user account. Please log in with your Google account instead.'
                 }
               })
-              return sendRedirect(event, '/?stage=clear', 401)
+              const redirectUrl = getAndClearRedirectUrl(event) ?? '/?stage=clear'
+              return sendRedirect(event, redirectUrl, 401)
             }
           }
         }
@@ -185,7 +219,8 @@ export default defineOAuthGitHubEventHandler({
               message: 'An error occurred while loading your Firn user account. Please log in with your Google account instead.'
             }
           })
-          return sendRedirect(event, '/?stage=clear', 401)
+          const redirectUrl = getAndClearRedirectUrl(event) ?? '/?stage=clear'
+          return sendRedirect(event, redirectUrl, 401)
         }
       } // closes the FirnUser check
     }
@@ -200,7 +235,8 @@ export default defineOAuthGitHubEventHandler({
           message: 'An error occurred while signing in with GitHub. Please try again or contact the admin.'
         }
       })
-      return sendRedirect(event, '/', 400)
+      const redirectUrl = getAndClearRedirectUrl(event) ?? '/'
+      return sendRedirect(event, redirectUrl, 400)
     }
   },
 
@@ -235,5 +271,24 @@ export default defineOAuthGitHubEventHandler({
         message: 'An error occurred while signing in with GitHub. Please try again or contact the admin.'
       }
     })
+    const redirectUrl = getAndClearRedirectUrl(event) ?? '/'
+    return sendRedirect(event, redirectUrl, 400)
   }
+})
+
+export default defineEventHandler(async (event: H3Event) => {
+  const query = getQuery<{ redirectUrl?: string; code?: string }>(event)
+  if (query.redirectUrl && !query.code) {
+    const redirectUrl = String(query.redirectUrl)
+    if (redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+      setCookie(event, OAUTH_REDIRECT_COOKIE, redirectUrl, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'development',
+        sameSite: 'lax',
+        maxAge: OAUTH_COOKIE_MAX_AGE,
+        path: '/'
+      })
+    }
+  }
+  return githubHandler(event)
 })
