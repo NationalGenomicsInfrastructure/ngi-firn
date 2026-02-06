@@ -6,6 +6,10 @@ import { USERS_QUERY_KEYS } from '~/utils/queries/users'
 // Notifications
 const { showSuccess, showError } = useFirnToast()
 
+/**
+ * Helper functions for user mutations
+ **/
+
 // Helper function to optimistically update cached lists so tables reflect changes instantly
 const updateUserInLists = (updatedUser: SetUserAccessByAdminInput, lists: Array<DisplayUserToAdmin[] | undefined>) => {
   for (const list of lists) {
@@ -41,6 +45,43 @@ const deleteUserFromLists = (deletedUser: DeleteUserByAdminInput, lists: Array<D
   }
   return undefined
 }
+
+/**
+ * User mutations for self-service
+ **/
+
+export const unlinkGitHubUserSelf = defineMutation(() => {
+  const { mutate, ...mutation } = useMutation({
+    mutation: () => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.users.unlinkGitHubUserSelf.mutate()
+    },
+    onError(error: Error) {
+      showError(error.message, `Your GitHub account could not be unlinked from your Firn account.`)
+    },
+    onSuccess(response) {
+      // Update the cached user data
+      const queryCache = useQueryCache()
+      const { clear, user: sessionUser } = useUserSession()
+      const unlinkedSelfUser = response as DisplayUserToAdmin
+      queryCache.cancelQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
+      queryCache.setQueryData(USERS_QUERY_KEYS.self(), unlinkedSelfUser)
+
+      // If the user is logged in with GitHub, log out and redirect to the login page
+      showSuccess(`Your GitHub account has been unlinked from your Firn account.`, `GitHub account unlinked`)
+      if (sessionUser.value?.provider === 'github') {
+        clear()
+        navigateTo('/')
+      }
+    }
+  })
+  return { unlinkGitHubUser: mutate, ...mutation }
+})
+
+/**
+ * User mutations for administrative use
+ **/
+
 
 // Mutation for creating a user by an admin
 
