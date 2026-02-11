@@ -34,6 +34,10 @@ const user = computed(() => {
 
 <template>
   <main class="mx-auto max-w-lg px-4 py-8 lg:px-8 sm:px-6">
+    <PageTitle
+      title="Profile"
+      description="View and manage your account."
+    />
     <div
     class="grid w-full place-items-center"
   >
