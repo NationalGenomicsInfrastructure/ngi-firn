@@ -23,9 +23,12 @@ onUnmounted(() => {
 
 <template>
   <main class="mx-auto max-w-lg px-4 py-8 lg:px-8 sm:px-6">
-    Logged in!
-    <div>
-      <pre>{{ session }}</pre>
-    </div>
+    <NCard>
+      <template #header>
+        <h1 class="text-2xl font-bold">
+          Welcome to the Firn dashboard!
+        </h1>
+      </template>
+    </NCard>
   </main>
 </template>

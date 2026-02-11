@@ -14,7 +14,7 @@ const navs = [
     label: 'Profile',
     leading: 'i-lucide-user',
     onClick: () => {
-      navigateTo('/profile')
+      navigateTo('/settings/profile')
     }
   },
   {

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-const { toggleSidebar, setOpen } = useSidebar()
+const { toggleSidebar, setOpen, state: sidebarState } = useSidebar()
 const colorMode = useColorMode()
 const { user } = useUserSession()
 
 type NavFooterItem = {
   title: string
   icon: string
-  iconDark?: string
+  iconAlt?: string
   onClick: () => void
   visible?: () => boolean
 }
@@ -16,12 +16,13 @@ const data: { navFooter: NavFooterItem[] } = {
     {
       title: 'Open Sidebar',
       icon: 'i-lucide-panel-left-open',
+      iconAlt: 'i-lucide-panel-left-close',
       onClick: () => toggleSidebar()
     },
     {
       title: 'Toggle theme',
       icon: 'i-radix-icons-moon',
-      iconDark: 'i-radix-icons-sun',
+      iconAlt: 'i-radix-icons-sun',
       onClick: () => {
         colorMode.preference = colorMode.preference === 'dark' ? 'light' : 'dark'
       }
@@ -43,7 +44,8 @@ const visibleNavFooter = computed(() =>
 )
 
 function iconFor(item: NavFooterItem) {
-  if (item.iconDark && colorMode.preference === 'dark') return item.iconDark
+  if (item.icon === 'i-radix-icons-moon' && item.iconAlt && colorMode.preference === 'dark') return item.iconAlt
+  if (item.icon === 'i-lucide-panel-left-open' && sidebarState.value === 'expanded' && item.iconAlt) return item.iconAlt
   return item.icon
 }
 
