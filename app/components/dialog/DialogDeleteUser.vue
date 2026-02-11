@@ -32,7 +32,7 @@ const isDisabled = computed(() => {
     <template #trigger>
       <NButton
         :label="isDisabled ? 'Cannot delete self' : 'Delete user'"
-        class="transition delay-300 ease-in-out"
+        class="min-w-60 transition delay-300 ease-in-out"
         btn="soft-error hover:outline-error"
         :trailing="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-x'"
         :disabled="isDisabled"

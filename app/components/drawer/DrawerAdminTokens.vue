@@ -116,7 +116,7 @@ const getExpirationStatus = (expiresAt: string) => {
     <NDrawerTrigger as-child>
       <NButton
         label="Administer tokens"
-        class="transition delay-300 ease-in-out"
+        class="min-w-60 transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
         trailing="i-lucide-qr-code"
         :disabled="!props.tokens || props.tokens.length === 0"

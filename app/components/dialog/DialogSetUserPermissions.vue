@@ -93,7 +93,7 @@ const handleSave = () => {
     <template #trigger>
       <NButton
         :label="isDisabled ? 'Cannot edit self' : 'Administer user'"
-        class="transition delay-300 ease-in-out"
+        class="min-w-60 transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
         :trailing="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-pen'"
         :disabled="isDisabled"
