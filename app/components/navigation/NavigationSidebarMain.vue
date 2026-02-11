@@ -44,19 +44,6 @@ const { setOpen, toggleSidebar } = useSidebar()
       class="text-left bg-primary-700 dark:bg-primary-900 border-r-3 border-primary-100 dark:border-primary-400 text-primary-700 dark:text-primary-400 !w-[calc(var(--sidebar-width-icon)_+_1px)]"
     >
       <NSidebarHeader>
-        <NSidebarMenu>
-          <NSidebarMenuItem>
-            <NSidebarMenuButton
-                  :tooltip="h('div', { hidden: false }, 'Open Sidebar')"
-                  class="soft hover:text-primary-500/50 text-primary-50 dark:text-primary-400"
-                  style="background-color: transparent;"
-                  @click="toggleSidebar()"
-                >
-                  <NIcon name="i-lucide-panel-left-open" />
-                  <span class="hidden md:block">Open Sidebar</span>
-                </NSidebarMenuButton>
-          </NSidebarMenuItem>
-        </NSidebarMenu>
       </NSidebarHeader>
       <NSidebarContent>
         <NSidebarGroup>
@@ -83,20 +70,7 @@ const { setOpen, toggleSidebar } = useSidebar()
           </NSidebarGroupContent>
         </NSidebarGroup>
       </NSidebarContent>
-      <NSidebarFooter>
-        <NSidebarMenu>
-          <NSidebarMenuItem>
-            <ColorsChoice />
-          </NSidebarMenuItem>
-          <NSidebarMenuItem>
-            <NThemeSwitcher />
-          </NSidebarMenuItem>
-          <NSidebarMenuItem>
-            <AdministrationButton />
-          </NSidebarMenuItem>
-        </NSidebarMenu>
-        <NavigationUser />
-      </NSidebarFooter>
+      <LazyNavigationSidebarFooter />
     </NSidebar>
     <!--  This is the second sidebar -->
     <!--  We disable collapsible and let it fill remaining space -->
