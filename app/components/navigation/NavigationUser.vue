@@ -50,7 +50,7 @@ const { isMobile } = useSidebar()
       <NDropdownMenu
         :items="navs"
         :_dropdown-menu-content="{
-          class: 'min-w-56 w-[--reka-dropdown-menu-trigger-width] rounded-lg',
+          class: 'min-w-56',
           align: 'start',
           side: isMobile ? 'bottom' : 'right',
           sideOffset: 4
@@ -60,29 +60,24 @@ const { isMobile } = useSidebar()
         }"
       >
         <NSidebarMenuButton
-          size="lg"
-          class="md:h-8 data-[state=open]:bg-sidebar-accent md:p-0 data-[state=open]:text-sidebar-accent-foreground"
+          class="min-h-14 h-14 max-h-14 w-8 min-w-8 max-w-8 !grid !grid-cols-1 place-items-center border-2 border-primary-100 dark:border-primary-400 text-primary-50 dark:text-primary-400"
         >
-          <NAvatar
-            square="8"
-            rounded="lg"
-            :src="user.avatar"
-            :alt="user.name"
-          />
-          <div class="grid flex-1 text-left text-sm leading-tight">
-            <span class="truncate font-semibold">{{ user.name }}</span>
-            <span class="truncate text-xs capitalize">{{ user.subtitle }}</span>
+          <div class="flex flex-col items-center justify-center gap-1">
+            <NIcon
+              name="i-lucide-user"
+              class="size-4"
+            />
+            <NIcon
+              name="i-lucide-power"
+              class="size-4"
+            />
           </div>
-          <NIcon
-            name="i-lucide-chevron-down"
-            class="ml-auto size-4"
-          />
         </NSidebarMenuButton>
 
         <template #menu-label>
           <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <NAvatar
-              square="8"
+              square="12"
               rounded="lg"
               :src="user.avatar"
               :alt="user.name"
