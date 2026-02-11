@@ -99,10 +99,19 @@ const user = computed(() => {
         <div class="w-full flex flex-col">
           <div class="mt-2 w-full flex items-center justify-between gap-4">
             <DialogUnlinkGithub
-              v-if="!isLoading"
+              v-if="!isLoading && user.githubId"
                 :githubId="selfUser?.githubId"
                 :githubAvatar="selfUser?.githubAvatar"
                 :provider="user.provider"
+              />
+              <NButton
+                v-if="!user.githubId"
+                class="w-full"
+                btn="soft-primary hover:outline-primary"
+                leading="i-simple-icons-github"
+                label="Link GitHub Account"
+                to="/api/auth/github?redirectUrl=/profile"
+                external
               />
           </div>
         </div>

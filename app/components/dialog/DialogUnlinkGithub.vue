@@ -26,7 +26,7 @@ const isDisabled = computed(() => {
     <template #trigger>
       <NButton
         :label="isDisabled ? 'No GitHub account linked' : 'Unlink GitHub account'"
-        class="transition delay-300 ease-in-out"
+        class="w-full transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
         :leading="isDisabled ? 'i-lucide-ban' : 'i-simple-icons-github'"
         :disabled="isDisabled"
