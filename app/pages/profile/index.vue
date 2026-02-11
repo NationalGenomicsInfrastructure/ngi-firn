@@ -50,7 +50,7 @@ const user = computed(() => {
         <div class="relative">
           <NBadge
               :una="{
-                badgeDefaultVariant: user.isAdminClientside ? 'badge-soft' : 'badge-soft-gray' }"
+                badgeDefaultVariant: user.isAdminClientside ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"
               class="absolute top-4 right-4 capitalize"
               :label="user.isAdminClientside ? 'Administrator' : 'User'"
             />
@@ -73,7 +73,11 @@ const user = computed(() => {
                   {{ user.name }}
                 </p>
                 <p class="text-lg text-white/80">
+                  <NTooltip
+                    content="The ID of your Firn account"
+                  >
                   <NIcon name="i-lucide-snowflake" class="text-white text-mono text-bold" />{{ user.firnId }}
+                </NTooltip>
                 </p>
               </div>
             </div>
@@ -85,12 +89,20 @@ const user = computed(() => {
       <div class="flex flex-col gap-4">
         <div class="flex items-center gap-4 text-sm text-muted">
           <div class="flex items-center gap-1">
-            <NIcon name="i-simple-icons-google" class="text-primary" />
-            <span>{{ user.googleEmail || 'No Google account' }}</span>
+              <NTooltip
+                content="The email address associated with your Google account"
+              >
+              <NIcon name="i-simple-icons-google" class="text-primary" />
+              <span>{{ user.googleEmail || 'No Google account' }}</span>
+            </NTooltip>
           </div>
           <div class="flex items-center gap-1">
-            <NIcon name="i-simple-icons-github" class="text-primary" />
-            <span>{{ user.githubId ? `${user.githubId}` : 'No GitHub account linked' }}</span>
+            <NTooltip
+                content="The ID of the GitHub account associated with your Firn account"
+              >
+              <NIcon name="i-simple-icons-github" class="text-primary" />
+              <span>{{ user.githubId ? `${user.githubId}` : 'No GitHub account linked' }}</span>
+            </NTooltip>
           </div>
         </div>
       </div>
