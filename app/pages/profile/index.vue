@@ -38,7 +38,7 @@ const user = computed(() => {
     class="grid w-full place-items-center"
   >
     <NCard
-      class="max-w-580px overflow-hidden"
+      class="overflow-hidden w-full max-w-[100vw] sm:max-w-[90vw] md:max-w-[70vw] lg:max-w-[50vw] xl:max-w-[40vw] min-w-[min(300px,100vw)]"
       :_card-header="{
         class: 'p-0',
       }"
@@ -57,7 +57,7 @@ const user = computed(() => {
           <img
             src="https://images.unsplash.com/photo-1457269449834-928af64c684d?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             alt="Card image"
-            class="h-56 w-full object-cover"
+            class="h-40 sm:h-56 w-full min-w-0 object-cover overflow-x-auto"
           >
           <div class="absolute inset-0 from-black/60 to-transparent bg-gradient-to-t" />
           <div class="absolute bottom-0 left-0 p-4">

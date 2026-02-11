@@ -41,25 +41,20 @@ const { setOpen, toggleSidebar } = useSidebar()
     <!-- This will make the sidebar appear as icons. -->
     <NSidebar
       collapsible="none"
-      class="text-left bg-primary-700/20 dark:bg-primary-900 border-r-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400 !w-[calc(var(--sidebar-width-icon)_+_1px)]"
+      class="text-left bg-primary-700 dark:bg-primary-900 border-r-3 border-primary-100 dark:border-primary-400 text-primary-700 dark:text-primary-400 !w-[calc(var(--sidebar-width-icon)_+_1px)]"
     >
       <NSidebarHeader>
         <NSidebarMenu>
           <NSidebarMenuItem>
             <NSidebarMenuButton
-              size="lg"
-              as-child
-              class="md:h-8 md:p-0"
-            >
-              <NLink
-                to="#"
-                @click="toggleSidebar()"
-              >
-                <div class="bg-gray-50 rounded-lg aspect-square p-1 border-2 border-primary-700 dark:border-primary-400">
-                  <LogoNGI class="w-full h-full" />
-                </div>
-              </NLink>
-            </NSidebarMenuButton>
+                  :tooltip="h('div', { hidden: false }, 'Open Sidebar')"
+                  class="soft hover:text-primary-500/50 text-primary-50 dark:text-primary-400"
+                  style="background-color: transparent;"
+                  @click="toggleSidebar()"
+                >
+                  <NIcon name="i-lucide-panel-left-open" />
+                  <span class="hidden md:block">Open Sidebar</span>
+                </NSidebarMenuButton>
           </NSidebarMenuItem>
         </NSidebarMenu>
       </NSidebarHeader>
@@ -73,7 +68,7 @@ const { setOpen, toggleSidebar } = useSidebar()
               >
                 <NSidebarMenuButton
                   :tooltip="h('div', { hidden: false }, item.title)"
-                  class="soft hover:text-primary-300 focus:outline-primary active:outline-primary text-primary-700 dark:text-primary-400"
+                  class="soft hover:text-primary-500/50 focus:outline-primary-50 dark:focus:outline-primary-500 active:outline-primary text-primary-50 dark:text-primary-400"
                   style="background-color: transparent;"
                   @click="() => {
                     setOpen(true)
@@ -107,7 +102,7 @@ const { setOpen, toggleSidebar } = useSidebar()
     <!--  We disable collapsible and let it fill remaining space -->
     <NSidebar
       collapsible="none"
-      class="hidden flex-1 md:flex border-r-2 border-primary/20 dark:border-primary-700 bg-primary-50/50 dark:bg-primary/25"
+      class="hidden flex-1 md:flex border-r-2 border-primary/20 dark:border-primary-700 bg-primary-50 dark:bg-primary/25"
       sheet="left"
       rail
     >
