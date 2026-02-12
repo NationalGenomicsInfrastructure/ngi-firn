@@ -1,6 +1,7 @@
 import { defaultConfig } from '@una-ui/nuxt/una.config'
 import { presetTypography } from '@unocss/preset-typography'
 import { presetWebFonts, presetAttributify, presetWind3 } from 'unocss'
+import { ngi } from './app/config/theme'
 
 export default defaultConfig({
   /*
@@ -12,6 +13,11 @@ export default defaultConfig({
    * @see https://unocss.dev/guide/config-file
    * @see https://unocss.dev/config/
    */
+
+  extendTheme: (theme) => {
+    theme.colors ??= {}
+    theme.colors.ngi = { ...ngi }
+  },
 
   presets: [
     presetAttributify(), // required if using attributify mode

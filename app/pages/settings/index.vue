@@ -6,26 +6,32 @@ definePageMeta({
 const RADIUS = [0, 0.25, 0.375, 0.5, 0.625, 0.75, 1] as const
 
 const colorMode = useColorMode()
-const { primaryThemes, grayThemes } = useUnaThemes()
-const { settings, reset } = useUnaSettings()
+const {
+  primaryThemes,
+  grayThemes,
+  settings,
+  resetThemes,
+  effectivePrimaryThemeHex,
+  effectiveGrayThemeHex,
+  setPrimaryTheme,
+  setGrayTheme
+} = useFirnThemes()
 
-const currentPrimaryThemeHex = computed(() => settings.value.primaryColors?.['--una-primary-hex'])
 const currentPrimaryThemeName = computed(() => {
-  const theme = primaryThemes.find(([, theme]) => theme['--una-primary-hex'] === currentPrimaryThemeHex.value)
+  const theme = primaryThemes.find(([, t]) => t['--una-primary-hex'] === effectivePrimaryThemeHex.value)
   return theme ? theme[0] : ''
 })
-const currentGrayThemeHex = computed(() => settings.value.grayColors?.['--una-gray-hex'])
 const currentGrayThemeName = computed(() => {
-  const theme = grayThemes.find(([, theme]) => theme['--una-gray-hex'] === currentGrayThemeHex.value)
+  const theme = grayThemes.find(([, t]) => t['--una-gray-hex'] === effectiveGrayThemeHex.value)
   return theme ? theme[0] : ''
 })
 
 function updatePrimaryTheme(theme: string): void {
-  settings.value.primary = theme
+  setPrimaryTheme(theme)
 }
 
 function updateGrayTheme(theme: string): void {
-  settings.value.gray = theme
+  setGrayTheme(theme)
 }
 
 function capitalize(s: string): string {
@@ -167,7 +173,7 @@ function shuffleTheme(): void {
         btn="solid-gray"
         label="Reset"
         leading="i-radix-icons-reload"
-        @click="reset"
+        @click="resetThemes"
       />
       <NButton
         size="xs"

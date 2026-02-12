@@ -242,6 +242,21 @@ For clarity, the Nuxt developers recommend that the component's filename matches
 
 In our Nuxt application, we leverage these Vue concepts along with additional UI libraries like [UnaUI and Reka UI](./libraries.md#components) to create a cohesive and responsive user interface.
 
+### Theming
+
+Users can choose the primary and secondary (gray) colors in **Settings**. Built-in themes come from Una UI (`useUnaThemes()`). The app adds a few **custom palettes** (e.g. the "firn" primary) that are defined in [`app/config/theme.ts`](../app/config/theme.ts).
+
+The composable [`useFirnThemes`](../app/composables/useFirnThemes.ts) extends Una’s theme lists with these palettes and keeps a separate **theme override** (persisted). When a user selects a custom theme, only the override is set; the library’s `settings.primary` stays at a built-in value. The client plugin [`app/plugins/theme-custom.client.ts`](../app/plugins/theme-custom.client.ts) runs after Una’s theme plugin and writes the custom palette’s CSS variables to `:root`, so the UI shows the custom colors.
+
+In `app/config/theme.ts`, define objects with keys `50` through `950` and hex strings (same as [Una UI extended-colors](https://github.com/una-ui/una-ui/blob/main/packages/preset/src/_theme/extended-colors.ts)). Use the exported `ThemeShades` type and the `paletteToPrimaryCssVars()` helper to build the CSS variable map.
+
+#### Adding a new selectable custom theme
+
+1. Add the palette in `app/config/theme.ts`.
+2. Register it in UnoCSS via `extendTheme` in [`uno.config.ts`](../uno.config.ts) so utilities like `bg-<name>-500` work. 3. In `useFirnThemes.ts`, add the theme name to `CUSTOM_PRIMARY_THEMES`, build the CSS var map with `paletteToPrimaryCssVars(palette)`, and append `[name, cssVars]` to `primaryThemes`.
+4. In the plugin `app/plugins/theme-custom.client.ts`, handle the new name in the override (e.g. `if (themeOverride.value.primary === 'yourName')` apply your palette).
+5. The Settings page already uses the extended list; no change needed there.
+
 ### Grimoire of common patterns and magic spells
 
 The following list highlights a few features of our UI libraries that you may use quite frequently.
