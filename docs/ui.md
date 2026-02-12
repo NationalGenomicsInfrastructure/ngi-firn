@@ -244,18 +244,21 @@ In our Nuxt application, we leverage these Vue concepts along with additional UI
 
 ### Theming
 
-Users can choose the primary and secondary (gray) colors in **Settings**. Built-in themes come from Una UI (`useUnaThemes()`). The app adds a few **custom palettes** (e.g. the "firn" primary) that are defined in [`app/config/theme.ts`](../app/config/theme.ts).
+Users can choose the primary and secondary (gray) colors in **Settings**. Built-in themes come from Una UI (`useUnaThemes()`). The app adds a few **custom palettes** (e.g. the "ngi" primary) that are defined in [`app/config/theme.ts`](../app/config/theme.ts).
 
 The composable [`useFirnThemes`](../app/composables/useFirnThemes.ts) extends Una’s theme lists with these palettes and keeps a separate **theme override** (persisted). When a user selects a custom theme, only the override is set; the library’s `settings.primary` stays at a built-in value. The client plugin [`app/plugins/theme-custom.client.ts`](../app/plugins/theme-custom.client.ts) runs after Una’s theme plugin and writes the custom palette’s CSS variables to `:root`, so the UI shows the custom colors.
 
 In `app/config/theme.ts`, define objects with keys `50` through `950` and hex strings (same as [Una UI extended-colors](https://github.com/una-ui/una-ui/blob/main/packages/preset/src/_theme/extended-colors.ts)). Use the exported `ThemeShades` type and the `paletteToPrimaryCssVars()` helper to build the CSS variable map.
 
-#### Adding a new selectable custom theme
+#### Adding or renaming a selectable custom theme
 
-1. Add the palette in `app/config/theme.ts`.
-2. Register it in UnoCSS via `extendTheme` in [`uno.config.ts`](../uno.config.ts) so utilities like `bg-<name>-500` work. 3. In `useFirnThemes.ts`, add the theme name to `CUSTOM_PRIMARY_THEMES`, build the CSS var map with `paletteToPrimaryCssVars(palette)`, and append `[name, cssVars]` to `primaryThemes`.
-4. In the plugin `app/plugins/theme-custom.client.ts`, handle the new name in the override (e.g. `if (themeOverride.value.primary === 'yourName')` apply your palette).
-5. The Settings page already uses the extended list; no change needed there.
+Use the **same theme key** in all four places below.
+
+1. **`app/config/theme.ts`** — Add the palette (e.g. `export const ngi: ThemeShades = { ... }`) and add the name to `CUSTOM_PRIMARY_THEMES` (e.g. `['ngi']`).
+2. **`uno.config.ts`** — In `extendTheme`, add `theme.colors.<name> = { ...palette }` so utilities like `bg-<name>-500` work.
+3. **`app/composables/useFirnThemes.ts`** — Build the CSS var map with `paletteToPrimaryCssVars(palette)` and append `[name, cssVars]` to `primaryThemes`. Update `effectivePrimaryThemeHex` and `getEffectivePrimaryCssVars()` to handle the new name.
+4. **`app/plugins/theme-custom.client.ts`** — In the condition that checks `themeOverride.value.primary`, add a branch for your theme name (e.g. `if (themeOverride.value.primary === 'ngi')`) and apply the same palette with `paletteToPrimaryCssVars(palette)`. **If you rename a palette, this plugin must be updated to use the new name; otherwise the custom theme will not be applied.**
+5. The Settings page uses the extended list; no change needed there.
 
 ### Grimoire of common patterns and magic spells
 

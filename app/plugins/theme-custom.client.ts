@@ -1,5 +1,5 @@
 import { useStorage } from '@vueuse/core'
-import { ngi, paletteToPrimaryCssVars } from '~/config/theme'
+import { CUSTOM_PRIMARY_PALETTES, paletteToPrimaryCssVars } from '~/config/theme'
 
 const THEME_OVERRIDE_KEY = 'ngi-theme-override'
 
@@ -14,8 +14,10 @@ export default defineNuxtPlugin(() => {
   document.head.appendChild(styleEl)
 
   watchEffect(() => {
-    if (themeOverride.value.primary === 'ngi') {
-      const vars = paletteToPrimaryCssVars(ngi)
+    const name = themeOverride.value.primary
+    const palette = name && name in CUSTOM_PRIMARY_PALETTES ? CUSTOM_PRIMARY_PALETTES[name as keyof typeof CUSTOM_PRIMARY_PALETTES] : null
+    if (palette) {
+      const vars = paletteToPrimaryCssVars(palette)
       const declarations = Object.entries(vars)
         .map(([k, v]) => `${k}: ${v};`)
         .join('\n')

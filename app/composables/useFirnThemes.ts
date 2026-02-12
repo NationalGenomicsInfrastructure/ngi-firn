@@ -1,5 +1,5 @@
 import { useStorage } from '@vueuse/core'
-import { ngi, paletteToPrimaryCssVars, CUSTOM_PRIMARY_THEMES } from '~/config/theme'
+import { paletteToPrimaryCssVars, CUSTOM_PRIMARY_THEMES, CUSTOM_PRIMARY_PALETTES } from '~/config/theme'
 
 const THEME_OVERRIDE_KEY = 'ngi-theme-override'
 
@@ -7,6 +7,13 @@ export type ThemeOverride = {
   primary: string | null
   gray: string | null
 }
+
+const customPrimaryCssVars = Object.fromEntries(
+  (CUSTOM_PRIMARY_THEMES as readonly string[]).map(name => [
+    name,
+    paletteToPrimaryCssVars(CUSTOM_PRIMARY_PALETTES[name as keyof typeof CUSTOM_PRIMARY_PALETTES])
+  ])
+) as Record<(typeof CUSTOM_PRIMARY_THEMES)[number], Record<string, string>>
 
 /**
  * Extends Una UI themes with NGI custom palettes and persists custom theme selection
@@ -17,10 +24,9 @@ export function useFirnThemes() {
   const { settings, reset } = useUnaSettings()
   const { una } = useAppConfig()
 
-  const ngiPrimaryCssVars = paletteToPrimaryCssVars(ngi)
   const primaryThemes: [string, Record<string, string>][] = [
     ...unaPrimaryThemes,
-    ['ngi', ngiPrimaryCssVars]
+    ...CUSTOM_PRIMARY_THEMES.map(name => [name, customPrimaryCssVars[name]] as [string, Record<string, string>])
   ]
 
   const themeOverride = useStorage<ThemeOverride>(THEME_OVERRIDE_KEY, {
@@ -32,9 +38,9 @@ export function useFirnThemes() {
   const effectiveGray = computed(() => themeOverride.value.gray ?? settings.value.gray ?? una.gray)
 
   const effectivePrimaryThemeHex = computed(() => {
-    if (themeOverride.value.primary && CUSTOM_PRIMARY_THEMES.includes(themeOverride.value.primary as (typeof CUSTOM_PRIMARY_THEMES)[number])) {
-      return ngiPrimaryCssVars['--una-primary-hex']
-    }
+    const name = themeOverride.value.primary
+    if (name && name in customPrimaryCssVars)
+      return customPrimaryCssVars[name as keyof typeof customPrimaryCssVars]['--una-primary-hex']
     return settings.value.primaryColors?.['--una-primary-hex']
   })
 
@@ -68,8 +74,9 @@ export function useFirnThemes() {
 
   /** CSS variable map for the current effective primary theme (for the custom theme plugin). */
   function getEffectivePrimaryCssVars(): Record<string, string> | null {
-    if (themeOverride.value.primary === 'ngi')
-      return ngiPrimaryCssVars
+    const name = themeOverride.value.primary
+    if (name && name in customPrimaryCssVars)
+      return customPrimaryCssVars[name as keyof typeof customPrimaryCssVars]
     return null
   }
 
@@ -90,6 +97,6 @@ export function useFirnThemes() {
     clearOverride,
     resetThemes,
     getEffectivePrimaryCssVars,
-    ngiPrimaryCssVars
+    customPrimaryCssVars
   }
 }

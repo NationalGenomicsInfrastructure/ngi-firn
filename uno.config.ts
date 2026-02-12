@@ -1,7 +1,7 @@
 import { defaultConfig } from '@una-ui/nuxt/una.config'
 import { presetTypography } from '@unocss/preset-typography'
 import { presetWebFonts, presetAttributify, presetWind3 } from 'unocss'
-import { ngi } from './app/config/theme'
+import { ngi, charcoal, coffee, burgundy, ytterby } from './app/config/theme'
 
 export default defaultConfig({
   /*
@@ -17,6 +17,10 @@ export default defaultConfig({
   extendTheme: (theme) => {
     theme.colors ??= {}
     theme.colors.ngi = { ...ngi }
+    theme.colors.charcoal = { ...charcoal }
+    theme.colors.coffee = { ...coffee }
+    theme.colors.burgundy = { ...burgundy }
+    theme.colors.ytterby = { ...ytterby }
   },
 
   presets: [
