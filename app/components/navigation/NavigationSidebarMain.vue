@@ -28,7 +28,7 @@ const activeTitle = computed(() => {
   return title.charAt(0).toUpperCase() + title.slice(1)
 })
 
-const { setOpen, toggleSidebar } = useSidebar()
+const { setOpen } = useSidebar()
 </script>
 
 <template>
@@ -43,8 +43,7 @@ const { setOpen, toggleSidebar } = useSidebar()
       collapsible="none"
       class="text-left bg-primary-700 dark:bg-primary-900 border-r-3 border-primary-100 dark:border-primary-400 text-primary-700 dark:text-primary-400 !w-[calc(var(--sidebar-width-icon)_+_1px)]"
     >
-      <NSidebarHeader>
-      </NSidebarHeader>
+      <NSidebarHeader />
       <NSidebarContent>
         <NSidebarGroup>
           <NSidebarGroupContent class="px-1.5 md:px-0">

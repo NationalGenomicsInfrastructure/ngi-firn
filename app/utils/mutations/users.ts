@@ -82,7 +82,6 @@ export const unlinkGitHubUserSelf = defineMutation(() => {
  * User mutations for administrative use
  **/
 
-
 // Mutation for creating a user by an admin
 
 export const createUserByAdmin = defineMutation(() => {

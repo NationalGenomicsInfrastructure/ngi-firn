@@ -277,7 +277,7 @@ const githubHandler = defineOAuthGitHubEventHandler({
 })
 
 export default defineEventHandler(async (event: H3Event) => {
-  const query = getQuery<{ redirectUrl?: string; code?: string }>(event)
+  const query = getQuery<{ redirectUrl?: string, code?: string }>(event)
   if (query.redirectUrl && !query.code) {
     const redirectUrl = String(query.redirectUrl)
     if (redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {

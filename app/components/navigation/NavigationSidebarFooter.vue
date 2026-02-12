@@ -40,7 +40,7 @@ const data: { navFooter: NavFooterItem[] } = {
 }
 
 const visibleNavFooter = computed(() =>
-  data.navFooter.filter((item) => item.visible === undefined || item.visible())
+  data.navFooter.filter(item => item.visible === undefined || item.visible())
 )
 
 function iconFor(item: NavFooterItem) {
@@ -49,8 +49,8 @@ function iconFor(item: NavFooterItem) {
   return item.icon
 }
 
-const actionButtonClass =
-  'soft hover:text-primary-500/50 text-primary-50 dark:text-primary-400'
+const actionButtonClass
+  = 'soft hover:text-primary-500/50 text-primary-50 dark:text-primary-400'
 const actionButtonStyle = 'background-color: transparent;'
 </script>
 

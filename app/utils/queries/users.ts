@@ -11,7 +11,7 @@ import { defineQueryOptions } from '@pinia/colada'
  * type ApprovedUsers = RouterOutput['users']['getApprovedUsers']
  * type PendingUsers = RouterOutput['users']['getPendingUsers']
  * type RetiredUsers = RouterOutput['users']['getRetiredUsers']
- * 
+ *
  * However, the same type is used consistently everywhere by all user query functions.
  * Therefore, importing the type instead of deriving a separate type for each query will aid legibility of the code.
  **/

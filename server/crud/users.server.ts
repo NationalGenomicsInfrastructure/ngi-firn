@@ -223,25 +223,25 @@ export const UserService = {
   /*
    * Unlink a GitHubUser from a FirnUser
    */
-    async unlinkGitHubUser(user: FirnUser): Promise<FirnUser | null> {
-      // Update user information and last login
-      const unlinkedAccount: Partial<FirnUser> = {
-        lastSeenAt: DateTime.now().toISO(),
-        githubId: null,
-        githubNodeId: null,
-        githubName: null,
-        githubAvatar: null,
-        githubEmail: null,
-        githubUrl: null
-      }
-  
-      if (user) {
-        // Update the user
-        const result = await couchDB.updateDocument(user._id, { ...user, ...unlinkedAccount }, user._rev!)
-        return { ...user, ...unlinkedAccount, _id: result.id, _rev: result.rev } as FirnUser
-      }
-      return null
-    },
+  async unlinkGitHubUser(user: FirnUser): Promise<FirnUser | null> {
+    // Update user information and last login
+    const unlinkedAccount: Partial<FirnUser> = {
+      lastSeenAt: DateTime.now().toISO(),
+      githubId: null,
+      githubNodeId: null,
+      githubName: null,
+      githubAvatar: null,
+      githubEmail: null,
+      githubUrl: null
+    }
+
+    if (user) {
+      // Update the user
+      const result = await couchDB.updateDocument(user._id, { ...user, ...unlinkedAccount }, user._rev!)
+      return { ...user, ...unlinkedAccount, _id: result.id, _rev: result.rev } as FirnUser
+    }
+    return null
+  },
 
   /*
    * Match a FirnUser by firnId

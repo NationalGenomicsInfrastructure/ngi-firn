@@ -43,7 +43,7 @@ export type ThemeShades = {
 
 /** Custom primary palette: NGI blue */
 export const ngi: ThemeShades = {
-  50:  '#e7f1fd',
+  50: '#e7f1fd',
   100: `#d0e3fb`,
   200: '#a0c8f8',
   300: '#71acf4',
@@ -53,7 +53,7 @@ export const ngi: ThemeShades = {
   700: '#0b468e',
   800: '#072f5f',
   900: '#04172f',
-  950: '#021021',
+  950: '#021021'
 }
 
 /** Charcoal (dark gray) */
@@ -101,7 +101,7 @@ export const burgundy: ThemeShades = {
   950: '#3b0f14'
 }
 
-/** Ytterby (dark blue)*/
+/** Ytterby (dark blue) */
 export const ytterby: ThemeShades = {
   50: '#f2f5f8',
   100: '#e4e9f0',

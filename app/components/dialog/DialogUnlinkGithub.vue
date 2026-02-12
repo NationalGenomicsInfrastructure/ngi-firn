@@ -35,17 +35,20 @@ const isDisabled = computed(() => {
 
     <div class="grid gap-4 p-4 ml-4">
       <div class="text-center space-y-2">
-          <NAvatar
-            v-if="props.githubAvatar"
-            size="sm:3xl md:4xl lg:5xl"
-            :src="props.githubAvatar"
-            class="border-2 border-black rounded-full"
-          />
+        <NAvatar
+          v-if="props.githubAvatar"
+          size="sm:3xl md:4xl lg:5xl"
+          :src="props.githubAvatar"
+          class="border-2 border-black rounded-full"
+        />
       </div>
       <p class="text-muted">
         You won't be able to log in with your GitHub account to Firn anymore, so ensure that you can log in with Google or a token to Firn before unlinking your account.
       </p>
-      <p v-if="props.provider === 'github'" class="text-warning">
+      <p
+        v-if="props.provider === 'github'"
+        class="text-warning"
+      >
         You are currently logged in with your GitHub account. You will be logged out after unlinking your account.
       </p>
     </div>

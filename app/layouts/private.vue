@@ -23,13 +23,15 @@ const breadcrumbItems = computed(() => {
     <NToaster />
 
     <NSidebarInset>
-      <header class="h-12 flex flex-col flex-col-reverse gap-4 sm:flex-row sm:justify-end shrink-0 items-center gap-2 
-       transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar_wrapper:h-12">
+      <header
+        class="h-12 flex flex-col flex-col-reverse gap-4 sm:flex-row sm:justify-end shrink-0 items-center gap-2
+       transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar_wrapper:h-12"
+      >
         <div class="flex items-center gap-2 px-4">
           <LazyNBreadcrumb
             breadcrumb-inactive="link-primary"
             :_breadcrumb-link="{
-              class: 'rounded-full btn-rectangle',
+              class: 'rounded-full btn-rectangle'
             }"
             class="hidden lg:flex text-sm"
             separator="i-lucide-chevron-right"

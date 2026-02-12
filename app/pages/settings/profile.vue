@@ -13,7 +13,7 @@ const { state: selfUserState, asyncStatus: selfStatus } = useQuery(selfUserQuery
 const isLoading = computed(() => selfStatus.value === 'loading')
 const selfUser = computed(() => selfUserState.value.status === 'success' ? selfUserState.value.data : undefined)
 
-const { user:sessionUser } = useUserSession()
+const { user: sessionUser } = useUserSession()
 
 const user = computed(() => {
   return {
@@ -39,85 +39,94 @@ const user = computed(() => {
       description="View and manage your account."
     />
     <div
-    class="grid w-full place-items-center"
-  >
-    <NCard
-      class="overflow-hidden w-full max-w-[100vw] sm:max-w-[90vw] md:max-w-[70vw] lg:max-w-[50vw] xl:max-w-[40vw] min-w-[min(300px,100vw)] bg-gray-50/30 dark:bg-gray-900"
-      :_card-header="{
-        class: 'p-0',
-      }"
-      :_card-content="{
-        class: 'mt-4',
-      }"
+      class="grid w-full place-items-center"
     >
-      <template #header>
-        <div class="relative">
-          <NBadge
+      <NCard
+        class="overflow-hidden w-full max-w-[100vw] sm:max-w-[90vw] md:max-w-[70vw] lg:max-w-[50vw] xl:max-w-[40vw] min-w-[min(300px,100vw)] bg-gray-50/30 dark:bg-gray-900"
+        :_card-header="{
+          class: 'p-0'
+        }"
+        :_card-content="{
+          class: 'mt-4'
+        }"
+      >
+        <template #header>
+          <div class="relative">
+            <NBadge
               :una="{
                 badgeDefaultVariant: user.isAdminClientside ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"
               class="absolute top-4 right-4 capitalize"
               :label="user.isAdminClientside ? 'Administrator' : 'User'"
             />
-          <img
-            src="https://images.unsplash.com/photo-1457269449834-928af64c684d?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt="Card image"
-            class="h-40 sm:h-56 w-full min-w-0 object-cover overflow-x-auto"
-          >
-          <div class="absolute inset-0 from-black/60 to-transparent bg-gradient-to-t" />
-          <div class="absolute bottom-0 left-0 p-4">
-            <div class="flex items-center gap-2">
-              <NAvatar
-                :src="user.avatar"
-                :alt="user.name"
-                size="sm:3xl md:4xl lg:5xl"
-                class="ring-2 ring-white"
-              />
-              <div class="text-white">
-                <p class="font-semibold text-2xl leading-none">
-                  {{ user.name }}
-                </p>
-                <p class="text-lg text-white/80">
-                  <NTooltip
-                    content="The ID of your Firn account"
-                  >
-                  <NIcon name="i-lucide-snowflake" class="text-white text-mono text-bold" />{{ user.firnId }}
-                </NTooltip>
-                </p>
+            <img
+              src="https://images.unsplash.com/photo-1457269449834-928af64c684d?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+              alt="Card image"
+              class="h-40 sm:h-56 w-full min-w-0 object-cover overflow-x-auto"
+            >
+            <div class="absolute inset-0 from-black/60 to-transparent bg-gradient-to-t" />
+            <div class="absolute bottom-0 left-0 p-4">
+              <div class="flex items-center gap-2">
+                <NAvatar
+                  :src="user.avatar"
+                  :alt="user.name"
+                  size="sm:3xl md:4xl lg:5xl"
+                  class="ring-2 ring-white"
+                />
+                <div class="text-white">
+                  <p class="font-semibold text-2xl leading-none">
+                    {{ user.name }}
+                  </p>
+                  <p class="text-lg text-white/80">
+                    <NTooltip
+                      content="The ID of your Firn account"
+                    >
+                      <NIcon
+                        name="i-lucide-snowflake"
+                        class="text-white text-mono text-bold"
+                      />{{ user.firnId }}
+                    </NTooltip>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </template>
+        </template>
 
-      <!-- content -->
-      <div class="flex flex-col gap-4">
-        <div class="flex items-center gap-4 text-sm text-muted">
-          <div class="flex items-center gap-1">
+        <!-- content -->
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-4 text-sm text-muted">
+            <div class="flex items-center gap-1">
               <NTooltip
                 content="The email address associated with your Google account"
               >
-              <NIcon name="i-simple-icons-google" class="text-primary" />
-              <span>{{ user.googleEmail || 'No Google account' }}</span>
-            </NTooltip>
-          </div>
-          <div class="flex items-center gap-1">
-            <NTooltip
+                <NIcon
+                  name="i-simple-icons-google"
+                  class="text-primary"
+                />
+                <span>{{ user.googleEmail || 'No Google account' }}</span>
+              </NTooltip>
+            </div>
+            <div class="flex items-center gap-1">
+              <NTooltip
                 content="The ID of the GitHub account associated with your Firn account"
               >
-              <NIcon name="i-simple-icons-github" class="text-primary" />
-              <span>{{ user.githubId ? `${user.githubId}` : 'No GitHub account linked' }}</span>
-            </NTooltip>
+                <NIcon
+                  name="i-simple-icons-github"
+                  class="text-primary"
+                />
+                <span>{{ user.githubId ? `${user.githubId}` : 'No GitHub account linked' }}</span>
+              </NTooltip>
+            </div>
           </div>
         </div>
-      </div>
 
-      <template #footer>
-        <div class="w-full flex flex-col">
-          <div class="mt-2 w-full flex items-center justify-between gap-4">
-            <DialogUnlinkGithub
-              v-if="!isLoading && user.githubId"
-                :githubId="selfUser?.githubId"
-                :githubAvatar="selfUser?.githubAvatar"
+        <template #footer>
+          <div class="w-full flex flex-col">
+            <div class="mt-2 w-full flex items-center justify-between gap-4">
+              <DialogUnlinkGithub
+                v-if="!isLoading && user.githubId"
+                :github-id="selfUser?.githubId"
+                :github-avatar="selfUser?.githubAvatar"
                 :provider="user.provider"
               />
               <NButton
@@ -129,10 +138,10 @@ const user = computed(() => {
                 to="/api/auth/github?redirectUrl=/profile"
                 external
               />
+            </div>
           </div>
-        </div>
-      </template>
-    </NCard>
-  </div>
+        </template>
+      </NCard>
+    </div>
   </main>
 </template>

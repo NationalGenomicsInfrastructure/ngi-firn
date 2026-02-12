@@ -4,7 +4,7 @@ import { CUSTOM_PRIMARY_PALETTES, paletteToPrimaryCssVars } from '~/config/theme
 const THEME_OVERRIDE_KEY = 'ngi-theme-override'
 
 export default defineNuxtPlugin(() => {
-  const themeOverride = useStorage<{ primary: string | null; gray: string | null }>(THEME_OVERRIDE_KEY, {
+  const themeOverride = useStorage<{ primary: string | null, gray: string | null }>(THEME_OVERRIDE_KEY, {
     primary: null,
     gray: null
   })
