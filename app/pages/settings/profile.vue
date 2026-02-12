@@ -42,7 +42,7 @@ const user = computed(() => {
     class="grid w-full place-items-center"
   >
     <NCard
-      class="overflow-hidden w-full max-w-[100vw] sm:max-w-[90vw] md:max-w-[70vw] lg:max-w-[50vw] xl:max-w-[40vw] min-w-[min(300px,100vw)]"
+      class="overflow-hidden w-full max-w-[100vw] sm:max-w-[90vw] md:max-w-[70vw] lg:max-w-[50vw] xl:max-w-[40vw] min-w-[min(300px,100vw)] bg-gray-50/30 dark:bg-gray-900"
       :_card-header="{
         class: 'p-0',
       }"

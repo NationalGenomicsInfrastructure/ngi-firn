@@ -51,7 +51,14 @@ function shuffleTheme(): void {
       description="Theme your Firn experience."
     />
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+    <NAlert
+      alert="border-gray"
+      title="Your preferences are saved locally in a cookie."
+      description="Mind that they are reset to Firn's defaults, if you switch devices or clear your browser's cookies."
+      icon="i-lucide-cookie"
+    />
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
       <NCard
         title="Primary color"
         description="Set the main color to style the application."
