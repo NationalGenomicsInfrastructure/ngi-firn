@@ -13,7 +13,7 @@ WORKDIR /app
 # Install pnpm with specific version from package.json
 # Set CI=true to make corepack non-interactive during build
 ENV CI=true
-RUN corepack prepare pnpm@10.28.0 --activate
+RUN corepack prepare pnpm@10.29.3 --activate
 
 # Copy package files first for better layer caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./

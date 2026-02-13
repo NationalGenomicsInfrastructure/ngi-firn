@@ -16,7 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 # Install pnpm with specific version from package.json
 # Set CI=true to make corepack non-interactive during build
 ENV CI=true
-RUN corepack prepare pnpm@10.28.0 --activate
+RUN corepack prepare pnpm@10.29.3 --activate
 
 # STAGE: Production dependencies stage (mind the --prod flag)
 FROM base AS prod-deps
