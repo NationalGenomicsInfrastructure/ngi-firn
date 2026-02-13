@@ -176,6 +176,57 @@ export class CouchDBConnector {
     }
   }
 
+  /**
+   * Query documents with pagination (limit + bookmark).
+   * Use this for large datasets instead of queryDocuments to avoid loading all results.
+   * Cloudant Find default limit is 25, max 200 per request.
+   */
+  async queryDocumentsPaginated<T extends CloudantV1.Document>(
+    selector: Record<string, unknown>,
+    options?: { limit?: number, bookmark?: string, fields?: string[] }
+  ): Promise<{ docs: T[], bookmark?: string }> {
+    try {
+      const limit = Math.min(options?.limit ?? 200, 200)
+      const response = await this.client.postFind({
+        db: this.database,
+        selector,
+        limit,
+        bookmark: options?.bookmark,
+        fields: options?.fields
+      })
+      const result = response.result
+      return {
+        docs: result.docs as T[],
+        bookmark: result.bookmark ?? undefined
+      }
+    }
+    catch (error) {
+      console.error('Error querying documents (paginated):', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get database information. Returns null if the database does not exist (404).
+   * Useful for optional external databases (e.g. projects) that may not be present.
+   */
+  async getDatabaseInformation(): Promise<CloudantV1.DatabaseInformation | null> {
+    try {
+      const response = await this.client.getDatabaseInformation({
+        db: this.database
+      })
+      return response.result
+    }
+    catch (error: unknown) {
+      const err = error as { code?: number }
+      if (err.code === 404) {
+        return null
+      }
+      console.error('Error getting database information:', error)
+      throw error
+    }
+  }
+
   // Get all documents
   async getAllDocuments<T extends CloudantV1.Document>(): Promise<T[]> {
     try {
