@@ -88,20 +88,20 @@ export const coffee: ThemeShades = {
 
 /** Burgundy (wine red) */
 export const burgundy: ThemeShades = {
-  50: '#fdf2f3',
-  100: '#fce4e6',
-  200: '#f9c9ce',
-  300: '#f4a2ab',
-  400: '#ec6b7a',
-  500: '#dc3d50',
-  600: '#b82d3e',
-  700: '#962636',
-  800: '#7c2230',
-  900: '#6a202c',
-  950: '#3b0f14'
+  50: '#faebf4',
+  100: '#f4d7e8',
+  200: '#eaaed2',
+  300: '#df86bb',
+  400: '#d45ea5',
+  500: '#83214b',
+  600: '#6d1b3f',
+  700: '#571632',
+  800: '#421026',
+  900: '#2c0b19',
+  950: '#210813'
 }
 
-/** Ytterby (dark blue) */
+/** Ytterby (dark blue, like the ore from the Ytterby mine) */
 export const ytterby: ThemeShades = {
   50: '#f2f5f8',
   100: '#e4e9f0',
@@ -116,7 +116,37 @@ export const ytterby: ThemeShades = {
   950: '#18202b'
 }
 
-export const CUSTOM_PRIMARY_THEMES = ['burgundy', 'coffee', 'charcoal', 'ytterby', 'ngi'] as const
+/** Mahogany (rich reddish brown like the wood of a tree) */
+export const mahogany: ThemeShades = {
+  50: '#f4f3f1',
+  100: '#e9e7e2',
+  200: '#d3cfc5',
+  300: '#bcb6a9',
+  400: '#a69e8c',
+  500: '#90866f',
+  600: '#736b59',
+  700: '#565043',
+  800: '#3a362c',
+  900: '#1d1b16',
+  950: '#141310'
+}
+
+/** Ocean */
+export const ocean: ThemeShades = {
+  50: '#ecf4f9',
+  100: '#d8e9f3',
+  200: '#b1d4e7',
+  300: '#8bbeda',
+  400: '#64a9ce',
+  500: '#3d93c2',
+  600: '#31769b',
+  700: '#255874',
+  800: '#183b4e',
+  900: '#0c1d27',
+  950: '#09151b'
+}
+
+export const CUSTOM_PRIMARY_THEMES = ['burgundy', 'coffee', 'mahogany', 'ocean', 'charcoal', 'ytterby', 'ngi'] as const
 export type CustomPrimaryThemeName = (typeof CUSTOM_PRIMARY_THEMES)[number]
 
 /** Map of custom primary theme names to palettes (for plugin and composable). */
@@ -125,5 +155,7 @@ export const CUSTOM_PRIMARY_PALETTES: Record<CustomPrimaryThemeName, ThemeShades
   charcoal,
   coffee,
   burgundy,
-  ytterby
+  ytterby,
+  mahogany,
+  ocean
 }
