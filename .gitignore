@@ -16,6 +16,7 @@ db.sqlite
 db.sqlite-*
 data/couchdb_data
 data/couchdb_logs
+data/project_sample_data
 dist
 node_modules
 nuxt.d.ts
