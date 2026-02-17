@@ -6,15 +6,70 @@ import type { BaseDocument } from '../server/database/couchdb'
 
 export interface ProjectDetails extends Record<string, unknown> {
   portal_id?: string;
-  library_construction_method?: string;
-  queued?: string;
+  customer_project_reference?: string;
+  order_received?: string;
   contract_received?: string;
+  contract_sent?: string;
   project_coordinator?: string;
+  plates_sent?: string;
+  sample_information_received?: string;
+  samples_received?: string;
+  type?: string;
+  project_comment?: string;
+  queued?: string;
+  disposal_of_any_remaining_samples?: string;
+  custom_capture_design_id?: string;
+  all_samples_sequenced?: string;
+  links?: string;
+  delivery_type?: string;
+  best_practice_bioinformatics?: string;
+  all_raw_data_delivered?: string;
+  library_construction_method?: string;
+  sequencing_setup?: string;
+  sequencing_platform?: string;
+  "sequence_units_ordered_(lanes)"?: number;
+  custom_primer?: boolean;
+  low_diversity?: boolean;
+  flowcell?: string;
+  sample_type?: string;
+  application?: string;
+  signature_queued?: string;
+  signature_all_samples_sequenced?: string;
+  signature_all_raw_data_delivered?: string;
+  signature_aborted?: string;
+  shared?: string;
+  sensitive_data?: string;
+  reference_genome?: string;
+  organism?: string;
+  funding_agency?: string;
+  project_category?: string;
+  sample_units_ordered?: number;
   aborted?: string;
+  "library_prep_option_single_cell_(hashing)"?: string;
+  "library_prep_option_single_cell_(cite)"?: string;
+  "library_prep_option_single_cell_(vdj)"?: string;
+  "library_prep_option_single_cell_(feature)"?: string;
+  customer_project_description?: string;
+  "library_type_(ready-made_libraries)"?: string;
   running_notes?: unknown;
   snic_checked?: unknown;
   latest_sticky_note?: unknown;
 }
+
+// =============================================================================
+// Parsed details.links (for UI; JSON string in DB)
+// =============================================================================
+
+export interface ProjectDetailsLinkEntry {
+  user?: string;
+  email?: string;
+  type?: string;
+  title?: string;
+  url?: string;
+  desc?: string;
+}
+
+export type ProjectDetailsLinkRecord = Record<string, ProjectDetailsLinkEntry>;
 
 // =============================================================================
 // Order details (from Order Portal API)
@@ -27,21 +82,21 @@ export interface OrderDetailsOwner {
 }
 
 export interface OrderDetailsFields {
-  seq_readlength_hiseqx?: string;
-  library_readymade?: string;
-  bx_exp?: string;
-  seq_instrument?: string;
-  project_lab_email?: string;
-  project_bx_email?: string;
-  project_lab_name?: string;
-  bx_data_delivery?: string;
-  sample_no?: string;
-  bioinformatics?: string;
-  sequencing?: string;
-  project_pi_name?: string;
-  bx_bp?: string;
-  project_desc?: string;
-  project_pi_email?: string;
+  seq_readlength_hiseqx?: string | null;
+  library_readymade?: string | null;
+  bx_exp?: string | null;
+  seq_instrument?: string | null;
+  project_lab_email?: string | null;
+  project_bx_email?: string | null;
+  project_lab_name?: string | null;
+  bx_data_delivery?: string | null;
+  sample_no?: number | string | null;
+  bioinformatics?: string | null;
+  sequencing?: string | null;
+  project_pi_name?: string | null;
+  bx_bp?: string | null;
+  project_desc?: string | null;
+  project_pi_email?: string | null;
 }
 
 export interface OrderDetails {
@@ -78,6 +133,68 @@ export interface ProjectStatusFields {
 }
 
 // =============================================================================
+// Staged files (sampleId -> path -> entry)
+// =============================================================================
+
+export interface StagedFileEntry {
+  md5_sum: string;
+  size_in_bytes: number;
+  last_modified: string;
+}
+
+export type StagedFiles = Record<string, Record<string, StagedFileEntry>>;
+
+// =============================================================================
+// Project summary (project_summary field)
+// =============================================================================
+
+export interface ProjectSummary extends Record<string, unknown> {
+  document_version?: string;
+  bioinfo_responsible?: string;
+  lab_responsible?: string;
+  queued?: string;
+  signature_queued?: string;
+  signature_all_samples_sequenced?: string;
+  signature_all_raw_data_delivered?: string;
+  instructions?: string;
+  method_document?: string;
+  comments?: string;
+  all_samples_sequenced?: string;
+  all_raw_data_delivered?: string;
+}
+
+// =============================================================================
+// Sample details (ProjectSample.details)
+// =============================================================================
+
+export interface SampleDetails extends Record<string, unknown> {
+  progress?: string;
+  sample_type?: string;
+  "total_reads_(m)"?: number;
+  reads_min?: number;
+  customer_name?: string;
+  passed_initial_qc?: string;
+  passed_library_qc?: string;
+  "status_(auto)"?: string;
+  "status_(manual)"?: string;
+  app_qc?: string;
+  passed_sequencing_qc?: string;
+  storage_type?: string;
+  tissue_type?: string;
+  species_name?: string;
+  genome_size?: number | string;
+  sample_weight?: number;
+  number_of_cells?: number;
+  pooling?: string;
+  sample_buffer?: string;
+  index_category?: string;
+  conc_method?: string | number;
+  customer_average_fragment_length?: number;
+  lanes_requested?: number;
+  customer_volume?: number;
+}
+
+// =============================================================================
 // Sample-level types
 // =============================================================================
 
@@ -89,6 +206,13 @@ export interface InitialQcEntry {
   initials?: string;
   frag_an_image?: string;
   caliper_image?: string;
+  concentration?: number | string;
+  "volume_(ul)"?: number;
+  "size_(bp)"?: number;
+  conc_units?: string;
+  failure_reason?: string;
+  "ratio_(%)"?: number;
+  "amount_(ng)"?: number;
   [key: string]: unknown;
 }
 
@@ -106,16 +230,21 @@ export interface LibraryValidationEntry {
   well_location?: string;
   frag_an_image?: string;
   caliper_image?: string;
-  frag_an_ratio?: string;
-  concentration?: string;
+  frag_an_ratio?: number | string;
+  concentration?: number | string;
   conc_units?: string;
   start_date?: string;
-  average_size_bp?: string;
+  average_size_bp?: number | string;
+  "amount_(ng)"?: number;
+  "volume_(ul)"?: number;
+  "size_(bp)"?: number;
+  "amount_(fmol)"?: number;
+  failure_reason?: string;
   [key: string]: unknown;
 }
 
 export interface SampleRunMetricsEntry {
-  sequencing_finish_date?: string;
+  sequencing_finish_date?: string | null;
   sequencing_start_date?: string;
   seq_qc_flag?: string;
   dem_qc_flag?: string;
@@ -143,13 +272,18 @@ export interface LibraryPrepEntry {
   amount_for_prep_fmol?: number;
   amount_taken_from_plate_ng?: number;
   volume_ul?: number;
+  "amount_taken_(ng)"?: number | null;
+  "amount_for_prep_(ng)"?: number | null;
+  "amount_for_prep_(fmol)"?: number | null;
+  "amount_taken_from_plate_(ng)"?: number | null;
+  "volume_(ul)"?: number | null;
   [key: string]: unknown;
 }
 
 export interface ProjectSample {
   scilife_name: string;
   customer_name?: string;
-  details: Record<string, unknown>;
+  details: SampleDetails;
   initial_plate_id?: string;
   well_location?: string;
   initial_qc?: InitialQcEntry;
@@ -167,16 +301,16 @@ export interface ProjectSample {
 export type ProjectPriority = "Low" | "Standard" | "High" | null | undefined;
 
 export interface ProjectsDbDocument extends BaseDocument {
-  type: 'project';
-  schema: 1;
+  type?: 'project';
+  schema?: 1;
   modification_time?: string;
   creation_time?: string;
-  entity_type: "project_summary";
+  entity_type?: "project_summary";
   source: "lims";
   project_name: string;
   project_id: string;
   application?: string | null;
-  contact?: string;
+  contact?: string | null;
   open_date?: string;
   close_date?: string;
   delivery_type?: string;
@@ -185,7 +319,7 @@ export interface ProjectsDbDocument extends BaseDocument {
   order_details?: OrderDetails;
   affiliation?: string;
   priority?: ProjectPriority;
-  project_summary?: Record<string, unknown>;
+  project_summary?: ProjectSummary;
   project_summary_links?: [string, string][];
   escalations?: [string, string, string][];
   no_of_samples: number;
@@ -193,17 +327,20 @@ export interface ProjectsDbDocument extends BaseDocument {
   status_fields: ProjectStatusFields;
 
   /** Couch-only, preserved on update */
-  staged_files?: unknown;
-  agreement_doc_id?: unknown;
-  invoice_spec_generated?: unknown;
-  invoice_spec_downloaded?: unknown;
-  delivery_projects?: unknown;
+  staged_files?: StagedFiles;
+  agreement_doc_id?: string;
+  invoice_spec_generated?: number;
+  invoice_spec_downloaded?: number;
+  delivery_projects?: string[];
 
   /** Optional doc-level fields referenced in summary view */
   min_m_reads_per_sample_ordered?: unknown;
   customer_reference?: string;
   uppnex_id?: string;
 }
+
+/** Alias for use in server/API (projects.server.ts imports Project). */
+export type Project = ProjectsDbDocument;
 
 // =============================================================================
 // View: project / project_id
@@ -229,16 +366,17 @@ export type SummaryViewKey = [string, string];
 
 export interface SummaryViewValue {
   details?: ProjectDetails;
-  project_summary?: Record<string, unknown>;
+  project_summary?: ProjectSummary;
   project_summary_links?: [string, string][];
   application?: string | null;
   no_samples?: number;
   ordered_reads?: unknown;
   open_date?: string;
   project_name?: string;
+  project_id?: string;
   affiliation?: string;
   order_details?: OrderDetails;
-  delivery_projects?: unknown;
+  delivery_projects?: string[];
   modification_time?: string;
   priority?: ProjectPriority;
   contact?: string;
