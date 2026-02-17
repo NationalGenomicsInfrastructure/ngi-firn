@@ -107,3 +107,60 @@ export function parseProjectDocument(doc: unknown): ProjectDocumentSchema | null
   const result = projectDocumentSchema.safeParse(doc)
   return result.success ? result.data : null
 }
+
+// =============================================================================
+// tRPC input schemas
+// =============================================================================
+
+/** Input for getProject: the project_id field (used in URLs and as the public project identifier). */
+export const getProjectInputSchema = z.object({
+  projectId: z.string()
+})
+
+export type GetProjectInputSchema = z.infer<typeof getProjectInputSchema>
+
+/** Input for listSummaries: filter and paginate project summaries. Supports search by project_id prefix and by project_name (substring, case-insensitive). */
+export const listProjectsSummaryInputSchema = z.object({
+  status: z.enum(['open', 'closed']).optional(),
+  project_id_prefix: z.string().optional(),
+  /** Filter by project_name: case-insensitive substring match (e.g. "Svensson" matches "MA.Svensson_24_02"). */
+  project_name_filter: z.string().optional(),
+  application_filter: z.string().optional(),
+  limit: z.number().optional(),
+  skip: z.number().optional()
+}).strict()
+
+export type ListProjectsSummaryInputSchema = z.infer<typeof listProjectsSummaryInputSchema>
+
+// =============================================================================
+// NA result schemas (projects DB may be unavailable – no errors, wrapped result)
+// =============================================================================
+
+export const projectsAvailableResultSchema = z.discriminatedUnion('available', [
+  z.object({ available: z.literal(true) }),
+  z.object({ available: z.literal(false) })
+])
+
+export type ProjectsAvailableResultSchema = z.infer<typeof projectsAvailableResultSchema>
+
+export const projectSingleResultSchema = z.discriminatedUnion('available', [
+  z.object({
+    available: z.literal(true),
+    data: projectDocumentSchema.nullable()
+  }),
+  z.object({ available: z.literal(false) })
+])
+
+export type ProjectSingleResultSchema = z.infer<typeof projectSingleResultSchema>
+
+export const projectListResultSchema = z.discriminatedUnion('available', [
+  z.object({
+    available: z.literal(true),
+    items: z.array(projectSummaryListItemSchema),
+    total_rows: z.number().optional(),
+    offset: z.number().optional()
+  }),
+  z.object({ available: z.literal(false) })
+])
+
+export type ProjectListResultSchema = z.infer<typeof projectListResultSchema>
