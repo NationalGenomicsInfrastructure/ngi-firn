@@ -53,18 +53,6 @@ export default defineNuxtConfig({
     preset: 'node-server'
   },
 
-  vite: {
-    plugins: [
-      // Visualize the build stats to identify performance bottlenecks and large chunks
-      visualizer({
-        filename: 'build-size-stats.html',
-        template: 'sunburst',
-        gzipSize: true,
-        brotliSize: true
-      })
-    ]
-  },
-
   // Enable type checking during the build process.
   // For performance reasons, we don't enable it during development. Run `pnpm typecheck` to run it manually.
   typescript: {
