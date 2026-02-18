@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
 
@@ -7,6 +7,13 @@ const props = defineProps<{
   users: DisplayUserToAdmin[] | undefined
   loading: boolean
 }>()
+
+const pagination = ref({
+  pageSize: 10,
+  pageIndex: 0
+})
+
+const table = useTemplateRef<Table<DisplayUserToAdmin>>('table')
 
 const columns: ColumnDef<DisplayUserToAdmin>[] = [
   {
@@ -108,6 +115,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
       v-model:expanded="expanded"
       :loading="loading"
       :columns="columns"
+      :pagination="pagination"
       :data="formattedUsers || []"
       :una="{
         tableHead: 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
@@ -198,5 +206,24 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
         </div>
       </template>
     </NTable>
+    <!-- pagination -->
+    <div
+      class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
+    >
+      <div
+        class="flex items-center justify-center text-sm font-medium"
+      >
+        Page {{ (table?.getState().pagination.pageIndex ?? 0) + 1 }} of
+        {{ table?.getPageCount().toLocaleString() }}
+      </div>
+
+      <NPagination
+        :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
+        :total="table?.getFilteredRowModel().rows.length"
+        show-edges
+        :items-per-page="table?.getState().pagination.pageSize ?? 5"
+        @update:page="table?.setPageIndex($event - 1)"
+      />
+    </div>
   </div>
 </template>
