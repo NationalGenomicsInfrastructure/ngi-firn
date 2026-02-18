@@ -135,7 +135,7 @@ const user = computed(() => {
                 btn="soft-primary hover:outline-primary"
                 leading="i-simple-icons-github"
                 label="Link GitHub Account"
-                to="/api/auth/github?redirectUrl=/profile"
+                to="/api/auth/github?redirectUrl=/settings/profile"
                 external
               />
             </div>

@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineNuxtConfig({
 

@@ -29,18 +29,18 @@ const projectsDB = couchDB.withDatabase(PROJECTS_DB_NAME)
 
 /** DTO for list/search: fields needed to display and filter by project_name, project_id, application. */
 export interface ProjectSummaryListItem {
-  project_id: string;
-  project_name?: string;
-  application?: string | null;
-  open_date?: string;
-  close_date?: string;
-  status?: string;
-  no_samples?: number;
-  affiliation?: string;
-  contact?: string;
-  priority?: string | null;
-  modification_time?: string;
-  [key: string]: unknown;
+  project_id: string
+  project_name?: string
+  application?: string | null
+  open_date?: string
+  close_date?: string
+  status?: string
+  no_samples?: number
+  affiliation?: string
+  contact?: string
+  priority?: string | null
+  modification_time?: string
+  [key: string]: unknown
 }
 
 export const ProjectService = {
@@ -97,13 +97,13 @@ export const ProjectService = {
    * Optionally filter in-memory by project_name or application when view does not index them.
    */
   async listProjectsSummary(options?: {
-    status?: 'open' | 'closed';
-    project_id_prefix?: string;
-    project_name_filter?: string;
-    application_filter?: string;
-    limit?: number;
-    skip?: number;
-  }): Promise<{ items: ProjectSummaryListItem[]; total_rows?: number; offset?: number }> {
+    status?: 'open' | 'closed'
+    project_id_prefix?: string
+    project_name_filter?: string
+    application_filter?: string
+    limit?: number
+    skip?: number
+  }): Promise<{ items: ProjectSummaryListItem[], total_rows?: number, offset?: number }> {
     try {
       const status = options?.status ?? 'open'
       const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)

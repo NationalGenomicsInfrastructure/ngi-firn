@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { StringOrUndefined, NumberOrUndefined, DateStringOrUndefined } from './basic'
 
-
 // =============================================================================
 // Search / listing (summary view row value)
 // =============================================================================

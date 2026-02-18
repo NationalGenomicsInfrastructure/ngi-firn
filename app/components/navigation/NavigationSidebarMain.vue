@@ -5,11 +5,11 @@ const data = {
       title: 'Cold Storage Inventory',
       url: '/inventory',
       icon: 'i-lucide-snowflake',
-      isActive: true
+      isActive: false
     },
     {
-      title: 'Genomics Status',
-      url: '#',
+      title: 'Projects information',
+      url: '/projects',
       icon: 'i-lucide-dna',
       isActive: false
     }

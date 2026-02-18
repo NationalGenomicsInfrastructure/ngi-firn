@@ -288,15 +288,15 @@ export class CouchDBConnector {
     designDoc: string,
     viewName: string,
     options?: {
-      key?: TKey;
-      startkey?: TKey;
-      endkey?: TKey;
-      limit?: number;
-      skip?: number;
-      include_docs?: boolean;
-      descending?: boolean;
+      key?: TKey
+      startkey?: TKey
+      endkey?: TKey
+      limit?: number
+      skip?: number
+      include_docs?: boolean
+      descending?: boolean
     }
-  ): Promise<{ total_rows?: number; offset?: number; rows: Array<{ id?: string; key: TKey; value: TValue; doc?: TDoc }> }> {
+  ): Promise<{ total_rows?: number, offset?: number, rows: Array<{ id?: string, key: TKey, value: TValue, doc?: TDoc }> }> {
     try {
       const response = await this.client.postView({
         db: this.database,
@@ -310,9 +310,9 @@ export class CouchDBConnector {
         includeDocs: options?.include_docs,
         descending: options?.descending
       })
-      const result = response.result as { total_rows?: number; totalRows?: number; update_seq?: string; rows: Array<{ id?: string; key: TKey; value: TValue; doc?: TDoc }> }
+      const result = response.result as { total_rows?: number, totalRows?: number, update_seq?: string, rows: Array<{ id?: string, key: TKey, value: TValue, doc?: TDoc }> }
       const totalRows = result.total_rows ?? (result as { totalRows?: number }).totalRows
-      const rows = (result.rows || []).map((row: { id?: string; key: TKey; value: TValue; doc?: TDoc }) => ({
+      const rows = (result.rows || []).map((row: { id?: string, key: TKey, value: TValue, doc?: TDoc }) => ({
         id: row.id,
         key: row.key,
         value: row.value,
