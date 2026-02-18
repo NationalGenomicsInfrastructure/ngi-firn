@@ -1,5 +1,5 @@
 import { createTRPCRouter, firnUserProcedure } from '../init'
-import type { ProjectsAvailableResultSchema, ProjectSingleResultSchema, ProjectListResultSchema } from '~~/schemas/projects'
+import type { ProjectsAvailableResultSchema, ProjectSingleResultSchema, ProjectListResultSchema, ProjectListWithDetailsResultSchema } from '~~/schemas/projects'
 import {
   getProjectInputSchema,
   listProjectsSummaryInputSchema,
@@ -32,7 +32,7 @@ export const projectsRouter = createTRPCRouter({
       return { available: true, data: parsed ?? null }
     }),
 
-  /** List/search project summaries. Supports project_id_prefix, project_name_filter (substring), application_filter, status, and pagination (limit, skip). */
+  /** List/search project summaries (top-level fields only). Supports project_id_prefix, project_name_filter (substring), application_filter, status, and pagination (limit, skip). */
   listSummaries: firnUserProcedure
     .input(listProjectsSummaryInputSchema.optional())
     .query(async ({ input }): Promise<ProjectListResultSchema> => {
@@ -45,6 +45,25 @@ export const projectsRouter = createTRPCRouter({
       return {
         available: true,
         items: result.items,
+        total_rows: result.total_rows,
+        offset: result.offset
+      }
+    }),
+
+  /** List/search project summaries with full view value (details, project_summary, order_details, etc.). For subset use (e.g. bookmarked projects). */
+  listSummariesWithDetails: firnUserProcedure
+    .input(listProjectsSummaryInputSchema.optional())
+    .query(async ({ input }): Promise<ProjectListWithDetailsResultSchema> => {
+      const { ProjectService } = await import('../../crud/projects.server')
+      const available = await ProjectService.isProjectsAvailable()
+      if (!available) {
+        return { available: false }
+      }
+      const result = await ProjectService.listProjectsSummaryWithDetails(input)
+      type WithDetailsSuccess = Extract<ProjectListWithDetailsResultSchema, { available: true }>
+      return {
+        available: true,
+        items: result.items as WithDetailsSuccess['items'],
         total_rows: result.total_rows,
         offset: result.offset
       }

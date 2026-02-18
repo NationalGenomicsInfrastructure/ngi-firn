@@ -17,9 +17,24 @@ export const projectSummaryListItemSchema = z.object({
   contact: z.string().optional(),
   priority: z.string().nullable().optional(),
   modification_time: z.string().optional()
-}).loose()
+}).strict()
 
 export type ProjectSummaryListItemSchema = z.infer<typeof projectSummaryListItemSchema>
+
+// =============================================================================
+// Summary row with full view value (details, project_summary, order_details, etc.)
+// =============================================================================
+
+export const projectSummaryWithDetailsItemSchema = projectSummaryListItemSchema.merge(
+  z.object({
+    details: z.record(z.string(), z.unknown()).optional(),
+    project_summary: z.record(z.string(), z.unknown()).optional(),
+    project_summary_links: z.array(z.tuple([z.string(), z.string()])).optional(),
+    order_details: z.record(z.string(), z.unknown()).optional()
+  })
+).passthrough()
+
+export type ProjectSummaryWithDetailsItemSchema = z.infer<typeof projectSummaryWithDetailsItemSchema>
 
 // =============================================================================
 // details.links (JSON string in DB) – parsed for UI
@@ -163,3 +178,15 @@ export const projectListResultSchema = z.discriminatedUnion('available', [
 ])
 
 export type ProjectListResultSchema = z.infer<typeof projectListResultSchema>
+
+export const projectListWithDetailsResultSchema = z.discriminatedUnion('available', [
+  z.object({
+    available: z.literal(true),
+    items: z.array(projectSummaryWithDetailsItemSchema),
+    total_rows: z.number().optional(),
+    offset: z.number().optional()
+  }),
+  z.object({ available: z.literal(false) })
+])
+
+export type ProjectListWithDetailsResultSchema = z.infer<typeof projectListWithDetailsResultSchema>

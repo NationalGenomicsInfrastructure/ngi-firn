@@ -326,7 +326,7 @@ export interface ProjectsDbDocument extends BaseDocument {
   samples: Record<string, ProjectSample>
   status_fields: ProjectStatusFields
 
-  /** Couch-only, preserved on update */
+  /** Not in LIMS, StatusDB only, preserved on update */
   staged_files?: StagedFiles
   agreement_doc_id?: string
   invoice_spec_generated?: number

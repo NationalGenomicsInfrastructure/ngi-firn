@@ -8,7 +8,8 @@
  * READ:
  * getProjectById(id) - Fetch a single project document by _id
  * getProjectByProjectId(projectId) - Fetch a single project by project_id (uses project_id view)
- * listProjectsSummary(options) - List/search via summary view (project_id, project_name, application, etc.)
+ * listProjectsSummary(options) - List/search via summary view, top-level fields only (lean)
+ * listProjectsSummaryWithDetails(options) - Same as above with full view value (details, order_details, etc.)
  * listProjectsPage(options) - List projects with Mango pagination (limit + bookmark)
  */
 
@@ -42,6 +43,9 @@ export interface ProjectSummaryListItem {
   modification_time?: string
   [key: string]: unknown
 }
+
+/** Summary row with full view value (details, project_summary, order_details, etc.) for bookmarked subset use. */
+export type ProjectSummaryWithDetailsItem = SummaryViewValue & { project_id: string, status?: string }
 
 export const ProjectService = {
   /**
@@ -156,7 +160,77 @@ export const ProjectService = {
           affiliation: v.affiliation,
           contact: v.contact,
           priority: v.priority ?? undefined,
-          modification_time: v.modification_time,
+          modification_time: v.modification_time
+        }
+      })
+
+      return {
+        items,
+        total_rows: result.total_rows,
+        offset: result.offset
+      }
+    }
+    catch {
+      return { items: [], total_rows: undefined, offset: undefined }
+    }
+  },
+
+  /**
+   * List/search projects with full summary view value (details, project_summary, order_details, etc.).
+   * Same filters as listProjectsSummary; use for a subset (e.g. bookmarked projects) when details are needed.
+   */
+  async listProjectsSummaryWithDetails(options?: {
+    status?: 'open' | 'closed'
+    project_id_prefix?: string
+    project_name_filter?: string
+    application_filter?: string
+    limit?: number
+    skip?: number
+  }): Promise<{ items: ProjectSummaryWithDetailsItem[], total_rows?: number, offset?: number }> {
+    try {
+      const status = options?.status ?? 'open'
+      const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
+      const skip = options?.skip ?? 0
+      const prefix = options?.project_id_prefix ?? ''
+      const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
+      const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
+
+      const startkey: SummaryViewKey = [status, prefix]
+      const endkey: SummaryViewKey = [status, prefix + '\uffff']
+
+      const result = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+        PROJECT_DESIGN_DOC,
+        'summary',
+        {
+          startkey: startkey as unknown as SummaryViewKey,
+          endkey: endkey as unknown as SummaryViewKey,
+          limit: fetchLimit,
+          skip,
+          include_docs: false
+        }
+      )
+
+      let rows = result.rows
+      const project_name_filter = options?.project_name_filter?.trim().toLowerCase()
+      const application_filter = options?.application_filter?.trim().toLowerCase()
+      if (project_name_filter || application_filter) {
+        rows = rows.filter((r) => {
+          const v = r.value
+          if (project_name_filter && (v.project_name ?? '').toLowerCase().indexOf(project_name_filter) < 0)
+            return false
+          if (application_filter && (v.application ?? '').toLowerCase().indexOf(application_filter) < 0)
+            return false
+          return true
+        })
+      }
+      const limited = rows.slice(0, limit)
+
+      const items: ProjectSummaryWithDetailsItem[] = limited.map((row) => {
+        const v = row.value
+        const [statusPart, project_id] = Array.isArray(row.key) ? row.key : [undefined, undefined]
+        return {
+          project_id: v.project_id ?? (project_id as string) ?? '',
+          status: statusPart as string,
           ...v
         }
       })
