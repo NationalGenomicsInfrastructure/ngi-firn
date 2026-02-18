@@ -13,7 +13,7 @@ const { isMobile } = useSidebar()
 
 <template>
   <NSidebarGroup class="group-data-[collapsible=icon]:hidden">
-    <NSidebarGroupLabel><span class="text-primary font-semibold">{{ title }}</span></NSidebarGroupLabel>
+    <NSidebarGroupLabel><span class="text-primary-700 dark:text-primary-400 font-semibold">{{ title }}</span></NSidebarGroupLabel>
     <NSidebarMenu>
       <NSidebarMenuItem
         v-for="item in worksets"

@@ -17,7 +17,7 @@ defineProps<{
 
 <template>
   <NSidebarGroup>
-    <NSidebarGroupLabel><span class="text-primary font-semibold">{{ title }}</span></NSidebarGroupLabel>
+    <NSidebarGroupLabel><span class="text-primary-700 dark:text-primary-400 font-semibold">{{ title }}</span></NSidebarGroupLabel>
     <NSidebarMenu>
       <NCollapsible
         v-for="item in items"

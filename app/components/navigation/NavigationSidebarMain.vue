@@ -81,7 +81,7 @@ const { setOpen } = useSidebar()
     >
       <NSidebarHeader>
         <LogoFirn class="h-8 w-auto mb-0" />
-        <h4 class="text-primary/60 text-sm capitalize text-center">
+        <h4 class="text-primary-700 dark:text-muted text-sm capitalize text-center">
           {{ activeTitle }}
         </h4>
       </NSidebarHeader>

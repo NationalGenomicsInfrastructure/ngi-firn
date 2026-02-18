@@ -1,5 +1,6 @@
 <template>
   <svg
+    class="logo-firn"
     id="svg838"
     width="300"
     height="150"
@@ -57,7 +58,12 @@
 
 <style>
 /*  #2E86EF is NGI Blue */
-svg {
+.logo-firn {
   --color-primary: var(--una-primary-hex);
+}
+
+/* When dark mode is active (.dark is on html), use a lighter primary for contrast */
+.dark .logo-firn {
+  --color-primary: rgb(var(--una-primary-400));
 }
 </style>
