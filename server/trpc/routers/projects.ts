@@ -32,7 +32,7 @@ export const projectsRouter = createTRPCRouter({
       return { available: true, data: parsed ?? null }
     }),
 
-  /** List/search project summaries (top-level fields only). Supports project_id_prefix, project_name_filter (substring), application_filter, status, and pagination (limit, skip). */
+  /** List/search project summaries (top-level fields only). Supports ngi_project_id, project_name_filter (substring), application_filter, status, and pagination (limit, skip). */
   listSummaries: firnUserProcedure
     .input(listProjectsSummaryInputSchema.optional())
     .query(async ({ input }): Promise<ProjectListResultSchema> => {

@@ -1,7 +1,7 @@
 <template>
   <svg
-    class="logo-firn"
     id="svg838"
+    class="logo-firn"
     width="300"
     height="150"
     version="1.1"

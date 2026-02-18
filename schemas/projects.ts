@@ -136,7 +136,7 @@ export type GetProjectInputSchema = z.infer<typeof getProjectInputSchema>
 /** Input for listSummaries: filter and paginate project summaries. Supports search by project_id prefix and by project_name (substring, case-insensitive). */
 export const listProjectsSummaryInputSchema = z.object({
   status: z.enum(['open', 'closed']).optional(),
-  project_id_prefix: z.string().optional(),
+  ngi_project_id: z.string().optional(),
   /** Filter by project_name: case-insensitive substring match (e.g. "Svensson" matches "MA.Svensson_24_02"). */
   project_name_filter: z.string().optional(),
   application_filter: z.string().optional(),

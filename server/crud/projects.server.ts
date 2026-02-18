@@ -102,7 +102,7 @@ export const ProjectService = {
    */
   async listProjectsSummary(options?: {
     status?: 'open' | 'closed'
-    project_id_prefix?: string
+    ngi_project_id?: string
     project_name_filter?: string
     application_filter?: string
     limit?: number
@@ -112,7 +112,7 @@ export const ProjectService = {
       const status = options?.status ?? 'open'
       const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
       const skip = options?.skip ?? 0
-      const prefix = options?.project_id_prefix ?? ''
+      const prefix = options?.ngi_project_id ?? ''
       const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
       const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
 
@@ -181,7 +181,7 @@ export const ProjectService = {
    */
   async listProjectsSummaryWithDetails(options?: {
     status?: 'open' | 'closed'
-    project_id_prefix?: string
+    ngi_project_id?: string
     project_name_filter?: string
     application_filter?: string
     limit?: number
@@ -191,7 +191,7 @@ export const ProjectService = {
       const status = options?.status ?? 'open'
       const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
       const skip = options?.skip ?? 0
-      const prefix = options?.project_id_prefix ?? ''
+      const prefix = options?.ngi_project_id ?? ''
       const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
       const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
 
