@@ -28,13 +28,14 @@ This name was chosen for the application as it aptly reflects the cold storage c
 - [Initial Setup](docs/development.md)
 - [Containerized setup and development](docs/container.md)
 - [Debugging](docs/debugging.md)
-- [Building the user interface](docs/ui.md)
 
 ### Guide to the application
 
 #### Overview
 
 - [Architecture overview](docs/architecture.md)
+- [Routing and pages](docs/routing.md)
+- [Building the user interface](docs/ui.md)
 - [Libraries and dependencies](docs/libraries.md)
 
 #### Data
