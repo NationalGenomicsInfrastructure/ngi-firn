@@ -12,8 +12,8 @@ definePageMeta({
 // Form schema: status uses 'any'; ngi_project_id / project_name_filter optional but must match regex when non-empty
 const searchFormSchema = toTypedSchema(z.object({
   status: z.enum(['any', 'open', 'closed']),
-  ngi_project_id: z.string().optional().refine((v) => !v || /^P[0-9]+$/.test(v), { message: 'P followed by digits (e.g. P1, P00017)' }),
-  project_name_filter: z.string().optional().refine((v) => !v || /^[\p{Lu}]\.[\p{L}]+_[0-9]{2}_[0-9]+$/u.test(v), { message: 'Format: Capital.Description_YY_NN' }),
+  ngi_project_id: z.string().optional().refine(v => !v || /^P[0-9]+$/.test(v), { message: 'P followed by digits (e.g. P1, P00017)' }),
+  project_name_filter: z.string().optional().refine(v => !v || /^[\p{Lu}]\.[\p{L}]+_[0-9]{2}_[0-9]+$/u.test(v), { message: 'Format: Capital.Description_YY_NN' }),
   application_filter: z.string().optional()
 }))
 
@@ -116,17 +116,26 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-3xl px-4 py-8 lg:px-8 sm:px-6">
+  <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
     <PageTitle
       title="Projects"
       description="View NGI projects in the database."
     />
 
-    <form
-      class="mb-6 space-y-4"
-      @submit.prevent="onValidating()"
+    <NCard
+      title="Find projects"
+      description="Search in StatusDB for projects matching your criteria."
+      card="outline-gray"
+      class="w-full"
+      :una="{
+        cardContent: 'space-y-4',
+        cardDescription: 'text-accent'
+      }"
     >
-      <div class="flex flex-wrap items-end gap-4">
+      <form
+        class="mb-6 flex flex-wrap items-end gap-4"
+        @submit.prevent="onValidating()"
+      >
         <NFormField
           name="status"
           label="Status"
@@ -180,8 +189,8 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
         <NButton type="submit">
           Search
         </NButton>
-      </div>
-    </form>
+      </form>
+    </NCard>
 
     <div
       v-if="isLoading"
@@ -202,10 +211,21 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
       >{{ error }}</pre>
     </div>
     <div
-      v-else-if="responseData"
-      class="overflow-auto rounded border border-gray-200 bg-gray-50 p-4"
+      v-else-if="responseData && responseData.available"
+      class="mt-6"
     >
-      <pre class="text-sm">{{ JSON.stringify(responseData, null, 2) }}</pre>
+      <TableProjectSummaryDisplay
+        :projects="responseData.items"
+        :loading="isLoading"
+      />
+    </div>
+    <div
+      v-else-if="responseData && !responseData.available"
+      class="rounded border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+    >
+      <p class="font-medium">
+        Projects database is not available.
+      </p>
     </div>
   </main>
 </template>
