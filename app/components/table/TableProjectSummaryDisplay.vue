@@ -58,14 +58,13 @@ const table = useTemplateRef<Table<FormattedProjectSummary>>('table')
 
 const relativeDates = ref(false)
 const includeWeekday = ref(false)
-const displayTime = ref(false)
 
 const formattedProjects = computed((): FormattedProjectSummary[] | undefined => {
   return props.projects?.map((project) => {
     const formatOptions = {
       relative: relativeDates.value,
       includeWeekday: includeWeekday.value,
-      time: displayTime.value
+      time: false
     }
     return {
       ...project,
@@ -80,38 +79,32 @@ const formattedProjects = computed((): FormattedProjectSummary[] | undefined => 
 watch(relativeDates, (isRelative) => {
   if (!isRelative) return
   if (includeWeekday.value) includeWeekday.value = false
-  if (displayTime.value) displayTime.value = false
 })
 
-watch([includeWeekday, displayTime], ([weekday, time]) => {
-  if (!(weekday || time)) return
+watch(includeWeekday, (isRelative) => {
+  if (!isRelative) return
   if (relativeDates.value) relativeDates.value = false
 })
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <NFormGroup
-      :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'"
-    >
-      <NSwitch
-        v-model="relativeDates"
-      />
-    </NFormGroup>
-    <NFormGroup
-      :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'"
-    >
-      <NSwitch
-        v-model="includeWeekday"
-      />
-    </NFormGroup>
-    <NFormGroup
-      :label="displayTime ? 'Time: show' : 'Time: hide'"
-    >
-      <NSwitch
-        v-model="displayTime"
-      />
-    </NFormGroup>
+  <div class="w-full flex justify-center mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-8">
+      <NFormGroup
+        :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'"
+      >
+        <NSwitch
+          v-model="relativeDates"
+        />
+      </NFormGroup>
+      <NFormGroup
+        :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'"
+      >
+        <NSwitch
+          v-model="includeWeekday"
+        />
+      </NFormGroup>
+    </div>
   </div>
   <div class="w-full overflow-x-auto">
     <NTable
@@ -137,27 +130,19 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
         {{ cell.row.original.open_dateFormatted }}
       </template>
       <template #project_name-cell="{ cell }">
-        <NAvatarGroup
-          :max="2"
+        <span
+          v-if="cell.row.original.projectNameFragments?.length"
+          class="inline-flex flex-wrap items-baseline gap-x-0.5"
         >
-          <NAvatar
-            v-if="cell.row.original.projectNameFragments[2]"
-            avatar="soft-gray"
-            size="xs lg:sm"
-            rounded="l-full r-none"
-            :label="cell.row.original.projectNameFragments[2]"
-          />
-          <NAvatar
-            v-if="cell.row.original.projectNameFragments[3]"
-            avatar="soft-primary"
-            size="xs lg:sm"
-            rounded="l-none r-full"
-            :label=" cell.row.original.projectNameFragments[3]"
-          />
-        </NAvatarGroup>
-        <h3 class="text-primary-500 dark:text-primary-200 font-semibold leading-none mt-2">
-          {{ cell.row.original.projectNameFragments[0] }} {{ cell.row.original.projectNameFragments[1] }}
-        </h3>
+          <span class="prose prose-primary">{{ cell.row.original.projectNameFragments[0] }}</span>
+          <span v-if="cell.row.original.projectNameFragments[1]">{{ cell.row.original.projectNameFragments[1] }}&nbsp;</span>
+          <template v-if="cell.row.original.projectNameFragments[2]">
+            <span class="prose-sm tabular-nums text-primary-300 dark:text-primary-200">{{ cell.row.original.projectNameFragments[2] }}</span>
+          </template> /
+          <template v-if="cell.row.original.projectNameFragments[3]">
+            <span class="prose-sm tabular-nums text-primary-300 dark:text-primary-200">{{ cell.row.original.projectNameFragments[3] }}</span>
+          </template>
+        </span>
       </template>
       <template #status-cell="{ cell }">
         <NBadge
