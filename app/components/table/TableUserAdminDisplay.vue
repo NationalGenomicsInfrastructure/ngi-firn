@@ -122,6 +122,8 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
       }"
       empty-text="No users"
       empty-icon="i-lucide-user-search"
+      enable-sorting
+      enable-multi-sort
     >
       <template #isAdmin-cell="{ cell }">
         <NBadge
@@ -138,14 +140,21 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
           <div class="flex flex-col items-center gap-2 flex-shrink-0">
             <NAvatarGroup :max="2">
               <NAvatar
-                v-if="row.original.googleAvatar"
                 :src="row.original.googleAvatar"
                 :alt="row.original.googleName"
-              />
+                size="sm:lg md:xl lg:2xl"
+                avatar="solid-primary"
+              >
+                <template #fallback>
+                  <span class="text-primary-200 dark:text-primary-100 font-extrabold"><NIcon name="i-lucide-snowflake" class="w-8 h-8" />F</span>
+                </template>
+              </NAvatar>
               <NAvatar
                 v-if="row.original.githubAvatar"
                 :src="row.original.githubAvatar"
                 :alt="row.original.githubName"
+                size="sm:xl md:2xl lg:3xl"
+                avatar="solid-primary"
               />
             </NAvatarGroup>
           </div>
