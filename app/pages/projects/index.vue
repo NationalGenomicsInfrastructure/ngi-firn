@@ -186,30 +186,28 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
             @update:model-value="(v: unknown) => setApplicationFilterValue((v as string) ?? '')"
           />
         </NFormField>
-        <NButton type="submit">
+        <NButton type="submit" leading="i-lucide-search" btn="soft-primary hover:outline-primary">
           Search
         </NButton>
       </form>
     </NCard>
 
-    <div
+    <NAlert
       v-if="isLoading"
-      class="flex justify-center items-center py-12"
-    >
-      Loading projects...
-    </div>
-    <div
+      alert="border-gray"
+      title="Loading projects..."
+      description="Fetching project list from the database."
+      icon="i-lucide-loader-2"
+      class="mt-6"
+    />
+    <NAlert
       v-else-if="isError"
-      class="rounded border border-red-200 bg-red-50 p-4 text-red-800"
-    >
-      <p class="font-medium">
-        Error loading projects
-      </p>
-      <pre
-        v-if="error"
-        class="mt-2 overflow-auto text-sm"
-      >{{ error }}</pre>
-    </div>
+      alert="border-error"
+      title="Error loading projects"
+      :description="error != null ? String(error) : 'Something went wrong. Please try again.'"
+      icon="i-lucide-alert-circle"
+      class="mt-6"
+    />
     <div
       v-else-if="responseData && responseData.available"
       class="mt-6"
@@ -219,13 +217,13 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
         :loading="isLoading"
       />
     </div>
-    <div
+    <NAlert
       v-else-if="responseData && !responseData.available"
-      class="rounded border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
-    >
-      <p class="font-medium">
-        Projects database is not available.
-      </p>
-    </div>
+      alert="border-warning"
+      title="Projects database is not available."
+      description="The projects database is currently not available. Please try again later."
+      icon="i-lucide-database-off"
+      class="mt-6"
+    />
   </main>
 </template>
