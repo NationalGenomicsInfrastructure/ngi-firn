@@ -156,6 +156,23 @@ watch(includeWeekday, (isRelative) => {
 
       <template #expanded="{ row }">
         <div class="p-2 flex flex-row items-start gap-4">
+          <!-- Column 1: Avatars and badges -->
+          <div class="flex flex-col items-center gap-2 flex-shrink-0">
+            <NAvatarGroup :max="2">
+              <NAvatar
+                :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+                :label="row.original.projectNameFragments[2] ?? '—'"
+                size="sm:md md:lg lg:xl"
+              />
+              <NAvatar 
+              :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+              :label="row.original.projectNameFragments[3] ?? '—'" 
+              size="sm:lg md:xl lg:2xl" 
+              />
+            </NAvatarGroup>
+          </div>
+
+          <!-- Column 2: Textual information -->
           <div class="flex flex-col gap-2 text-sm flex-1">
             <div>
               <span class="font-semibold mr-2">Affiliation:</span>
@@ -169,6 +186,10 @@ watch(includeWeekday, (isRelative) => {
               <span class="font-semibold mr-2">Priority:</span>
               <span> {{ row.original.priority ?? '—' }}</span>
             </div>
+          </div>
+
+          <!-- Column 3: Dates -->
+          <div class="flex flex-col gap-2 text-sm flex-1">
             <div>
               <span class="font-semibold mr-2">Open date:</span>
               <span> {{ row.original.open_dateFormatted ?? '—' }}</span>
@@ -182,6 +203,13 @@ watch(includeWeekday, (isRelative) => {
               <span> {{ row.original.close_dateFormatted ?? '—' }}</span>
             </div>
           </div>
+
+          <!-- Column 4: Button -->
+          <div class="flex flex-col items-end flex-shrink-0 gap-2">
+            &nbsp;
+          </div>
+        </div>
+        <div class="p-2 flex flex-row items-start gap-4">
         </div>
       </template>
     </NTable>

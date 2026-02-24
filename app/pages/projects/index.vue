@@ -13,7 +13,10 @@ definePageMeta({
 const searchFormSchema = toTypedSchema(z.object({
   status: z.enum(['any', 'open', 'closed']),
   ngi_project_id: z.string().optional().refine(v => !v || /^P[0-9]+$/.test(v), { message: 'P followed by digits (e.g. P1, P00017)' }),
-  project_name_filter: z.string().optional().refine(v => !v || /^[\p{Lu}]\.[\p{L}]+_[0-9]{2}_[0-9]+$/u.test(v), { message: 'Format: Capital.Description_YY_NN' }),
+  project_name_filter: z.string().optional().refine(
+    v => !v || /^[\p{Lu}]\.[\p{L}]+(?:_[0-9]{2}(?:_[0-9]+)?)?$/u.test(v),
+    { message: 'Format: Capital.Name_YY_NN' }
+  ),
   application_filter: z.string().optional()
 }))
 
