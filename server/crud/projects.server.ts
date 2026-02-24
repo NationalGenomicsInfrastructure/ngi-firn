@@ -98,6 +98,7 @@ export const ProjectService = {
 
   /**
    * List/search projects using the summary view. Key is [status, project_id].
+   * When status is omitted ("Any"), runs two queries (open + closed) and merges results ordered by modification_time desc.
    * Optionally filter in-memory by project_name or application when view does not index them.
    */
   async listProjectsSummary(options?: {
@@ -109,44 +110,15 @@ export const ProjectService = {
     skip?: number
   }): Promise<{ items: ProjectSummaryListItem[], total_rows?: number, offset?: number }> {
     try {
-      const status = options?.status ?? 'open'
+      const status = options?.status
       const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
       const skip = options?.skip ?? 0
       const prefix = options?.ngi_project_id ?? ''
       const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
-      const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
-
-      const startkey: SummaryViewKey = [status, prefix]
-      const endkey: SummaryViewKey = [status, prefix + '\uffff']
-
-      const result = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
-        PROJECT_DESIGN_DOC,
-        'summary',
-        {
-          startkey: startkey as unknown as SummaryViewKey,
-          endkey: endkey as unknown as SummaryViewKey,
-          limit: fetchLimit,
-          skip,
-          include_docs: false
-        }
-      )
-
-      let rows = result.rows
       const project_name_filter = options?.project_name_filter?.trim().toLowerCase()
       const application_filter = options?.application_filter?.trim().toLowerCase()
-      if (project_name_filter || application_filter) {
-        rows = rows.filter((r) => {
-          const v = r.value
-          if (project_name_filter && (v.project_name ?? '').toLowerCase().indexOf(project_name_filter) < 0)
-            return false
-          if (application_filter && (v.application ?? '').toLowerCase().indexOf(application_filter) < 0)
-            return false
-          return true
-        })
-      }
-      const limited = rows.slice(0, limit)
 
-      const items: ProjectSummaryListItem[] = limited.map((row) => {
+      const mapRowToItem = (row: { key: SummaryViewKey, value: SummaryViewValue }): ProjectSummaryListItem => {
         const v = row.value
         const [statusPart, project_id] = Array.isArray(row.key) ? row.key : [undefined, undefined]
         return {
@@ -162,57 +134,75 @@ export const ProjectService = {
           priority: v.priority ?? undefined,
           modification_time: v.modification_time
         }
+      }
+
+      if (status) {
+        // Single status: one query
+        const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
+        const result = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+          PROJECT_DESIGN_DOC,
+          'summary',
+          {
+            startkey: [status, prefix] as SummaryViewKey,
+            endkey: [status, prefix + '\uffff'] as SummaryViewKey,
+            limit: fetchLimit,
+            skip,
+            include_docs: false
+          }
+        )
+        let rows = result.rows
+        if (project_name_filter || application_filter) {
+          rows = rows.filter((r) => {
+            const v = r.value
+            if (project_name_filter && (v.project_name ?? '').toLowerCase().indexOf(project_name_filter) < 0)
+              return false
+            if (application_filter && (v.application ?? '').toLowerCase().indexOf(application_filter) < 0)
+              return false
+            return true
+          })
+        }
+        const limited = rows.slice(0, limit)
+        return {
+          items: limited.map(mapRowToItem),
+          total_rows: result.total_rows,
+          offset: result.offset
+        }
+      }
+
+      // "Any" status: two queries (open + closed), merge and sort by modification_time desc
+      const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : skip + limit
+      const [openResult, closedResult] = await Promise.all([
+        projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+          PROJECT_DESIGN_DOC,
+          'summary',
+          {
+            startkey: ['open', prefix] as SummaryViewKey,
+            endkey: ['open', prefix + '\uffff'] as SummaryViewKey,
+            limit: fetchLimit,
+            skip: 0,
+            include_docs: false
+          }
+        ),
+        projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+          PROJECT_DESIGN_DOC,
+          'summary',
+          {
+            startkey: ['closed', prefix] as SummaryViewKey,
+            endkey: ['closed', prefix + '\uffff'] as SummaryViewKey,
+            limit: fetchLimit,
+            skip: 0,
+            include_docs: false
+          }
+        )
+      ])
+
+      const merged = [...openResult.rows, ...closedResult.rows].sort((a, b) => {
+        const ma = a.value.modification_time ?? ''
+        const mb = b.value.modification_time ?? ''
+        return mb.localeCompare(ma)
       })
 
-      return {
-        items,
-        total_rows: result.total_rows,
-        offset: result.offset
-      }
-    }
-    catch {
-      return { items: [], total_rows: undefined, offset: undefined }
-    }
-  },
-
-  /**
-   * List/search projects with full summary view value (details, project_summary, order_details, etc.).
-   * Same filters as listProjectsSummary; use for a subset (e.g. bookmarked projects) when details are needed.
-   */
-  async listProjectsSummaryWithDetails(options?: {
-    status?: 'open' | 'closed'
-    ngi_project_id?: string
-    project_name_filter?: string
-    application_filter?: string
-    limit?: number
-    skip?: number
-  }): Promise<{ items: ProjectSummaryWithDetailsItem[], total_rows?: number, offset?: number }> {
-    try {
-      const status = options?.status ?? 'open'
-      const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
-      const skip = options?.skip ?? 0
-      const prefix = options?.ngi_project_id ?? ''
-      const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
-      const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
-
-      const startkey: SummaryViewKey = [status, prefix]
-      const endkey: SummaryViewKey = [status, prefix + '\uffff']
-
-      const result = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
-        PROJECT_DESIGN_DOC,
-        'summary',
-        {
-          startkey: startkey as unknown as SummaryViewKey,
-          endkey: endkey as unknown as SummaryViewKey,
-          limit: fetchLimit,
-          skip,
-          include_docs: false
-        }
-      )
-
-      let rows = result.rows
-      const project_name_filter = options?.project_name_filter?.trim().toLowerCase()
-      const application_filter = options?.application_filter?.trim().toLowerCase()
+      let rows = merged
       if (project_name_filter || application_filter) {
         rows = rows.filter((r) => {
           const v = r.value
@@ -223,9 +213,42 @@ export const ProjectService = {
           return true
         })
       }
-      const limited = rows.slice(0, limit)
+      const paged = rows.slice(skip, skip + limit)
+      const total_rows = (openResult.total_rows ?? 0) + (closedResult.total_rows ?? 0)
 
-      const items: ProjectSummaryWithDetailsItem[] = limited.map((row) => {
+      return {
+        items: paged.map(mapRowToItem),
+        total_rows,
+        offset: skip
+      }
+    }
+    catch {
+      return { items: [], total_rows: undefined, offset: undefined }
+    }
+  },
+
+  /**
+   * List/search projects with full summary view value (details, project_summary, order_details, etc.).
+   * Same filters as listProjectsSummary; when status is omitted ("Any"), runs two queries and merges by modification_time desc.
+   */
+  async listProjectsSummaryWithDetails(options?: {
+    status?: 'open' | 'closed'
+    ngi_project_id?: string
+    project_name_filter?: string
+    application_filter?: string
+    limit?: number
+    skip?: number
+  }): Promise<{ items: ProjectSummaryWithDetailsItem[], total_rows?: number, offset?: number }> {
+    try {
+      const status = options?.status
+      const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
+      const skip = options?.skip ?? 0
+      const prefix = options?.ngi_project_id ?? ''
+      const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
+      const project_name_filter = options?.project_name_filter?.trim().toLowerCase()
+      const application_filter = options?.application_filter?.trim().toLowerCase()
+
+      const mapRowToDetailsItem = (row: { key: SummaryViewKey, value: SummaryViewValue }): ProjectSummaryWithDetailsItem => {
         const v = row.value
         const [statusPart, project_id] = Array.isArray(row.key) ? row.key : [undefined, undefined]
         return {
@@ -233,12 +256,90 @@ export const ProjectService = {
           status: statusPart as string,
           ...v
         }
+      }
+
+      if (status) {
+        const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : limit
+        const result = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+          PROJECT_DESIGN_DOC,
+          'summary',
+          {
+            startkey: [status, prefix] as SummaryViewKey,
+            endkey: [status, prefix + '\uffff'] as SummaryViewKey,
+            limit: fetchLimit,
+            skip,
+            include_docs: false
+          }
+        )
+        let rows = result.rows
+        if (project_name_filter || application_filter) {
+          rows = rows.filter((r) => {
+            const v = r.value
+            if (project_name_filter && (v.project_name ?? '').toLowerCase().indexOf(project_name_filter) < 0)
+              return false
+            if (application_filter && (v.application ?? '').toLowerCase().indexOf(application_filter) < 0)
+              return false
+            return true
+          })
+        }
+        const limited = rows.slice(0, limit)
+        return {
+          items: limited.map(mapRowToDetailsItem),
+          total_rows: result.total_rows,
+          offset: result.offset
+        }
+      }
+
+      const fetchLimit = hasFilters ? Math.min(limit * 10, 2000) : skip + limit
+      const [openResult, closedResult] = await Promise.all([
+        projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+          PROJECT_DESIGN_DOC,
+          'summary',
+          {
+            startkey: ['open', prefix] as SummaryViewKey,
+            endkey: ['open', prefix + '\uffff'] as SummaryViewKey,
+            limit: fetchLimit,
+            skip: 0,
+            include_docs: false
+          }
+        ),
+        projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+          PROJECT_DESIGN_DOC,
+          'summary',
+          {
+            startkey: ['closed', prefix] as SummaryViewKey,
+            endkey: ['closed', prefix + '\uffff'] as SummaryViewKey,
+            limit: fetchLimit,
+            skip: 0,
+            include_docs: false
+          }
+        )
+      ])
+
+      const merged = [...openResult.rows, ...closedResult.rows].sort((a, b) => {
+        const ma = a.value.modification_time ?? ''
+        const mb = b.value.modification_time ?? ''
+        return mb.localeCompare(ma)
       })
 
+      let rows = merged
+      if (project_name_filter || application_filter) {
+        rows = rows.filter((r) => {
+          const v = r.value
+          if (project_name_filter && (v.project_name ?? '').toLowerCase().indexOf(project_name_filter) < 0)
+            return false
+          if (application_filter && (v.application ?? '').toLowerCase().indexOf(application_filter) < 0)
+            return false
+          return true
+        })
+      }
+      const paged = rows.slice(skip, skip + limit)
+      const total_rows = (openResult.total_rows ?? 0) + (closedResult.total_rows ?? 0)
+
       return {
-        items,
-        total_rows: result.total_rows,
-        offset: result.offset
+        items: paged.map(mapRowToDetailsItem),
+        total_rows,
+        offset: skip
       }
     }
     catch {
