@@ -27,7 +27,7 @@ const orderFields = computed(() => {
   />
   <NCard
     v-else
-    card="soft-gray"
+    card="outline-gray"
     class="w-full"
   >
     <div class="flex flex-wrap items-center gap-3 mb-4">
@@ -41,8 +41,9 @@ const orderFields = computed(() => {
       />
       <NBadge
         v-if="orderDetails.site"
-        badge="soft-gray"
+        badge="solid-gray"
         :label="orderDetails.site"
+        icon="i-lucide-building"
       />
     </div>
 
@@ -50,52 +51,107 @@ const orderFields = computed(() => {
       v-if="orderDetails.owner"
       class="mb-4"
     >
-      <h4 class="text-sm font-semibold text-muted mb-2">
-        Owner
-      </h4>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-2 text-sm">
+      <div class="flex items-center gap-2 mb-3">
+        <NIcon
+          name="i-lucide-user-circle"
+          class="text-muted"
+        />
+        <h4 class="text-sm font-semibold">
+          Owner
+        </h4>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-sm">
         <div>
-          <span class="font-medium text-muted">Name</span>
-          <p>{{ orderDetails.owner.name ?? '—' }}</p>
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <NIcon
+              name="i-lucide-user"
+              class="text-primary-400 dark:text-primary-600 text-xs"
+            />
+            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Name</span>
+          </div>
+          <p class="font-medium pl-5">
+            {{ orderDetails.owner.name ?? '—' }}
+          </p>
         </div>
         <div>
-          <span class="font-medium text-muted">Email</span>
-          <p>{{ orderDetails.owner.email ?? '—' }}</p>
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <NIcon
+              name="i-lucide-mail"
+              class="text-primary-400 dark:text-primary-600 text-xs"
+            />
+            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Email</span>
+          </div>
+          <p class="font-medium pl-5">
+            {{ orderDetails.owner.email ?? '—' }}
+          </p>
         </div>
         <div>
-          <span class="font-medium text-muted">Affiliation</span>
-          <p>{{ orderDetails.owner.affiliation ?? '—' }}</p>
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <NIcon
+              name="i-lucide-building-2"
+              class="text-primary-400 dark:text-primary-600 text-xs"
+            />
+            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Affiliation</span>
+          </div>
+          <p class="font-medium pl-5">
+            {{ orderDetails.owner.affiliation ?? '—' }}
+          </p>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-4">
+    <NSeparator class="my-4" />
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm mb-4">
       <div>
-        <span class="font-medium text-muted">Created</span>
-        <p>{{ formatDate(orderDetails.created) }}</p>
+        <div class="flex items-center gap-1.5 mb-0.5">
+          <NIcon
+            name="i-lucide-calendar-plus"
+            class="text-primary-400 dark:text-primary-600 text-xs"
+          />
+          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Created</span>
+        </div>
+        <p class="font-medium pl-5">
+          {{ formatDate(orderDetails.created) }}
+        </p>
       </div>
       <div>
-        <span class="font-medium text-muted">Modified</span>
-        <p>{{ formatDate(orderDetails.modified) }}</p>
+        <div class="flex items-center gap-1.5 mb-0.5">
+          <NIcon
+            name="i-lucide-calendar-check"
+            class="text-primary-400 dark:text-primary-600 text-xs"
+          />
+          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Modified</span>
+        </div>
+        <p class="font-medium pl-5">
+          {{ formatDate(orderDetails.modified) }}
+        </p>
       </div>
     </div>
 
-    <div
-      v-if="orderFields.length"
-      class="mt-2"
-    >
-      <h4 class="text-sm font-semibold text-muted mb-2">
-        Order fields
-      </h4>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+    <template v-if="orderFields.length">
+      <NSeparator class="my-4" />
+
+      <div class="flex items-center gap-2 mb-3">
+        <NIcon
+          name="i-lucide-clipboard-list"
+          class="text-muted"
+        />
+        <h4 class="text-sm font-semibold">
+          Order fields
+        </h4>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
         <div
           v-for="field in orderFields"
           :key="field.label"
         >
-          <span class="font-medium text-muted">{{ field.label }}</span>
-          <p>{{ field.value }}</p>
+          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">{{ field.label }}</span>
+          <p class="font-medium mt-0.5">
+            {{ field.value }}
+          </p>
         </div>
       </div>
-    </div>
+    </template>
   </NCard>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQuery } from '@pinia/colada'
-import type { ProjectDetails, OrderDetails, ProjectSummary, ProjectStatusFields, ProjectSample } from '~~/types/projects'
+import type { ProjectDetails, OrderDetails, ProjectSummary, ProjectStatusFields, ProjectSample, ProjectPriority } from '~~/types/projects'
 import { projectQuery } from '~/utils/queries/projects'
 
 definePageMeta({
@@ -47,6 +47,36 @@ const projectOrderDetails = computed(() =>
 )
 const projectSamples = computed((): Record<string, ProjectSample> =>
   (project.value?.samples as Record<string, ProjectSample>) ?? {}
+)
+const projectPriority = computed(() =>
+  project.value?.priority as ProjectPriority
+)
+const projectOpenDate = computed(() =>
+  project.value?.open_date as string | undefined
+)
+const projectCloseDate = computed(() =>
+  project.value?.close_date as string | undefined
+)
+const projectNoOfSamples = computed(() =>
+  project.value?.no_of_samples as number | undefined
+)
+const projectApplication = computed(() =>
+  project.value?.application as string | null | undefined
+)
+const projectAffiliation = computed(() =>
+  project.value?.affiliation as string | undefined
+)
+const projectContact = computed(() =>
+  project.value?.contact as string | null | undefined
+)
+const projectDeliveryType = computed(() =>
+  project.value?.delivery_type as string | undefined
+)
+const projectReferenceGenome = computed(() =>
+  project.value?.reference_genome as string | undefined
+)
+const projectSummaryLinks = computed(() =>
+  project.value?.project_summary_links as [string, string][] | undefined
 )
 </script>
 
@@ -122,30 +152,26 @@ const projectSamples = computed((): Record<string, ProjectSample> =>
         </NTabsList>
 
         <NTabsContent value="overview">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <div class="mt-6">
             <ProjectOverview
               :project-name="project.project_name"
               :project-id="project.project_id"
               :status-fields="projectStatusFields"
-              :priority="project.priority"
-              :open-date="project.open_date"
-              :close-date="project.close_date"
-              :no-of-samples="project.no_of_samples"
-              :application="project.application"
-              :affiliation="project.affiliation"
-              :contact="project.contact"
-              :delivery-type="project.delivery_type"
-              :reference-genome="project.reference_genome"
-            />
-            <ProjectStatus
-              v-if="projectStatusFields"
-              :status-fields="projectStatusFields"
+              :priority="projectPriority"
+              :open-date="projectOpenDate"
+              :close-date="projectCloseDate"
+              :no-of-samples="projectNoOfSamples"
+              :application="projectApplication"
+              :affiliation="projectAffiliation"
+              :contact="projectContact"
+              :delivery-type="projectDeliveryType"
+              :reference-genome="projectReferenceGenome"
             />
           </div>
           <div class="mt-6">
             <LazyProjectSummary
               :project-summary="projectSummary"
-              :project-summary-links="project.project_summary_links"
+              :project-summary-links="projectSummaryLinks"
             />
           </div>
         </NTabsContent>

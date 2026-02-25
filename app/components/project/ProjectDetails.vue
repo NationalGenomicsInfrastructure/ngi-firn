@@ -190,13 +190,15 @@ const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))
       :default-value="defaultOpenGroups"
     >
       <template #content="{ item }">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div
             v-for="entry in getGroupEntries(item.value)"
             :key="entry.key"
           >
-            <span class="font-medium text-muted">{{ entry.label }}</span>
-            <p>{{ entry.value }}</p>
+            <span class="text-xs uppercase tracking-wide text-muted font-medium">{{ entry.label }}</span>
+            <p class="font-medium mt-0.5">
+              {{ entry.value }}
+            </p>
           </div>
         </div>
       </template>

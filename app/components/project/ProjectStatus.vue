@@ -41,12 +41,14 @@ const activeFlags = computed(() => {
         v-if="statusFields.status"
         :badge="statusVariant"
         :label="statusFields.status"
+        leading="i-lucide-notebook-pen"
       />
       <NBadge
         v-for="flag in activeFlags"
         :key="flag.key"
         :badge="flag.variant"
         :label="flag.label"
+        leading="i-lucide-flag"
       />
       <span
         v-if="!statusFields.status && activeFlags.length === 0"

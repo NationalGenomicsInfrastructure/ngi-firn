@@ -21,6 +21,14 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
+function roundNum(val: unknown, decimals = 2): string {
+  if (val == null) return '—'
+  const n = Number(val)
+  if (Number.isNaN(n)) return String(val)
+  if (Number.isInteger(n)) return String(n)
+  return n.toFixed(decimals)
+}
+
 const TABLE_HEAD_STYLE = 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
 
 const columns: ColumnDef<SampleRow>[] = [
@@ -80,9 +88,7 @@ const tableData = computed((): SampleRow[] => {
     passedInitialQc: sample.details?.passed_initial_qc ?? '—',
     passedLibraryQc: sample.details?.passed_library_qc ?? '—',
     passedSequencingQc: sample.details?.passed_sequencing_qc ?? '—',
-    totalReads: sample.details?.['total_reads_(m)'] != null
-      ? String(sample.details['total_reads_(m)'])
-      : '—'
+    totalReads: roundNum(sample.details?.['total_reads_(m)'])
   }))
 })
 
@@ -123,9 +129,9 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       <template #statusAuto-cell="{ cell }">
         <NBadge
           :badge="cell.row.original.statusAuto === 'Finished'
-            ? 'soft-gray'
+            ? 'solid-success'
             : cell.row.original.statusAuto === 'In Progress'
-              ? 'soft-primary'
+              ? 'solid-primary'
               : 'outline-gray'"
           :label="cell.row.original.statusAuto"
         />
@@ -133,11 +139,11 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       <template #statusManual-cell="{ cell }">
         <NBadge
           :badge="cell.row.original.statusManual === 'Finished'
-            ? 'soft-gray'
+            ? 'solid-success'
             : cell.row.original.statusManual === 'Aborted'
               ? 'solid-error'
               : cell.row.original.statusManual === 'In Progress'
-                ? 'soft-primary'
+                ? 'solid-primary'
                 : 'outline-gray'"
           :label="cell.row.original.statusManual"
         />
@@ -145,8 +151,9 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       <template #passedInitialQc-cell="{ cell }">
         <NBadge
           v-if="cell.row.original.passedInitialQc !== '—'"
-          :badge="cell.row.original.passedInitialQc === 'True' ? 'soft-primary' : 'outline-gray'"
-          :label="cell.row.original.passedInitialQc"
+          :badge="cell.row.original.passedInitialQc === 'True' ? 'solid-success' : 'solid-error'"
+          :label="cell.row.original.passedInitialQc === 'True' ? 'Passed' : 'Failed'"
+          :icon="cell.row.original.passedInitialQc === 'True' ? 'i-lucide-check' : 'i-lucide-x'"
         />
         <span
           v-else
@@ -156,8 +163,9 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       <template #passedLibraryQc-cell="{ cell }">
         <NBadge
           v-if="cell.row.original.passedLibraryQc !== '—'"
-          :badge="cell.row.original.passedLibraryQc === 'True' ? 'soft-primary' : 'outline-gray'"
-          :label="cell.row.original.passedLibraryQc"
+          :badge="cell.row.original.passedLibraryQc === 'True' ? 'solid-success' : 'solid-error'"
+          :label="cell.row.original.passedLibraryQc === 'True' ? 'Passed' : 'Failed'"
+          :icon="cell.row.original.passedLibraryQc === 'True' ? 'i-lucide-check' : 'i-lucide-x'"
         />
         <span
           v-else
@@ -166,70 +174,113 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       </template>
 
       <template #expanded="{ row }">
-        <div class="p-4 space-y-3 text-sm">
+        <div class="p-4 text-sm bg-muted/30 rounded-md">
           <template v-if="getSampleByRow(row.original)">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2">
+            <div class="flex items-center gap-2 mb-3">
+              <NIcon
+                name="i-lucide-info"
+                class="text-muted"
+              />
+              <h5 class="font-semibold text-sm">
+                Sample details
+              </h5>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
               <div>
-                <span class="font-semibold text-muted">Plate ID</span>
-                <p>{{ getSampleByRow(row.original)?.initial_plate_id ?? '—' }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">Plate ID</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.initial_plate_id ?? '—' }}
+                </p>
               </div>
               <div>
-                <span class="font-semibold text-muted">Well location</span>
-                <p>{{ getSampleByRow(row.original)?.well_location ?? '—' }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">Well location</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.well_location ?? '—' }}
+                </p>
               </div>
               <div>
-                <span class="font-semibold text-muted">First initial QC</span>
-                <p>{{ getSampleByRow(row.original)?.first_initial_qc_start_date ?? '—' }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">First initial QC</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.first_initial_qc_start_date ?? '—' }}
+                </p>
               </div>
               <div>
-                <span class="font-semibold text-muted">First prep start</span>
-                <p>{{ getSampleByRow(row.original)?.first_prep_start_date ?? '—' }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">First prep start</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.first_prep_start_date ?? '—' }}
+                </p>
               </div>
               <div>
-                <span class="font-semibold text-muted">Finished library</span>
-                <p>{{ getSampleByRow(row.original)?.isFinishedLib != null ? String(getSampleByRow(row.original)!.isFinishedLib) : '—' }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">Finished library</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.isFinishedLib != null ? (getSampleByRow(row.original)!.isFinishedLib ? 'Yes' : 'No') : '—' }}
+                </p>
               </div>
               <div v-if="getSampleByRow(row.original)?.details?.species_name">
-                <span class="font-semibold text-muted">Species</span>
-                <p>{{ getSampleByRow(row.original)?.details?.species_name }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">Species</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.details?.species_name }}
+                </p>
               </div>
               <div v-if="getSampleByRow(row.original)?.details?.tissue_type">
-                <span class="font-semibold text-muted">Tissue type</span>
-                <p>{{ getSampleByRow(row.original)?.details?.tissue_type }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">Tissue type</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.details?.tissue_type }}
+                </p>
               </div>
               <div v-if="getSampleByRow(row.original)?.details?.storage_type">
-                <span class="font-semibold text-muted">Storage</span>
-                <p>{{ getSampleByRow(row.original)?.details?.storage_type }}</p>
+                <span class="text-xs uppercase tracking-wide text-muted font-medium">Storage</span>
+                <p class="font-medium mt-0.5">
+                  {{ getSampleByRow(row.original)?.details?.storage_type }}
+                </p>
               </div>
             </div>
 
             <div
               v-if="getSampleByRow(row.original)?.initial_qc"
-              class="mt-3"
+              class="mt-4"
             >
-              <h5 class="font-semibold text-muted mb-1">
-                Initial QC
-              </h5>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2">
+              <NSeparator class="mb-3" />
+              <div class="flex items-center gap-2 mb-3">
+                <NIcon
+                  name="i-lucide-flask-conical"
+                  class="text-muted"
+                />
+                <h5 class="font-semibold text-sm">
+                  Initial QC
+                </h5>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.initial_qc_status">
-                  <span class="font-medium text-muted">QC status</span>
-                  <p>{{ getSampleByRow(row.original)?.initial_qc?.initial_qc_status }}</p>
+                  <span class="text-xs uppercase tracking-wide text-muted font-medium">QC status</span>
+                  <p class="font-medium mt-0.5">
+                    {{ getSampleByRow(row.original)?.initial_qc?.initial_qc_status }}
+                  </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.concentration != null">
-                  <span class="font-medium text-muted">Concentration</span>
-                  <p>{{ getSampleByRow(row.original)?.initial_qc?.concentration }} {{ getSampleByRow(row.original)?.initial_qc?.conc_units ?? '' }}</p>
+                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Concentration</span>
+                  <p class="font-medium mt-0.5">
+                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.concentration) }} {{ getSampleByRow(row.original)?.initial_qc?.conc_units ?? '' }}
+                  </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.['volume_(ul)'] != null">
-                  <span class="font-medium text-muted">Volume (ul)</span>
-                  <p>{{ getSampleByRow(row.original)?.initial_qc?.['volume_(ul)'] }}</p>
+                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Volume (ul)</span>
+                  <p class="font-medium mt-0.5">
+                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['volume_(ul)']) }}
+                  </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.['size_(bp)'] != null">
-                  <span class="font-medium text-muted">Size (bp)</span>
-                  <p>{{ getSampleByRow(row.original)?.initial_qc?.['size_(bp)'] }}</p>
+                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Size (bp)</span>
+                  <p class="font-medium mt-0.5">
+                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['size_(bp)'], 0) }}
+                  </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.['amount_(ng)'] != null">
-                  <span class="font-medium text-muted">Amount (ng)</span>
-                  <p>{{ getSampleByRow(row.original)?.initial_qc?.['amount_(ng)'] }}</p>
+                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Amount (ng)</span>
+                  <p class="font-medium mt-0.5">
+                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['amount_(ng)']) }}
+                  </p>
                 </div>
               </div>
             </div>
