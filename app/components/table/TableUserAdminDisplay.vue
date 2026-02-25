@@ -135,8 +135,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
       </template>
 
       <template #expanded="{ row }">
-        <div class="p-2 flex flex-row items-start gap-4">
-          <!-- Column 1: Avatars and badges -->
+        <div class="p-3 flex flex-col sm:flex-row items-start gap-4">
           <div class="flex flex-col items-center gap-2 flex-shrink-0">
             <NAvatarGroup :max="2">
               <NAvatar
@@ -146,7 +145,10 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
                 avatar="solid-primary"
               >
                 <template #fallback>
-                  <span class="text-primary-200 dark:text-primary-100 font-extrabold"><NIcon name="i-lucide-snowflake" class="w-8 h-8" />F</span>
+                  <span class="text-primary-200 dark:text-primary-100 font-extrabold"><NIcon
+                    name="i-lucide-snowflake"
+                    class="w-8 h-8"
+                  />F</span>
                 </template>
               </NAvatar>
               <NAvatar
@@ -159,37 +161,75 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
             </NAvatarGroup>
           </div>
 
-          <!-- Column 2: Textual information -->
-          <div class="flex flex-col gap-2 text-sm flex-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 text-sm flex-1 ml-10">
             <div>
-              <span class="font-semibold mr-2">Firn ID:</span>
-              <span> {{ row.original.firnId ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-snowflake"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Firn ID</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.firnId ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Google ID:</span>
-              <span> {{ row.original.googleId ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-fingerprint"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Google ID</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.googleId ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Google E-Mail:</span>
-              <span> {{ row.original.googleEmail ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-mail"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Google E-Mail</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.googleEmail ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">GitHub ID:</span>
-              <NLink
-                :to="row.original.githubUrl"
-                :label="row.original.githubId ?? 'GitHub not linked'"
-                :disabled="!row.original.githubUrl"
-                active-class="text-primary"
-                external
-              />
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-github"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">GitHub ID</span>
+              </div>
+              <p class="font-medium pl-5">
+                <NLink
+                  :to="row.original.githubUrl"
+                  :label="row.original.githubId ?? 'GitHub not linked'"
+                  :disabled="!row.original.githubUrl"
+                  active-class="text-primary"
+                  external
+                />
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Tokens:</span>
-              <span> {{ row.original.tokens ? row.original.tokens.length : 0 }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-key-round"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Tokens</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.tokens ? row.original.tokens.length : 0 }}
+              </p>
             </div>
           </div>
 
-          <!-- Column 3: Button -->
           <div class="flex flex-col items-end flex-shrink-0 gap-2">
             <DialogSetUserPermissions
               v-model:allow-login="row.original.allowLogin"

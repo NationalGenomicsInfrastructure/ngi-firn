@@ -164,43 +164,91 @@ watch(includeWeekday, (isRelative) => {
                 :label="row.original.projectNameFragments[2] ?? '—'"
                 size="sm:md md:lg lg:xl"
               />
-              <NAvatar 
-              :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
-              :label="row.original.projectNameFragments[3] ?? '—'" 
-              size="sm:lg md:xl lg:2xl" 
+              <NAvatar
+                :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+                :label="row.original.projectNameFragments[3] ?? '—'"
+                size="sm:lg md:xl lg:2xl"
               />
             </NAvatarGroup>
           </div>
 
           <!-- Column 2: Textual information -->
-          <div class="flex flex-col gap-2 text-sm flex-1">
+          <div class="flex flex-col gap-3 text-sm flex-1 ml-10">
             <div>
-              <span class="font-semibold mr-2">Affiliation:</span>
-              <span> {{ row.original.affiliation ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-building-2"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Affiliation</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.affiliation ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Contact:</span>
-              <span> {{ row.original.contact ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-user"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Contact</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.contact ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Priority:</span>
-              <span> {{ row.original.priority ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-signal"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Priority</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.priority ?? '—' }}
+              </p>
             </div>
           </div>
 
           <!-- Column 3: Dates -->
-          <div class="flex flex-col gap-2 text-sm flex-1">
+          <div class="flex flex-col gap-3 text-sm flex-1">
             <div>
-              <span class="font-semibold mr-2">Open date:</span>
-              <span> {{ row.original.open_dateFormatted ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-calendar"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Open date</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.open_dateFormatted ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Modification time:</span>
-              <span> {{ row.original.modification_timeFormatted ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-clock"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Modification time</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.modification_timeFormatted ?? '—' }}
+              </p>
             </div>
             <div>
-              <span class="font-semibold mr-2">Close date:</span>
-              <span> {{ row.original.close_dateFormatted ?? '—' }}</span>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <NIcon
+                  name="i-lucide-calendar-check"
+                  class="text-primary-400 dark:text-primary-600 text-xs"
+                />
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Close date</span>
+              </div>
+              <p class="font-medium pl-5">
+                {{ row.original.close_dateFormatted ?? '—' }}
+              </p>
             </div>
           </div>
 
@@ -215,8 +263,7 @@ watch(includeWeekday, (isRelative) => {
             />
           </div>
         </div>
-        <div class="p-2 flex flex-row items-start gap-4">
-        </div>
+        <div class="p-2 flex flex-row items-start gap-4" />
       </template>
     </NTable>
     <div

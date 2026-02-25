@@ -188,6 +188,10 @@ const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))
       :items="accordionItems"
       type="multiple"
       :default-value="defaultOpenGroups"
+      :_accordion-trigger="{
+        btn: 'solid-gray',
+        rounded: 'none',
+      }"
     >
       <template #content="{ item }">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -195,7 +199,7 @@ const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))
             v-for="entry in getGroupEntries(item.value)"
             :key="entry.key"
           >
-            <span class="text-xs uppercase tracking-wide text-muted font-medium">{{ entry.label }}</span>
+            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">{{ entry.label }}</span>
             <p class="font-medium mt-0.5">
               {{ entry.value }}
             </p>

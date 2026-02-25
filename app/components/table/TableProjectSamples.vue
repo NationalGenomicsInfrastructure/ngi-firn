@@ -188,49 +188,49 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
               <div>
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">Plate ID</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Plate ID</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.initial_plate_id ?? '—' }}
                 </p>
               </div>
               <div>
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">Well location</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Well location</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.well_location ?? '—' }}
                 </p>
               </div>
               <div>
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">First initial QC</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">First initial QC</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.first_initial_qc_start_date ?? '—' }}
                 </p>
               </div>
               <div>
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">First prep start</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">First prep start</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.first_prep_start_date ?? '—' }}
                 </p>
               </div>
               <div>
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">Finished library</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Finished library</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.isFinishedLib != null ? (getSampleByRow(row.original)!.isFinishedLib ? 'Yes' : 'No') : '—' }}
                 </p>
               </div>
               <div v-if="getSampleByRow(row.original)?.details?.species_name">
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">Species</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Species</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.details?.species_name }}
                 </p>
               </div>
               <div v-if="getSampleByRow(row.original)?.details?.tissue_type">
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">Tissue type</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Tissue type</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.details?.tissue_type }}
                 </p>
               </div>
               <div v-if="getSampleByRow(row.original)?.details?.storage_type">
-                <span class="text-xs uppercase tracking-wide text-muted font-medium">Storage</span>
+                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Storage</span>
                 <p class="font-medium mt-0.5">
                   {{ getSampleByRow(row.original)?.details?.storage_type }}
                 </p>
@@ -253,31 +253,31 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.initial_qc_status">
-                  <span class="text-xs uppercase tracking-wide text-muted font-medium">QC status</span>
+                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">QC status</span>
                   <p class="font-medium mt-0.5">
                     {{ getSampleByRow(row.original)?.initial_qc?.initial_qc_status }}
                   </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.concentration != null">
-                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Concentration</span>
+                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Concentration</span>
                   <p class="font-medium mt-0.5">
                     {{ roundNum(getSampleByRow(row.original)?.initial_qc?.concentration) }} {{ getSampleByRow(row.original)?.initial_qc?.conc_units ?? '' }}
                   </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.['volume_(ul)'] != null">
-                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Volume (ul)</span>
+                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Volume (ul)</span>
                   <p class="font-medium mt-0.5">
                     {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['volume_(ul)']) }}
                   </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.['size_(bp)'] != null">
-                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Size (bp)</span>
+                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Size (bp)</span>
                   <p class="font-medium mt-0.5">
                     {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['size_(bp)'], 0) }}
                   </p>
                 </div>
                 <div v-if="getSampleByRow(row.original)?.initial_qc?.['amount_(ng)'] != null">
-                  <span class="text-xs uppercase tracking-wide text-muted font-medium">Amount (ng)</span>
+                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Amount (ng)</span>
                   <p class="font-medium mt-0.5">
                     {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['amount_(ng)']) }}
                   </p>
