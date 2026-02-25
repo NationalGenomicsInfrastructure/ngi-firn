@@ -165,8 +165,8 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           <NInput
             :model-value="projectIdPrefixValue ?? ''"
             placeholder="e.g. P12345"
-            @update:model-value="(v: unknown) => setProjectIdPrefixValue((v as string) ?? '')"
             class="bg-background"
+            @update:model-value="(v: unknown) => setProjectIdPrefixValue((v as string) ?? '')"
           />
         </NFormField>
         <NFormField
@@ -177,8 +177,8 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           <NInput
             :model-value="projectNameFilterValue ?? ''"
             placeholder="e.g. P.Långstrump_45_11"
-            @update:model-value="(v: unknown) => setProjectNameFilterValue((v as string) ?? '')"
             class="bg-background"
+            @update:model-value="(v: unknown) => setProjectNameFilterValue((v as string) ?? '')"
           />
         </NFormField>
         <NFormField
@@ -189,11 +189,15 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           <NInput
             :model-value="applicationFilterValue ?? ''"
             placeholder="Filter by application"
-            @update:model-value="(v: unknown) => setApplicationFilterValue((v as string) ?? '')"
             class="bg-background"
+            @update:model-value="(v: unknown) => setApplicationFilterValue((v as string) ?? '')"
           />
         </NFormField>
-        <NButton type="submit" leading="i-lucide-search" btn="soft-primary hover:outline-primary">
+        <NButton
+          type="submit"
+          leading="i-lucide-search"
+          btn="soft-primary hover:outline-primary"
+        >
           Search
         </NButton>
       </form>
