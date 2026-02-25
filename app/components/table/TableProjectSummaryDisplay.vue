@@ -92,6 +92,7 @@ watch(includeWeekday, (isRelative) => {
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-8">
       <NFormGroup
         :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'"
+        :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
       >
         <NSwitch
           v-model="relativeDates"
@@ -99,6 +100,7 @@ watch(includeWeekday, (isRelative) => {
       </NFormGroup>
       <NFormGroup
         :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'"
+        :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
       >
         <NSwitch
           v-model="includeWeekday"

@@ -4,6 +4,8 @@ import { validateFirnUserTokenSchema } from '~~/schemas/tokens'
 import { validateFirnUserToken } from '~/utils/mutations/tokens'
 import type { DetectedCode, ZxingReaderInstance } from '../../../types/barcode'
 
+const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
+
 const props = defineProps<{
   audienceItems: string[]
 }>()
@@ -79,6 +81,10 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
     <NCard
       title="Scan a token's QR code"
       description="Use your camera to scan the QR code of your token"
+      card="outline-gray"
+      :una="{
+        cardDescription: 'text-muted'
+      }"
     >
       <NAspectRatio
         v-if="enableDetection"
@@ -136,6 +142,10 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
     <NCard
       title="Test your token"
       description="Scan or paste your token here and validate it"
+      card="outline-gray"
+      :una="{
+        cardDescription: 'text-muted'
+      }"
     >
       <form
         class="flex flex-col gap-4"
@@ -143,6 +153,8 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
       >
         <NFormField
           name="tokenString"
+          label="Token string"
+          :una="{ formLabel: FORM_LABEL_STYLE }"
         >
           <NInput
             type="textarea"
@@ -157,7 +169,12 @@ const onTokenTest = handleSubmitTest(async (valuesTest) => {
         </NFormField>
         <NFormField
           name="expectedAudience"
+          label="Expected audience"
           description="Validate a proper audience restriction for your token"
+          :una="{
+            formLabel: FORM_LABEL_STYLE,
+            formDescription: 'text-muted'
+          }"
         >
           <div class="flex flex-row gap-2">
             <NSelect

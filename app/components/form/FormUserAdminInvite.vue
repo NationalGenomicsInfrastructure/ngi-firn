@@ -3,6 +3,8 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { createUserByAdminSchema } from '~~/schemas/users'
 import { createUserByAdmin } from '~/utils/mutations/users'
 
+const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
+
 const { showError } = useFirnToast()
 const toastActions = [
   {
@@ -76,18 +78,21 @@ async function onValidating() {
     <NFormField
       name="googleGivenName"
       label="First name"
+      :una="{ formLabel: FORM_LABEL_STYLE }"
     >
       <NInput placeholder="First name" />
     </NFormField>
     <NFormField
       name="googleFamilyName"
       label="Last name"
+      :una="{ formLabel: FORM_LABEL_STYLE }"
     >
       <NInput placeholder="Family name" />
     </NFormField>
     <NFormField
       name="googleEmail"
       label="SciLifeLab email"
+      :una="{ formLabel: FORM_LABEL_STYLE }"
     >
       <NInput placeholder="@scilifelab.se email" />
     </NFormField>
@@ -96,6 +101,10 @@ async function onValidating() {
       name="isAdmin"
       label="Administrator"
       description="Make the user an administrator of the system"
+      :una="{
+        formLabel: FORM_LABEL_STYLE,
+        formDescription: 'text-muted'
+      }"
     >
       <NCheckbox
         label="Firn administrator"

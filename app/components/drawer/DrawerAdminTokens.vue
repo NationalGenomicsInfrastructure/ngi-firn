@@ -20,7 +20,7 @@ const columns: ColumnDef<FirnUserToken>[] = [
     meta: {
       una: {
         tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
-        tableHead: 'text-left text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+        tableHead: 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
       }
     }
   },
@@ -129,6 +129,7 @@ const getExpirationStatus = (expiresAt: string) => {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <NFormGroup
             :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'"
+            :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
           >
             <NSwitch
               v-model="relativeDates"
@@ -136,6 +137,7 @@ const getExpirationStatus = (expiresAt: string) => {
           </NFormGroup>
           <NFormGroup
             :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'"
+            :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
           >
             <NSwitch
               v-model="includeWeekday"
@@ -143,6 +145,7 @@ const getExpirationStatus = (expiresAt: string) => {
           </NFormGroup>
           <NFormGroup
             :label="displayTime ? 'Time: show' : 'Time: hide'"
+            :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
           >
             <NSwitch
               v-model="displayTime"
@@ -157,7 +160,7 @@ const getExpirationStatus = (expiresAt: string) => {
           :columns="columns"
           :data="formattedTokens || []"
           :una="{
-            tableHead: 'text-left bg-primary-700/20 dark:bg-primary-900 border-b-2 border-primary-700 dark:border-primary-400 text-primary-700 dark:text-primary-400'
+            tableHead: 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
           }"
           enable-row-selection
           empty-text="No issued tokens for this user"

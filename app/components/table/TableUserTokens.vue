@@ -113,6 +113,7 @@ const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <NFormGroup
       :label="relativeDates ? 'Dates: relative' : 'Dates: absolute'"
+      :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
     >
       <NSwitch
         v-model="relativeDates"
@@ -120,6 +121,7 @@ const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
     </NFormGroup>
     <NFormGroup
       :label="includeWeekday ? 'Weekdays: show' : 'Weekdays: hide'"
+      :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
     >
       <NSwitch
         v-model="includeWeekday"
@@ -127,6 +129,7 @@ const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
     </NFormGroup>
     <NFormGroup
       :label="displayTime ? 'Time: show' : 'Time: hide'"
+      :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
     >
       <NSwitch
         v-model="displayTime"

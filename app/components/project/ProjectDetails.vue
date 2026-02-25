@@ -190,7 +190,7 @@ const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))
       :default-value="defaultOpenGroups"
       :_accordion-trigger="{
         btn: 'solid-gray',
-        rounded: 'none',
+        rounded: 'none'
       }"
     >
       <template #content="{ item }">

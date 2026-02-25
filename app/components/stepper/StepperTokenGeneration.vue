@@ -5,6 +5,9 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { generateFirnUserTokenSchema } from '~~/schemas/tokens'
 import { generateFirnUserToken } from '~/utils/mutations/tokens'
 
+const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
+const CARD_DESC_STYLE = 'text-muted'
+
 // Stepper
 
 const items = [
@@ -181,12 +184,13 @@ const { user: sessionUser } = useUserSession()
               class="flex-1 max-w-sm sm:w-1/2"
               :una="{
                 cardContent: 'space-y-4',
-                cardDescription: 'text-accent'
+                cardDescription: CARD_DESC_STYLE
               }"
             >
               <NFormField
                 name="expiresAt"
                 label="Pick a date"
+                :una="{ formLabel: FORM_LABEL_STYLE }"
               >
                 <!-- The v-model shorthand is not used on this input because a custom update handler is required. See https://vuejs.org/guide/components/v-model.html#under-the-hood -->
                 <NInput
@@ -203,6 +207,7 @@ const { user: sessionUser } = useUserSession()
                 name="period"
                 label="Choose a period"
                 :message="`${values.period?.toString()} days`"
+                :una="{ formGroupLabel: FORM_LABEL_STYLE }"
               >
                 <NSlider
                   :model-value="values.period"
@@ -220,12 +225,17 @@ const { user: sessionUser } = useUserSession()
               class="flex-1 max-w-sm sm:w-1/2"
               :una="{
                 cardContent: 'space-y-4',
-                cardDescription: 'text-accent'
+                cardDescription: CARD_DESC_STYLE
               }"
             >
               <NFormField
                 name="audience"
+                label="Audience restriction"
                 description="Select an audience for your new token"
+                :una="{
+                  formLabel: FORM_LABEL_STYLE,
+                  formDescription: CARD_DESC_STYLE
+                }"
               >
                 <div class="flex flex-row gap-2">
                   <NSelect
@@ -251,11 +261,13 @@ const { user: sessionUser } = useUserSession()
             class="flex-1 w-full"
             :una="{
               cardContent: 'space-y-4',
-              cardDescription: 'text-accent'
+              cardDescription: CARD_DESC_STYLE
             }"
           >
             <NFormField
               name="tokenType"
+              label="Format"
+              :una="{ formLabel: FORM_LABEL_STYLE }"
             >
               <NRadioGroup
                 :model-value="values.tokenType || 'barcode'"
@@ -280,6 +292,9 @@ const { user: sessionUser } = useUserSession()
             title="Your new token"
             description="This is the only time you will see this token. Copy it to your clipboard and store it in a safe place."
             card="outline-gray"
+            :una="{
+              cardDescription: CARD_DESC_STYLE
+            }"
           >
             <form
               class="flex gap-2"

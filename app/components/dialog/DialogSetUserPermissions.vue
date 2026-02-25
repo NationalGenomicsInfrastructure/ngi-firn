@@ -108,7 +108,8 @@ const handleSave = () => {
 
       <NFormGroup
         :label="formData.isAdmin ? `${props.googleGivenName} can administer Firn.` : `${props.googleGivenName} cannot administer Firn.`"
-        class="mt-5 font-semibold"
+        class="mt-5"
+        :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
       >
         <NSwitch
           id="isAdmin"
