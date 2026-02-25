@@ -206,7 +206,13 @@ watch(includeWeekday, (isRelative) => {
 
           <!-- Column 4: Button -->
           <div class="flex flex-col items-end flex-shrink-0 gap-2">
-            &nbsp;
+            <NButton
+              label="View project details"
+              class="w-full transition delay-300 ease-in-out"
+              btn="soft-primary hover:outline-primary"
+              leading="i-lucide-eye"
+              :to="`/projects/details/${row.original.project_id}`"
+            />
           </div>
         </div>
         <div class="p-2 flex flex-row items-start gap-4">

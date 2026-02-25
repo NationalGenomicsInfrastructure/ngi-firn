@@ -105,6 +105,7 @@ function getCurrentFormValues(): SearchFormValues {
   }
 }
 
+// Debounce search trigger to prevent API calls with invalid input into the search fields.
 const searchTriggerDebounce = useDebounceFn(() => {
   validate().then((result) => {
     if (result.valid) {
@@ -128,7 +129,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
     <NCard
       title="Find projects"
       description="Search in StatusDB for projects matching your criteria."
-      card="outline-gray"
+      card="soft-gray"
       class="w-full"
       :una="{
         cardContent: 'space-y-4',
@@ -165,6 +166,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
             :model-value="projectIdPrefixValue ?? ''"
             placeholder="e.g. P12345"
             @update:model-value="(v: unknown) => setProjectIdPrefixValue((v as string) ?? '')"
+            class="bg-background"
           />
         </NFormField>
         <NFormField
@@ -176,6 +178,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
             :model-value="projectNameFilterValue ?? ''"
             placeholder="e.g. P.Långstrump_45_11"
             @update:model-value="(v: unknown) => setProjectNameFilterValue((v as string) ?? '')"
+            class="bg-background"
           />
         </NFormField>
         <NFormField
@@ -187,6 +190,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
             :model-value="applicationFilterValue ?? ''"
             placeholder="Filter by application"
             @update:model-value="(v: unknown) => setApplicationFilterValue((v as string) ?? '')"
+            class="bg-background"
           />
         </NFormField>
         <NButton type="submit" leading="i-lucide-search" btn="soft-primary hover:outline-primary">
