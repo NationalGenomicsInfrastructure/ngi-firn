@@ -48,7 +48,9 @@ export default defaultConfig({
     presetWebFonts({
       provider: 'bunny',
       fonts: {
-        sans: 'Red Hat Display',
+        // sans: 'Kanit',
+        sans: 'Outfit',
+        display: 'Alkatra',
         mono: 'Fira Code'
       }
     })
