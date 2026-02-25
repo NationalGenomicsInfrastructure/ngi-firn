@@ -1,17 +1,180 @@
 <script setup lang="ts">
+import { useQuery } from '@pinia/colada'
+import type { ProjectDetails, OrderDetails, ProjectSummary, ProjectStatusFields, ProjectSample } from '~~/types/projects'
+import { projectQuery } from '~/utils/queries/projects'
+
 definePageMeta({
   layout: 'private',
-  // Middleware runs before the page; invalid project IDs redirect to /not-found. Type will include 'validate-project-id' after Nuxt regenerates types.
   middleware: ['validate-project-id']
 })
 
-// Get the project ID from the URL: app/pages/projects/details/[projectid].vue
 const route = useRoute()
 const projectId = computed(() => route.params.projectid as string)
+
+const { state, asyncStatus } = useQuery(() => projectQuery(projectId.value))
+
+const isLoading = computed(() => asyncStatus.value === 'loading')
+const isError = computed(() => state.value.status === 'error')
+const error = computed(() => state.value.status === 'error' ? state.value.error : undefined)
+const responseData = computed(() => state.value.status === 'success' ? state.value.data : undefined)
+
+const project = computed(() => {
+  if (responseData.value?.available && responseData.value.data) {
+    return responseData.value.data
+  }
+  return undefined
+})
+
+const pageTitle = computed(() => project.value?.project_name ?? projectId.value)
+const pageDescription = computed(() => {
+  const parts: string[] = [projectId.value]
+  const sf = project.value?.status_fields as ProjectStatusFields | undefined
+  if (sf?.status) parts.push(sf.status)
+  return parts.join(' — ')
+})
+
+const projectStatusFields = computed(() =>
+  project.value?.status_fields as ProjectStatusFields | undefined
+)
+const projectSummary = computed(() =>
+  project.value?.project_summary as ProjectSummary | undefined
+)
+const projectDetails = computed(() =>
+  project.value?.details as ProjectDetails | undefined
+)
+const projectOrderDetails = computed(() =>
+  project.value?.order_details as OrderDetails | undefined
+)
+const projectSamples = computed((): Record<string, ProjectSample> =>
+  (project.value?.samples as Record<string, ProjectSample>) ?? {}
+)
 </script>
 
 <template>
-  <div>
-    <p>Project ID: {{ projectId }}</p>
-  </div>
+  <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
+    <div class="mb-6 flex items-center gap-3">
+      <NButton
+        btn="ghost-gray"
+        leading="i-lucide-arrow-left"
+        size="sm"
+        label="Projects"
+        @click="$router.push('/projects')"
+      />
+    </div>
+
+    <PageTitle
+      :title="pageTitle"
+      :description="pageDescription"
+    />
+
+    <NAlert
+      v-if="isLoading"
+      alert="border-gray"
+      title="Loading project..."
+      description="Fetching project data from the database."
+      icon="i-lucide-loader-2"
+      class="mt-6"
+    />
+    <NAlert
+      v-else-if="isError"
+      alert="border-error"
+      title="Error loading project"
+      :description="error != null ? String(error) : 'Something went wrong. Please try again.'"
+      icon="i-lucide-alert-circle"
+      class="mt-6"
+    />
+    <NAlert
+      v-else-if="responseData && !responseData.available"
+      alert="border-warning"
+      title="Projects database is not available."
+      description="The projects database is currently not available. Please try again later."
+      icon="i-lucide-database-off"
+      class="mt-6"
+    />
+    <NAlert
+      v-else-if="responseData?.available && !responseData.data"
+      alert="border-warning"
+      title="Project not found"
+      :description="`No project found with ID ${projectId}.`"
+      icon="i-lucide-search-x"
+      class="mt-6"
+    />
+
+    <template v-else-if="project">
+      <NTabs default-value="overview">
+        <NTabsList class="mx-auto">
+          <NTabsTrigger value="overview">
+            <NIcon name="i-lucide-layout-dashboard" />
+            Overview
+          </NTabsTrigger>
+          <NTabsTrigger value="details">
+            <NIcon name="i-lucide-list" />
+            Details
+          </NTabsTrigger>
+          <NTabsTrigger value="order">
+            <NIcon name="i-lucide-shopping-cart" />
+            Order
+          </NTabsTrigger>
+          <NTabsTrigger value="samples">
+            <NIcon name="i-lucide-test-tubes" />
+            Samples
+          </NTabsTrigger>
+        </NTabsList>
+
+        <NTabsContent value="overview">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <ProjectOverview
+              :project-name="project.project_name"
+              :project-id="project.project_id"
+              :status-fields="projectStatusFields"
+              :priority="project.priority"
+              :open-date="project.open_date"
+              :close-date="project.close_date"
+              :no-of-samples="project.no_of_samples"
+              :application="project.application"
+              :affiliation="project.affiliation"
+              :contact="project.contact"
+              :delivery-type="project.delivery_type"
+              :reference-genome="project.reference_genome"
+            />
+            <ProjectStatus
+              v-if="projectStatusFields"
+              :status-fields="projectStatusFields"
+            />
+          </div>
+          <div class="mt-6">
+            <LazyProjectSummary
+              :project-summary="projectSummary"
+              :project-summary-links="project.project_summary_links"
+            />
+          </div>
+        </NTabsContent>
+
+        <NTabsContent value="details">
+          <div class="mt-6">
+            <LazyProjectDetails
+              :details="projectDetails"
+            />
+          </div>
+        </NTabsContent>
+
+        <NTabsContent value="order">
+          <div class="mt-6">
+            <LazyProjectOrderDetails
+              :order-details="projectOrderDetails"
+            />
+          </div>
+        </NTabsContent>
+
+        <NTabsContent value="samples">
+          <div class="mt-6">
+            <LazyTableProjectSamples
+              :samples="projectSamples"
+              :loading="isLoading"
+            />
+          </div>
+        </NTabsContent>
+      </NTabs>
+    </template>
+  </main>
 </template>
