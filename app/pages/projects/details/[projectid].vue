@@ -154,6 +154,7 @@ const projectSummaryLinks = computed(() =>
         <NTabsContent value="overview">
           <div class="mt-6">
             <ProjectOverview
+              :summary-title="projectOrderDetails?.title ?? 'Overview'"
               :project-name="project.project_name"
               :project-id="project.project_id"
               :status-fields="projectStatusFields"
