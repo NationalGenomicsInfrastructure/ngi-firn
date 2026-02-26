@@ -236,6 +236,7 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
                 </p>
               </div>
             </div>
+            
 
             <div
               v-if="getSampleByRow(row.original)?.initial_qc"
@@ -284,6 +285,11 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
                 </div>
               </div>
             </div>
+
+            <StepperSampleTimeline
+              :sample="getSampleByRow(row.original)"
+              :sample-id="row.original.sampleId"
+            />
           </template>
         </div>
       </template>

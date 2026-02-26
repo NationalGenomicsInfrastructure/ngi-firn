@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 
-interface DateFormatOptions {
+export interface DateFormatOptions {
   relative?: boolean
   includeWeekday?: boolean
   time?: boolean

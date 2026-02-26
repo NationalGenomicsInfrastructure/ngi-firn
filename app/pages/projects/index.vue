@@ -9,6 +9,8 @@ definePageMeta({
   layout: 'private'
 })
 
+const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-700 dark:text-primary-300 font-medium'
+
 // Form schema: status uses 'any'; ngi_project_id / project_name_filter optional but must match regex when non-empty
 const searchFormSchema = toTypedSchema(z.object({
   status: z.enum(['any', 'open', 'closed']),
@@ -144,6 +146,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           name="status"
           label="Status"
           class="min-w-[8rem]"
+          :una="{ formLabel: FORM_LABEL_STYLE }"
         >
           <NSelect
             :model-value="statusValue"
@@ -161,6 +164,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           name="ngi_project_id"
           label="Project ID"
           class="min-w-[10rem]"
+          :una="{ formLabel: FORM_LABEL_STYLE }"
         >
           <NInput
             :model-value="projectIdPrefixValue ?? ''"
@@ -173,6 +177,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           name="project_name_filter"
           label="Project Name"
           class="min-w-[10rem]"
+          :una="{ formLabel: FORM_LABEL_STYLE }"
         >
           <NInput
             :model-value="projectNameFilterValue ?? ''"
@@ -185,6 +190,7 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
           name="application_filter"
           label="Application"
           class="min-w-[10rem]"
+          :una="{ formLabel: FORM_LABEL_STYLE }"
         >
           <NInput
             :model-value="applicationFilterValue ?? ''"

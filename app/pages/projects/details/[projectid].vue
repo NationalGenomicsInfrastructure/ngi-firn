@@ -149,6 +149,10 @@ const projectSummaryLinks = computed(() =>
             <NIcon name="i-lucide-test-tubes" />
             Samples
           </NTabsTrigger>
+          <NTabsTrigger value="timeline">
+            <NIcon name="i-lucide-calendar-range" />
+            Timeline
+          </NTabsTrigger>
         </NTabsList>
 
         <NTabsContent value="overview">
@@ -200,6 +204,10 @@ const projectSummaryLinks = computed(() =>
               :loading="isLoading"
             />
           </div>
+        </NTabsContent>
+
+        <NTabsContent value="timeline">
+          <StepperProjectTimeline :project="project" />
         </NTabsContent>
       </NTabs>
     </template>
