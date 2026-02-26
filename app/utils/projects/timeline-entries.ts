@@ -8,6 +8,48 @@ export interface TimelineEntry {
   context?: string
 }
 
+export interface TimelineDate {
+  date: DateTime
+  entries: TimelineEntry[]
+}
+
+const SOURCE_ICONS: Record<string, string> = {
+  project: 'i-lucide-folder',
+  order: 'i-lucide-shopping-cart',
+  details: 'i-lucide-list',
+  summary: 'i-lucide-file-text',
+  sample: 'i-lucide-flask-conical'
+}
+
+export function getTimelineEntryIcon(source: string): string {
+  return SOURCE_ICONS[source] ?? 'i-lucide-calendar'
+}
+
+function dedupeKey(entry: TimelineEntry): string {
+  const dayMs = entry.date.startOf('day').toMillis()
+  return `${dayMs}\t${entry.label}\t${entry.context ?? ''}`
+}
+
+function groupAndDedupeEntries(entries: TimelineEntry[]): TimelineDate[] {
+  const seen = new Map<string, TimelineEntry>()
+  for (const e of entries) {
+    const key = dedupeKey(e)
+    if (!seen.has(key)) seen.set(key, e)
+  }
+  const deduped = [...seen.values()]
+  deduped.sort((a, b) => a.date.toMillis() - b.date.toMillis())
+  const byDate = new Map<number, TimelineEntry[]>()
+  for (const e of deduped) {
+    const dayMs = e.date.startOf('day').toMillis()
+    const list = byDate.get(dayMs) ?? []
+    list.push(e)
+    byDate.set(dayMs, list)
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([ms, list]) => ({ date: DateTime.fromMillis(ms), entries: list }))
+}
+
 const DATE_LABELS: Record<string, string> = {
   open_date: 'Open date',
   close_date: 'Close date',
@@ -95,9 +137,9 @@ const SUMMARY_DATE_KEYS = [
   'signature_all_raw_data_delivered', 'all_samples_sequenced', 'all_raw_data_delivered'
 ]
 
-export function getProjectTimelineEntries(project: Project | undefined | null): TimelineEntry[] {
+export function getProjectTimelineEntries(project: Project | undefined | null): TimelineDate[] {
   const entries: TimelineEntry[] = []
-  if (!project) return entries
+  if (!project) return []
 
   const rootDates = [
     { key: 'open_date', label: 'Open date' },
@@ -119,8 +161,7 @@ export function getProjectTimelineEntries(project: Project | undefined | null): 
   const summary = project.project_summary as Record<string, unknown> | undefined
   entries.push(...collectFromRecord(summary, SUMMARY_DATE_KEYS, 'summary'))
 
-  entries.sort((a, b) => a.date.toMillis() - b.date.toMillis())
-  return entries
+  return groupAndDedupeEntries(entries)
 }
 
 /**
@@ -130,9 +171,9 @@ export function getProjectTimelineEntries(project: Project | undefined | null): 
 export function getSampleTimelineEntries(
   sample: Record<string, unknown> | undefined | null,
   sampleId?: string
-): TimelineEntry[] {
+): TimelineDate[] {
   const entries: TimelineEntry[] = []
-  if (!sample || typeof sample !== 'object') return entries
+  if (!sample || typeof sample !== 'object') return []
 
   const source = 'sample'
   const ctx = sampleId
@@ -177,6 +218,5 @@ export function getSampleTimelineEntries(
     }
   }
 
-  entries.sort((a, b) => a.date.toMillis() - b.date.toMillis())
-  return entries
+  return groupAndDedupeEntries(entries)
 }

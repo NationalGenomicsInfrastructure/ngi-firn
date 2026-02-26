@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ProjectSample } from '~~/types/projects'
-import { getSampleTimelineEntries } from '~/utils/projects/timeline-entries'
+import type { TimelineDate } from '~/utils/projects/timeline-entries'
+import { getSampleTimelineEntries, getTimelineEntryIcon } from '~/utils/projects/timeline-entries'
 import { formatDate } from '~/utils/dates/formatting'
 
 const props = withDefaults(
@@ -11,23 +12,29 @@ const props = withDefaults(
   { sampleId: undefined }
 )
 
-const timelineEntries = computed(() =>
+const timelineDates = computed(() =>
   getSampleTimelineEntries(props.sample as Record<string, unknown> | undefined, props.sampleId)
 )
 
-const stepperItems = computed(() =>
-  timelineEntries.value.map(entry => {
-    const dateStr = entry.date.toISO()
+interface StepperItemWithStepData {
+  title: string
+  description: string
+  stepData: TimelineDate
+}
+
+const stepperItems = computed((): StepperItemWithStepData[] =>
+  timelineDates.value.map(td => {
+    const dateStr = td.date.toISO()
     const formatted = formatDate(dateStr ?? undefined)
     return {
-      title: entry.label,
-      description: formatted,
-      icon: 'i-lucide-calendar' as const
+      title: formatted,
+      description: '\u00A0',
+      stepData: td
     }
   })
 )
 
-const hasEntries = computed(() => timelineEntries.value.length > 0)
+const hasEntries = computed(() => timelineDates.value.length > 0)
 </script>
 
 <template>
@@ -46,9 +53,40 @@ const hasEntries = computed(() => timelineEntries.value.length > 0)
     <NStepper
       v-else
       :items="stepperItems"
-      orientation="horizontal"
+      orientation="vertical"
       :disabled="true"
       stepper="solid-primary"
-    />
+      class="w-full"
+    >
+      <template #item="{ item, step }">
+        <div class="flex text-start gap-2.5 w-full">
+          <div
+            class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-primary-100 dark:text-primary-900 bg-primary-700 dark:bg-primary-600"
+            aria-hidden="true"
+          >
+            {{ (step as number) + 1 }}
+          </div>
+          <div class="flex-1 min-w-0 pb-6">
+            <p class="text-md font-semibold mb-2">
+              {{ item.title }}
+            </p>
+            <ul class="list-none pl-0 space-y-2">
+              <li
+                v-for="(entry, idx) in (item as StepperItemWithStepData).stepData.entries"
+                :key="idx"
+                class="flex items-center gap-2 text-sm"
+              >
+                <NIcon
+                  :name="getTimelineEntryIcon(entry.source)"
+                  class="text-primary-400 dark:text-primary-600 shrink-0"
+                />
+                <span class="font-medium">{{ entry.label }}</span>
+                <span v-if="entry.context" class="text-muted">({{ entry.context }})</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </template>
+    </NStepper>
   </div>
 </template>
