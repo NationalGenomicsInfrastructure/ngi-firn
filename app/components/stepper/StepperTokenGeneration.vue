@@ -313,7 +313,6 @@ const { user: sessionUser } = useUserSession()
               >
                 <NButton
                   icon
-                  square
                   type="submit"
                   :btn="copied ? 'solid-primary' : 'soft-primary hover:outline-primary'"
                   :label="!copied ? 'i-lucide-copy' : 'i-lucide-check'"

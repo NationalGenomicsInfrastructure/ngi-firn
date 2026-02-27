@@ -186,7 +186,6 @@ const { copy, copied } = useClipboard({ source: barcodeData })
 
       <NButton
         icon
-        square
         type="submit"
         :btn="copied ? 'outline' : 'solid'"
         :label="!copied ? 'i-lucide-copy' : 'i-lucide-check'"
