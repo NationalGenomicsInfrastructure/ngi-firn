@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { useStorage } from '@vueuse/core'
 import type { ProjectDetails } from '~~/types/projects'
 import { parseDetailsLinks } from '~~/schemas/projects'
 
 const props = defineProps<{
   details?: ProjectDetails
 }>()
+
+// Store the open groups in local storage to persist between page loads
+const ACCORDION_STORAGE_KEY = 'ngi-firn-project-details-accordion-open'
+const storedOpenGroups = useStorage<string[]>(ACCORDION_STORAGE_KEY, [])
 
 interface DetailGroup {
   label: string
@@ -164,11 +169,29 @@ const accordionItems = computed(() => {
   return items
 })
 
-const defaultOpenGroups = computed((): string[] => {
-  const items = accordionItems.value ?? []
-  if (items.length === 0) return []
-  return [items[0]?.value ?? '']
-})
+const openGroups = ref<string[]>([])
+
+watch(
+  accordionItems,
+  (items) => {
+    const values = items.map(i => i.value)
+    if (values.length === 0) {
+      openGroups.value = []
+      return
+    }
+    const valid = storedOpenGroups.value.filter(v => values.includes(v))
+    openGroups.value = valid.length > 0 ? valid : [values[0]!]
+  },
+  { immediate: true }
+)
+
+watch(
+  openGroups,
+  (val) => {
+    storedOpenGroups.value = val
+  },
+  { deep: true }
+)
 
 const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))
 </script>
@@ -186,9 +209,9 @@ const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))
     class="space-y-6"
   >
     <NAccordion
+      v-model="openGroups"
       :items="accordionItems"
       type="multiple"
-      :default-value="defaultOpenGroups"
       :_accordion-trigger="{
         btn: 'solid-gray',
         rounded: 'none'
