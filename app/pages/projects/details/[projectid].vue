@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQuery } from '@pinia/colada'
-import type { ProjectDetails, OrderDetails, ProjectSummary, ProjectStatusFields, ProjectSample, ProjectPriority } from '~~/types/projects'
+import type { Project, ProjectDetails, OrderDetails, ProjectSummary, ProjectStatusFields, ProjectSample, ProjectPriority } from '~~/types/projects'
 import { projectQuery } from '~/utils/queries/projects'
 
 definePageMeta({
@@ -18,9 +18,9 @@ const isError = computed(() => state.value.status === 'error')
 const error = computed(() => state.value.status === 'error' ? state.value.error : undefined)
 const responseData = computed(() => state.value.status === 'success' ? state.value.data : undefined)
 
-const project = computed(() => {
+const project = computed<Project | undefined>(() => {
   if (responseData.value?.available && responseData.value.data) {
-    return responseData.value.data
+    return responseData.value.data as Project
   }
   return undefined
 })
@@ -32,6 +32,12 @@ const pageDescription = computed(() => {
   if (sf?.status) parts.push(sf.status)
   return parts.join(' — ')
 })
+
+// Set the page title and description. Since the code runs top to bottom,
+// useHead() must not be called before pageTitle or pageDescription are declared
+useHead(() => ({
+  title: `${pageDescription.value} — NGI Firn`,
+}))
 
 const projectStatusFields = computed(() =>
   project.value?.status_fields as ProjectStatusFields | undefined
