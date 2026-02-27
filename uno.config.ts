@@ -90,7 +90,7 @@ export default defaultConfig({
     'i-lucide-shopping-cart',
     'i-lucide-triangle-alert',
     'i-lucide-truck',
-    'i-lucide-user',
+    'i-lucide-user'
   ],
 
   /*

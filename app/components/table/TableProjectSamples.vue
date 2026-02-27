@@ -236,7 +236,6 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
                 </p>
               </div>
             </div>
-            
 
             <div
               v-if="getSampleByRow(row.original)?.initial_qc"

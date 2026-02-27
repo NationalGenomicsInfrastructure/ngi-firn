@@ -9,17 +9,17 @@ const props = defineProps<{
 
 const hasAnyBadge = computed(() =>
   !!(
-    props.projectId ||
-    props.statusFields?.status ||
-    props.priority ||
-    (props.statusFields && (
-      props.statusFields.open ||
-      props.statusFields.ongoing ||
-      props.statusFields.closed ||
-      props.statusFields.pending ||
-      props.statusFields.reception_control ||
-      props.statusFields.aborted ||
-      props.statusFields.need_review
+    props.projectId
+    || props.statusFields?.status
+    || props.priority
+    || (props.statusFields && (
+      props.statusFields.open
+      || props.statusFields.ongoing
+      || props.statusFields.closed
+      || props.statusFields.pending
+      || props.statusFields.reception_control
+      || props.statusFields.aborted
+      || props.statusFields.need_review
     ))
   )
 )

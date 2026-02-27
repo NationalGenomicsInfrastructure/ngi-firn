@@ -36,7 +36,7 @@ const pageDescription = computed(() => {
 // Set the page title and description. Since the code runs top to bottom,
 // useHead() must not be called before pageTitle or pageDescription are declared
 useHead(() => ({
-  title: `${pageDescription.value} — NGI Firn`,
+  title: `${pageDescription.value} — NGI Firn`
 }))
 
 const projectStatusFields = computed(() =>

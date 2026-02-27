@@ -40,12 +40,12 @@ const infoFields = computed(() => [
         {{ summaryTitle ?? projectName }}
       </h2>
     </div>
-    
+
     <ProjectBadges
-        :project-id="projectId"
-        :status-fields="statusFields"
-        :priority="priority"
-      />
+      :project-id="projectId"
+      :status-fields="statusFields"
+      :priority="priority"
+    />
 
     <NSeparator class="my-4" />
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">

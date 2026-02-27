@@ -164,9 +164,10 @@ const accordionItems = computed(() => {
   return items
 })
 
-const defaultOpenGroups = computed(() => {
-  if (accordionItems.value.length === 0) return []
-  return [accordionItems.value[0].value]
+const defaultOpenGroups = computed((): string[] => {
+  const items = accordionItems.value ?? []
+  if (items.length === 0) return []
+  return [items[0]?.value ?? '']
 })
 
 const parsedLinks = computed(() => parseDetailsLinks(props.details?.links))

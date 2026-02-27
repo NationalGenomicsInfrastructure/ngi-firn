@@ -35,7 +35,7 @@ interface StepperItemWithStepData {
 }
 
 const stepperItems = computed((): StepperItemWithStepData[] =>
-  timelineDates.value.map(td => {
+  timelineDates.value.map((td) => {
     const dateStr = td.date.toISO()
     const formatted = formatDate(dateStr ?? undefined, formatOptions.value)
     return {
@@ -116,7 +116,10 @@ const hasEntries = computed(() => timelineDates.value.length > 0)
                       class="text-primary-400 dark:text-primary-600 shrink-0"
                     />
                     <span class="font-medium">{{ entry.label }}</span>
-                    <span v-if="entry.context" class="text-muted">({{ entry.context }})</span>
+                    <span
+                      v-if="entry.context"
+                      class="text-muted"
+                    >({{ entry.context }})</span>
                   </li>
                 </ul>
               </div>

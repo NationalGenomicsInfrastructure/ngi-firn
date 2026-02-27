@@ -159,8 +159,7 @@ watch(includeWeekday, (isRelative) => {
       <template #expanded="{ row }">
         <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800">
           <h2 class="text-center text-xl font-semibold tracking-tight">
-            {{ [row.original.projectNameFragments[0],".", row.original.projectNameFragments[1], "(",row.original.project_id,")"].filter(Boolean).join(' ') }}
-
+            {{ [row.original.projectNameFragments[0], ".", row.original.projectNameFragments[1], "(", row.original.project_id, ")"].filter(Boolean).join(' ') }}
           </h2>
         </div>
         <div class="p-2 flex flex-row items-start gap-4">
