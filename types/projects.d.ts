@@ -1,8 +1,8 @@
 import type { BaseDocument } from '../server/database/couchdb'
 
-// =============================================================================
-// Project details (normalized UDFs: lowercase, spaces → underscores)
-// =============================================================================
+// =============================================================================================
+// Types for the projects database (read-only, from StatusDB, reimplementation of GenStat types)
+// =============================================================================================
 
 export interface ProjectDetails extends Record<string, unknown> {
   'portal_id'?: string

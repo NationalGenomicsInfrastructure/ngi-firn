@@ -1,5 +1,12 @@
 import type { BaseDocument } from '../server/database/couchdb'
+import type { FirnProjectBookmark } from './projects-firn'
+import type { TodoDocument } from './productivity'
+import type { TypedDocumentReference } from './references'
 import type { FirnUserToken } from './tokens'
+
+// =============================================================================================
+// Types for authentication and authorization used in Firn
+// =============================================================================================
 
 // Full user object as it is stored in the database
 export interface FirnUser extends BaseDocument {
@@ -27,11 +34,12 @@ export interface FirnUser extends BaseDocument {
   allowLogin: boolean
   isRetired: boolean
   isAdmin: boolean
-  permissions: string[]
-  tokens: FirnUserToken[]
   // User-related collections
-  todos: string[]
+  permissions: string[]
   preferences: string[]
+  projectBookmarks: FirnProjectBookmark[]
+  todos: TypedDocumentReference<TodoDocument>[]
+  tokens: FirnUserToken[]
 }
 
 // Firn user query object, used for matching a user by firnId
