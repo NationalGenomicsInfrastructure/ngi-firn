@@ -20,6 +20,10 @@
  * getPendingUsers() - Get all pending users (not allowed to login and not retired)
  * getRetiredUsers() - Get all retired users
  * getApprovedUsers() - Get all active users (allowed to login)
+ * PROJECT BOOKMARKS:
+ * getProjectBookmarks(user) - Get all project bookmarks for a user
+ * addProjectBookmark(user, project) - Add a project bookmark for a user
+ * removeProjectBookmark(user, project) - Remove a project bookmark for a user
  * USER TYPE CONVERSION:
  * convertToSessionUser(user, provider) - Convert a FirnUser to a SessionUser (for authentication)
  * convertToDisplayUserToAdmin(user) - Convert a FirnUser to a DisplayUserToAdmin (for administrative UI display)
@@ -30,6 +34,7 @@ import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
 import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
+import type { FirnProjectBookmark } from '../../types/projects-firn'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
 
 export const UserService = {
@@ -111,14 +116,14 @@ export const UserService = {
         // Timestamps
         createdAt: DateTime.now().toISO(),
         lastSeenAt: DateTime.now().toISO(),
-        // User properties (new users are not approved by default)
+        // User properties (new users are allowed to login by default here)
         allowLogin: true,
         isRetired: false,
         isAdmin: user.isAdmin,
+        // User-related arrays and collections
         permissions: [],
         tokens: [],
-        sessions: [],
-        // User-related collections
+        projectBookmarks: [],
         todos: [],
         preferences: []
       }
@@ -454,6 +459,60 @@ export const UserService = {
   },
 
   /*
+   * PROJECT BOOKMARKS
+   */
+
+  /**
+   * Get all project bookmarks for a user.
+   * Lightweight helper that simply returns the embedded bookmarks array.
+   */
+  async getProjectBookmarks(user: FirnUser): Promise<FirnProjectBookmark[]> {
+    return user.projectBookmarks ?? []
+  },
+
+  /**
+   * Add a project bookmark for a user.
+   * Ensures idempotency by not adding duplicates for the same projectDocId.
+   */
+  async addProjectBookmark(user: FirnUser, project: FirnProjectBookmark): Promise<FirnUser | null> {
+    const existingBookmarks = user.projectBookmarks ?? []
+    const alreadyBookmarked = existingBookmarks.some(b => b.projectDocId === project.projectDocId)
+
+    const projectBookmarks: FirnProjectBookmark[] = alreadyBookmarked
+      ? existingBookmarks
+      : [...existingBookmarks, project]
+
+    const updates: Partial<FirnUser> = {
+      projectBookmarks
+    }
+
+    const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+    return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+  },
+
+  /**
+   * Remove a project bookmark for a user.
+   * Matches on projectDocId; no-op if the bookmark does not exist.
+   */
+  async removeProjectBookmark(user: FirnUser, project: FirnProjectBookmark): Promise<FirnUser | null> {
+    const existingBookmarks = user.projectBookmarks ?? []
+    const projectBookmarks: FirnProjectBookmark[] = existingBookmarks.filter(
+      b => b.projectDocId !== project.projectDocId
+    )
+
+    const updates: Partial<FirnUser> = {
+      projectBookmarks
+    }
+
+    const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+    return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+  },
+
+  /*
+   * USER TYPE CONVERSION
+   */
+
+  /*
    * Convert a FirnUser to a SessionUser
    */
   async convertToSessionUser(user: FirnUser, provider: 'google' | 'github' | 'token'): Promise<[SessionUser, SessionUserSecure]> {
@@ -552,10 +611,10 @@ export const UserService = {
         allowLogin: false,
         isRetired: false,
         isAdmin: false,
+        // User-related arrays and collections
         permissions: [],
         tokens: [],
-        sessions: [],
-        // User-related collections
+        projectBookmarks: [],
         todos: [],
         preferences: []
       }
