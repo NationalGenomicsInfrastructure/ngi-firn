@@ -57,7 +57,7 @@ function createCloudantClient(config: CouchDBConfig): CloudantV1 {
 // Database operations
 export class CouchDBConnector {
   private client: CloudantV1
-  private database: string
+  public database: string
 
   constructor(config?: Partial<CouchDBConfig>) {
     // Merge config with environment variables
