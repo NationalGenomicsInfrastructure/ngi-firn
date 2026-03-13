@@ -34,13 +34,18 @@ export interface TodoItem {
   completedAt?: string
 }
 
-// CouchDB document that stores the ToDos for a single Firn user.
+// CouchDB document that stores ToDos
+
 export interface TodoDocument extends BaseDocument {
-  type: 'todo'
+  type: 'todo_collection'
   schema: 1
-  // Firn user identifier (FirnUser.firnId) this document belongs to.
-  owner: TypedDocumentReference<FirnUser>
-  // All ToDos associated with the owner.
+  // Unique identifier for the ToDo document.
+  id: string
+  // Firn users that are owners of this ToDo document.
+  owners: TypedDocumentReference<FirnUser>[]
+  viewers: TypedDocumentReference<FirnUser>[]
+  title: string
+  description?: string
   items: TodoItem[]
   // Metadata timestamps for the document as a whole.
   createdAt: string

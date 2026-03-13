@@ -38,7 +38,7 @@ export interface FirnUser extends BaseDocument {
   permissions: string[]
   preferences: string[]
   projectBookmarks: FirnProjectBookmark[]
-  todos: TypedDocumentReference<TodoDocument>[]
+  todoDocuments: TypedDocumentReference<TodoDocument>[]
   tokens: FirnUserToken[]
 }
 
