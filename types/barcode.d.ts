@@ -1,3 +1,7 @@
+// =============================================================================================
+// Types for barcode detection and reading (used in Firn)
+// =============================================================================================
+
 // Barcode detection tracking
 
 export type BarcodeDetection = {
