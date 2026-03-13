@@ -24,6 +24,11 @@
  * getProjectBookmarks(user) - Get all project bookmarks for a user
  * addProjectBookmark(user, project) - Add a project bookmark for a user
  * removeProjectBookmark(user, project) - Remove a project bookmark for a user
+ * TODO DOCUMENTS (user-linked):
+ * createTodoDocumentForUser(user, input) - Create a TodoDocument with user as owner and add ref to user.todoDocuments
+ * deleteTodoDocumentForUser(user, todoDocument) - Delete a TodoDocument and remove its ref from user.todoDocuments
+ * addUserAsOwnerOrViewer(user, todoDocument, role) - Add user as owner or viewer of a TodoDocument
+ * removeUserAsOwnerOrViewer(user, todoDocument, role) - Remove user as owner or viewer of a TodoDocument
  * USER TYPE CONVERSION:
  * convertToSessionUser(user, provider) - Convert a FirnUser to a SessionUser (for authentication)
  * convertToDisplayUserToAdmin(user) - Convert a FirnUser to a DisplayUserToAdmin (for administrative UI display)
@@ -33,9 +38,20 @@
 import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
+import { ProductivityService } from './productivity.server'
 import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
 import type { FirnProjectBookmark } from '../../types/projects-firn'
+import type { TodoDocument } from '../../types/productivity'
+import type { TypedDocumentReference } from '../../types/references'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
+
+function userToRef(user: FirnUser): TypedDocumentReference<FirnUser> {
+  return { db: couchDB.database, id: user._id }
+}
+
+function todoDocToRef(doc: TodoDocument): TypedDocumentReference<TodoDocument> {
+  return { db: couchDB.database, id: doc._id }
+}
 
 export const UserService = {
   /**
@@ -506,6 +522,114 @@ export const UserService = {
 
     const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
     return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+  },
+
+  /*
+   * TODO DOCUMENTS (user-linked)
+   */
+
+  /**
+   * Create a TodoDocument with the given user as sole owner, and add the document reference to the user's todos.
+   * Returns the created TodoDocument and the updated FirnUser, or null if creation failed.
+   */
+  async createTodoDocumentForUser(
+    user: FirnUser,
+    input: { title: string, description?: string }
+  ): Promise<{ todoDocument: TodoDocument, user: FirnUser } | null> {
+    const userRef = userToRef(user)
+    const created = await ProductivityService.createTodoDocument({
+      owners: [userRef],
+      title: input.title,
+      description: input.description
+    })
+    if (!created)
+      return null
+    const todoRef = todoDocToRef(created)
+    const existingTodoDocuments = user.todoDocuments ?? []
+    const alreadyIn = existingTodoDocuments.some(r => r.id === created._id)
+    const todoDocuments = alreadyIn ? existingTodoDocuments : [...existingTodoDocuments, todoRef]
+    const updates: Partial<FirnUser> = { todoDocuments }
+    const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+    const updatedUser = { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+    return { todoDocument: created as TodoDocument, user: updatedUser }
+  },
+
+  /**
+   * Delete a TodoDocument and remove its reference from the user's todoDocuments.
+   * Returns the updated FirnUser.
+   */
+  async deleteTodoDocumentForUser(user: FirnUser, todoDocument: TodoDocument): Promise<FirnUser | null> {
+    await ProductivityService.deleteTodoDocument(todoDocument)
+    const existingTodoDocuments = user.todoDocuments ?? []
+    const todoDocuments = existingTodoDocuments.filter(r => r.id !== todoDocument._id)
+    const updates: Partial<FirnUser> = { todoDocuments }
+    const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
+    return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+  },
+
+  /**
+   * Add a user as an additional owner or viewer of a TodoDocument.
+   * Idempotent: if the user is already in that role, the document is unchanged.
+   */
+  async addUserAsOwnerOrViewer(
+    user: FirnUser,
+    todoDocument: TodoDocument,
+    role: 'owner' | 'viewer'
+  ): Promise<TodoDocument | null> {
+    if (!todoDocument._id || !todoDocument._rev)
+      return null
+    const userRef = userToRef(user)
+    const now = DateTime.now().toISO()
+    if (role === 'owner') {
+      const owners = todoDocument.owners ?? []
+      if (owners.some(r => r.id === user._id))
+        return todoDocument
+      const updated: TodoDocument = {
+        ...todoDocument,
+        owners: [...owners, userRef],
+        updatedAt: now
+      }
+      const result = await couchDB.updateDocument(todoDocument._id, updated, todoDocument._rev)
+      return { ...updated, _id: result.id, _rev: result.rev } as TodoDocument
+    }
+    else {
+      const viewers = todoDocument.viewers ?? []
+      if (viewers.some(r => r.id === user._id))
+        return todoDocument
+      const updated: TodoDocument = {
+        ...todoDocument,
+        viewers: [...viewers, userRef],
+        updatedAt: now
+      }
+      const result = await couchDB.updateDocument(todoDocument._id, updated, todoDocument._rev)
+      return { ...updated, _id: result.id, _rev: result.rev } as TodoDocument
+    }
+  },
+
+  /**
+   * Remove a user as owner or viewer of a TodoDocument.
+   * Note: Removing the last owner leaves the document with no owners; enforce policy in the caller if needed.
+   */
+  async removeUserAsOwnerOrViewer(
+    user: FirnUser,
+    todoDocument: TodoDocument,
+    role: 'owner' | 'viewer'
+  ): Promise<TodoDocument | null> {
+    if (!todoDocument._id || !todoDocument._rev)
+      return null
+    const now = DateTime.now().toISO()
+    if (role === 'owner') {
+      const owners = (todoDocument.owners ?? []).filter(r => r.id !== user._id)
+      const updated: TodoDocument = { ...todoDocument, owners, updatedAt: now }
+      const result = await couchDB.updateDocument(todoDocument._id, updated, todoDocument._rev)
+      return { ...updated, _id: result.id, _rev: result.rev } as TodoDocument
+    }
+    else {
+      const viewers = (todoDocument.viewers ?? []).filter(r => r.id !== user._id)
+      const updated: TodoDocument = { ...todoDocument, viewers, updatedAt: now }
+      const result = await couchDB.updateDocument(todoDocument._id, updated, todoDocument._rev)
+      return { ...updated, _id: result.id, _rev: result.rev } as TodoDocument
+    }
   },
 
   /*
