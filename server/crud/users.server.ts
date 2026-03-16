@@ -32,6 +32,7 @@
  * USER TYPE CONVERSION:
  * convertToSessionUser(user, provider) - Convert a FirnUser to a SessionUser (for authentication)
  * convertToDisplayUserToAdmin(user) - Convert a FirnUser to a DisplayUserToAdmin (for administrative UI display)
+ * convertToDisplayUserToUsers(user) - Convert a FirnUser to a DisplayUserToUsers (for regular UI display)
  * convertGoogleUserToFirnUser(googleUser) - Convert a GoogleUser to a FirnUser (for creating a new user)
  */
 
@@ -39,7 +40,7 @@ import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
 import { ProductivityService } from './productivity.server'
-import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin } from '../../types/auth'
+import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers } from '../../types/auth'
 import type { FirnProjectBookmark } from '../../types/projects-firn'
 import type { TodoDocument } from '../../types/productivity'
 import type { TypedDocumentReference } from '../../types/references'
@@ -140,7 +141,7 @@ export const UserService = {
         permissions: [],
         tokens: [],
         projectBookmarks: [],
-        todos: [],
+        todoDocuments: [],
         preferences: []
       }
 
@@ -701,6 +702,22 @@ export const UserService = {
   },
 
   /*
+   * Convert a FirnUser to a DisplayUserToUsers
+   */
+  async convertToDisplayUserToUsers(user: FirnUser): Promise<DisplayUserToUsers> {
+    const displayUser: DisplayUserToUsers = {
+      firnId: user.firnId,
+      googleName: user.googleName,
+      googleGivenName: user.googleGivenName,
+      googleFamilyName: user.googleFamilyName,
+      googleAvatar: user.googleAvatar,
+      googleEmail: user.googleEmail,
+      githubAvatar: user.githubAvatar
+    }
+    return displayUser
+  },
+
+  /*
    * Convert a GoogleUser to a FirnUser
    */
   async convertGoogleUserToFirnUser(googleUser: GoogleUser): Promise<FirnUser> {
@@ -739,7 +756,7 @@ export const UserService = {
         permissions: [],
         tokens: [],
         projectBookmarks: [],
-        todos: [],
+        todoDocuments: [],
         preferences: []
       }
     return newFirnUser as FirnUser

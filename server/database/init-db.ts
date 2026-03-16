@@ -75,7 +75,7 @@ export async function initializeDatabase() {
         permissions: [],
         tokens: [],
         projectBookmarks: [],
-        todos: [],
+        todoDocuments: [],
         preferences: []
       }
 
