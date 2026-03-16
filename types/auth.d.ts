@@ -120,6 +120,17 @@ export interface DisplayUserToAdmin {
   tokens: FirnUserToken[]
 }
 
+// Display user object, used for displaying user information about other users to regular Firn users
+export interface DisplayUserToUsers {
+  firnId: string
+  googleName?: string
+  googleGivenName?: string
+  googleFamilyName?: string
+  googleAvatar: string | null
+  googleEmail: string
+  githubAvatar: string | null
+}
+
 // Auth status object to render toast notifications in the UI, amended to the UserSession interface
 export interface AuthStatus {
   kind: 'base' | 'success' | 'warning' | 'error'
