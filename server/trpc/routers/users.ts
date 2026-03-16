@@ -1,9 +1,11 @@
-import { createTRPCRouter, adminProcedure, firnUserProcedure } from '../init'
-import type { DisplayUserToAdmin } from '~~/types/auth'
+import { createTRPCRouter, adminProcedure, authedProcedure, firnUserProcedure } from '../init'
+import type { DisplayUserToAdmin, DisplayUserToUsers } from '~~/types/auth'
 import { createUserByAdminSchema, deleteUserByAdminSchema, setUserAccessByAdminSchema } from '~~/schemas/users'
 import { TRPCError } from '@trpc/server'
 
 export const usersRouter = createTRPCRouter({
+
+  // Self-facing procedures for users
 
   getUserInfoSelf: firnUserProcedure
     .query(async ({ ctx }): Promise<DisplayUserToAdmin> => {
@@ -26,6 +28,15 @@ export const usersRouter = createTRPCRouter({
         return await UserService.convertToDisplayUserToAdmin(unlinkedUser)
       }
       return null
+    }),
+
+   // Third-party procedures for users
+
+  getUserInfo: authedProcedure
+    .query(async (): Promise<DisplayUserToUsers[]> => {
+      const { UserService } = await import('../../crud/users.server')
+      const users = await UserService.getApprovedUsers()
+      return await Promise.all(users.map(user => UserService.convertToDisplayUserToUsers(user)))
     }),
 
   // Admin procedures for user management

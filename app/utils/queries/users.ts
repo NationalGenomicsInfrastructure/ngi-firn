@@ -1,4 +1,4 @@
-import type { DisplayUserToAdmin } from '~~/types/auth'
+import type { DisplayUserToAdmin, DisplayUserToUsers } from '~~/types/auth'
 import { defineQueryOptions } from '@pinia/colada'
 
 /**
@@ -35,12 +35,22 @@ import { defineQueryOptions } from '@pinia/colada'
 // Key factory for users domain
 export const USERS_QUERY_KEYS = {
   root: ['users'] as const,
+  all: () => [...USERS_QUERY_KEYS.root, 'all'] as const,
   approved: () => [...USERS_QUERY_KEYS.root, 'approved'] as const,
   pending: () => [...USERS_QUERY_KEYS.root, 'pending'] as const,
   retired: () => [...USERS_QUERY_KEYS.root, 'retired'] as const,
   self: () => [...USERS_QUERY_KEYS.root, 'self'] as const,
   token: () => [...USERS_QUERY_KEYS.root, 'token'] as const
 } as const
+
+// Query for all users
+export const allUsersQuery = defineQueryOptions<DisplayUserToUsers[]>({
+  key: USERS_QUERY_KEYS.all(),
+  query: () => {
+    const { $trpc } = useNuxtApp()
+    return $trpc.users.getUserInfo.query()
+  }
+})
 
 // Query for approved users
 export const approvedUsersQuery = defineQueryOptions<DisplayUserToAdmin[]>({
