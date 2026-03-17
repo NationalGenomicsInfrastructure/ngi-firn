@@ -1,6 +1,6 @@
 # Enabling HTTPS in Nuxt Development
 
-This guide explains how to enable HTTPS for local development. HTTPS is required when connecting to StatusDB dev, which requires secure connections.
+This guide explains how to enable HTTPS for local development.
 
 ## Configure Nuxt for HTTPS
 
