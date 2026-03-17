@@ -8,12 +8,21 @@ This project uses `pnpm` as the [package manager](https://peterxjang.com/blog/mo
 
 ## Switch to Node version 24
 
+Node.js (commonly referred to as "Node") is a JavaScript runtime that allows to run JavaScript code on the server, outside of a web browser. It is used to run our backend code in `server` and partly pre-render the client-side code in `app`. Firn is currently running on Node version 24.
+
 To use Node version 24, using [nvm](https://github.com/nvm-sh/nvm) (Node Version Manager) is recommended, which allows you to easily install and switch between different Node.js versions. If you don't have nvm installed, you can install it [as described](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating).
 
 Then you can switch to Node version 24 with:
 
 ```bash
+nvm install 24
 nvm use 24
+```
+
+If you would like to avoid explicitly switching the node version in new terminal sessions, you can define version 24 as default - that is unless you are working with other applications that require a different version. 
+
+```bash
+nvm alias default 24
 ```
 
 ## Set up pnpm
@@ -62,7 +71,7 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 
 ## Database setup
 
-Firn uses [CouchDB](./couchDatabase.md) to store information about users and the inventory. For development, a [local installation of CouchDB is recommended since it allows to use HTTP connections i n development](https://couchdb.apache.org). After you have completed the installation and created an account, fill in the credentials in your environment file.
+Firn uses [CouchDB](./couchDatabase.md) to store information about users and the inventory. For development, it is possible to use a [local installation of CouchDB](https://couchdb.apache.org). After you have completed the installation and created an account, fill in the credentials in your environment file.
 
 ### Configuration
 
@@ -74,10 +83,6 @@ The database connection is configured through environment variables:
 - `CLOUDANT_DATABASE`: Database name (default: 'firn')
 
 Set these in your application's environment, e.g. by using the `.env`.
-
-### HTTPS-Configuration
-
-In order to use the development instance of StatusDB during, you will need to configure HTTPS for your local development instance. Please see the [extra documentation](./development-https.md) in case this is relevant.
 
 ### Testing Database Connection
 
@@ -110,6 +115,10 @@ The development server includes:
 - Nuxt Developer Tools (see [Debugging](./debugging.md))
 - TypeScript support with auto-imports
 - ESLint integration
+
+### HTTPS-Configuration for the development server
+
+Optionally, you can configure HTTPS for your local development instance. Please see the [extra documentation](./development-https.md) in case this is relevant.
 
 ## Available Scripts
 

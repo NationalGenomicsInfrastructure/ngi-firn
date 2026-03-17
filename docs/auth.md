@@ -21,7 +21,7 @@ Inside Firn, users have the option to issue login tokens for their account, whic
 OAuth is a standard to that allows to establish the identity of a user through another service (the OAuth provider). The OAuth provider then transmits verified
 user information to the requesting web application after this application has been approved by both, user and provider. It is important to stress that the OAuth provider only verifies the user, but does not share own session details. Therefore, the OAuth client application does not have access to e.g. your email inbox from GoogleMail after using Google OAuth to authenticate.
 
-The exact user information that an OAuth provider shares varies. For this reason, we maintain our own [`FirnUser` type](types/auth.d.ts) and [convert the user objects from the OAuth flow](server/crud/users.ts). Examples of user objects from [GitHub](server/api/auth/github.get.ts) and [Google](server/api/auth/google.get.ts) are included as comments in the respective API endpoints.
+The exact user information that an OAuth provider shares varies. For this reason, we maintain our own [`FirnUser` type](types/auth.d.ts) and [convert the user objects from the OAuth flow](server/crud/users.server.ts). Examples of user objects from [GitHub](server/api/auth/github.get.ts) and [Google](server/api/auth/google.get.ts) are included as comments in the respective API endpoints.
 
 #### OAuth apps
 

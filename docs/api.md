@@ -4,7 +4,7 @@
 
 ## REST API Routes
 
-The API routes follow a similar convention as the `app/pages/` directory in Nuxt. All you have to do is to create a file in the `server/api/` directory, for example `server/api/hello.ts`:
+The API routes follow a similar convention as the `app/pages/` directory in Nuxt (see the docs on [routing](routing.md) for details). All you have to do is to create a file in the `server/api/` directory, for example `server/api/hello.ts`:
 
 ```js
 export default defineEventHandler((event) => {
