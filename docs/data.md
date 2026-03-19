@@ -99,3 +99,9 @@ queryCache.cancelQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
 // declare the cache contents invalid. If the data is queried, it will be fetched from the server instead.
 queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
 ```
+
+### Data Loaders and defineColadaLoader()
+
+A future improvement is the emerging standard in the Vue ecosystem to use [Data Loaders](https://router.vuejs.org/data-loaders/) for data fetching. They offer some additional convenience out of the box with parallelism,automatic loading state management, SSR support and error handling that is currently still implemented with own code in Firn.
+
+There is native support for [Data Loaders opn top of Pinia Colada](https://router.vuejs.org/data-loaders/colada/).
