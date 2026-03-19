@@ -15,7 +15,7 @@ const { data: users } = useQuery(allUsersQuery)
 
 const selectedUser = computed({
   get: () => props.modelValue ?? undefined,
-  set: (value: DisplayUserToUsers | undefined) => emit('update:modelValue', value),
+  set: (value: DisplayUserToUsers | undefined) => emit('update:modelValue', value)
 })
 
 const items = computed(() => users.value ?? [])
@@ -36,12 +36,15 @@ function displayName(user: DisplayUserToUsers): string {
       :items="items"
       by="firnId"
       :_combobox-input="{
-        placeholder: 'Select user...',
+        placeholder: 'Select user...'
       }"
     >
       <template #trigger="{ modelValue }">
         <template v-if="modelValue">
-          <div :key="modelValue.firnId" class="flex items-center gap-2">
+          <div
+            :key="modelValue.firnId"
+            class="flex items-center gap-2"
+          >
             <NAvatarGroup :max="2">
               <NAvatar
                 :key="`avatar-google-${modelValue.firnId}`"
@@ -85,7 +88,10 @@ function displayName(user: DisplayUserToUsers): string {
             >
               <template #fallback>
                 <span class="text-primary-200 dark:text-primary-100 font-extrabold">
-                  <NIcon name="i-lucide-snowflake" class="w-5 h-5" />F
+                  <NIcon
+                    name="i-lucide-snowflake"
+                    class="w-5 h-5"
+                  />F
                 </span>
               </template>
             </NAvatar>
@@ -103,4 +109,3 @@ function displayName(user: DisplayUserToUsers): string {
     </NCombobox>
   </div>
 </template>
-

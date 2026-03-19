@@ -52,6 +52,18 @@ export default defineNuxtConfig({
     preset: 'node-server'
   },
 
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        '@vee-validate/zod',
+        'luxon',
+        'zod'
+      ]
+    }
+  },
+
   // Enable type checking during the build process.
   // For performance reasons, we don't enable it during development. Run `pnpm typecheck` to run it manually.
   typescript: {
@@ -72,17 +84,5 @@ export default defineNuxtConfig({
     prefix: 'N',
     themeable: true,
     global: true
-  },
-
-  vite: {
-    optimizeDeps: {
-      include: [
-        '@vue/devtools-core',
-        '@vue/devtools-kit',
-        '@vee-validate/zod',
-        'luxon',
-        'zod',
-      ]
-    }
   }
 })

@@ -40,10 +40,10 @@ Further sources for components can be those projects, which, however, use Tailwi
 
 ## Data
 
-- **[BullMQ](https://bullmq.io) for long-running asynchronous tasks (Not needed with currently planned functionality).
+- **[BullMQ](https://bullmq.io) for long-running asynchronous tasks (Not needed with currently planned functionality). Another, leaner and probably easier alternative is [Rivet](https://github.com/rivet-dev/rivet) respectively its asynchronous primitives [antiox](https://github.com/rivet-dev/antiox).
 - **[Luxon](https://moment.github.io/luxon/)** for dealing with dates and times.
 - **[Legid](https://github.com/shuding/legid)** to create client-side URIs safely.
-- **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for [Pinia](https://github.com/vuejs/pinia) to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates).
+- **[Pinia Colada](https://github.com/posva/pinia-colada)** a data fetching layer for [Pinia](https://github.com/vuejs/pinia) to simplify asynchronous state management, particularly [_optimistic updates_](./data.md#optimistic-updates). Not yet implemented, but a possible future ToDo is refactoring the PiniaColada queries into [DataLoaders](https://router.vuejs.org/data-loaders/), an emerging standard in the Vue ecosystem for data fetching. [DataLoaders support PiniaColada out of the box, so the effort to rewrite is minimal](https://router.vuejs.org/data-loaders/colada/).
 - **[Vue Charts](https://github.com/dennisadriaans/vue-chrts)** for displaying charts.
 - **[Zod](https://github.com/colinhacks/zod)**: TypeScript-first schema validation with static type inference.
 

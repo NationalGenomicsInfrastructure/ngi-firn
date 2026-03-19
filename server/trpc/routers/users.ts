@@ -30,7 +30,7 @@ export const usersRouter = createTRPCRouter({
       return null
     }),
 
-   // Third-party procedures for users
+  // Third-party procedures for users
 
   getUserInfo: authedProcedure
     .query(async (): Promise<DisplayUserToUsers[]> => {
