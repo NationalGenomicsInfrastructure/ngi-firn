@@ -12,6 +12,12 @@ const data = {
       url: '/projects',
       icon: 'i-lucide-dna',
       isActive: false
+    },
+    {
+      title: 'Tasks',
+      url: '/tasks',
+      icon: 'i-lucide-clipboard-list',
+      isActive: false
     }
   ]
 }
