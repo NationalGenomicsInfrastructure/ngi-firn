@@ -29,7 +29,7 @@ const data: { navFooter: NavFooterItem[] } = {
     },
     {
       title: 'Administration',
-      icon: 'i-lucide-key-round',
+      icon: 'i-tabler-brand-angular-filled',
       onClick: () => {
         setOpen(true)
         navigateTo('/administration')

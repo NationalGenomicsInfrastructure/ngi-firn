@@ -72,5 +72,17 @@ export default defineNuxtConfig({
     prefix: 'N',
     themeable: true,
     global: true
+  },
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        '@vee-validate/zod',
+        'luxon',
+        'zod',
+      ]
+    }
   }
 })
