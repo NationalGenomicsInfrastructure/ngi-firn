@@ -39,37 +39,37 @@ function displayName(user: DisplayUserToUsers): string {
         placeholder: 'Select user...'
       }"
     >
-      <template #trigger="{ modelValue }">
-        <template v-if="modelValue">
+      <template #trigger>
+        <template v-if="selectedUser">
           <div
-            :key="modelValue.firnId"
+            :key="selectedUser.firnId"
             class="flex items-center gap-2"
           >
             <NAvatarGroup :max="2">
               <NAvatar
-                :key="`avatar-google-${modelValue.firnId}`"
-                :src="modelValue.googleAvatar"
-                :alt="displayName(modelValue)"
+                :key="`avatar-google-${selectedUser.firnId}`"
+                :src="selectedUser.googleAvatar"
+                :alt="displayName(selectedUser)"
                 square="7"
                 avatar="solid-primary"
               >
                 <template #fallback>
-                  <span class="text-primary-200 dark:text-primary-100 font-extrabold"><NIcon
+                  <span class="inline-flex items-center gap-0 leading-none text-primary-200 dark:text-primary-100 font-extrabold"><NIcon
                     name="i-lucide-snowflake"
-                    class="w-5 h-5"
+                    class="w-4 h-4"
                   />F</span>
                 </template>
               </NAvatar>
               <NAvatar
-                v-if="modelValue.githubAvatar"
-                :key="`avatar-github-${modelValue.firnId}`"
-                :src="modelValue.githubAvatar"
-                :alt="displayName(modelValue)"
+                v-if="selectedUser.githubAvatar"
+                :key="`avatar-github-${selectedUser.firnId}`"
+                :src="selectedUser.githubAvatar"
+                :alt="displayName(selectedUser)"
                 square="7"
                 avatar="solid-primary"
               />
             </NAvatarGroup>
-            {{ displayName(modelValue) }}
+            {{ displayName(selectedUser) }}
           </div>
         </template>
         <template v-else>
@@ -87,10 +87,10 @@ function displayName(user: DisplayUserToUsers): string {
               avatar="solid-primary"
             >
               <template #fallback>
-                <span class="text-primary-200 dark:text-primary-100 font-extrabold">
+                <span class="inline-flex items-center gap-0 leading-none text-primary-200 dark:text-primary-100 font-extrabold">
                   <NIcon
                     name="i-lucide-snowflake"
-                    class="w-5 h-5"
+                    class="w-4 h-4"
                   />F
                 </span>
               </template>
