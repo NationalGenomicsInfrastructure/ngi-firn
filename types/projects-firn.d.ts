@@ -15,7 +15,6 @@ export interface FirnProjectBookmark {
   projectName: string
   // Key characteristics
   status?: ProjectStatusString
-  // Priority
   priority?: ProjectPriority
   application?: string | null
   affiliation?: string

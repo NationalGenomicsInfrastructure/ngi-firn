@@ -22,8 +22,8 @@
  * getApprovedUsers() - Get all active users (allowed to login)
  * PROJECT BOOKMARKS:
  * getProjectBookmarks(user) - Get all project bookmarks for a user
- * addProjectBookmark(user, project) - Add a project bookmark for a user
- * removeProjectBookmark(user, project) - Remove a project bookmark for a user
+ * addProjectBookmark(user, projectId) - Add a project bookmark for a user
+ * removeProjectBookmark(user, projectId, projectName?) - Remove a project bookmark for a user
  * TODO DOCUMENTS (user-linked):
  * createTodoDocumentForUser(user, input) - Create a TodoDocument with user as owner and add ref to user.todoDocuments
  * deleteTodoDocumentForUser(user, todoDocument) - Delete a TodoDocument and remove its ref from user.todoDocuments
@@ -40,8 +40,10 @@ import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
 import { ProductivityService } from './productivity.server'
+import { ProjectService } from './projects.server'
 import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers } from '../../types/auth'
 import type { FirnProjectBookmark } from '../../types/projects-firn'
+import type { Project } from '../../types/projects'
 import type { TodoDocument } from '../../types/productivity'
 import type { TypedDocumentReference } from '../../types/references'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
@@ -489,15 +491,31 @@ export const UserService = {
 
   /**
    * Add a project bookmark for a user.
-   * Ensures idempotency by not adding duplicates for the same projectDocId.
+   * Fetches project metadata from the projects database by projectId.
+   * Ensures idempotency by not adding duplicates for the same projectId.
    */
-  async addProjectBookmark(user: FirnUser, project: FirnProjectBookmark): Promise<FirnUser | null> {
+  async addProjectBookmark(user: FirnUser, projectId: string): Promise<FirnUser | null> {
+    const project = await ProjectService.getProjectByProjectId(projectId)
+    if (!project)
+      return null
+
+    const bookmark: FirnProjectBookmark = {
+      projectDocId: { db: 'projects', id: project._id },
+      projectId: project.project_id,
+      projectName: project.project_name,
+      status: project.status_fields?.status,
+      priority: project.priority,
+      application: project.application,
+      affiliation: project.affiliation,
+      noOfSamples: project.no_of_samples
+    }
+    
     const existingBookmarks = user.projectBookmarks ?? []
-    const alreadyBookmarked = existingBookmarks.some(b => b.projectDocId === project.projectDocId)
+    const alreadyBookmarked = existingBookmarks.some(b => b.projectId === projectId)
 
     const projectBookmarks: FirnProjectBookmark[] = alreadyBookmarked
       ? existingBookmarks
-      : [...existingBookmarks, project]
+      : [...existingBookmarks, bookmark]
 
     const updates: Partial<FirnUser> = {
       projectBookmarks
@@ -509,13 +527,22 @@ export const UserService = {
 
   /**
    * Remove a project bookmark for a user.
-   * Matches on projectDocId; no-op if the bookmark does not exist.
+   * Matches on projectId; when projectName is given, both must match.
+   * No-op if the bookmark does not exist.
    */
-  async removeProjectBookmark(user: FirnUser, project: FirnProjectBookmark): Promise<FirnUser | null> {
+  async removeProjectBookmark(
+    user: FirnUser,
+    projectId: string,
+    projectName?: string
+  ): Promise<FirnUser | null> {
     const existingBookmarks = user.projectBookmarks ?? []
-    const projectBookmarks: FirnProjectBookmark[] = existingBookmarks.filter(
-      b => b.projectDocId !== project.projectDocId
-    )
+    const projectBookmarks: FirnProjectBookmark[] = existingBookmarks.filter((b) => {
+      if (b.projectId !== projectId)
+        return true
+      if (projectName !== undefined && b.projectName !== projectName)
+        return true
+      return false
+    })
 
     const updates: Partial<FirnUser> = {
       projectBookmarks
