@@ -40,10 +40,9 @@ import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
 import { ProductivityService } from './productivity.server'
-import { ProjectService } from './projects.server'
+import { ProjectService, PROJECTS_DB_NAME } from './projects.server'
 import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers } from '../../types/auth'
 import type { FirnProjectBookmark } from '../../types/projects-firn'
-import type { Project } from '../../types/projects'
 import type { TodoDocument } from '../../types/productivity'
 import type { TypedDocumentReference } from '../../types/references'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
@@ -500,7 +499,7 @@ export const UserService = {
       return null
 
     const bookmark: FirnProjectBookmark = {
-      projectDocId: { db: 'projects', id: project._id },
+      projectDocId: { db: PROJECTS_DB_NAME, id: project._id },
       projectId: project.project_id,
       projectName: project.project_name,
       status: project.status_fields?.status,
@@ -509,7 +508,7 @@ export const UserService = {
       affiliation: project.affiliation,
       noOfSamples: project.no_of_samples
     }
-    
+
     const existingBookmarks = user.projectBookmarks ?? []
     const alreadyBookmarked = existingBookmarks.some(b => b.projectId === projectId)
 

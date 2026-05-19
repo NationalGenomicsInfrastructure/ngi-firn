@@ -22,7 +22,7 @@ import type {
   SummaryViewValue
 } from '../../types/projects'
 
-const PROJECTS_DB_NAME = process.env.CLOUDANT_PROJECTS_DATABASE || 'projects'
+export const PROJECTS_DB_NAME = process.env.CLOUDANT_PROJECTS_DATABASE || 'projects'
 const MAX_PAGE_SIZE = 200
 const PROJECT_DESIGN_DOC = 'project'
 
