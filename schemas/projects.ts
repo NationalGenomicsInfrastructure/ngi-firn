@@ -137,7 +137,7 @@ export type GetProjectInputSchema = z.infer<typeof getProjectInputSchema>
 export const listProjectsSummaryInputSchema = z.object({
   status: z.enum(['open', 'closed']).optional(),
   ngi_project_id: z.string().optional(),
-  /** Filter by project_name: case-insensitive substring match (e.g. "Svensson" matches "MA.Svensson_24_02"). */
+  /** Filter by project_name: case-insensitive substring match (e.g. "User" matches "A.User_25_01"). */
   project_name_filter: z.string().optional(),
   application_filter: z.string().optional(),
   limit: z.number().optional(),
@@ -145,6 +145,23 @@ export const listProjectsSummaryInputSchema = z.object({
 }).strict()
 
 export type ListProjectsSummaryInputSchema = z.infer<typeof listProjectsSummaryInputSchema>
+
+// =============================================================================
+// Project bookmarks (tRPC input)
+// =============================================================================
+
+/** Input for addProjectBookmark: same public project identifier as getProject. */
+export const addProjectBookmarkInputSchema = getProjectInputSchema
+
+export type AddProjectBookmarkInputSchema = z.infer<typeof addProjectBookmarkInputSchema>
+
+/** Input for removeProjectBookmark. When projectName is set, both projectId and projectName must match. */
+export const removeProjectBookmarkInputSchema = z.object({
+  projectId: z.string(),
+  projectName: z.string().optional()
+}).strict()
+
+export type RemoveProjectBookmarkInputSchema = z.infer<typeof removeProjectBookmarkInputSchema>
 
 // =============================================================================
 // NA result schemas (projects DB may be unavailable – no errors, wrapped result)

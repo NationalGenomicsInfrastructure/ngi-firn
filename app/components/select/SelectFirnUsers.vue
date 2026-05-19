@@ -48,7 +48,7 @@ function displayName(user: DisplayUserToUsers): string {
             <NAvatarGroup :max="2">
               <NAvatar
                 :key="`avatar-google-${selectedUser.firnId}`"
-                :src="selectedUser.googleAvatar"
+                :src="selectedUser.googleAvatar ?? undefined"
                 :alt="displayName(selectedUser)"
                 square="7"
                 avatar="solid-primary"

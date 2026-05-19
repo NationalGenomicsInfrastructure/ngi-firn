@@ -493,7 +493,7 @@ export const UserService = {
    * Fetches project metadata from the projects database by projectId.
    * Ensures idempotency by not adding duplicates for the same projectId.
    */
-  async addProjectBookmark(user: FirnUser, projectId: string): Promise<FirnUser | null> {
+  async addProjectBookmark(user: FirnUser, projectId: string): Promise<FirnProjectBookmark[] | null> {
     const project = await ProjectService.getProjectByProjectId(projectId)
     if (!project)
       return null
@@ -521,7 +521,11 @@ export const UserService = {
     }
 
     const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
-    return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+
+    if (result.id && result.rev)
+      return projectBookmarks
+    else
+      return null
   },
 
   /**
@@ -533,7 +537,7 @@ export const UserService = {
     user: FirnUser,
     projectId: string,
     projectName?: string
-  ): Promise<FirnUser | null> {
+  ): Promise<FirnProjectBookmark[] | null> {
     const existingBookmarks = user.projectBookmarks ?? []
     const projectBookmarks: FirnProjectBookmark[] = existingBookmarks.filter((b) => {
       if (b.projectId !== projectId)
@@ -548,7 +552,10 @@ export const UserService = {
     }
 
     const result = await couchDB.updateDocument(user._id, { ...user, ...updates }, user._rev!)
-    return { ...user, ...updates, _id: result.id, _rev: result.rev } as FirnUser
+    if (result.id && result.rev)
+      return projectBookmarks
+    else
+      return null
   },
 
   /*

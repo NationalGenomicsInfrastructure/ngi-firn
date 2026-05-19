@@ -1,10 +1,14 @@
+import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, firnUserProcedure } from '../init'
 import type { ProjectsAvailableResultSchema, ProjectSingleResultSchema, ProjectListResultSchema, ProjectListWithDetailsResultSchema } from '~~/schemas/projects'
 import {
   getProjectInputSchema,
   listProjectsSummaryInputSchema,
+  addProjectBookmarkInputSchema,
+  removeProjectBookmarkInputSchema,
   parseProjectDocument
 } from '~~/schemas/projects'
+import type { FirnProjectBookmark } from '~~/types/projects-firn'
 
 export const projectsRouter = createTRPCRouter({
 
@@ -67,5 +71,57 @@ export const projectsRouter = createTRPCRouter({
         total_rows: result.total_rows,
         offset: result.offset
       }
+    }),
+
+  /** Get all project bookmarks for the current user. */
+  getProjectBookmarks: firnUserProcedure
+    .query(async ({ ctx }): Promise<FirnProjectBookmark[]> => {
+      if (!ctx.firnUser) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
+      const { UserService } = await import('../../crud/users.server')
+      return UserService.getProjectBookmarks(ctx.firnUser)
+    }),
+
+  /**
+   * Add a project bookmark for the current user.
+   * Idempotent: does not duplicate bookmarks for the same projectId.
+   * Returns null if the project does not exist or the user document could not be updated.
+   */
+  addProjectBookmark: firnUserProcedure
+    .input(addProjectBookmarkInputSchema)
+    .mutation(async ({ ctx, input }): Promise<FirnProjectBookmark[] | null> => {
+      if (!ctx.firnUser) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
+      const { UserService } = await import('../../crud/users.server')
+      const updatedBookmarks = await UserService.addProjectBookmark(ctx.firnUser, input.projectId)
+      if (!updatedBookmarks) {
+        return null
+      }
+      return updatedBookmarks
+    }),
+
+  /**
+   * Remove a project bookmark for the current user.
+   * When projectName is given, both projectId and projectName must match.
+   * Returns null if the user document could not be updated.
+   */
+  removeProjectBookmark: firnUserProcedure
+    .input(removeProjectBookmarkInputSchema)
+    .mutation(async ({ ctx, input }): Promise<FirnProjectBookmark[] | null> => {
+      if (!ctx.firnUser) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
+      const { UserService } = await import('../../crud/users.server')
+      const updatedBookmarks = await UserService.removeProjectBookmark(
+        ctx.firnUser,
+        input.projectId,
+        input.projectName
+      )
+      if (!updatedBookmarks) {
+        return null
+      }
+      return updatedBookmarks
     })
 })
