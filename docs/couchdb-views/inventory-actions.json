@@ -1,0 +1,18 @@
+{
+  "_id": "_design/inventory-actions",
+  "language": "javascript",
+  "views": {
+    "by_target": {
+      "map": "function (doc) { if (doc.type === 'inventoryAction' && doc.targetId) { emit([doc.targetType || null, doc.targetId], null); } }"
+    },
+    "by_status": {
+      "map": "function (doc) { if (doc.type === 'inventoryAction' && doc.status) { emit([doc.status, doc.performedAt || null], null); } }"
+    },
+    "by_assignee": {
+      "map": "function (doc) { if (doc.type !== 'inventoryAction') { return; } var assignee = doc.assignee || (doc.details && doc.details.assignee) || doc.performedBy || null; if (assignee) { emit(assignee, null); } }"
+    },
+    "planned_for_target": {
+      "map": "function (doc) { if (doc.type !== 'inventoryAction' || !doc.targetId) { return; } var details = doc.details || {}; var plannedFor = doc.plannedFor || details.plannedFor || null; if (plannedFor) { emit([doc.targetType || null, doc.targetId, plannedFor], null); return; } if (doc.status === 'pending' && doc.performedAt) { emit([doc.targetType || null, doc.targetId, doc.performedAt], null); } }"
+    }
+  }
+}
