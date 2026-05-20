@@ -27,7 +27,12 @@ function detailsUrl(projectId: string) {
 }
 
 function displayName(bookmark: FirnProjectBookmark) {
-  return bookmark.projectName || bookmark.projectId
+  const projectNameFragments = bookmark.projectName?.split(/[_.]/g) ?? []
+  if (projectNameFragments.length === 4) {
+    return `${projectNameFragments[0]}.${projectNameFragments[1]} ${projectNameFragments[2]}/${projectNameFragments[3]}`
+  } else {
+    return bookmark.projectId
+  }
 }
 
 function dropdownItems(bookmark: FirnProjectBookmark) {

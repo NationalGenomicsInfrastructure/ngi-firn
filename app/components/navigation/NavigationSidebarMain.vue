@@ -2,6 +2,12 @@
 const data = {
   navMain: [
     {
+      title: 'Dashboard',
+      url: '/firn',
+      icon: 'i-lucide-home',
+      isActive: false
+    },
+    {
       title: 'Cold Storage Inventory',
       url: '/inventory',
       icon: 'i-lucide-snowflake',
