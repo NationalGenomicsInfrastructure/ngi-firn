@@ -2,7 +2,7 @@
 // Types for projects that are stored in the Firn database (read-write, managed by Firn)
 // =============================================================================================
 
-import type { ProjectsDbDocument, ProjectPriority, ProjectStatusString } from './projects'
+import type { ProjectsDbDocument, ProjectPriority } from './projects'
 import type { TypedDocumentReference } from './references'
 
 // Lightweight, embedded bookmark for a project document from the read-only projects database
@@ -14,7 +14,6 @@ export interface FirnProjectBookmark {
   // Human-readable project name (`project_name`).
   projectName: string
   // Key characteristics
-  status?: ProjectStatusString
   priority?: ProjectPriority
   application?: string | null
   affiliation?: string

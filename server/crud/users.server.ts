@@ -502,7 +502,6 @@ export const UserService = {
       projectDocId: { db: PROJECTS_DB_NAME, id: project._id },
       projectId: project.project_id,
       projectName: project.project_name,
-      status: project.status_fields?.status,
       priority: project.priority,
       application: project.application,
       affiliation: project.affiliation,
