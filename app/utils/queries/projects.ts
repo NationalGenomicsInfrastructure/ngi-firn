@@ -5,6 +5,7 @@ import type {
   ProjectListWithDetailsResultSchema,
   ListProjectsSummaryInputSchema
 } from '~~/schemas/projects'
+import type { FirnProjectBookmark } from '~~/types/projects-firn'
 import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for projects domain
@@ -14,7 +15,9 @@ export const PROJECTS_QUERY_KEYS = {
   summaries: (params?: ListProjectsSummaryInputSchema) => [...PROJECTS_QUERY_KEYS.root, 'summaries', params ?? {}] as const,
   summariesWithDetails: (params?: ListProjectsSummaryInputSchema) => [...PROJECTS_QUERY_KEYS.root, 'summariesWithDetails', params ?? {}] as const,
   /** Single project by project_id (public identifier, used in URLs). */
-  project: (projectId: string) => [...PROJECTS_QUERY_KEYS.root, 'project', projectId] as const
+  project: (projectId: string) => [...PROJECTS_QUERY_KEYS.root, 'project', projectId] as const,
+  /** Project bookmarks for the current user. */
+  bookmarks: () => [...PROJECTS_QUERY_KEYS.root, 'bookmarks'] as const
 } as const
 
 // Query for projects database availability
@@ -64,3 +67,12 @@ export const projectQuery = defineQueryOptions(
 )
 
 export type ProjectQueryResult = ProjectSingleResultSchema
+
+// Query for project bookmarks of the current user
+export const projectBookmarksQuery = defineQueryOptions<FirnProjectBookmark[]>({
+  key: PROJECTS_QUERY_KEYS.bookmarks(),
+  query: () => {
+    const { $trpc } = useNuxtApp()
+    return $trpc.projects.getProjectBookmarks.query()
+  }
+})
