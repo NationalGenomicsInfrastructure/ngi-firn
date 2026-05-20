@@ -8,17 +8,19 @@
  * TEMPLATE CRUD:
  * createTemplate(input, userId) - Create a reusable inventory template
  * getTemplate(templateId) - Fetch one template
- * getTemplates(templateFor?) - List templates, optionally filtered by target type
+ * getTemplates(templateFor?) - List templates, optionally filtered by templateFor
  * updateTemplate(templateId, rev, updates, userId) - Update template metadata/defaults
  * deleteTemplate(templateId, rev) - Delete a template document
- * applyTemplate(templateId) - Convert template defaults to container/item create payload
+ * applyTemplate(templateId) - Convert template defaults to equipment/container/item create payload
  */
 
 import { couchDB } from '../database/couchdb'
+import { generateInventoryId } from './inventory-helpers.server'
 import type {
   CreateContainerInput,
   CreateInventoryItemInput,
   CreateInventoryTemplateInput,
+  CreateStorageEquipmentInput,
   InventoryTemplate,
   UpdateInventoryTemplateInput
 } from '../../types/inventory'
@@ -43,17 +45,25 @@ export const TemplateService = {
     const newTemplate: Omit<InventoryTemplate, '_id' | '_rev'> = {
       type: 'inventoryTemplate',
       schema: 1,
-      templateId: input.templateId,
+      templateId: generateInventoryId('template'),
       name: input.name,
       description: input.description ?? null,
-      appliesTo: input.appliesTo,
-      containerType: input.containerType ?? null,
-      rows: input.rows,
-      columns: input.columns,
-      levels: input.levels ?? 1,
+      templateFor: input.templateFor,
+      defaultCategory: input.defaultCategory ?? null,
+      defaultClassification: input.defaultClassification ?? null,
+      rows: input.rows ?? null,
+      columns: input.columns ?? null,
+      levels: input.levels ?? null,
+      capacity: input.capacity ?? null,
       reservedPositions: input.reservedPositions ?? [],
-      metadata: input.metadata ?? { createdBy: userId, updatedBy: userId },
+      acceptedItemCategories: input.acceptedItemCategories ?? null,
+      acceptedContainerCategories: input.acceptedContainerCategories ?? null,
+      defaultColor: input.defaultColor ?? null,
+      defaultUnit: input.defaultUnit ?? null,
+      defaultConcentrationUnit: input.defaultConcentrationUnit ?? null,
+      metadata: input.metadata ?? null,
       isActive: input.isActive ?? true,
+      createdBy: userId,
       createdAt: now,
       updatedAt: now
     }
@@ -74,11 +84,11 @@ export const TemplateService = {
   },
 
   /* List templates, optionally constrained to one template target kind. */
-  async getTemplates(templateFor?: InventoryTemplate['appliesTo']): Promise<InventoryTemplate[]> {
+  async getTemplates(templateFor?: InventoryTemplate['templateFor']): Promise<InventoryTemplate[]> {
     const selector: Record<string, unknown> = { type: 'inventoryTemplate' }
 
     if (templateFor) {
-      selector.appliesTo = templateFor
+      selector.templateFor = templateFor
     }
 
     const templates = await couchDB.queryDocuments<InventoryTemplate>(selector)
@@ -102,26 +112,27 @@ export const TemplateService = {
     const existingTemplate = ensureTemplate(await couchDB.getDocument<InventoryTemplate>(templateId), templateId)
 
     const now = new Date().toISOString()
-    const metadata = updates.metadata !== undefined
-      ? updates.metadata
-      : existingTemplate.metadata
 
     const updatedTemplate: InventoryTemplate = {
       ...existingTemplate,
       type: 'inventoryTemplate',
       schema: 1,
-      templateId: updates.templateId ?? existingTemplate.templateId,
       name: updates.name ?? existingTemplate.name,
-      description: updates.description ?? existingTemplate.description,
-      appliesTo: updates.appliesTo ?? existingTemplate.appliesTo,
-      containerType: updates.containerType !== undefined
-        ? updates.containerType
-        : existingTemplate.containerType,
-      rows: updates.rows ?? existingTemplate.rows,
-      columns: updates.columns ?? existingTemplate.columns,
-      levels: updates.levels ?? existingTemplate.levels,
+      description: updates.description !== undefined ? updates.description : existingTemplate.description,
+      templateFor: updates.templateFor ?? existingTemplate.templateFor,
+      defaultCategory: updates.defaultCategory !== undefined ? updates.defaultCategory : existingTemplate.defaultCategory,
+      defaultClassification: updates.defaultClassification !== undefined ? updates.defaultClassification : existingTemplate.defaultClassification,
+      rows: updates.rows !== undefined ? updates.rows : existingTemplate.rows,
+      columns: updates.columns !== undefined ? updates.columns : existingTemplate.columns,
+      levels: updates.levels !== undefined ? updates.levels : existingTemplate.levels,
+      capacity: updates.capacity !== undefined ? updates.capacity : existingTemplate.capacity,
       reservedPositions: updates.reservedPositions ?? existingTemplate.reservedPositions,
-      metadata: metadata == null ? metadata : { ...metadata, updatedBy: userId },
+      acceptedItemCategories: updates.acceptedItemCategories !== undefined ? updates.acceptedItemCategories : existingTemplate.acceptedItemCategories,
+      acceptedContainerCategories: updates.acceptedContainerCategories !== undefined ? updates.acceptedContainerCategories : existingTemplate.acceptedContainerCategories,
+      defaultColor: updates.defaultColor !== undefined ? updates.defaultColor : existingTemplate.defaultColor,
+      defaultUnit: updates.defaultUnit !== undefined ? updates.defaultUnit : existingTemplate.defaultUnit,
+      defaultConcentrationUnit: updates.defaultConcentrationUnit !== undefined ? updates.defaultConcentrationUnit : existingTemplate.defaultConcentrationUnit,
+      metadata: updates.metadata !== undefined ? updates.metadata : existingTemplate.metadata,
       isActive: updates.isActive ?? existingTemplate.isActive,
       updatedAt: now
     }
@@ -140,40 +151,45 @@ export const TemplateService = {
     await couchDB.deleteDocument(templateId, rev)
   },
 
-  /* Map template defaults into create payloads for container or item workflows. */
-  async applyTemplate(templateId: string): Promise<Partial<CreateContainerInput> | Partial<CreateInventoryItemInput>> {
+  /* Map template defaults into create payloads for equipment, container, or item workflows. */
+  async applyTemplate(templateId: string): Promise<Partial<CreateStorageEquipmentInput> | Partial<CreateContainerInput> | Partial<CreateInventoryItemInput>> {
     const template = ensureTemplate(await couchDB.getDocument<InventoryTemplate>(templateId), templateId)
 
-    if (template.appliesTo === 'storageEquipment') {
-      return {
-        name: template.name,
-        label: template.name,
-        description: template.description ?? undefined,
-        containerType: template.containerType ?? 'other',
-        rows: template.rows,
-        columns: template.columns,
-        levels: template.levels,
-        capacity: template.rows * template.columns * Math.max(template.levels, 1),
+    if (template.templateFor === 'storageEquipment') {
+      const payload: Partial<CreateStorageEquipmentInput> = {
+        equipmentType: (template.defaultCategory as CreateStorageEquipmentInput['equipmentType']) ?? undefined,
+        rows: template.rows ?? undefined,
+        columns: template.columns ?? undefined,
+        levels: template.levels ?? undefined,
+        capacity: template.capacity ?? undefined,
         isActive: template.isActive
       }
+      return payload
     }
 
-    return {
-      name: template.name,
-      label: template.name,
-      description: template.description ?? undefined,
-      itemType: 'other',
-      metadata: {
-        ...(template.metadata ?? {}),
-        templateId: template.templateId,
-        templateName: template.name,
-        templateGrid: {
-          rows: template.rows,
-          columns: template.columns,
-          levels: template.levels,
-          reservedPositions: template.reservedPositions
-        }
+    if (template.templateFor === 'container') {
+      const payload: Partial<CreateContainerInput> = {
+        containerType: (template.defaultCategory as CreateContainerInput['containerType']) ?? undefined,
+        classification: (template.defaultClassification as CreateContainerInput['classification']) ?? undefined,
+        rows: template.rows ?? undefined,
+        columns: template.columns ?? undefined,
+        levels: template.levels ?? undefined,
+        capacity: template.capacity ?? undefined,
+        acceptedItemCategories: template.acceptedItemCategories ?? undefined,
+        acceptedContainerCategories: template.acceptedContainerCategories ?? undefined,
+        color: template.defaultColor ?? undefined,
+        isActive: template.isActive
       }
+      return payload
     }
+
+    const payload: Partial<CreateInventoryItemInput> = {
+      category: (template.defaultCategory as CreateInventoryItemInput['category']) ?? undefined,
+      classification: (template.defaultClassification as CreateInventoryItemInput['classification']) ?? undefined,
+      unit: template.defaultUnit ?? undefined,
+      concentrationUnit: template.defaultConcentrationUnit ?? undefined,
+      metadata: template.metadata ?? undefined
+    }
+    return payload
   }
 }

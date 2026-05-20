@@ -4,17 +4,14 @@
  *
  * INTERNAL HELPERS:
  * toErrorMessage(error, context) - Normalize unknown failures into contextual errors
- * asRecord(value) - Safely coerce unknown details payload into object form
- * getDetailString(details, key) - Read non-empty string values from details payload
- * getPlannedTimestamp(action) - Derive planning timestamp for ordering/filtering
  * toInventoryActionTargetType(type) - Validate legal action target types
- * toLocationType(type) - Validate legal location types
- * isPendingAction(action) - Check if action is pending
+ * isPendingAction(action) - Check if action has planned status
  * isTerminalStatus(status) - Check if action is terminal
  * ensureViewsReady() - Ensure required view docs are available before view queries
  * getActionByIdOrThrow(actionId) - Load one action or throw
  * ensureActionCanTransition(action, nextStatus) - Enforce valid state transitions
- * listPendingActions(limit?) - Query pending actions through views
+ * resolveTargetName(targetId) - Snapshot target name for audit trail
+ * listPlannedActions(limit?) - Query planned actions through views
  *
  * ACTION CRUD + WORKFLOWS:
  * createAction(input, userId) - Persist a new action entry
@@ -23,11 +20,11 @@
  * getPlannedActions(filters?) - List planned actions with optional filtering
  * getOverdueActions() - List actions overdue as of now
  * completeAction(actionId, userId, notes?) - Complete an action
- * skipAction(actionId, userId, reason?) - Mark an action as skipped/cancelled
+ * skipAction(actionId, userId, reason?) - Mark an action as skipped
  * cancelAction(actionId, userId) - Cancel an action
  * createLinkedReturnAction(checkoutActionId, itemId, userId, dueAt?) - Create planned return tied to checkout
- * skipActionsForTarget(targetId, reason) - Bulk skip pending actions for a target
- * createExpiryActions(beforeDate) - Create pending expiry actions for expiring items
+ * skipActionsForTarget(targetId, reason) - Bulk skip planned actions for a target
+ * createExpiryActions(beforeDate) - Create planned expiry actions for expiring items
  */
 
 import type { CloudantV1 } from '@ibm-cloud/cloudant'
@@ -37,14 +34,8 @@ import type {
   CreateInventoryActionInput,
   InventoryAction,
   InventoryActionType,
-  InventoryItem,
-  InventoryLocationType
+  InventoryItem
 } from '../../types/inventory'
-
-type InventoryActionDocument = InventoryAction & {
-  plannedFor?: string | null
-  assignee?: string | null
-}
 
 const MAX_ACTION_FETCH = 500
 let viewsReadyPromise: Promise<void> | null = null
@@ -57,32 +48,6 @@ function toErrorMessage(error: unknown, context: string): Error {
   return new Error(`${context}: Unknown error`)
 }
 
-/* Safely coerce unknown payload values to object records. */
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
-  }
-  return value as Record<string, unknown>
-}
-
-/* Read a non-empty string field from an action details payload. */
-function getDetailString(details: Record<string, unknown>, key: string): string | null {
-  const value = details[key]
-  return typeof value === 'string' && value.trim().length > 0 ? value : null
-}
-
-/* Derive the effective planning timestamp from explicit detail fields. */
-function getPlannedTimestamp(action: InventoryActionDocument): string | null {
-  const details = asRecord(action.details)
-  const dueAt = getDetailString(details, 'dueAt')
-  const plannedForInDetails = getDetailString(details, 'plannedFor')
-  const plannedFor = typeof action.plannedFor === 'string' && action.plannedFor.trim().length > 0
-    ? action.plannedFor
-    : null
-
-  return dueAt ?? plannedFor ?? plannedForInDetails ?? action.performedAt ?? null
-}
-
 /* Validate a value as a supported InventoryAction target type. */
 function toInventoryActionTargetType(type: unknown): InventoryAction['targetType'] | null {
   return type === 'room' || type === 'storageEquipment' || type === 'container' || type === 'inventoryItem'
@@ -90,21 +55,14 @@ function toInventoryActionTargetType(type: unknown): InventoryAction['targetType
     : null
 }
 
-/* Validate a value as a supported inventory location type. */
-function toLocationType(type: unknown): InventoryLocationType | null {
-  return type === 'room' || type === 'storageEquipment' || type === 'container'
-    ? type
-    : null
-}
-
-/* Check whether an action is currently pending. */
-function isPendingAction(action: InventoryActionDocument): boolean {
-  return action.status === 'pending'
+/* Check whether an action is currently planned (i.e. awaiting execution). */
+function isPendingAction(action: InventoryAction): boolean {
+  return action.status === 'planned'
 }
 
 /* Check whether a status is terminal and no longer mutable. */
 function isTerminalStatus(status: InventoryAction['status']): boolean {
-  return status === 'completed' || status === 'cancelled' || status === 'failed'
+  return status === 'completed' || status === 'skipped' || status === 'cancelled'
 }
 
 /* Lazily initialize and cache CouchDB view setup. */
@@ -119,16 +77,16 @@ async function ensureViewsReady(): Promise<void> {
 }
 
 /* Fetch an action and fail fast when it cannot be found. */
-async function getActionByIdOrThrow(actionId: string): Promise<InventoryActionDocument> {
+async function getActionByIdOrThrow(actionId: string): Promise<InventoryAction> {
   const action = await ActionService.getAction(actionId)
   if (!action) {
     throw new Error(`Inventory action "${actionId}" not found`)
   }
-  return action as InventoryActionDocument
+  return action
 }
 
 /* Guard invalid status transitions for immutable terminal actions. */
-function ensureActionCanTransition(action: InventoryActionDocument, nextStatus: InventoryAction['status']): void {
+function ensureActionCanTransition(action: InventoryAction, nextStatus: InventoryAction['status']): void {
   if (action.status === nextStatus) {
     return
   }
@@ -138,54 +96,76 @@ function ensureActionCanTransition(action: InventoryActionDocument, nextStatus: 
   }
 }
 
-/* Load pending actions from the inventory-actions by_status view. */
-async function listPendingActions(limit = MAX_ACTION_FETCH): Promise<InventoryActionDocument[]> {
+/* Resolve the display name of a target document for audit snapshots. */
+async function resolveTargetName(targetId: string): Promise<string> {
+  try {
+    const doc = await couchDB.getDocument<CloudantV1.Document & { name?: string }>(targetId)
+    if (doc && typeof doc.name === 'string' && doc.name.length > 0) {
+      return doc.name
+    }
+    return targetId
+  }
+  catch {
+    return targetId
+  }
+}
+
+/* Load planned actions from the inventory-actions by_status view. */
+async function listPlannedActions(limit = MAX_ACTION_FETCH): Promise<InventoryAction[]> {
   await ensureViewsReady()
 
-  const pendingRows = await couchDB.queryView<[InventoryAction['status'], string | null], null, InventoryActionDocument>(
+  const plannedRows = await couchDB.queryView<[InventoryAction['status'], string | null], null, InventoryAction>(
     'inventory-actions',
     'by_status',
     {
-      startkey: ['pending', null],
-      endkey: ['pending', '\ufff0'],
+      startkey: ['planned', null],
+      endkey: ['planned', '\ufff0'],
       include_docs: true,
       limit
     }
   )
 
-  return pendingRows.rows
+  return plannedRows.rows
     .map(row => row.doc)
-    .filter((doc): doc is InventoryActionDocument => Boolean(doc && doc.type === 'inventoryAction'))
+    .filter((doc): doc is InventoryAction => Boolean(doc && doc.type === 'inventoryAction'))
 }
 
 export const ActionService = {
-  /* Create a new action with normalized defaults and persisted details. */
+  /* Create a new action with normalized defaults and target name snapshot. */
   async createAction(input: CreateInventoryActionInput, userId: string): Promise<InventoryAction> {
     try {
       const now = new Date().toISOString()
-      const details = asRecord(input.details)
+      const targetName = await resolveTargetName(input.targetId)
+      const status = input.status ?? 'planned'
+
       const createdAction: Omit<InventoryAction, '_id' | '_rev'> = {
         type: 'inventoryAction',
         schema: 1,
-        actionId: input.actionId || generateInventoryId('inventory-action'),
+        actionId: generateInventoryId('inventory-action'),
         actionType: input.actionType,
-        status: input.status ?? 'pending',
+        status,
         targetId: input.targetId,
         targetType: input.targetType,
+        targetName,
+        createdBy: userId,
+        assignedTo: input.assignedTo ?? null,
+        completedBy: status === 'completed' ? userId : null,
+        plannedAt: now,
+        dueAt: input.dueAt ?? null,
+        completedAt: status === 'completed' ? now : null,
         fromParentId: input.fromParentId ?? null,
         fromParentType: input.fromParentType ?? null,
         toParentId: input.toParentId ?? null,
         toParentType: input.toParentType ?? null,
         fromPosition: input.fromPosition ?? null,
         toPosition: input.toPosition ?? null,
-        performedBy: userId,
-        performedAt: input.performedAt ?? now,
-        comment: input.comment ?? null,
-        details: Object.keys(details).length > 0 ? details : null
+        linkedActionId: input.linkedActionId ?? null,
+        description: input.description ?? null,
+        notes: input.notes ?? null
       }
 
       const createdDoc = await couchDB.createDocument(createdAction)
-      const action = await couchDB.getDocument<InventoryActionDocument>(createdDoc.id)
+      const action = await couchDB.getDocument<InventoryAction>(createdDoc.id)
       if (!action || action.type !== 'inventoryAction') {
         throw new Error('Inventory action was created but could not be loaded')
       }
@@ -200,12 +180,12 @@ export const ActionService = {
   /* Resolve an action by document ID first, then by business actionId fallback. */
   async getAction(actionId: string): Promise<InventoryAction | null> {
     try {
-      const byDocumentId = await couchDB.getDocument<InventoryActionDocument>(actionId)
+      const byDocumentId = await couchDB.getDocument<InventoryAction>(actionId)
       if (byDocumentId && byDocumentId.type === 'inventoryAction') {
         return byDocumentId
       }
 
-      const byActionId = await couchDB.queryDocuments<InventoryActionDocument>({
+      const byActionId = await couchDB.queryDocuments<InventoryAction>({
         type: 'inventoryAction',
         actionId
       })
@@ -226,7 +206,7 @@ export const ActionService = {
       const targetType = toInventoryActionTargetType(targetDoc?.type)
 
       if (targetType) {
-        const byTarget = await couchDB.queryView<[InventoryAction['targetType'], string], null, InventoryActionDocument>(
+        const byTarget = await couchDB.queryView<[InventoryAction['targetType'], string], null, InventoryAction>(
           'inventory-actions',
           'by_target',
           {
@@ -238,18 +218,18 @@ export const ActionService = {
 
         return byTarget.rows
           .map(row => row.doc)
-          .filter((doc): doc is InventoryActionDocument => Boolean(doc && doc.type === 'inventoryAction'))
-          .sort((a, b) => b.performedAt.localeCompare(a.performedAt))
+          .filter((doc): doc is InventoryAction => Boolean(doc && doc.type === 'inventoryAction'))
+          .sort((a, b) => b.plannedAt.localeCompare(a.plannedAt))
       }
 
-      const fallback = await couchDB.queryDocuments<InventoryActionDocument>({
+      const fallback = await couchDB.queryDocuments<InventoryAction>({
         type: 'inventoryAction',
         targetId
       })
 
       return fallback
         .filter(doc => doc.type === 'inventoryAction')
-        .sort((a, b) => b.performedAt.localeCompare(a.performedAt))
+        .sort((a, b) => b.plannedAt.localeCompare(a.plannedAt))
         .slice(0, limit)
     }
     catch (error: unknown) {
@@ -257,7 +237,7 @@ export const ActionService = {
     }
   },
 
-  /* Return pending/planned actions filtered by assignee, target, type, and overdue cutoff. */
+  /* Return planned actions filtered by assignee, target, type, and overdue cutoff. */
   async getPlannedActions(
     filters?: {
       assignedTo?: string
@@ -267,10 +247,10 @@ export const ActionService = {
     }
   ): Promise<InventoryAction[]> {
     try {
-      const pendingActions = await listPendingActions()
+      const plannedActions = await listPlannedActions()
       const overdueBefore = filters?.overdueBefore ?? null
 
-      return pendingActions
+      return plannedActions
         .filter((action) => {
           if (filters?.targetId && action.targetId !== filters.targetId) {
             return false
@@ -281,20 +261,13 @@ export const ActionService = {
           }
 
           if (filters?.assignedTo) {
-            const details = asRecord(action.details)
-            const assignee = (typeof action.assignee === 'string' && action.assignee)
-              || getDetailString(details, 'assignedTo')
-              || getDetailString(details, 'assignee')
-              || null
-
-            if (assignee !== filters.assignedTo) {
+            if (action.assignedTo !== filters.assignedTo) {
               return false
             }
           }
 
           if (overdueBefore) {
-            const plannedAt = getPlannedTimestamp(action)
-            if (!plannedAt || plannedAt >= overdueBefore) {
+            if (!action.dueAt || action.dueAt >= overdueBefore) {
               return false
             }
           }
@@ -302,9 +275,9 @@ export const ActionService = {
           return true
         })
         .sort((a, b) => {
-          const plannedA = getPlannedTimestamp(a) ?? a.performedAt
-          const plannedB = getPlannedTimestamp(b) ?? b.performedAt
-          return plannedA.localeCompare(plannedB)
+          const sortA = a.dueAt ?? a.plannedAt
+          const sortB = b.dueAt ?? b.plannedAt
+          return sortA.localeCompare(sortB)
         })
     }
     catch (error: unknown) {
@@ -324,22 +297,12 @@ export const ActionService = {
       ensureActionCanTransition(action, 'completed')
 
       const now = new Date().toISOString()
-      const details = asRecord(action.details)
-      const updatedDetails: Record<string, unknown> = {
-        ...details,
-        completedBy: userId,
-        completedAt: now
-      }
-      if (notes) {
-        updatedDetails.completionNotes = notes
-      }
-
-      const updatedAction: InventoryActionDocument = {
+      const updatedAction: InventoryAction = {
         ...action,
         status: 'completed',
-        performedAt: now,
-        comment: notes ?? action.comment ?? null,
-        details: updatedDetails
+        completedBy: userId,
+        completedAt: now,
+        notes: notes ?? action.notes
       }
 
       const result = await couchDB.updateDocument(action._id, updatedAction, action._rev)
@@ -350,30 +313,19 @@ export const ActionService = {
     }
   },
 
-  /* Transition an action to cancelled/skipped and persist skip context. */
+  /* Transition an action to skipped and persist skip context. */
   async skipAction(actionId: string, userId: string, reason?: string): Promise<InventoryAction> {
     try {
       const action = await getActionByIdOrThrow(actionId)
-      ensureActionCanTransition(action, 'cancelled')
+      ensureActionCanTransition(action, 'skipped')
 
       const now = new Date().toISOString()
-      const details = asRecord(action.details)
-      const updatedDetails: Record<string, unknown> = {
-        ...details,
-        skippedBy: userId,
-        skippedAt: now
-      }
-
-      if (reason) {
-        updatedDetails.skipReason = reason
-      }
-
-      const updatedAction: InventoryActionDocument = {
+      const updatedAction: InventoryAction = {
         ...action,
-        status: 'cancelled',
-        performedAt: now,
-        comment: reason ?? action.comment ?? null,
-        details: updatedDetails
+        status: 'skipped',
+        completedBy: userId,
+        completedAt: now,
+        notes: reason ?? action.notes
       }
 
       const result = await couchDB.updateDocument(action._id, updatedAction, action._rev)
@@ -391,18 +343,11 @@ export const ActionService = {
       ensureActionCanTransition(action, 'cancelled')
 
       const now = new Date().toISOString()
-      const details = asRecord(action.details)
-      const updatedDetails: Record<string, unknown> = {
-        ...details,
-        cancelledBy: userId,
-        cancelledAt: now
-      }
-
-      const updatedAction: InventoryActionDocument = {
+      const updatedAction: InventoryAction = {
         ...action,
         status: 'cancelled',
-        performedAt: now,
-        details: updatedDetails
+        completedBy: userId,
+        completedAt: now
       }
 
       const result = await couchDB.updateDocument(action._id, updatedAction, action._rev)
@@ -422,40 +367,23 @@ export const ActionService = {
   ): Promise<InventoryAction> {
     try {
       const checkoutAction = await getActionByIdOrThrow(checkoutActionId)
-      const details = asRecord(checkoutAction.details)
-
-      const linkedDetails: Record<string, unknown> = {
-        ...details,
-        linkedCheckoutActionId: checkoutAction.actionId,
-        relation: 'return'
-      }
-
-      if (dueAt) {
-        linkedDetails.dueAt = dueAt
-        linkedDetails.plannedFor = dueAt
-      }
-
-      const targetType = checkoutAction.targetType === 'inventoryItem' ? checkoutAction.targetType : 'inventoryItem'
-      const fromParentType = toLocationType(checkoutAction.toParentType)
-      const toParentType = toLocationType(checkoutAction.fromParentType)
 
       return this.createAction(
         {
-          actionId: generateInventoryId('inventory-return'),
-          actionType: 'move',
-          status: 'pending',
+          actionType: 'return',
+          status: 'planned',
           targetId: itemId,
-          targetType,
+          targetType: checkoutAction.targetType === 'inventoryItem' ? checkoutAction.targetType : 'inventoryItem',
+          assignedTo: userId,
+          dueAt: dueAt ?? null,
           fromParentId: checkoutAction.toParentId ?? null,
-          fromParentType,
+          fromParentType: checkoutAction.toParentType ?? null,
           toParentId: checkoutAction.fromParentId ?? null,
-          toParentType,
+          toParentType: checkoutAction.fromParentType ?? null,
           fromPosition: checkoutAction.toPosition ?? null,
           toPosition: checkoutAction.fromPosition ?? null,
-          performedBy: userId,
-          performedAt: dueAt ?? new Date().toISOString(),
-          comment: `Return action linked to checkout "${checkoutAction.actionId}"`,
-          details: linkedDetails
+          linkedActionId: checkoutAction.actionId,
+          description: `Return action linked to checkout "${checkoutAction.actionId}"`
         },
         userId
       )
@@ -465,34 +393,29 @@ export const ActionService = {
     }
   },
 
-  /* Bulk-skip all pending actions attached to a target entity. */
+  /* Bulk-skip all planned actions attached to a target entity. */
   async skipActionsForTarget(targetId: string, reason: string): Promise<number> {
     try {
       const actions = await this.getActionsForTarget(targetId, MAX_ACTION_FETCH)
       const now = new Date().toISOString()
-      const pendingActions = actions
-        .filter((action): action is InventoryActionDocument => action.type === 'inventoryAction' && isPendingAction(action))
+      const plannedActions = actions
+        .filter((action): action is InventoryAction => action.type === 'inventoryAction' && isPendingAction(action))
 
-      if (pendingActions.length === 0) {
+      if (plannedActions.length === 0) {
         return 0
       }
 
-      const docsToUpdate = pendingActions.map((action) => {
-        const details = asRecord(action.details)
+      const docsToUpdate = plannedActions.map((action) => {
         return {
           ...action,
-          status: 'cancelled' as const,
-          performedAt: now,
-          comment: reason || action.comment ?? null,
-          details: {
-            ...details,
-            skipReason: reason,
-            skippedAt: now
-          }
+          status: 'skipped' as const,
+          completedBy: 'system',
+          completedAt: now,
+          notes: reason || action.notes
         }
       })
 
-      const result = await couchDB.bulkUpdateDocuments<CloudantV1.Document>(docsToUpdate as CloudantV1.Document[])
+      const result = await couchDB.bulkUpdateDocuments<CloudantV1.Document>(docsToUpdate as unknown as CloudantV1.Document[])
       return result.filter(entry => entry.ok && !entry.error).length
     }
     catch (error: unknown) {
@@ -500,7 +423,7 @@ export const ActionService = {
     }
   },
 
-  /* Generate pending expiry actions for items expiring at/before the given cutoff. */
+  /* Generate planned expiry actions for items expiring at/before the given cutoff. */
   async createExpiryActions(beforeDate: string): Promise<InventoryAction[]> {
     try {
       const parsedBeforeDate = new Date(beforeDate)
@@ -508,10 +431,10 @@ export const ActionService = {
         throw new Error(`Invalid beforeDate "${beforeDate}"`)
       }
 
-      const pendingActions = await listPendingActions()
-      const existingPendingExpiryActions = new Set(
-        pendingActions
-          .filter(action => action.actionType === 'archive')
+      const plannedActions = await listPlannedActions()
+      const existingExpiryTargets = new Set(
+        plannedActions
+          .filter(action => action.actionType === 'discard_expired')
           .map(action => action.targetId)
       )
 
@@ -520,35 +443,23 @@ export const ActionService = {
       })
 
       const expiringItems = items.filter((item) => {
-        if (item.status === 'archived' || item.status === 'depleted') {
+        if (item.status === 'disposed' || item.status === 'expired') {
           return false
         }
 
-        const metadata = asRecord(item.metadata)
-        const expiryDate = getDetailString(metadata, 'expiryDate')
-        return Boolean(expiryDate && expiryDate <= beforeDate && !existingPendingExpiryActions.has(item._id))
+        return Boolean(item.expiryDate && item.expiryDate <= beforeDate && !existingExpiryTargets.has(item._id))
       })
 
       const createdActions: InventoryAction[] = []
       for (const item of expiringItems) {
-        const metadata = asRecord(item.metadata)
-        const expiryDate = getDetailString(metadata, 'expiryDate')
         const action = await this.createAction(
           {
-            actionId: generateInventoryId('inventory-expiry'),
-            actionType: 'archive',
-            status: 'pending',
+            actionType: 'discard_expired',
+            status: 'planned',
             targetId: item._id,
             targetType: 'inventoryItem',
-            performedBy: 'system',
-            performedAt: parsedBeforeDate.toISOString(),
-            comment: `Item expires before ${beforeDate}`,
-            details: {
-              reason: 'expiry',
-              expiryDate,
-              dueAt: expiryDate ?? beforeDate,
-              plannedFor: expiryDate ?? beforeDate
-            }
+            dueAt: item.expiryDate ?? beforeDate,
+            description: `Item expires before ${beforeDate}`
           },
           'system'
         )

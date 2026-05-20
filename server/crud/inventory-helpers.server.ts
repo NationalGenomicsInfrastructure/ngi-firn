@@ -11,7 +11,7 @@
  * GENERAL HELPERS:
  * generateInventoryId(prefix) - Generate stable prefixed IDs for inventory entities
  * buildLocationPath(parent) - Build child ancestry path from a parent entity
- * resolveLocationBreadcrumb(locationPath, parentId) - Build display breadcrumb for UI/logging
+ * resolveLocationBreadcrumb(locationPath, parentId) - Batch-fetch ancestor names for display breadcrumb
  * cascadeLocationPathUpdate(entityId, entityType, newPath) - Propagate ancestry changes to descendants
  * validateContainerAcceptance(parent, childType, childCategory) - Enforce parent/child compatibility
  * validateCapacity(parentId, parentCapacity) - Check whether parent still has free capacity
@@ -54,9 +54,7 @@ const CASCADE_ENTITY_TYPES = ['storageEquipment', 'container', 'inventoryItem']
 function toLocationAncestor(entity: LocationEntity): LocationAncestor {
   return {
     id: entity._id,
-    type: entity.type,
-    name: entity.name,
-    label: entity.label
+    type: entity.type
   }
 }
 
@@ -142,26 +140,51 @@ export function buildLocationPath(parent: Room | StorageEquipment | Container): 
   return [...basePath, parentAncestor]
 }
 
-/* Resolve a human-readable breadcrumb from ancestry and optional parent fallback lookup. */
+/* Resolve a human-readable breadcrumb by batch-fetching ancestor documents. */
 export async function resolveLocationBreadcrumb(
   locationPath: LocationAncestor[],
   parentId: string
 ): Promise<Array<{ id: string, type: string, name: string, label?: string }>> {
-  const breadcrumb = locationPath.map(ancestor => ({
-    id: ancestor.id,
-    type: ancestor.type,
-    name: ancestor.name,
-    label: ancestor.label
-  }))
+  const ancestorIds = locationPath.map(a => a.id)
+  if (parentId && !ancestorIds.includes(parentId)) {
+    ancestorIds.push(parentId)
+  }
 
-  if (parentId && !breadcrumb.some(entry => entry.id === parentId)) {
-    const parent = await couchDB.getDocument<LocationEntity>(parentId)
-    if (isLocationEntity(parent)) {
+  if (ancestorIds.length === 0) {
+    return []
+  }
+
+  const docs = await couchDB.getDocumentsByIds<LocationEntity & { _id: string }>(ancestorIds)
+
+  const docMap = new Map<string, LocationEntity & { _id: string }>()
+  for (const doc of docs) {
+    if (doc && isLocationEntity(doc)) {
+      docMap.set(doc._id, doc)
+    }
+  }
+
+  const breadcrumb: Array<{ id: string, type: string, name: string, label?: string }> = []
+
+  for (const ancestor of locationPath) {
+    const doc = docMap.get(ancestor.id)
+    if (doc) {
       breadcrumb.push({
-        id: parent._id,
-        type: parent.type,
-        name: parent.name,
-        label: parent.label
+        id: doc._id,
+        type: doc.type,
+        name: doc.name,
+        label: doc.label
+      })
+    }
+  }
+
+  if (parentId && !locationPath.some(a => a.id === parentId)) {
+    const parentDoc = docMap.get(parentId)
+    if (parentDoc) {
+      breadcrumb.push({
+        id: parentDoc._id,
+        type: parentDoc.type,
+        name: parentDoc.name,
+        label: parentDoc.label
       })
     }
   }
@@ -249,7 +272,15 @@ export function validateContainerAcceptance(
         }
       }
 
-      if (parent.classification !== 'other' && childCategory && childCategory !== parent.classification) {
+      if (parent.acceptedContainerCategories && childCategory) {
+        if (!parent.acceptedContainerCategories.includes(childCategory)) {
+          return {
+            valid: false,
+            reason: `Container does not accept container category "${childCategory}". Allowed: ${parent.acceptedContainerCategories.join(', ')}.`
+          }
+        }
+      }
+      else if (parent.classification !== 'other' && childCategory && childCategory !== parent.classification) {
         return {
           valid: false,
           reason: `Container classification "${parent.classification}" is incompatible with child category "${childCategory}".`
@@ -260,10 +291,20 @@ export function validateContainerAcceptance(
     return { valid: true }
   }
 
-  if (parent.type === 'container' && parent.classification !== 'other' && childCategory && childCategory !== parent.classification) {
-    return {
-      valid: false,
-      reason: `Container classification "${parent.classification}" is incompatible with child category "${childCategory}".`
+  if (parent.type === 'container') {
+    if (parent.acceptedItemCategories && childCategory) {
+      if (!parent.acceptedItemCategories.includes(childCategory)) {
+        return {
+          valid: false,
+          reason: `Container does not accept item category "${childCategory}". Allowed: ${parent.acceptedItemCategories.join(', ')}.`
+        }
+      }
+    }
+    else if (parent.classification !== 'other' && childCategory && childCategory !== parent.classification) {
+      return {
+        valid: false,
+        reason: `Container classification "${parent.classification}" is incompatible with child category "${childCategory}".`
+      }
     }
   }
 

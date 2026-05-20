@@ -6,32 +6,35 @@ import type { BaseDocument } from '../server/database/couchdb'
  *
  * CORE LOCATION MODEL:
  * InventoryLocationType - Allowed node types in the physical storage hierarchy
- * LocationAncestor - Materialized ancestry entry used in `locationPath`
- * GridPosition - Optional slot position within grid-like containers
+ * LocationAncestor - Materialized ancestry entry used in `locationPath` (id + type only)
+ * GridPosition - Optional slot position within grid-like containers (with optional label)
  *
  * DOCUMENT TYPES (persisted in CouchDB):
  * Room - Top-level physical room/building location
- * StorageEquipment - Freezers/fridges/shelves/cabinets within a room
- * Container - Nested storage units (rack/box/bag/etc.) inside equipment/containers
- * InventoryItem - Trackable sample/reagent/equipment unit stored in hierarchy
- * InventoryAction - Auditable handling event (planned or completed)
- * InventoryTemplate - Reusable default configuration for storage entities
+ * StorageEquipment - Freezers/fridges/shelves/cabinets within a room (+ hardware details)
+ * Container - Nested storage units with acceptance constraints and capacity
+ * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
+ * InventoryAction - Auditable handling event AND plannable task (checkout/return/expiry/etc.)
+ * InventoryTemplate - Reusable defaults for containers, equipment, and items
  *
  * SERVICE INPUT TYPES (CRUD contracts):
  * Create/Update interfaces - Input contracts for server/crud services.
  * These are intentionally separate from persisted document interfaces to
  * keep validation and mutation APIs explicit and stable over time.
+ * locationPath is never in create/update inputs — it is computed server-side.
  */
 
 /* Allowed hierarchy node types used by parent references and location paths. */
 export type InventoryLocationType = 'room' | 'storageEquipment' | 'container'
 
-/* One ancestry segment in a materialized location path (denormalized for fast reads). */
+/*
+ * One ancestry segment in a materialized location path (denormalized for fast reads).
+ * Only immutable identifiers are stored — not names — since names can change.
+ * Use resolveLocationBreadcrumb() to batch-fetch display names on demand.
+ */
 export interface LocationAncestor {
   id: string
   type: InventoryLocationType
-  name: string
-  label: string
 }
 
 /* Position inside grid-based storage layouts (e.g. box slots, rack coordinates). */
@@ -39,6 +42,8 @@ export interface GridPosition {
   row: number
   column: number
   level?: number
+  /* Human-readable slot label, e.g. "A3", "Slot 7". Derived from row/column if omitted. */
+  label?: string
 }
 
 /* Top-level physical location. Rooms are hierarchy roots for storage equipment. */
@@ -76,6 +81,10 @@ export interface StorageEquipment extends BaseDocument {
   levels: number | null
   temperatureCelsius: number | null
   capacity: number | null
+  /* Hardware identification for maintenance and tracking. */
+  manufacturer: string | null
+  model: string | null
+  serialNumber: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -99,6 +108,14 @@ export interface Container extends BaseDocument {
   columns: number | null
   levels: number | null
   capacity: number | null
+  /* Constraint: which item categories this container can hold (null = any). */
+  acceptedItemCategories: string[] | null
+  /* Constraint: which container categories can be nested inside (null = any). */
+  acceptedContainerCategories: string[] | null
+  /* Template this container was created from (informational, not live-linked). */
+  templateId: string | null
+  /* Physical color for visual identification in the lab. */
+  color: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -109,71 +126,122 @@ export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
   schema: 1
   itemId: string
-  itemType: 'sample' | 'reagent' | 'equipment' | 'consumable' | 'other'
+  /* Physical form factor of the item (what it IS). */
+  category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle'
+    | 'plate96' | 'plate384' | 'microscopySlide' | 'other'
+  /* Purpose/domain classification (what it's FOR). */
+  classification: 'sample' | 'reagent' | 'library' | 'consumable' | 'equipment' | 'other'
   name: string
   label: string
   description: string | null
   quantity: number | null
   unit: string | null
+  /* Sample/reagent concentration. */
+  concentration: number | null
+  concentrationUnit: string | null
   parentId: string
   parentType: InventoryLocationType
   locationPath: LocationAncestor[]
   position: GridPosition | null
-  status: 'available' | 'inUse' | 'reserved' | 'depleted' | 'lost' | 'damaged' | 'archived'
+  status: 'available' | 'checked_out' | 'reserved' | 'expired' | 'disposed' | 'lost' | 'damaged'
+  /* ISO 8601 date; drives the expiry-reminder workflow. */
+  expiryDate: string | null
+  lotNumber: string | null
+  /* External barcode on physical item — integrates with barcode scanning infra. */
+  barcode: string | null
+  /* Template this item was created from (informational, not live-linked). */
+  templateId: string | null
+  notes: string | null
+  /* Escape hatch for truly ad-hoc data not covered by typed fields. */
   metadata: Record<string, unknown> | null
+  createdBy: string
   createdAt: string
   updatedAt: string
 }
 
 /* Canonical action categories used for handling/audit workflows. */
 export type InventoryActionType
-  = | 'create'
-    | 'update'
-    | 'move'
-    | 'consume'
-    | 'split'
-    | 'archive'
-    | 'restore'
-    | 'delete'
+  = | 'checkout' // Remove from storage for temporary use
+    | 'return' // Put back in storage
+    | 'move' // Relocate to a different parent/position
+    | 'dispose' // Discard permanently
+    | 'reserve' // Reserve for future use
+    | 'unreserve' // Release reservation
+    | 'register' // Initial registration in inventory
+    | 'modify' // Properties changed (label, description, etc.)
+    | 'flag' // Flag for attention (low quantity, issue)
+    | 'note' // Observation/comment (informational only)
+    | 'discard_expired' // Dispose due to expiry (system-suggested)
 
-export type InventoryActionStatus = 'pending' | 'completed' | 'cancelled' | 'failed'
+export type InventoryActionStatus = 'planned' | 'completed' | 'skipped' | 'cancelled'
 
-/* Immutable handling/audit record for movement, state transitions, and planning. */
+/*
+ * Immutable handling/audit record for movement, state transitions, and planning.
+ * Completed actions are frozen log entries; planned actions are mutable tasks.
+ */
 export interface InventoryAction extends BaseDocument {
   type: 'inventoryAction'
   schema: 1
   actionId: string
   actionType: InventoryActionType
   status: InventoryActionStatus
+  /* Target entity this action applies to. */
   targetId: string
   targetType: 'room' | 'storageEquipment' | 'container' | 'inventoryItem'
+  /* Snapshot of target name at action time — frozen for audit, not kept in sync. */
+  targetName: string
+  /* Who created/planned this action. */
+  createdBy: string
+  /* Who should perform it (for planned actions; null for log entries). */
+  assignedTo: string | null
+  /* Who actually completed/skipped/cancelled it. */
+  completedBy: string | null
+  /* When the action record was created. */
+  plannedAt: string
+  /* When the planned action is due (null for immediate log entries). */
+  dueAt: string | null
+  /* When it was completed/skipped/cancelled. */
+  completedAt: string | null
+  /* Location context for move/checkout/return actions. */
   fromParentId: string | null
   fromParentType: InventoryLocationType | null
   toParentId: string | null
   toParentType: InventoryLocationType | null
   fromPosition: GridPosition | null
   toPosition: GridPosition | null
-  performedBy: string
-  performedAt: string
-  comment: string | null
-  details: Record<string, unknown> | null
+  /* Links paired actions, e.g. checkout → auto-created return task. */
+  linkedActionId: string | null
+  description: string | null
+  notes: string | null
 }
 
-/* Reusable defaults for recurring container/equipment setup patterns. */
+/* Reusable defaults for recurring container/equipment/item setup patterns. */
 export interface InventoryTemplate extends BaseDocument {
   type: 'inventoryTemplate'
   schema: 1
   templateId: string
   name: string
   description: string | null
-  appliesTo: 'storageEquipment' | 'container'
-  containerType: Container['containerType'] | null
-  rows: number
-  columns: number
-  levels: number
+  templateFor: 'storageEquipment' | 'container' | 'inventoryItem'
+  /* Default category/classification applied at creation time. */
+  defaultCategory: string | null
+  defaultClassification: string | null
+  /* Container/equipment-specific grid defaults (null for item templates). */
+  rows: number | null
+  columns: number | null
+  levels: number | null
+  capacity: number | null
   reservedPositions: GridPosition[]
+  /* Container-specific acceptance constraints. */
+  acceptedItemCategories: string[] | null
+  acceptedContainerCategories: string[] | null
+  defaultColor: string | null
+  /* Item-specific defaults (null for container/equipment templates). */
+  defaultUnit: string | null
+  defaultConcentrationUnit: string | null
   metadata: Record<string, unknown> | null
   isActive: boolean
+  createdBy: string
   createdAt: string
   updatedAt: string
 }
@@ -215,13 +283,15 @@ export interface CreateStorageEquipmentInput {
   description?: string | null
   parentId: string
   parentType: StorageEquipment['parentType']
-  locationPath: LocationAncestor[]
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
   levels?: number | null
   temperatureCelsius?: number | null
   capacity?: number | null
+  manufacturer?: string | null
+  model?: string | null
+  serialNumber?: string | null
   isActive?: boolean
 }
 
@@ -236,13 +306,15 @@ export interface UpdateStorageEquipmentInput {
   description?: string | null
   parentId?: string
   parentType?: StorageEquipment['parentType']
-  locationPath?: LocationAncestor[]
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
   levels?: number | null
   temperatureCelsius?: number | null
   capacity?: number | null
+  manufacturer?: string | null
+  model?: string | null
+  serialNumber?: string | null
   isActive?: boolean
 }
 
@@ -256,12 +328,15 @@ export interface CreateContainerInput {
   description?: string | null
   parentId: string
   parentType: Container['parentType']
-  locationPath: LocationAncestor[]
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
   levels?: number | null
   capacity?: number | null
+  acceptedItemCategories?: string[] | null
+  acceptedContainerCategories?: string[] | null
+  templateId?: string | null
+  color?: string | null
   isActive?: boolean
 }
 
@@ -275,83 +350,103 @@ export interface UpdateContainerInput {
   name?: string
   label?: string
   description?: string | null
-  parentId?: string
-  parentType?: Container['parentType']
-  locationPath?: LocationAncestor[]
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
   levels?: number | null
   capacity?: number | null
+  acceptedItemCategories?: string[] | null
+  acceptedContainerCategories?: string[] | null
+  templateId?: string | null
+  color?: string | null
   isActive?: boolean
+  /* Moving uses a dedicated moveContainer() method, not update. */
 }
 
 /* Create payload for trackable inventory items. */
 export interface CreateInventoryItemInput {
   itemId: string
-  itemType: InventoryItem['itemType']
+  category: InventoryItem['category']
+  classification: InventoryItem['classification']
   name: string
   label: string
   description?: string | null
   quantity?: number | null
   unit?: string | null
+  concentration?: number | null
+  concentrationUnit?: string | null
   parentId: string
   parentType: InventoryItem['parentType']
-  locationPath: LocationAncestor[]
   position?: GridPosition | null
   status?: InventoryItem['status']
+  expiryDate?: string | null
+  lotNumber?: string | null
+  barcode?: string | null
+  templateId?: string | null
+  notes?: string | null
   metadata?: Record<string, unknown> | null
 }
 
-/* Update payload for inventory items. */
+/* Update payload for inventory items. Moving uses a dedicated moveItem() method. */
 export interface UpdateInventoryItemInput {
   id: string
   rev: string
   itemId?: string
-  itemType?: InventoryItem['itemType']
+  category?: InventoryItem['category']
+  classification?: InventoryItem['classification']
   name?: string
   label?: string
   description?: string | null
   quantity?: number | null
   unit?: string | null
-  parentId?: string
-  parentType?: InventoryItem['parentType']
-  locationPath?: LocationAncestor[]
+  concentration?: number | null
+  concentrationUnit?: string | null
   position?: GridPosition | null
   status?: InventoryItem['status']
+  expiryDate?: string | null
+  lotNumber?: string | null
+  barcode?: string | null
+  templateId?: string | null
+  notes?: string | null
   metadata?: Record<string, unknown> | null
 }
 
 /* Create payload for inventory action/log/task entries. */
 export interface CreateInventoryActionInput {
-  actionId: string
   actionType: InventoryActionType
   status?: InventoryActionStatus
   targetId: string
   targetType: InventoryAction['targetType']
+  assignedTo?: string | null
+  dueAt?: string | null
   fromParentId?: string | null
   fromParentType?: InventoryLocationType | null
   toParentId?: string | null
   toParentType?: InventoryLocationType | null
   fromPosition?: GridPosition | null
   toPosition?: GridPosition | null
-  performedBy: string
-  performedAt?: string
-  comment?: string | null
-  details?: Record<string, unknown> | null
+  linkedActionId?: string | null
+  description?: string | null
+  notes?: string | null
 }
 
 /* Create payload for reusable inventory templates. */
 export interface CreateInventoryTemplateInput {
-  templateId: string
   name: string
   description?: string | null
-  appliesTo: InventoryTemplate['appliesTo']
-  containerType?: InventoryTemplate['containerType']
-  rows: number
-  columns: number
-  levels?: number
+  templateFor: InventoryTemplate['templateFor']
+  defaultCategory?: string | null
+  defaultClassification?: string | null
+  capacity?: number | null
+  rows?: number | null
+  columns?: number | null
+  levels?: number | null
   reservedPositions?: GridPosition[]
+  acceptedItemCategories?: string[] | null
+  acceptedContainerCategories?: string[] | null
+  defaultColor?: string | null
+  defaultUnit?: string | null
+  defaultConcentrationUnit?: string | null
   metadata?: Record<string, unknown> | null
   isActive?: boolean
 }
@@ -360,15 +455,21 @@ export interface CreateInventoryTemplateInput {
 export interface UpdateInventoryTemplateInput {
   id: string
   rev: string
-  templateId?: string
   name?: string
   description?: string | null
-  appliesTo?: InventoryTemplate['appliesTo']
-  containerType?: InventoryTemplate['containerType']
-  rows?: number
-  columns?: number
-  levels?: number
+  templateFor?: InventoryTemplate['templateFor']
+  defaultCategory?: string | null
+  defaultClassification?: string | null
+  capacity?: number | null
+  rows?: number | null
+  columns?: number | null
+  levels?: number | null
   reservedPositions?: GridPosition[]
+  acceptedItemCategories?: string[] | null
+  acceptedContainerCategories?: string[] | null
+  defaultColor?: string | null
+  defaultUnit?: string | null
+  defaultConcentrationUnit?: string | null
   metadata?: Record<string, unknown> | null
   isActive?: boolean
 }

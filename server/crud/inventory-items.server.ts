@@ -7,29 +7,28 @@
  * isParentEntity(doc) - Type guard for room/equipment/container parents
  * isInventoryItem(doc) - Type guard for inventory items
  * ensureItem(item, itemId) - Require an existing item or throw
- * mergeMetadata(item, updates) - Merge metadata updates while preserving null semantics
- * parseExpiryDate(item) - Extract supported expiry keys from metadata
+ * _mergeMetadata(item, updates) - Merge metadata updates while preserving null semantics
  * getParent(parentId, parentType) - Resolve and validate parent entity/type match
- * validatePlacement(parent, itemType, position, excludeChildId?) - Enforce acceptance/capacity/grid rules
- * createAction(input) - Persist a lightweight inventory action record
+ * validatePlacement(parent, category, position, excludeChildId?) - Enforce acceptance/capacity/grid rules
+ * createAction(input, userId) - Persist an inventory action record with target name snapshot
  * updateItemDocument(item, updates) - Build normalized item update payload
  * saveItem(item, rev) - Persist an updated item and refresh revision
  *
  * ITEM CRUD + WORKFLOWS:
- * createItem(input, userId) - Create an item and log creation action
+ * createItem(input, userId) - Create an item and log register action
  * getItem(itemId) - Fetch one item by ID
  * getItemsByParent(parentId) - List direct child items of a parent
- * searchItems(query) - Search by id/name/label/description
+ * searchItems(query) - Search by id/name/label/description/barcode
  * getItemsByStatus(status) - Filter by item status
  * getExpiringItems(beforeDate) - Find items expiring at/before threshold
- * updateItem(itemId, rev, updates, userId) - Update fields and optionally relocate item
- * checkoutItem(itemId, userId) - Mark item in use and create pending return action
+ * updateItem(itemId, rev, updates, userId) - Update fields (moving uses moveItem)
+ * checkoutItem(itemId, userId) - Mark item checked out and create planned return action
  * returnItem(itemId, parentId, parentType, position, userId) - Return item to storage and mark available
  * reserveItem(itemId, userId, description?) - Reserve item for upcoming work
  * unreserveItem(itemId, userId) - Release reservation and restore availability
- * disposeItem(itemId, userId, notes?) - Archive/dispose item and log action
+ * disposeItem(itemId, userId, notes?) - Dispose item and log action
  * moveItem(itemId, newParentId, newParentType, position, userId) - Move item location
- * flagItem(itemId, userId, description) - Attach a notable action/flag entry
+ * flagItem(itemId, userId, description) - Attach a flag action entry
  * getItemLocationBreadcrumb(itemId) - Resolve ancestry breadcrumb for display
  */
 
@@ -95,7 +94,7 @@ function ensureItem(item: InventoryItem | null, itemId: string): InventoryItem {
 }
 
 /* Merge metadata patches while preserving `null` for empty metadata. */
-function mergeMetadata(
+function _mergeMetadata(
   item: InventoryItem,
   updates: Record<string, unknown>
 ): InventoryItem['metadata'] {
@@ -106,20 +105,6 @@ function mergeMetadata(
   }
 
   return Object.keys(merged).length > 0 ? merged : null
-}
-
-/* Read supported expiry keys from metadata for expiry workflows. */
-function parseExpiryDate(item: InventoryItem): string | null {
-  const metadata = item.metadata
-  if (!metadata || typeof metadata !== 'object') {
-    return null
-  }
-
-  const maybeExpiry = (typeof metadata.expiryAt === 'string' && metadata.expiryAt)
-    || (typeof metadata.expiresAt === 'string' && metadata.expiresAt)
-    || (typeof metadata.expiryDate === 'string' && metadata.expiryDate)
-
-  return maybeExpiry ?? null
 }
 
 /* Resolve a parent by ID and ensure the expected parent type matches. */
@@ -139,12 +124,12 @@ async function getParent(parentId: string, parentType: InventoryItem['parentType
 /* Validate acceptance/capacity/grid constraints before item placement or movement. */
 async function validatePlacement(
   parent: ParentEntity,
-  itemType: InventoryItem['itemType'],
+  category: InventoryItem['category'],
   position: GridPosition | null,
   excludeChildId?: string
 ): Promise<void> {
   if (parent.type === 'storageEquipment' || parent.type === 'container') {
-    const acceptance = validateContainerAcceptance(parent, 'inventoryItem', itemType)
+    const acceptance = validateContainerAcceptance(parent, 'inventoryItem', category)
     if (!acceptance.valid) {
       throw new Error(acceptance.reason ?? 'Container cannot accept this item type.')
     }
@@ -169,26 +154,35 @@ async function validatePlacement(
   }
 }
 
-/* Persist a compact inventory action document for item lifecycle auditing. */
-async function createAction(input: CreateInventoryActionInput): Promise<InventoryAction> {
+/* Persist an inventory action document with a snapshot of the target name. */
+async function createAction(input: CreateInventoryActionInput, userId: string): Promise<InventoryAction> {
+  const target = await couchDB.getDocument<{ name?: string, _id: string }>(input.targetId)
+  const targetName = (target && 'name' in target) ? (target.name as string) : input.targetId
+
   const actionDoc: Omit<InventoryAction, '_id' | '_rev'> = {
     type: 'inventoryAction',
     schema: 1,
-    actionId: input.actionId,
+    actionId: generateInventoryId('action'),
     actionType: input.actionType,
     status: input.status ?? 'completed',
     targetId: input.targetId,
     targetType: input.targetType,
+    targetName,
+    createdBy: userId,
+    assignedTo: input.assignedTo ?? null,
+    completedBy: input.status === 'completed' || input.status == null ? userId : null,
+    plannedAt: new Date().toISOString(),
+    dueAt: input.dueAt ?? null,
+    completedAt: input.status === 'completed' || input.status == null ? new Date().toISOString() : null,
     fromParentId: input.fromParentId ?? null,
     fromParentType: input.fromParentType ?? null,
     toParentId: input.toParentId ?? null,
     toParentType: input.toParentType ?? null,
     fromPosition: input.fromPosition ?? null,
     toPosition: input.toPosition ?? null,
-    performedBy: input.performedBy,
-    performedAt: input.performedAt ?? nowIso(),
-    comment: input.comment ?? null,
-    details: input.details ?? null
+    linkedActionId: input.linkedActionId ?? null,
+    description: input.description ?? null,
+    notes: input.notes ?? null
   }
 
   const created = await couchDB.createDocument(actionDoc)
@@ -223,31 +217,40 @@ async function saveItem(item: InventoryItem, rev: string): Promise<InventoryItem
 }
 
 export const ItemService = {
-  /* Create a new item under a valid parent and log a creation action. */
+  /* Create a new item under a valid parent and log a register action. */
   async createItem(input: CreateInventoryItemInput, userId: string): Promise<InventoryItem> {
     await ensureInventoryViews()
 
     const parent = await getParent(input.parentId, input.parentType)
     const position = input.position ?? null
 
-    await validatePlacement(parent, input.itemType, position)
+    await validatePlacement(parent, input.category, position)
 
     const newItem: Omit<InventoryItem, '_id' | '_rev'> = {
       type: 'inventoryItem',
       schema: 1,
       itemId: input.itemId,
-      itemType: input.itemType,
+      category: input.category,
+      classification: input.classification,
       name: input.name,
       label: input.label,
       description: input.description ?? null,
       quantity: input.quantity ?? null,
       unit: input.unit ?? null,
+      concentration: input.concentration ?? null,
+      concentrationUnit: input.concentrationUnit ?? null,
       parentId: parent._id,
       parentType: parent.type,
       locationPath: buildLocationPath(parent),
       position,
       status: input.status ?? 'available',
+      expiryDate: input.expiryDate ?? null,
+      lotNumber: input.lotNumber ?? null,
+      barcode: input.barcode ?? null,
+      templateId: input.templateId ?? null,
+      notes: input.notes ?? null,
       metadata: input.metadata ?? null,
+      createdBy: userId,
       createdAt: nowIso(),
       updatedAt: nowIso()
     }
@@ -260,16 +263,14 @@ export const ItemService = {
     }
 
     await createAction({
-      actionId: generateInventoryId('item-create-action'),
-      actionType: 'create',
+      actionType: 'register',
       targetId: item._id,
       targetType: 'inventoryItem',
       toParentId: item.parentId,
       toParentType: item.parentType,
       toPosition: item.position,
-      performedBy: userId,
-      comment: `Created inventory item ${item.itemId}.`
-    })
+      description: `Registered inventory item ${item.itemId}.`
+    }, userId)
 
     return item
   },
@@ -300,7 +301,7 @@ export const ItemService = {
     })
 
     return items.filter((item) => {
-      const haystack = [item.itemId, item.name, item.label, item.description ?? '']
+      const haystack = [item.itemId, item.name, item.label, item.description ?? '', item.barcode ?? '']
         .join(' ')
         .toLowerCase()
 
@@ -316,7 +317,7 @@ export const ItemService = {
     })
   },
 
-  /* Find items with parsed expiry dates at or before the threshold. */
+  /* Find items with expiry dates at or before the threshold. */
   async getExpiringItems(beforeDate: string): Promise<InventoryItem[]> {
     const threshold = new Date(beforeDate)
     if (Number.isNaN(threshold.getTime())) {
@@ -328,12 +329,11 @@ export const ItemService = {
     })
 
     return items.filter((item) => {
-      const expiry = parseExpiryDate(item)
-      if (!expiry) {
+      if (!item.expiryDate) {
         return false
       }
 
-      const expiryDate = new Date(expiry)
+      const expiryDate = new Date(item.expiryDate)
       if (Number.isNaN(expiryDate.getTime())) {
         return false
       }
@@ -342,100 +342,80 @@ export const ItemService = {
     })
   },
 
-  /* Update an item and optionally relocate it with placement validation. */
+  /* Update item fields. Moving uses the dedicated moveItem() method. */
   async updateItem(itemId: string, rev: string, updates: UpdateInventoryItemInput, userId: string): Promise<InventoryItem> {
     await ensureInventoryViews()
 
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
-    let parentId = item.parentId
-    let parentType = item.parentType
     const position = updates.position ?? item.position
-    let locationPath = updates.locationPath ?? item.locationPath
 
-    const hasParentChange = updates.parentId != null || updates.parentType != null
-
-    if (hasParentChange) {
-      parentId = updates.parentId ?? item.parentId
-      parentType = updates.parentType ?? item.parentType
-      const parent = await getParent(parentId, parentType)
-      await validatePlacement(parent, updates.itemType ?? item.itemType, position, item._id)
-      locationPath = buildLocationPath(parent)
-    }
-
-    const itemType = updates.itemType ?? item.itemType
-    if (!hasParentChange) {
-      const currentParent = await getParent(parentId, parentType)
-      await validatePlacement(currentParent, itemType, position, item._id)
-    }
+    const category = updates.category ?? item.category
+    const currentParent = await getParent(item.parentId, item.parentType)
+    await validatePlacement(currentParent, category, position, item._id)
 
     const next = updateItemDocument(item, {
       itemId: updates.itemId ?? item.itemId,
-      itemType,
+      category,
+      classification: updates.classification ?? item.classification,
       name: updates.name ?? item.name,
       label: updates.label ?? item.label,
       description: updates.description ?? item.description,
       quantity: updates.quantity ?? item.quantity,
       unit: updates.unit ?? item.unit,
-      parentId,
-      parentType,
-      locationPath,
+      concentration: updates.concentration ?? item.concentration,
+      concentrationUnit: updates.concentrationUnit ?? item.concentrationUnit,
       position,
       status: updates.status ?? item.status,
+      expiryDate: updates.expiryDate ?? item.expiryDate,
+      lotNumber: updates.lotNumber ?? item.lotNumber,
+      barcode: updates.barcode ?? item.barcode,
+      templateId: updates.templateId ?? item.templateId,
+      notes: updates.notes ?? item.notes,
       metadata: updates.metadata ?? item.metadata
     })
 
     const saved = await saveItem(next, rev)
 
     await createAction({
-      actionId: generateInventoryId('item-update-action'),
-      actionType: 'update',
+      actionType: 'modify',
       targetId: saved._id,
       targetType: 'inventoryItem',
-      fromParentId: item.parentId,
-      fromParentType: item.parentType,
-      toParentId: saved.parentId,
-      toParentType: saved.parentType,
-      fromPosition: item.position,
-      toPosition: saved.position,
-      performedBy: userId,
-      comment: `Updated inventory item ${saved.itemId}.`
-    })
+      description: `Updated inventory item ${saved.itemId}.`
+    }, userId)
 
     return saved
   },
 
-  /* Mark item as checked out/in use and create a pending return action. */
+  /* Mark item as checked out and create a planned return action. */
   async checkoutItem(itemId: string, userId: string): Promise<{ item: InventoryItem, returnAction: InventoryAction }> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
     const updatedItem = await saveItem(updateItemDocument(item, {
-      status: 'inUse',
-      metadata: mergeMetadata(item, {
-        checkedOutBy: userId,
-        checkedOutAt: nowIso()
-      })
+      status: 'checked_out'
     }), item._rev)
 
-    const returnAction = await createAction({
-      actionId: generateInventoryId('item-return-action'),
-      actionType: 'update',
-      status: 'pending',
+    const checkoutAction = await createAction({
+      actionType: 'checkout',
       targetId: updatedItem._id,
       targetType: 'inventoryItem',
       fromParentId: updatedItem.parentId,
       fromParentType: updatedItem.parentType,
+      fromPosition: updatedItem.position,
+      description: `Item ${updatedItem.itemId} checked out.`
+    }, userId)
+
+    const returnAction = await createAction({
+      actionType: 'return',
+      status: 'planned',
+      targetId: updatedItem._id,
+      targetType: 'inventoryItem',
       toParentId: updatedItem.parentId,
       toParentType: updatedItem.parentType,
-      fromPosition: updatedItem.position,
       toPosition: updatedItem.position,
-      performedBy: userId,
-      comment: `Item ${updatedItem.itemId} checked out; pending return.`,
-      details: {
-        kind: 'checkout',
-        checkedOutBy: userId
-      }
-    })
+      linkedActionId: checkoutAction.actionId,
+      description: `Item ${updatedItem.itemId} checked out; pending return.`
+    }, userId)
 
     return {
       item: updatedItem,
@@ -454,24 +434,18 @@ export const ItemService = {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
     const parent = await getParent(parentId, parentType)
 
-    await validatePlacement(parent, item.itemType, position, item._id)
+    await validatePlacement(parent, item.category, position, item._id)
 
     const updatedItem = await saveItem(updateItemDocument(item, {
       status: 'available',
       parentId: parent._id,
       parentType: parent.type,
       locationPath: buildLocationPath(parent),
-      position,
-      metadata: mergeMetadata(item, {
-        returnedBy: userId,
-        returnedAt: nowIso()
-      })
+      position
     }), item._rev)
 
     await createAction({
-      actionId: generateInventoryId('item-return-complete-action'),
-      actionType: 'update',
-      status: 'completed',
+      actionType: 'return',
       targetId: updatedItem._id,
       targetType: 'inventoryItem',
       fromParentId: item.parentId,
@@ -480,86 +454,63 @@ export const ItemService = {
       toParentType: updatedItem.parentType,
       fromPosition: item.position,
       toPosition: updatedItem.position,
-      performedBy: userId,
-      comment: `Returned inventory item ${updatedItem.itemId}.`
-    })
+      description: `Returned inventory item ${updatedItem.itemId}.`
+    }, userId)
 
     return updatedItem
   },
 
-  /* Reserve an item and annotate reservation metadata. */
+  /* Reserve an item for upcoming work. */
   async reserveItem(itemId: string, userId: string, description?: string): Promise<InventoryItem> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
     const updatedItem = await saveItem(updateItemDocument(item, {
-      status: 'reserved',
-      metadata: mergeMetadata(item, {
-        reservedBy: userId,
-        reservedAt: nowIso(),
-        reservationDescription: description ?? null
-      })
+      status: 'reserved'
     }), item._rev)
 
     await createAction({
-      actionId: generateInventoryId('item-reserve-action'),
-      actionType: 'update',
+      actionType: 'reserve',
       targetId: updatedItem._id,
       targetType: 'inventoryItem',
-      performedBy: userId,
-      comment: description ?? `Reserved inventory item ${updatedItem.itemId}.`
-    })
+      description: description ?? `Reserved inventory item ${updatedItem.itemId}.`
+    }, userId)
 
     return updatedItem
   },
 
-  /* Clear reservation metadata and restore available status. */
+  /* Release reservation and restore available status. */
   async unreserveItem(itemId: string, userId: string): Promise<InventoryItem> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
     const updatedItem = await saveItem(updateItemDocument(item, {
-      status: 'available',
-      metadata: mergeMetadata(item, {
-        unreservedBy: userId,
-        unreservedAt: nowIso(),
-        reservationDescription: null,
-        reservedBy: null,
-        reservedAt: null
-      })
+      status: 'available'
     }), item._rev)
 
     await createAction({
-      actionId: generateInventoryId('item-unreserve-action'),
-      actionType: 'update',
+      actionType: 'unreserve',
       targetId: updatedItem._id,
       targetType: 'inventoryItem',
-      performedBy: userId,
-      comment: `Unreserved inventory item ${updatedItem.itemId}.`
-    })
+      description: `Unreserved inventory item ${updatedItem.itemId}.`
+    }, userId)
 
     return updatedItem
   },
 
-  /* Archive/dispose an item and record disposal metadata/action. */
+  /* Dispose an item and record disposal action. */
   async disposeItem(itemId: string, userId: string, notes?: string): Promise<InventoryItem> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
     const updatedItem = await saveItem(updateItemDocument(item, {
-      status: 'archived',
-      metadata: mergeMetadata(item, {
-        disposedBy: userId,
-        disposedAt: nowIso(),
-        disposalNotes: notes ?? null
-      })
+      status: 'disposed'
     }), item._rev)
 
     await createAction({
-      actionId: generateInventoryId('item-dispose-action'),
-      actionType: 'archive',
+      actionType: 'dispose',
       targetId: updatedItem._id,
       targetType: 'inventoryItem',
-      performedBy: userId,
-      comment: notes ?? `Disposed inventory item ${updatedItem.itemId}.`
-    })
+      description: `Disposed inventory item ${updatedItem.itemId}.`,
+      notes: notes ?? null
+    }, userId)
 
     return updatedItem
   },
@@ -575,7 +526,7 @@ export const ItemService = {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
     const newParent = await getParent(newParentId, newParentType)
 
-    await validatePlacement(newParent, item.itemType, position, item._id)
+    await validatePlacement(newParent, item.category, position, item._id)
 
     const movedItem = await saveItem(updateItemDocument(item, {
       parentId: newParent._id,
@@ -585,7 +536,6 @@ export const ItemService = {
     }), item._rev)
 
     await createAction({
-      actionId: generateInventoryId('item-move-action'),
       actionType: 'move',
       targetId: movedItem._id,
       targetType: 'inventoryItem',
@@ -595,29 +545,22 @@ export const ItemService = {
       toParentType: movedItem.parentType,
       fromPosition: item.position,
       toPosition: movedItem.position,
-      performedBy: userId,
-      comment: `Moved inventory item ${movedItem.itemId}.`
-    })
+      description: `Moved inventory item ${movedItem.itemId}.`
+    }, userId)
 
     return movedItem
   },
 
-  /* Add a free-form flag action to capture notable handling context. */
+  /* Add a flag action to capture notable handling context. */
   async flagItem(itemId: string, userId: string, description: string): Promise<InventoryAction> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
     return await createAction({
-      actionId: generateInventoryId('item-flag-action'),
-      actionType: 'update',
+      actionType: 'flag',
       targetId: item._id,
       targetType: 'inventoryItem',
-      performedBy: userId,
-      comment: description,
-      details: {
-        kind: 'flag',
-        description
-      }
-    })
+      description
+    }, userId)
   },
 
   /* Resolve a simplified breadcrumb for human-readable location display. */

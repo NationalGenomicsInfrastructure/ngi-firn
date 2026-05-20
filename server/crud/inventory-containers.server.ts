@@ -10,7 +10,7 @@
  * assertUserId(userId) - Validate caller identity input
  * getContainerParent(parentId, parentType) - Resolve and validate a legal container parent
  * validatePlacement(parent, classification, position, excludeChildId?) - Enforce acceptance, capacity, and grid constraints
- * toContainerDocument(input) - Build a normalized container document payload
+ * toContainerDocument(input, locationPath) - Build a normalized container document payload
  *
  * CONTAINER CRUD:
  * createContainer(input, userId) - Create a new container under a valid parent
@@ -29,6 +29,7 @@ import type {
   CreateContainerInput,
   GridPosition,
   InventoryItem,
+  LocationAncestor,
   StorageEquipment,
   UpdateContainerInput
 } from '../../types/inventory'
@@ -135,7 +136,7 @@ async function validatePlacement(
 }
 
 /* Normalize a create-input payload into a persisted container document shape. */
-function toContainerDocument(input: CreateContainerInput): Omit<Container, '_id' | '_rev'> {
+function toContainerDocument(input: CreateContainerInput, locationPath: LocationAncestor[]): Omit<Container, '_id' | '_rev'> {
   const now = new Date().toISOString()
 
   return {
@@ -149,12 +150,16 @@ function toContainerDocument(input: CreateContainerInput): Omit<Container, '_id'
     description: input.description ?? null,
     parentId: input.parentId,
     parentType: input.parentType,
-    locationPath: input.locationPath,
+    locationPath,
     position: input.position ?? null,
     rows: input.rows ?? null,
     columns: input.columns ?? null,
     levels: input.levels ?? null,
     capacity: input.capacity ?? null,
+    acceptedItemCategories: input.acceptedItemCategories ?? null,
+    acceptedContainerCategories: input.acceptedContainerCategories ?? null,
+    templateId: input.templateId ?? null,
+    color: input.color ?? null,
     isActive: input.isActive ?? true,
     createdAt: now,
     updatedAt: now
@@ -171,10 +176,7 @@ export const ContainerService = {
     await validatePlacement(parent, input.classification, input.position ?? null)
 
     const locationPath = buildLocationPath(parent)
-    const newContainer = toContainerDocument({
-      ...input,
-      locationPath
-    })
+    const newContainer = toContainerDocument(input, locationPath)
 
     const { id } = await couchDB.createDocument(newContainer)
     const created = await couchDB.getDocument<Container>(id)
@@ -267,10 +269,6 @@ export const ContainerService = {
       throw new Error(`Container ${containerId} not found.`)
     }
 
-    if (updates.parentId || updates.parentType || updates.locationPath) {
-      throw new Error('Use moveContainer to change parent or location path.')
-    }
-
     const parent = await getContainerParent(existing.parentId, existing.parentType)
     const nextClassification = updates.classification ?? existing.classification
     const nextPosition = updates.position === undefined ? existing.position : updates.position
@@ -297,6 +295,10 @@ export const ContainerService = {
       columns: updates.columns === undefined ? existing.columns : updates.columns,
       levels: updates.levels === undefined ? existing.levels : updates.levels,
       capacity: updates.capacity === undefined ? existing.capacity : updates.capacity,
+      acceptedItemCategories: updates.acceptedItemCategories === undefined ? existing.acceptedItemCategories : updates.acceptedItemCategories,
+      acceptedContainerCategories: updates.acceptedContainerCategories === undefined ? existing.acceptedContainerCategories : updates.acceptedContainerCategories,
+      templateId: updates.templateId === undefined ? existing.templateId : updates.templateId,
+      color: updates.color === undefined ? existing.color : updates.color,
       isActive: updates.isActive ?? existing.isActive,
       updatedAt: new Date().toISOString()
     }

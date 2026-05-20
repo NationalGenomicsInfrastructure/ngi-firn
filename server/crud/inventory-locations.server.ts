@@ -176,9 +176,7 @@ export const LocationService = {
     await cascadeLocationPathUpdate(updatedRoom._id, 'room', [
       {
         id: updatedRoom._id,
-        type: 'room',
-        name: updatedRoom.name,
-        label: updatedRoom.label
+        type: 'room'
       }
     ])
 
@@ -222,6 +220,9 @@ export const LocationService = {
       levels: input.levels ?? null,
       temperatureCelsius: input.temperatureCelsius ?? null,
       capacity: input.capacity ?? null,
+      manufacturer: input.manufacturer ?? null,
+      model: input.model ?? null,
+      serialNumber: input.serialNumber ?? null,
       isActive: input.isActive ?? true,
       createdAt: now,
       updatedAt: now
@@ -294,6 +295,9 @@ export const LocationService = {
       levels: updates.levels !== undefined ? updates.levels : existing.levels,
       temperatureCelsius: updates.temperatureCelsius !== undefined ? updates.temperatureCelsius : existing.temperatureCelsius,
       capacity: updates.capacity !== undefined ? updates.capacity : existing.capacity,
+      manufacturer: updates.manufacturer !== undefined ? updates.manufacturer : existing.manufacturer,
+      model: updates.model !== undefined ? updates.model : existing.model,
+      serialNumber: updates.serialNumber !== undefined ? updates.serialNumber : existing.serialNumber,
       isActive: updates.isActive ?? existing.isActive,
       updatedAt: now
     }
@@ -305,9 +309,7 @@ export const LocationService = {
       ...updatedLocationPath,
       {
         id: updatedEquipment._id,
-        type: 'storageEquipment',
-        name: updatedEquipment.name,
-        label: updatedEquipment.label
+        type: 'storageEquipment'
       }
     ])
 
