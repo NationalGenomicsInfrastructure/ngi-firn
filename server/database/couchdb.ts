@@ -242,6 +242,72 @@ export class CouchDBConnector {
     }
   }
 
+  /**
+   * Get multiple documents by ID using one request.
+   * Returns documents in the same order as the input IDs, with null for missing docs.
+   */
+  async getDocumentsByIds<T extends CloudantV1.Document>(ids: string[]): Promise<(T | null)[]> {
+    try {
+      if (ids.length === 0) {
+        return []
+      }
+
+      const response = await this.client.postAllDocs({
+        db: this.database,
+        keys: ids,
+        includeDocs: true
+      })
+
+      const rowsById = new Map<string, T | null>()
+      for (const row of response.result.rows) {
+        const rowId = row.id || String(row.key)
+        if ('error' in row && row.error === 'not_found') {
+          rowsById.set(rowId, null)
+          continue
+        }
+        rowsById.set(rowId, row.doc as T)
+      }
+
+      return ids.map(id => rowsById.get(id) ?? null)
+    }
+    catch (error) {
+      console.error('Error getting documents by IDs:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update multiple documents in a single bulk operation.
+   * Returns normalized per-document result metadata.
+   */
+  async bulkUpdateDocuments<T extends CloudantV1.Document>(
+    docs: T[]
+  ): Promise<Array<{ id: string, rev: string, ok?: boolean, error?: string }>> {
+    try {
+      if (docs.length === 0) {
+        return []
+      }
+
+      const response = await this.client.postBulkDocs({
+        db: this.database,
+        bulkDocs: {
+          docs
+        }
+      })
+
+      return response.result.map(result => ({
+        id: result.id!,
+        rev: result.rev ?? '',
+        ok: result.ok,
+        error: result.error
+      }))
+    }
+    catch (error) {
+      console.error('Error bulk updating documents:', error)
+      throw error
+    }
+  }
+
   // Create database if it doesn't exist
   async ensureDatabase(): Promise<void> {
     try {
