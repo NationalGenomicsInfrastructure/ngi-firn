@@ -46,7 +46,6 @@ onUnmounted(() => {
     </NCard>
 
     <section class="space-y-4">
-      
       <NAlert
         v-if="bookmarksState.status === 'error'"
         alert="border-error"

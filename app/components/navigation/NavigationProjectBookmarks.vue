@@ -30,7 +30,8 @@ function displayName(bookmark: FirnProjectBookmark) {
   const projectNameFragments = bookmark.projectName?.split(/[_.]/g) ?? []
   if (projectNameFragments.length === 4) {
     return `${projectNameFragments[0]}.${projectNameFragments[1]} ${projectNameFragments[2]}/${projectNameFragments[3]}`
-  } else {
+  }
+  else {
     return bookmark.projectId
   }
 }
