@@ -2,22 +2,6 @@
 const data = {
   menuItems: [
     {
-      title: 'Projects',
-      url: '#',
-      icon: 'i-lucide-square-terminal',
-      isActive: true,
-      items: [
-        {
-          title: 'List Projects',
-          url: '#'
-        },
-        {
-          title: 'Manage Projects',
-          url: '#'
-        }
-      ]
-    },
-    {
       title: 'Plates',
       url: '#',
       icon: 'i-lucide-bot',

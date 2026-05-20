@@ -95,6 +95,7 @@ const { setOpen } = useSidebar()
       <slot name="sidebar-main-navigation" />
       <LazyMenuAdministration v-if="activeMenu === 'administration'" />
       <LazyMenuInventory v-if="activeMenu === 'inventory'" />
+      <LazyMenuProjects v-if="activeMenu === 'projects'" />
       <LazyMenuSettings v-if="activeMenu === 'settings'" />
     </NSidebar>
   </NSidebar>

@@ -259,11 +259,15 @@ watch(includeWeekday, (isRelative) => {
             </div>
           </div>
 
-          <!-- Column 4: Button -->
-          <div class="flex flex-col items-end flex-shrink-0 gap-2">
+          <!-- Column 4: Bookmark toggle and details button -->
+          <div class="flex flex-row items-center gap-2 flex-shrink-0">
+            <ProjectBookmarkToggle
+              :project-id="row.original.project_id"
+              :project-name="row.original.project_name"
+            />
             <NButton
               label="View project details"
-              class="w-full transition delay-300 ease-in-out"
+              class="flex-1 min-w-0 transition delay-300 ease-in-out"
               btn="soft-primary hover:outline-primary"
               leading="i-lucide-eye"
               :to="`/projects/details/${row.original.project_id}`"
