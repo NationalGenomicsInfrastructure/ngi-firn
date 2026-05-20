@@ -50,7 +50,8 @@ export const addProjectBookmark = defineMutation(() => {
         return
       }
       setBookmarksCache(response)
-      showSuccess(`Project ${input.projectId} has been bookmarked.`, 'Project bookmarked')
+      const label = response.find(b => b.projectId === input.projectId)?.projectName ?? input.projectId
+      showSuccess(`Project ${label} has been bookmarked.`, 'Project bookmarked')
     }
   })
   return { addProjectBookmark: mutate, ...mutation }

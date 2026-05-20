@@ -138,7 +138,7 @@ const projectSummaryLinks = computed(() =>
 
     <template v-else-if="project">
       <NTabs default-value="overview">
-        <NTabsList class="mx-auto">
+        <NTabsList class="mx-auto pr-0">
           <NTabsTrigger value="overview">
             <NIcon name="i-lucide-layout-dashboard" />
             Overview
@@ -159,6 +159,14 @@ const projectSummaryLinks = computed(() =>
             <NIcon name="i-lucide-calendar-range" />
             Timeline
           </NTabsTrigger>
+          <ProjectBookmarkToggle
+            v-if="project"
+            :project-id="project.project_id"
+            :project-name="project.project_name"
+            variant="solid"
+            size="sm"
+            class="ml-1"
+          />
         </NTabsList>
 
         <NTabsContent value="overview">

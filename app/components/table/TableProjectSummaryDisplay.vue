@@ -147,13 +147,21 @@ watch(includeWeekday, (isRelative) => {
         </span>
       </template>
       <template #status-cell="{ cell }">
-        <NBadge
-          :una="{
-            badgeDefaultVariant: cell.row.original.status === 'open' ? 'badge-soft' : 'badge-soft-gray'
-          }"
-          class="capitalize"
-          :label="cell.row.original.status ?? '—'"
-        />
+        <div class="flex flex-row items-center gap-2 flex-shrink-0">
+          <NBadge
+            :una="{
+              badgeDefaultVariant: cell.row.original.status === 'open' ? 'badge-soft' : 'badge-soft-gray'
+            }"
+            class="capitalize"
+            :label="cell.row.original.status ?? '—'"
+          />
+          <ProjectBookmarkToggle
+            :project-id="cell.row.original.project_id"
+            :project-name="cell.row.original.project_name"
+            variant="ghost"
+            size="xs"
+          />
+        </div>
       </template>
 
       <template #expanded="{ row }">
@@ -260,11 +268,7 @@ watch(includeWeekday, (isRelative) => {
           </div>
 
           <!-- Column 4: Bookmark toggle and details button -->
-          <div class="flex flex-row items-center gap-2 flex-shrink-0">
-            <ProjectBookmarkToggle
-              :project-id="row.original.project_id"
-              :project-name="row.original.project_name"
-            />
+          <div class="flex flex-row items-end gap-2 flex-shrink-0">
             <NButton
               label="View project details"
               class="flex-1 min-w-0 transition delay-300 ease-in-out"
@@ -274,7 +278,6 @@ watch(includeWeekday, (isRelative) => {
             />
           </div>
         </div>
-        <div class="p-2 flex flex-row items-start gap-4" />
       </template>
     </NTable>
     <div
