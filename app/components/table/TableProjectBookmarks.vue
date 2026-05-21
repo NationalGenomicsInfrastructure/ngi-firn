@@ -29,7 +29,7 @@ const formattedBookmarks = computed((): FormattedFirnProjectBookmark[] => {
 
 const columns: ColumnDef<FormattedFirnProjectBookmark>[] = [
   {
-    header: 'Bookmarked projects',
+    header: 'Your bookmarked projects',
     accessorKey: 'projectName',
     meta: {
       una: {
@@ -137,11 +137,12 @@ function getDetailFields(bookmark: FirnProjectBookmark): BookmarkDetailField[] {
 
           <div
             v-if="getDetailFields(cell.row.original).length"
-            class="grid grid-cols-2 sm:grid-cols-6 gap-x-2 gap-y-0.5 text-sm"
+            class="grid grid-cols-3 sm:grid-cols-5 gap-x-3 gap-y-1 text-xs w-full mt-2"
           >
             <div
               v-for="field in getDetailFields(cell.row.original)"
               :key="field.label"
+              class="min-w-0"
             >
               <div class="flex items-center gap-1.5 mb-0.5">
                 <NIcon
@@ -150,7 +151,7 @@ function getDetailFields(bookmark: FirnProjectBookmark): BookmarkDetailField[] {
                 />
                 <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">{{ field.label }}</span>
               </div>
-              <p class="font-medium pl-5 text-sm">
+              <p class="font-medium pl-5 break-words">
                 {{ field.value }}
               </p>
             </div>

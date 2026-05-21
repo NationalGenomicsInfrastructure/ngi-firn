@@ -32,33 +32,41 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-4xl px-4 py-8 lg:px-8 sm:px-6">
-    <NCard
-      card="outline-gray"
-      :una="{ cardDescription: 'text-muted' }"
-      class="mb-8"
-    >
-      <template #header>
-        <h1 class="text-2xl font-bold">
-          Welcome to the Firn dashboard!
-        </h1>
-      </template>
-    </NCard>
+  <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
+    <PageTitle
+      title="Welcome to Firn!"
+    />
 
-    <section class="space-y-4">
-      <NAlert
-        v-if="bookmarksState.status === 'error'"
-        alert="border-error"
-        title="Could not load bookmarks"
-        :description="bookmarksState.error != null ? String(bookmarksState.error) : 'Something went wrong. Please try again.'"
-        icon="i-lucide-alert-circle"
-      />
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <NCard
+        title="About Firn"
+        description="Your starting point for NGI project workflows."
+        card="outline-gray"
+        :una="{ cardDescription: 'text-muted' }"
+      >
+        <p class="text-sm text-muted">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+        </p>
+        <p class="text-sm text-muted mt-4">
+          Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+        </p>
+      </NCard>
 
-      <TableProjectBookmarks
-        v-else
-        :bookmarks="bookmarks ?? []"
-        :loading="isLoading"
-      />
-    </section>
+      <section class="space-y-4 min-w-0">
+        <NAlert
+          v-if="bookmarksState.status === 'error'"
+          alert="border-error"
+          title="Could not load bookmarks"
+          :description="bookmarksState.error != null ? String(bookmarksState.error) : 'Something went wrong. Please try again.'"
+          icon="i-lucide-alert-circle"
+        />
+
+        <TableProjectBookmarks
+          v-else
+          :bookmarks="bookmarks ?? []"
+          :loading="isLoading"
+        />
+      </section>
+    </div>
   </main>
 </template>
