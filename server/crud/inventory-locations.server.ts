@@ -224,6 +224,7 @@ export const LocationService = {
       model: input.model ?? null,
       serialNumber: input.serialNumber ?? null,
       isActive: input.isActive ?? true,
+      actionLog: [],
       createdAt: now,
       updatedAt: now
     }

@@ -161,6 +161,7 @@ function toContainerDocument(input: CreateContainerInput, locationPath: Location
     templateId: input.templateId ?? null,
     color: input.color ?? null,
     isActive: input.isActive ?? true,
+    actionLog: [],
     createdAt: now,
     updatedAt: now
   }

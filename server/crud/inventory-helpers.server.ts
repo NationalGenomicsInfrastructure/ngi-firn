@@ -388,8 +388,8 @@ export async function validateGridPosition(
 /* Ensure both inventory design-doc view sets are available in CouchDB. */
 export async function ensureInventoryViews(): Promise<void> {
   const designDocs = await Promise.all([
-    loadDesignDoc(['docs', 'couchdb-views', 'inventory.json'], '_design/inventory'),
-    loadDesignDoc(['docs', 'couchdb-views', 'inventory-actions.json'], '_design/inventory-actions')
+    loadDesignDoc(['docs', 'couchdb-views', 'firn-inventory.json'], '_design/firn-inventory'),
+    loadDesignDoc(['docs', 'couchdb-views', 'firn-inventory-actions.json'], '_design/firn-inventory-actions')
   ])
 
   for (const designDoc of designDocs) {
