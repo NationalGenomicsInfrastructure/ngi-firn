@@ -38,19 +38,7 @@ onUnmounted(() => {
     />
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-      <NCard
-        title="About Firn"
-        description="Your starting point for NGI project workflows."
-        card="outline-gray"
-        :una="{ cardDescription: 'text-muted' }"
-      >
-        <p class="text-sm text-muted">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
-        </p>
-        <p class="text-sm text-muted mt-4">
-          Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-        </p>
-      </NCard>
+      <CardWelcome />
 
       <section class="space-y-4 min-w-0">
         <NAlert
