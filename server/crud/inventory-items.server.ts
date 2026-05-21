@@ -508,5 +508,10 @@ export const ItemService = {
       type: entry.type,
       name: entry.name
     }))
+  },
+
+  /* Permanently delete an item document from the database. Admin-only operation. */
+  async deleteItem(itemId: string, rev: string): Promise<void> {
+    await couchDB.deleteDocument(itemId, rev)
   }
 }

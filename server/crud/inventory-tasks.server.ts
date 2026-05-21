@@ -292,7 +292,7 @@ export const TaskService = {
       const result = await couchDB.updateDocument(task._id, updatedTask, task._rev)
 
       // After marking task completed, append log entry to target
-      const target = await couchDB.getDocument<{ actionLog?: ActionLogEntry[] }>(task.targetId)
+      const target = await couchDB.getDocument<CloudantV1.Document & { actionLog?: ActionLogEntry[] }>(task.targetId)
       if (target) {
         const log: ActionLogEntry = {
           actionType: task.actionType,
@@ -304,7 +304,7 @@ export const TaskService = {
           linkedTaskId: task.taskId
         }
         const updatedLog = [...(target.actionLog || []), log]
-        await couchDB.updateDocument(target._id, { ...target, actionLog: updatedLog }, target._rev)
+        await couchDB.updateDocument(target._id!, { ...target, actionLog: updatedLog }, target._rev!)
       }
 
       return { ...updatedTask, _id: result.id, _rev: result.rev }
