@@ -1,5 +1,5 @@
 {
-  "_id": "_design/inventory-actions",
+  "_id": "_design/firn-inventory-actions",
   "language": "javascript",
   "views": {
     "by_target": {
