@@ -200,7 +200,7 @@ export async function cascadeLocationPathUpdate(
 ): Promise<number> {
   try {
     const descendants = await couchDB.queryView<[string, string], unknown, InventoryChildDocument>(
-      'inventory',
+      'firn-inventory',
       'by_ancestor',
       {
         key: [entityType, entityId],

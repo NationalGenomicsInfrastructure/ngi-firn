@@ -7,7 +7,6 @@
  * isParentEntity(doc) - Type guard for room/equipment/container parents
  * isInventoryItem(doc) - Type guard for inventory items
  * ensureItem(item, itemId) - Require an existing item or throw
- * _mergeMetadata(item, updates) - Merge metadata updates while preserving null semantics
  * getParent(parentId, parentType) - Resolve and validate parent entity/type match
  * validatePlacement(parent, category, position, excludeChildId?) - Enforce acceptance/capacity/grid rules
  * appendActionLog(item, actionType, userId, opts?) - Append an ActionLogEntry to the item and save
@@ -91,20 +90,6 @@ function ensureItem(item: InventoryItem | null, itemId: string): InventoryItem {
     throw new Error(`Inventory item "${itemId}" not found.`)
   }
   return item
-}
-
-/* Merge metadata patches while preserving `null` for empty metadata. */
-function _mergeMetadata(
-  item: InventoryItem,
-  updates: Record<string, unknown>
-): InventoryItem['metadata'] {
-  const current = item.metadata ?? {}
-  const merged = {
-    ...current,
-    ...updates
-  }
-
-  return Object.keys(merged).length > 0 ? merged : null
 }
 
 /* Resolve a parent by ID and ensure the expected parent type matches. */
@@ -348,19 +333,19 @@ export const ItemService = {
       classification: updates.classification ?? item.classification,
       name: updates.name ?? item.name,
       label: updates.label ?? item.label,
-      description: updates.description ?? item.description,
-      quantity: updates.quantity ?? item.quantity,
-      unit: updates.unit ?? item.unit,
-      concentration: updates.concentration ?? item.concentration,
-      concentrationUnit: updates.concentrationUnit ?? item.concentrationUnit,
+      description: updates.description !== undefined ? updates.description : item.description,
+      quantity: updates.quantity !== undefined ? updates.quantity : item.quantity,
+      unit: updates.unit !== undefined ? updates.unit : item.unit,
+      concentration: updates.concentration !== undefined ? updates.concentration : item.concentration,
+      concentrationUnit: updates.concentrationUnit !== undefined ? updates.concentrationUnit : item.concentrationUnit,
       position,
       status: updates.status ?? item.status,
-      expiryDate: updates.expiryDate ?? item.expiryDate,
-      lotNumber: updates.lotNumber ?? item.lotNumber,
-      barcode: updates.barcode ?? item.barcode,
-      templateId: updates.templateId ?? item.templateId,
-      notes: updates.notes ?? item.notes,
-      metadata: updates.metadata ?? item.metadata
+      expiryDate: updates.expiryDate !== undefined ? updates.expiryDate : item.expiryDate,
+      lotNumber: updates.lotNumber !== undefined ? updates.lotNumber : item.lotNumber,
+      barcode: updates.barcode !== undefined ? updates.barcode : item.barcode,
+      templateId: updates.templateId !== undefined ? updates.templateId : item.templateId,
+      notes: updates.notes !== undefined ? updates.notes : item.notes,
+      metadata: updates.metadata !== undefined ? updates.metadata : item.metadata
     })
 
     const saved = await saveItem(next, rev)
@@ -450,13 +435,17 @@ export const ItemService = {
     return await appendActionLog(updatedItem, 'unreserve', userId)
   },
 
-  /* Dispose an item and record disposal action. */
+  /* Dispose an item, skip pending tasks, and record disposal action. */
   async disposeItem(itemId: string, userId: string, notes?: string): Promise<InventoryItem> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
 
     const updatedItem = await saveItem(updateItemDocument(item, {
       status: 'disposed'
     }), item._rev)
+
+    // Skip any pending tasks (return reminders, expiry tasks) for this item
+    const { TaskService } = await import('./inventory-tasks.server')
+    await TaskService.skipTasksForTarget(item._id, `Item disposed by ${userId}`)
 
     return await appendActionLog(updatedItem, 'dispose', userId, {
       notes: notes

@@ -101,7 +101,7 @@ async function listPlannedTasks(limit = MAX_TASK_FETCH): Promise<InventoryTask[]
   await ensureViewsReady()
 
   const plannedRows = await couchDB.queryView<[InventoryTask['status'], string | null], null, InventoryTask>(
-    'inventory-actions',
+    'firn-inventory-actions',
     'by_status',
     {
       startkey: ['planned', null],
@@ -191,7 +191,7 @@ export const TaskService = {
 
       if (targetType) {
         const byTarget = await couchDB.queryView<[InventoryTask['targetType'], string], null, InventoryTask>(
-          'inventory-actions',
+          'firn-inventory-actions',
           'by_target',
           {
             key: [targetType, targetId],
@@ -291,20 +291,22 @@ export const TaskService = {
 
       const result = await couchDB.updateDocument(task._id, updatedTask, task._rev)
 
-      // After marking task completed, append log entry to target
-      const target = await couchDB.getDocument<CloudantV1.Document & { actionLog?: ActionLogEntry[] }>(task.targetId)
-      if (target) {
-        const log: ActionLogEntry = {
-          actionType: task.actionType,
-          userId,
-          timestamp: now,
-          notes: notes ?? task.notes ?? undefined,
-          fromParentId: task.fromParentId ?? undefined,
-          toParentId: task.toParentId ?? undefined,
-          linkedTaskId: task.taskId
+      // After marking task completed, append log entry to target (rooms don't carry actionLog)
+      if (task.targetType !== 'room') {
+        const target = await couchDB.getDocument<CloudantV1.Document & { actionLog?: ActionLogEntry[] }>(task.targetId)
+        if (target) {
+          const log: ActionLogEntry = {
+            actionType: task.actionType,
+            userId,
+            timestamp: now,
+            notes: notes ?? task.notes ?? undefined,
+            fromParentId: task.fromParentId ?? undefined,
+            toParentId: task.toParentId ?? undefined,
+            linkedTaskId: task.taskId
+          }
+          const updatedLog = [...(target.actionLog || []), log]
+          await couchDB.updateDocument(target._id!, { ...target, actionLog: updatedLog }, target._rev!)
         }
-        const updatedLog = [...(target.actionLog || []), log]
-        await couchDB.updateDocument(target._id!, { ...target, actionLog: updatedLog }, target._rev!)
       }
 
       return { ...updatedTask, _id: result.id, _rev: result.rev }

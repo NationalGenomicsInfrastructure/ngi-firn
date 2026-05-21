@@ -5,11 +5,11 @@
  * QUERIES (authedProcedure):
  * getTemplate - Fetch a single template by ID
  * getTemplates - List templates, optionally filtered by kind
+ * applyTemplate - Return pre-filled defaults from a template
  *
  * MUTATIONS (authedProcedure):
  * createTemplate - Create a reusable template
  * updateTemplate - Update template fields
- * applyTemplate - Return pre-filled defaults from a template
  *
  * MUTATIONS (adminProcedure):
  * deleteTemplate - Delete a template

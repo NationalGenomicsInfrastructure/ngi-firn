@@ -209,7 +209,7 @@ export const ContainerService = {
     }
 
     const result = await couchDB.queryView<[Container['parentType'], string], null, Container>(
-      'inventory',
+      'firn-inventory',
       'by_parent',
       {
         key: [parent.type, parentId],
@@ -227,7 +227,7 @@ export const ContainerService = {
     await ensureViewsReady()
 
     const result = await couchDB.queryView<['container', string], null, Descendant>(
-      'inventory',
+      'firn-inventory',
       'by_parent',
       {
         key: ['container', containerId],
@@ -417,7 +417,7 @@ export const ContainerService = {
     await ensureViewsReady()
 
     const result = await couchDB.queryView<['container', string], null, Descendant>(
-      'inventory',
+      'firn-inventory',
       'by_ancestor',
       {
         key: ['container', containerId],

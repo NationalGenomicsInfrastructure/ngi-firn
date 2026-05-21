@@ -18,16 +18,16 @@
       "map": "function (doc) { if (doc.type === 'inventoryItem' && doc.status) { emit(doc.status, null); } }"
     },
     "by_expiry": {
-      "map": "function (doc) { if (doc.type !== 'inventoryItem') { return; } var metadata = doc.metadata || {}; var expiry = doc.expiryAt || doc.expiresAt || metadata.expiryAt || metadata.expiresAt || metadata.expiryDate || null; if (expiry) { emit(expiry, null); } }"
+      "map": "function (doc) { if (doc.type !== 'inventoryItem') { return; } var expiry = doc.expiryDate || null; if (expiry) { emit(expiry, null); } }"
     },
     "by_barcode": {
       "map": "function (doc) { var metadata = doc.metadata || {}; var barcode = doc.barcode || metadata.barcode || metadata.qrCode || null; if ((doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && barcode) { emit(barcode, null); } }"
     },
     "by_category": {
-      "map": "function (doc) { if (doc.type === 'inventoryItem') { emit(doc.itemType || doc.category || 'other', null); return; } if (doc.type === 'container') { emit(doc.classification || doc.containerType || 'other', null); return; } if (doc.type === 'storageEquipment') { emit(doc.equipmentType || doc.category || 'other', null); } }"
+      "map": "function (doc) { if (doc.type === 'inventoryItem') { emit(doc.category || 'other', null); return; } if (doc.type === 'container') { emit(doc.classification || doc.containerType || 'other', null); return; } if (doc.type === 'storageEquipment') { emit(doc.equipmentType || 'other', null); } }"
     },
     "templates_by_kind": {
-      "map": "function (doc) { if (doc.type === 'inventoryTemplate') { emit([doc.appliesTo || null, doc.containerType || null], null); } }"
+      "map": "function (doc) { if (doc.type === 'inventoryTemplate') { emit([doc.templateFor || null, doc.containerType || null], null); } }"
     }
   }
 }
