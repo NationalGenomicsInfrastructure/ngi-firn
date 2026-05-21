@@ -9,12 +9,15 @@ import type { BaseDocument } from '../server/database/couchdb'
  * LocationAncestor - Materialized ancestry entry used in `locationPath` (id + type only)
  * GridPosition - Optional slot position within grid-like containers (with optional label)
  *
+ * EMBEDDED AUDIT LOG:
+ * ActionLogEntry - Compact log entry embedded in entity documents (immutable after creation)
+ *
  * DOCUMENT TYPES (persisted in CouchDB):
  * Room - Top-level physical room/building location
  * StorageEquipment - Freezers/fridges/shelves/cabinets within a room (+ hardware details)
  * Container - Nested storage units with acceptance constraints and capacity
  * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
- * InventoryAction - Auditable handling event AND plannable task (checkout/return/expiry/etc.)
+ * InventoryTask - Planned task document (checkout-return reminders, expiry disposal, etc.)
  * InventoryTemplate - Reusable defaults for containers, equipment, and items
  *
  * SERVICE INPUT TYPES (CRUD contracts):
@@ -44,6 +47,43 @@ export interface GridPosition {
   level?: number
   /* Human-readable slot label, e.g. "A3", "Slot 7". Derived from row/column if omitted. */
   label?: string
+}
+
+/* Canonical action categories used for handling/audit workflows and embedded logs. */
+export type InventoryActionType
+  = | 'checkout' // Remove from storage for temporary use
+    | 'return' // Put back in storage
+    | 'move' // Relocate to a different parent/position
+    | 'dispose' // Discard permanently
+    | 'reserve' // Reserve for future use
+    | 'unreserve' // Release reservation
+    | 'register' // Initial registration in inventory
+    | 'modify' // Properties changed (label, description, etc.)
+    | 'flag' // Flag for attention (low quantity, issue)
+    | 'note' // Observation/comment (informational only)
+    | 'discard_expired' // Dispose due to expiry (system-suggested)
+
+/*
+ * Compact audit log entry embedded directly in entity documents.
+ * Each entry records one handling event (checkout, return, move, etc.).
+ * Entries are append-only and immutable once written — they are the audit trail.
+ * Planned tasks live as separate InventoryTask documents; when a task is
+ * completed, a log entry is appended here and the task is marked done.
+ */
+export interface ActionLogEntry {
+  actionType: InventoryActionType
+  /* Who performed this action (user email). */
+  userId: string
+  /* ISO 8601 timestamp of when the action occurred. */
+  timestamp: string
+  /* Optional notes or reason for the action. */
+  notes?: string
+  /* For move/checkout/return: source parent entity ID. */
+  fromParentId?: string
+  /* For move/checkout/return: destination parent entity ID. */
+  toParentId?: string
+  /* Reference to the InventoryTask document that triggered this log entry, if any. */
+  linkedTaskId?: string
 }
 
 /* Top-level physical location. Rooms are hierarchy roots for storage equipment. */
@@ -86,6 +126,8 @@ export interface StorageEquipment extends BaseDocument {
   model: string | null
   serialNumber: string | null
   isActive: boolean
+  /* Embedded audit trail — append-only log of handling events. */
+  actionLog: ActionLogEntry[]
   createdAt: string
   updatedAt: string
 }
@@ -117,6 +159,8 @@ export interface Container extends BaseDocument {
   /* Physical color for visual identification in the lab. */
   color: string | null
   isActive: boolean
+  /* Embedded audit trail — append-only log of handling events. */
+  actionLog: ActionLogEntry[]
   createdAt: string
   updatedAt: string
 }
@@ -155,62 +199,52 @@ export interface InventoryItem extends BaseDocument {
   /* Escape hatch for truly ad-hoc data not covered by typed fields. */
   metadata: Record<string, unknown> | null
   createdBy: string
+  /* Embedded audit trail — append-only log of handling events. */
+  actionLog: ActionLogEntry[]
   createdAt: string
   updatedAt: string
 }
 
-/* Canonical action categories used for handling/audit workflows. */
-export type InventoryActionType
-  = | 'checkout' // Remove from storage for temporary use
-    | 'return' // Put back in storage
-    | 'move' // Relocate to a different parent/position
-    | 'dispose' // Discard permanently
-    | 'reserve' // Reserve for future use
-    | 'unreserve' // Release reservation
-    | 'register' // Initial registration in inventory
-    | 'modify' // Properties changed (label, description, etc.)
-    | 'flag' // Flag for attention (low quantity, issue)
-    | 'note' // Observation/comment (informational only)
-    | 'discard_expired' // Dispose due to expiry (system-suggested)
-
-export type InventoryActionStatus = 'planned' | 'completed' | 'skipped' | 'cancelled'
+export type InventoryTaskStatus = 'planned' | 'completed' | 'skipped' | 'cancelled'
 
 /*
- * Immutable handling/audit record for movement, state transitions, and planning.
- * Completed actions are frozen log entries; planned actions are mutable tasks.
+ * Planned task document for scheduled lab operations (e.g. return reminders, expiry disposal).
+ * Tasks are mutable while planned and can be assigned, rescheduled, or cancelled.
+ * When a task is completed, an ActionLogEntry is appended to the target entity's
+ * embedded actionLog and the task status is set to 'completed'.
+ * Unlike ActionLogEntry (which is embedded), InventoryTask is its own CouchDB document
+ * to support independent queries: overdue tasks, tasks by assignee, pending disposals.
  */
-export interface InventoryAction extends BaseDocument {
-  type: 'inventoryAction'
+export interface InventoryTask extends BaseDocument {
+  type: 'inventoryTask'
   schema: 1
-  actionId: string
+  taskId: string
   actionType: InventoryActionType
-  status: InventoryActionStatus
-  /* Target entity this action applies to. */
+  status: InventoryTaskStatus
+  /* Target entity this task applies to. */
   targetId: string
   targetType: 'room' | 'storageEquipment' | 'container' | 'inventoryItem'
-  /* Snapshot of target name at action time — frozen for audit, not kept in sync. */
-  targetName: string
-  /* Who created/planned this action. */
+  /* Who created this task. */
   createdBy: string
-  /* Who should perform it (for planned actions; null for log entries). */
+  /* Who should perform it (null = unassigned). */
   assignedTo: string | null
   /* Who actually completed/skipped/cancelled it. */
   completedBy: string | null
-  /* When the action record was created. */
+  /* When the task was created. */
   plannedAt: string
-  /* When the planned action is due (null for immediate log entries). */
+  /* When the task is due (null = no deadline). */
   dueAt: string | null
   /* When it was completed/skipped/cancelled. */
   completedAt: string | null
-  /* Location context for move/checkout/return actions. */
+  /* Location context for move/checkout/return tasks. */
   fromParentId: string | null
   fromParentType: InventoryLocationType | null
   toParentId: string | null
   toParentType: InventoryLocationType | null
   fromPosition: GridPosition | null
   toPosition: GridPosition | null
-  /* Links paired actions, e.g. checkout → auto-created return task. */
-  linkedActionId: string | null
+  /* Links paired tasks, e.g. checkout → auto-created return task. */
+  linkedTaskId: string | null
   description: string | null
   notes: string | null
 }
@@ -411,12 +445,12 @@ export interface UpdateInventoryItemInput {
   metadata?: Record<string, unknown> | null
 }
 
-/* Create payload for inventory action/log/task entries. */
-export interface CreateInventoryActionInput {
+/* Create payload for a planned inventory task. */
+export interface CreateInventoryTaskInput {
   actionType: InventoryActionType
-  status?: InventoryActionStatus
+  status?: InventoryTaskStatus
   targetId: string
-  targetType: InventoryAction['targetType']
+  targetType: InventoryTask['targetType']
   assignedTo?: string | null
   dueAt?: string | null
   fromParentId?: string | null
@@ -425,7 +459,7 @@ export interface CreateInventoryActionInput {
   toParentType?: InventoryLocationType | null
   fromPosition?: GridPosition | null
   toPosition?: GridPosition | null
-  linkedActionId?: string | null
+  linkedTaskId?: string | null
   description?: string | null
   notes?: string | null
 }
