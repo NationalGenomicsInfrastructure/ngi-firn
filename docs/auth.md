@@ -75,6 +75,54 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET="my-google-oauth-app-secret"
 
 To simplify usage on shared computers and tablets specifically in the lab, we provide a custom token-based authentication method as well. All relevant information is contained in a [separate documentation](./tokens.md).
 
+## Session objects and user identification
+
+After a successful authentication (via OAuth or token), the user's identity is stored in a sealed session cookie. Firn splits this session into **two objects** with different trust levels and visibility:
+
+### `SessionUser` (`ctx.user`) — display only
+
+Available on both client and server. Contains fields for UI rendering: `name`, `givenName`, `familyName`, `avatar`, `provider`, `linkedGitHub`, and `isAdminClientside`.
+
+> ⚠️ **Never use `ctx.user` for authentication or authorization decisions.** Its fields are informational and not suitable for security-critical logic. The `isAdminClientside` flag exists only so the UI can conditionally show admin elements — it is **not** a server-side authority check.
+
+### `SessionUserSecure` (`ctx.secure`) — server-side only
+
+Stored in the sealed (encrypted) portion of the session cookie and never sent to the client. Contains the fields that matter for auth:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | `string` | The CouchDB `_id` of the user's `FirnUser` document — the canonical user identifier |
+| `rev` | `string` | The CouchDB `_rev` at the time of login |
+| `allowLogin` | `boolean` | Whether the user account is active |
+| `isRetired` | `boolean` | Whether the user account has been retired |
+| `isAdmin` | `boolean` | Whether the user has admin privileges |
+| `permissions` | `string[]` | Fine-grained permission flags |
+
+### Which identifier to use in server code
+
+When you need a `userId` for audit logs, `createdBy` fields, or any record of "who did this", always use:
+
+```ts
+ctx.secure!.id
+```
+
+This is the CouchDB document `_id` of the `FirnUser` — a stable, unique, server-controlled identifier that the client cannot tamper with. The non-null assertion (`!`) is safe inside `authedProcedure`, `adminProcedure`, and `tokenProcedure` handlers because their middleware guarantees `ctx.secure` exists before the handler runs.
+
+### How token auth converges to the same model
+
+When a request authenticates via token instead of a session cookie, the `hasValidToken` middleware in `server/trpc/init.ts` verifies the token, looks up the corresponding `FirnUser`, and converts it to `[SessionUser, SessionUserSecure]` — the same pair that OAuth login produces. It then replaces the context:
+
+```ts
+return next({
+  ctx: {
+    user: sessionUser,
+    secure: sessionUserSecure
+  }
+})
+```
+
+This means `ctx.secure!.id` works identically regardless of whether the user authenticated via Google OAuth, GitHub OAuth, or a token. Downstream code never needs to distinguish between authentication methods.
+
 ## Authorization
 
 To be decided. The [Nuxt authorization module](https://github.com/Barbapapazes/nuxt-authorization) looks interesting, also see [the accompanying blog post](https://soubiran.dev/posts/nuxt-going-full-stack-how-to-handle-authorization). We will probably combine it with [Permask](https://github.com/dschewchenko/permask) for fine-grained permissions.
