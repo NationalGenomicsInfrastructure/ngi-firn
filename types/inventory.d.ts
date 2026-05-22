@@ -1,4 +1,5 @@
 import type { BaseDocument } from '../server/database/couchdb'
+import type { DocumentReferenceMap } from './references'
 
 /*
  * Inventory Types - Table of Contents
@@ -19,6 +20,9 @@ import type { BaseDocument } from '../server/database/couchdb'
  * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
  * InventoryTask - Planned task document (checkout-return reminders, expiry disposal, etc.)
  * InventoryTemplate - Reusable defaults for containers, equipment, and items
+ *
+ * QUERY RESULT TYPES:
+ * SuggestedLocation - Result from the free-capacity suggestion query
  *
  * SERVICE INPUT TYPES (CRUD contracts):
  * Create/Update interfaces - Input contracts for server/crud services.
@@ -158,6 +162,8 @@ export interface Container extends BaseDocument {
   templateId: string | null
   /* Physical color for visual identification in the lab. */
   color: string | null
+  /* Optional cross-database references to projects (read-only projects DB). */
+  projectRefs: DocumentReferenceMap | null
   isActive: boolean
   /* Embedded audit trail — append-only log of handling events. */
   actionLog: ActionLogEntry[]
@@ -198,6 +204,8 @@ export interface InventoryItem extends BaseDocument {
   notes: string | null
   /* Escape hatch for truly ad-hoc data not covered by typed fields. */
   metadata: Record<string, unknown> | null
+  /* Optional cross-database references to projects (read-only projects DB). */
+  projectRefs: DocumentReferenceMap | null
   createdBy: string
   /* Embedded audit trail — append-only log of handling events. */
   actionLog: ActionLogEntry[]
@@ -371,6 +379,7 @@ export interface CreateContainerInput {
   acceptedContainerCategories?: string[] | null
   templateId?: string | null
   color?: string | null
+  projectRefs?: DocumentReferenceMap | null
   isActive?: boolean
 }
 
@@ -393,6 +402,7 @@ export interface UpdateContainerInput {
   acceptedContainerCategories?: string[] | null
   templateId?: string | null
   color?: string | null
+  projectRefs?: DocumentReferenceMap | null
   isActive?: boolean
   /* Moving uses a dedicated moveContainer() method, not update. */
 }
@@ -419,6 +429,7 @@ export interface CreateInventoryItemInput {
   templateId?: string | null
   notes?: string | null
   metadata?: Record<string, unknown> | null
+  projectRefs?: DocumentReferenceMap | null
 }
 
 /* Update payload for inventory items. Moving uses a dedicated moveItem() method. */
@@ -443,6 +454,20 @@ export interface UpdateInventoryItemInput {
   templateId?: string | null
   notes?: string | null
   metadata?: Record<string, unknown> | null
+  projectRefs?: DocumentReferenceMap | null
+}
+
+/* Result of the free-capacity suggestion query — one candidate container with availability info. */
+export interface SuggestedLocation {
+  containerId: string
+  containerName: string
+  containerType: Container['containerType']
+  capacity: number
+  occupied: number
+  available: number
+  locationPath: LocationAncestor[]
+  temperatureCelsius: number | null
+  classification: string | null
 }
 
 /* Create payload for a planned inventory task. */
