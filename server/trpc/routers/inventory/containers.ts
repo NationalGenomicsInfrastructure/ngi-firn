@@ -7,6 +7,8 @@
  * getContainersByParent - List direct child containers of a parent
  * getContainerContents - List child containers and items of a container
  * getDescendants - Return all descendants recursively
+ * suggestLocations - Find containers with free capacity for a given category/count
+ * getByProject - Reverse lookup: all containers/items linked to a project
  *
  * MUTATIONS (authedProcedure):
  * createContainer - Create a container under a valid parent
@@ -23,9 +25,11 @@ import {
   createContainerSchema,
   updateContainerSchema,
   deleteContainerSchema,
-  moveContainerSchema
+  moveContainerSchema,
+  suggestLocationsSchema,
+  getByProjectSchema
 } from '~~/schemas/inventory-containers'
-import type { Container, InventoryItem } from '~~/types/inventory'
+import type { Container, InventoryItem, SuggestedLocation } from '~~/types/inventory'
 
 export const containersRouter = createTRPCRouter({
 
@@ -57,6 +61,20 @@ export const containersRouter = createTRPCRouter({
     .query(async ({ input }): Promise<(Container | InventoryItem)[]> => {
       const { ContainerService } = await import('../../../crud/inventory-containers.server')
       return ContainerService.getDescendants(input.containerId)
+    }),
+
+  suggestLocations: authedProcedure
+    .input(suggestLocationsSchema)
+    .query(async ({ input }): Promise<SuggestedLocation[]> => {
+      const { ContainerService } = await import('../../../crud/inventory-containers.server')
+      return ContainerService.suggestLocations(input)
+    }),
+
+  getByProject: authedProcedure
+    .input(getByProjectSchema)
+    .query(async ({ input }): Promise<(Container | InventoryItem)[]> => {
+      const { ContainerService } = await import('../../../crud/inventory-containers.server')
+      return ContainerService.getByProject(input.projectId, input.db)
     }),
 
   // Mutations
