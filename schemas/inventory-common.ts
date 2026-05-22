@@ -133,3 +133,17 @@ export const templateForSchema = z.enum([
   'container',
   'inventoryItem'
 ])
+
+// Cross-database document reference (matches DocumentReference from types/references.d.ts)
+export const documentReferenceSchema = z.object({
+  db: z.string().min(1),
+  id: z.string().min(1),
+  rev: z.string().optional(),
+  type: z.string().optional()
+})
+
+// Map of named references (matches DocumentReferenceMap from types/references.d.ts)
+export const documentReferenceMapSchema = z.record(
+  z.string(),
+  z.union([documentReferenceSchema, z.array(documentReferenceSchema)])
+)

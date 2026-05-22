@@ -5,7 +5,8 @@ import {
   inventoryItemCategorySchema,
   inventoryItemClassificationSchema,
   inventoryItemStatusSchema,
-  inventoryLocationTypeSchema
+  inventoryLocationTypeSchema,
+  documentReferenceMapSchema
 } from './inventory-common'
 
 // Item CRUD schemas
@@ -30,7 +31,8 @@ export const createItemSchema = z.object({
   barcode: z.string().nullish(),
   templateId: z.string().nullish(),
   notes: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish()
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  projectRefs: documentReferenceMapSchema.nullish()
 })
 
 export const updateItemSchema = idRevSchema.extend({
@@ -51,7 +53,8 @@ export const updateItemSchema = idRevSchema.extend({
   barcode: z.string().nullish(),
   templateId: z.string().nullish(),
   notes: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish()
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  projectRefs: documentReferenceMapSchema.nullish()
 })
 
 export const deleteItemSchema = idRevSchema

@@ -4,7 +4,8 @@ import {
   idRevSchema,
   containerTypeSchema,
   containerClassificationSchema,
-  inventoryLocationTypeSchema
+  inventoryLocationTypeSchema,
+  documentReferenceMapSchema
 } from './inventory-common'
 
 // Container schemas
@@ -27,6 +28,7 @@ export const createContainerSchema = z.object({
   acceptedContainerCategories: z.array(z.string()).nullish(),
   templateId: z.string().nullish(),
   color: z.string().nullish(),
+  projectRefs: documentReferenceMapSchema.nullish(),
   isActive: z.boolean().optional()
 })
 
@@ -46,6 +48,7 @@ export const updateContainerSchema = idRevSchema.extend({
   acceptedContainerCategories: z.array(z.string()).nullish(),
   templateId: z.string().nullish(),
   color: z.string().nullish(),
+  projectRefs: documentReferenceMapSchema.nullish(),
   isActive: z.boolean().optional()
 })
 
@@ -58,7 +61,23 @@ export const moveContainerSchema = z.object({
   position: gridPositionSchema.nullish()
 })
 
+export const suggestLocationsSchema = z.object({
+  category: z.string().min(1, { message: 'Item/container category is required' }),
+  childType: z.enum(['item', 'container']),
+  count: z.number().int().positive({ message: 'Requested slot count must be positive' }),
+  classification: z.string().nullish(),
+  ancestorId: z.string().nullish(),
+  temperatureCelsius: z.number().nullish()
+})
+
+export const getByProjectSchema = z.object({
+  projectId: z.string().min(1, { message: 'Project ID is required' }),
+  db: z.string().min(1).default('projects')
+})
+
 // Inferred types
 export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
 export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema>
+export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>
+export type GetByProjectSchemaInput = z.infer<typeof getByProjectSchema>
