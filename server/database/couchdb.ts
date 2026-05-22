@@ -355,12 +355,15 @@ export class CouchDBConnector {
     viewName: string,
     options?: {
       key?: TKey
+      keys?: TKey[]
       startkey?: TKey
       endkey?: TKey
       limit?: number
       skip?: number
       include_docs?: boolean
       descending?: boolean
+      group?: boolean
+      reduce?: boolean
     }
   ): Promise<{ total_rows?: number, offset?: number, rows: Array<{ id?: string, key: TKey, value: TValue, doc?: TDoc }> }> {
     try {
@@ -369,12 +372,15 @@ export class CouchDBConnector {
         ddoc: designDoc,
         view: viewName,
         key: options?.key,
+        keys: options?.keys as unknown[],
         startKey: options?.startkey,
         endKey: options?.endkey,
         limit: options?.limit,
         skip: options?.skip,
         includeDocs: options?.include_docs,
-        descending: options?.descending
+        descending: options?.descending,
+        group: options?.group,
+        reduce: options?.reduce
       })
       const result = response.result as { total_rows?: number, totalRows?: number, update_seq?: string, rows: Array<{ id?: string, key: TKey, value: TValue, doc?: TDoc }> }
       const totalRows = result.total_rows ?? (result as { totalRows?: number }).totalRows

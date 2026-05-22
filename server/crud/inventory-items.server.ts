@@ -232,6 +232,7 @@ export const ItemService = {
       templateId: input.templateId ?? null,
       notes: input.notes ?? null,
       metadata: input.metadata ?? null,
+      projectRefs: input.projectRefs ?? null,
       createdBy: userId,
       actionLog: [registerEntry],
       createdAt: nowIso(),
@@ -345,7 +346,8 @@ export const ItemService = {
       barcode: updates.barcode !== undefined ? updates.barcode : item.barcode,
       templateId: updates.templateId !== undefined ? updates.templateId : item.templateId,
       notes: updates.notes !== undefined ? updates.notes : item.notes,
-      metadata: updates.metadata !== undefined ? updates.metadata : item.metadata
+      metadata: updates.metadata !== undefined ? updates.metadata : item.metadata,
+      projectRefs: updates.projectRefs !== undefined ? updates.projectRefs : item.projectRefs
     })
 
     const saved = await saveItem(next, rev)

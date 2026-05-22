@@ -21,6 +21,10 @@
  * moveContainer(containerId, newParentId, newParentType, position, userId) - Move container and cascade descendant paths
  * deleteContainer(containerId, rev) - Delete an empty container
  * getDescendants(containerId) - Return all descendant containers/items via ancestry view
+ *
+ * CAPACITY + PROJECT QUERIES:
+ * suggestLocations(opts) - Find containers with free capacity for a given category/count
+ * getByProject(projectId, db?) - Reverse lookup: all containers/items linked to a project
  */
 
 import { couchDB } from '../database/couchdb'
@@ -31,6 +35,7 @@ import type {
   InventoryItem,
   LocationAncestor,
   StorageEquipment,
+  SuggestedLocation,
   UpdateContainerInput
 } from '../../types/inventory'
 import {
@@ -160,6 +165,7 @@ function toContainerDocument(input: CreateContainerInput, locationPath: Location
     acceptedContainerCategories: input.acceptedContainerCategories ?? null,
     templateId: input.templateId ?? null,
     color: input.color ?? null,
+    projectRefs: input.projectRefs ?? null,
     isActive: input.isActive ?? true,
     actionLog: [],
     createdAt: now,
@@ -300,6 +306,7 @@ export const ContainerService = {
       acceptedContainerCategories: updates.acceptedContainerCategories === undefined ? existing.acceptedContainerCategories : updates.acceptedContainerCategories,
       templateId: updates.templateId === undefined ? existing.templateId : updates.templateId,
       color: updates.color === undefined ? existing.color : updates.color,
+      projectRefs: updates.projectRefs === undefined ? existing.projectRefs : updates.projectRefs,
       isActive: updates.isActive ?? existing.isActive,
       updatedAt: new Date().toISOString()
     }
@@ -441,5 +448,147 @@ export const ContainerService = {
     }
 
     return descendants
+  },
+
+  /*
+   * Suggest containers with free capacity for storing a given number of items/containers.
+   *
+   * Uses two CouchDB view queries:
+   * 1. capacity_by_accepted_category — find containers that accept the requested category
+   * 2. children_count — count current occupancy per candidate
+   *
+   * Results are filtered by available >= count and optionally by ancestor subtree,
+   * classification, and temperature preference.
+   */
+  async suggestLocations(opts: {
+    category: string
+    childType: 'item' | 'container'
+    count: number
+    classification?: string | null
+    ancestorId?: string | null
+    temperatureCelsius?: number | null
+  }): Promise<SuggestedLocation[]> {
+    await ensureViewsReady()
+
+    // Step 1: find candidate containers by accepted category
+    const specificKey: [string, string] = [opts.childType, opts.category]
+    const wildcardKey: [string, string] = ['any', 'any']
+
+    interface CapacityValue { capacity: number, classification: string | null, containerType: string | null }
+
+    const [specificResult, wildcardResult] = await Promise.all([
+      couchDB.queryView<[string, string], CapacityValue, Container>(
+        'firn-inventory',
+        'capacity_by_accepted_category',
+        { key: specificKey, include_docs: true }
+      ),
+      couchDB.queryView<[string, string], CapacityValue, Container>(
+        'firn-inventory',
+        'capacity_by_accepted_category',
+        { key: wildcardKey, include_docs: true }
+      )
+    ])
+
+    // Deduplicate candidates (a container may appear in both specific and wildcard results)
+    const candidateMap = new Map<string, { doc: Container | StorageEquipment, capacity: number }>()
+
+    for (const row of [...specificResult.rows, ...wildcardResult.rows]) {
+      if (!row.doc || candidateMap.has(row.doc._id)) continue
+      if (!isContainer(row.doc) && !isStorageEquipment(row.doc)) continue
+      candidateMap.set(row.doc._id, { doc: row.doc, capacity: row.value?.capacity ?? 0 })
+    }
+
+    if (candidateMap.size === 0) return []
+
+    // Step 2: batch-query children_count for all candidate IDs
+    const candidateIds = [...candidateMap.keys()]
+    const countResult = await couchDB.queryView<string, number>(
+      'firn-inventory',
+      'children_count',
+      { keys: candidateIds, group: true }
+    )
+
+    const occupancyMap = new Map<string, number>()
+    for (const row of countResult.rows) {
+      occupancyMap.set(row.key, row.value ?? 0)
+    }
+
+    // Step 3: compute availability and filter
+    const suggestions: SuggestedLocation[] = []
+
+    for (const [id, { doc, capacity }] of candidateMap) {
+      const occupied = occupancyMap.get(id) ?? 0
+      const available = capacity - occupied
+      if (available < opts.count) continue
+
+      // Optional classification filter
+      if (opts.classification && isContainer(doc) && doc.classification !== 'other' && doc.classification !== opts.classification) {
+        continue
+      }
+
+      // Optional ancestor subtree filter
+      if (opts.ancestorId) {
+        const inSubtree = doc.locationPath?.some(a => a.id === opts.ancestorId) || doc.parentId === opts.ancestorId
+        if (!inSubtree) continue
+      }
+
+      // Resolve temperature from equipment ancestor if available
+      let temperatureCelsius: number | null = null
+      if (isStorageEquipment(doc)) {
+        temperatureCelsius = doc.temperatureCelsius ?? null
+      } else if (isContainer(doc)) {
+        // Find equipment in locationPath and fetch its temperature
+        const equipmentAncestor = doc.locationPath?.find(a => a.type === 'storageEquipment')
+        if (equipmentAncestor) {
+          const equipment = await couchDB.getDocument<StorageEquipment>(equipmentAncestor.id)
+          if (equipment && isStorageEquipment(equipment)) {
+            temperatureCelsius = equipment.temperatureCelsius ?? null
+          }
+        }
+      }
+
+      suggestions.push({
+        containerId: doc._id,
+        containerName: doc.name || doc.label,
+        containerType: isContainer(doc) ? doc.containerType : 'other',
+        capacity,
+        occupied,
+        available,
+        locationPath: doc.locationPath ?? [],
+        temperatureCelsius,
+        classification: isContainer(doc) ? doc.classification : null
+      })
+    }
+
+    // Step 4: sort by preference
+    suggestions.sort((a, b) => {
+      // Temperature match first (if requested)
+      if (opts.temperatureCelsius != null) {
+        const aDist = a.temperatureCelsius != null ? Math.abs(a.temperatureCelsius - opts.temperatureCelsius) : Infinity
+        const bDist = b.temperatureCelsius != null ? Math.abs(b.temperatureCelsius - opts.temperatureCelsius) : Infinity
+        if (aDist !== bDist) return aDist - bDist
+      }
+      // Then by most available space
+      return b.available - a.available
+    })
+
+    return suggestions
+  },
+
+  /* Reverse lookup: find all containers and items linked to a given project via projectRefs. */
+  async getByProject(projectId: string, db: string = 'projects'): Promise<Array<Container | InventoryItem>> {
+    await ensureViewsReady()
+
+    const result = await couchDB.queryView<[string, string], { type: string, name: string }, Container | InventoryItem>(
+      'firn-inventory',
+      'by_project',
+      { key: [db, projectId], include_docs: true }
+    )
+
+    return result.rows
+      .map(row => row.doc)
+      .filter((doc): doc is Container | InventoryItem =>
+        Boolean(doc && (isContainer(doc) || isInventoryItem(doc)))
+      )
   }
 }
