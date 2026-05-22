@@ -536,7 +536,8 @@ export const ContainerService = {
       let temperatureCelsius: number | null = null
       if (isStorageEquipment(doc)) {
         temperatureCelsius = doc.temperatureCelsius ?? null
-      } else if (isContainer(doc)) {
+      }
+      else if (isContainer(doc)) {
         // Find equipment in locationPath and fetch its temperature
         const equipmentAncestor = doc.locationPath?.find(a => a.type === 'storageEquipment')
         if (equipmentAncestor) {

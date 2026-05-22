@@ -17,7 +17,7 @@ const user = computed(() => ({
   firnId: selfUser.value?.firnId ?? null,
   googleEmail: selfUser.value?.googleEmail ?? '',
   githubId: selfUser.value?.githubId ?? null,
-  githubUrl: selfUser.value?.githubUrl ?? null,
+  githubUrl: selfUser.value?.githubUrl ?? null
 }))
 
 const firstName = computed(() => user.value.name.split(' ')[0] || user.value.name)
@@ -69,7 +69,10 @@ const greeting = computed(() => {
           />
           <div class="text-white pb-0.5">
             <p class="text-sm font-medium text-white/70 flex items-center gap-1 leading-none mb-1">
-              <NIcon :name="greeting.icon" class="text-sm" />
+              <NIcon
+                :name="greeting.icon"
+                class="text-sm"
+              />
               {{ greeting.text }}!
             </p>
             <p class="font-bold text-xl leading-tight">
@@ -85,7 +88,10 @@ const greeting = computed(() => {
       <!-- Firn ID -->
       <div>
         <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon name="i-lucide-snowflake" class="text-primary-400 dark:text-primary-600 text-xs" />
+          <NIcon
+            name="i-lucide-snowflake"
+            class="text-primary-400 dark:text-primary-600 text-xs"
+          />
           <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Firn ID</span>
         </div>
         <p class="font-medium pl-5 text-muted">
@@ -99,7 +105,10 @@ const greeting = computed(() => {
       <!-- Provider -->
       <div>
         <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon name="i-lucide-log-in" class="text-primary-400 dark:text-primary-600 text-xs" />
+          <NIcon
+            name="i-lucide-log-in"
+            class="text-primary-400 dark:text-primary-600 text-xs"
+          />
           <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Signed in via</span>
         </div>
         <p class="font-medium pl-5 capitalize text-muted">
@@ -110,7 +119,10 @@ const greeting = computed(() => {
       <!-- Google email -->
       <div class="sm:col-span-2">
         <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon name="i-simple-icons-google" class="text-primary-400 dark:text-primary-600 text-xs" />
+          <NIcon
+            name="i-simple-icons-google"
+            class="text-primary-400 dark:text-primary-600 text-xs"
+          />
           <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Google account</span>
         </div>
         <p class="font-medium pl-5 text-muted">
