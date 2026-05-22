@@ -143,7 +143,7 @@ Each entity below the room level stores a `locationPath` — an ordered array of
 
 The project prefers MapReduce views over Mango indexes for inventory queries. View definitions live as reference JSON files in `docs/couchdb-views/` and are bootstrapped into the database by `ensureInventoryViews()` at startup. Two design documents are used:
 
-- **`_design/firn-inventory`** — Hierarchy queries: `by_type`, `by_parent`, `by_ancestor`, `by_status`, `by_expiry`, `by_barcode`, `by_category`, `templates_by_kind`.
+- **`_design/firn-inventory`** — Hierarchy queries: `by_type`, `by_parent`, `by_ancestor`, `by_status`, `by_expiry`, `by_barcode`, `by_category`, `templates_by_kind`, `children_count`, `capacity_by_accepted_category`, `by_project`.
 - **`_design/firn-inventory-actions`** — Action queries: `by_target`, `by_status`, `by_assignee`, `planned_for_target`.
 
 ### 4. `parentId`/`parentType` over `DocumentReference`
@@ -191,6 +191,37 @@ Items and containers both have a `classification` field, while items additionall
 
 Acceptance rules on containers can filter by either axis — a sample box might accept any category but only `sample` classification, while a plate rack might accept only `plate96` and `plate384` categories regardless of classification.
 
+### 9. Querying free capacity (location suggestions)
+
+A common lab task is _"I need to store 5 × 96-well plates — where is there room?"_ In a document database with a bottom-up tree (each child stores its parent, parents don't list children), answering this requires knowing both **what each container accepts** and **how full it currently is**. The system solves this with a two-query indexed approach rather than recursive traversal:
+
+1. **`capacity_by_accepted_category` view** — Indexes every active container by the categories it accepts. A container with `acceptedItemCategories: ['plate96', 'plate384']` emits two entries. Containers and equipment with no acceptance restrictions emit under a `['any', 'any']` wildcard key. Each emitted value includes the container's declared `capacity`.
+
+2. **`children_count` view** — A map+reduce view (`_count`) that emits every child document's `parentId`. Queried with `group=true` and a list of candidate IDs, it returns the current occupancy of each candidate in a single round-trip.
+
+3. **Server-side join** — `ContainerService.suggestLocations()` runs both view queries in parallel, computes `available = capacity − occupied` per candidate, and filters for `available ≥ requested count`. Results can be further narrowed by classification, ancestor subtree (e.g. "only in Freezer X"), and sorted by temperature preference (closest match first) then by most available space.
+
+This approach is efficient because both queries hit B-tree indexes — O(log n) per key — and the join operates over a small candidate set. No recursive ancestry walking is needed.
+
+### 10. Project references
+
+Containers and items can be associated with projects from the read-only projects database via a `projectRefs` field of type `DocumentReferenceMap` (defined in `types/references.d.ts`). This is a `Record<string, DocumentReference | DocumentReference[]>` that allows named, typed cross-database links:
+
+```ts
+projectRefs: {
+  primary: { db: 'projects', id: 'proj:P12345', type: 'project' },
+  related: [
+    { db: 'projects', id: 'proj:P67890', type: 'project' }
+  ]
+}
+```
+
+The `projectRefs` field is `null` when no project association exists. It is intentionally an outbound-only link — the projects database is read-only to the application, so references are stored on the inventory side.
+
+**Reverse lookup**: The `by_project` CouchDB view indexes all `projectRefs` entries, emitting `[db, projectId]` as the key. Querying `key=["projects", "proj:P12345"]` returns every container and item linked to that project. Note that CouchDB does not support cross-database views — this view lives in the firn database and indexes the `projectRefs` field of inventory documents.
+
+While the inventory hierarchy uses `parentId`/`parentType` for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse — most inventory entities will not be linked to a project.
+
 ## CRUD Service Organisation
 
 All database operations are implemented as service objects in `server/crud/`:
@@ -199,7 +230,7 @@ All database operations are implemented as service objects in `server/crud/`:
 |------|---------|----------------|
 | `inventory-helpers.server.ts` | _(functions)_ | ID generation, `locationPath` building, cascade updates, validation, view bootstrap |
 | `inventory-locations.server.ts` | `LocationService` | Room + StorageEquipment CRUD, equipment-to-room moves |
-| `inventory-containers.server.ts` | `ContainerService` | Container CRUD, nesting, acceptance/capacity enforcement, descendant queries |
+| `inventory-containers.server.ts` | `ContainerService` | Container CRUD, nesting, acceptance/capacity enforcement, descendant queries, location suggestions, project lookups |
 | `inventory-items.server.ts` | `ItemService` | Item CRUD, status transitions (checkout/return/reserve/dispose), search, expiry queries |
 | `inventory-tasks.server.ts` | `TaskService` | Planned task lifecycle, auto-reminders, overdue detection, expiry task generation |
 | `inventory-templates.server.ts` | `TemplateService` | Template CRUD, applying defaults to create payloads |
