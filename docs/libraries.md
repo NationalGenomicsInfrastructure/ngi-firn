@@ -50,6 +50,7 @@ Further sources for components can be those projects, which, however, use Tailwi
 ## Monitoring
 
 - **[EvLog](https://github.com/HugoRCD/evlog)** is a logger that generates one log per request with all context included.
+- **[SpyGlass](https://github.com/Flo0806/nuxt-spyglass)** 
 
 ## Users
 

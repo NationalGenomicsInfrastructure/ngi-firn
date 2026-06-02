@@ -89,11 +89,23 @@ function dropdownItems(bookmark: FirnProjectBookmark) {
       <NSidebarMenuItem
         v-for="bookmark in bookmarks"
         :key="bookmark.projectId"
+        class="min-w-0"
       >
-        <NSidebarMenuButton as-child>
-          <NLink :to="detailsUrl(bookmark.projectId)">
-            <NIcon name="i-radix-icons-star-filled" />
-            <span class="truncate">{{ displayName(bookmark) }}</span>
+        <NSidebarMenuButton
+          as-child
+          class="h-auto min-w-0 py-1"
+        >
+          <NLink
+            :to="detailsUrl(bookmark.projectId)"
+            class="grid w-full min-w-0 grid-cols-[auto,minmax(0,1fr)] items-start gap-2 pr-8 !whitespace-normal"
+          >
+            <NIcon
+              name="i-radix-icons-star-filled"
+              class="shrink-0"
+            />
+            <span class="block min-w-0 break-words !whitespace-normal leading-4">
+              {{ displayName(bookmark) }}
+            </span>
           </NLink>
         </NSidebarMenuButton>
         <NDropdownMenu
