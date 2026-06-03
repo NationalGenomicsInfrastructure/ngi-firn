@@ -3,31 +3,30 @@ import {
   gridPositionSchema,
   idRevSchema,
   roomTypeSchema,
+  roomBuildingSchema,
   equipmentTypeSchema
 } from './inventory-common'
 
 // Room schemas
 
 export const createRoomSchema = z.object({
-  roomId: z.string().min(1, { message: 'Room ID is required' }),
   name: z.string().min(1, { message: 'Room name is required' }),
-  label: z.string().min(1, { message: 'Room label is required' }),
-  roomNumber: z.string().nullish(),
+  label: z.string().optional(),
+  roomNumber: z.string().trim().min(1, { message: 'Room number is required' }),
   roomType: roomTypeSchema,
-  building: z.string().min(1, { message: 'Building is required' }),
-  floor: z.number().int().nullish(),
+  building: roomBuildingSchema,
+  floor: z.number().int({ message: 'Floor must be an integer' }),
   description: z.string().nullish(),
   isActive: z.boolean().optional()
 })
 
 export const updateRoomSchema = idRevSchema.extend({
-  roomId: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   label: z.string().min(1).optional(),
-  roomNumber: z.string().nullish(),
+  roomNumber: z.string().trim().min(1).optional(),
   roomType: roomTypeSchema.optional(),
-  building: z.string().min(1).optional(),
-  floor: z.number().int().nullish(),
+  building: roomBuildingSchema.optional(),
+  floor: z.number().int({ message: 'Floor must be an integer' }).optional(),
   description: z.string().nullish(),
   isActive: z.boolean().optional()
 })
@@ -42,7 +41,7 @@ export const createEquipmentSchema = z.object({
   name: z.string().min(1, { message: 'Equipment name is required' }),
   label: z.string().min(1, { message: 'Equipment label is required' }),
   description: z.string().nullish(),
-  parentId: z.string().min(1, { message: 'Parent room ID is required' }),
+  parentId: z.string().min(1, { message: 'Parent room document ID is required' }),
   parentType: z.literal('room'),
   position: gridPositionSchema.nullish(),
   rows: z.number().int().min(1).nullish(),
@@ -80,7 +79,7 @@ export const deleteEquipmentSchema = idRevSchema
 
 export const moveEquipmentSchema = z.object({
   equipmentId: z.string().min(1, { message: 'Equipment ID is required' }),
-  newRoomId: z.string().min(1, { message: 'Target room ID is required' })
+  newRoomId: z.string().min(1, { message: 'Target room document ID is required' })
 })
 
 // Inferred types

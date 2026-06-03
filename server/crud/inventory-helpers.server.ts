@@ -172,7 +172,7 @@ export async function resolveLocationBreadcrumb(
         id: doc._id,
         type: doc.type,
         name: doc.name,
-        label: doc.label
+        label: doc.label ?? undefined
       })
     }
   }
@@ -184,7 +184,7 @@ export async function resolveLocationBreadcrumb(
         id: parentDoc._id,
         type: parentDoc.type,
         name: parentDoc.name,
-        label: parentDoc.label
+        label: parentDoc.label ?? undefined
       })
     }
   }

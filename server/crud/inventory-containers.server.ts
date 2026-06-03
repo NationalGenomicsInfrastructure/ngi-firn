@@ -550,7 +550,7 @@ export const ContainerService = {
 
       suggestions.push({
         containerId: doc._id,
-        containerName: doc.name || doc.label,
+        containerName: doc.roomId ? doc.roomId : doc.name,
         containerType: isContainer(doc) ? doc.containerType : 'other',
         capacity,
         occupied,

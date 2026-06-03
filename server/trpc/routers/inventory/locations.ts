@@ -5,6 +5,7 @@
  * ROOM QUERIES (authedProcedure):
  * getAllRooms - List all rooms sorted by name
  * getRoom - Fetch a single room by document ID
+ * getRoomBySlug - Fetch a single room by slug
  *
  * ROOM MUTATIONS (authedProcedure):
  * createRoom - Create a new room
@@ -50,10 +51,17 @@ export const locationsRouter = createTRPCRouter({
     }),
 
   getRoom: authedProcedure
-    .input(z.object({ roomId: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }): Promise<Room | null> => {
       const { LocationService } = await import('../../../crud/inventory-locations.server')
-      return LocationService.getRoom(input.roomId)
+      return LocationService.getRoom(input.id)
+    }),
+
+  getRoomBySlug: authedProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ input }): Promise<Room | null> => {
+      const { LocationService } = await import('../../../crud/inventory-locations.server')
+      return LocationService.getRoomBySlug(input.slug)
     }),
 
   // Room mutations
@@ -62,7 +70,7 @@ export const locationsRouter = createTRPCRouter({
     .input(createRoomSchema)
     .mutation(async ({ input, ctx }): Promise<Room> => {
       const { LocationService } = await import('../../../crud/inventory-locations.server')
-      return LocationService.createRoom(input, ctx.secure!.id)
+      return LocationService.createRoom({ ...input, label: input.label ?? '' }, ctx.secure!.id)
     }),
 
   updateRoom: authedProcedure
@@ -90,10 +98,10 @@ export const locationsRouter = createTRPCRouter({
     }),
 
   getEquipmentByRoom: authedProcedure
-    .input(z.object({ roomId: z.string().min(1) }))
+    .input(z.object({ roomDocumentId: z.string().min(1) }))
     .query(async ({ input }): Promise<StorageEquipment[]> => {
       const { LocationService } = await import('../../../crud/inventory-locations.server')
-      return LocationService.getEquipmentByRoom(input.roomId)
+      return LocationService.getEquipmentByRoom(input.roomDocumentId)
     }),
 
   // Equipment mutations

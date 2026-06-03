@@ -5,9 +5,10 @@ import { defineQueryOptions } from '@pinia/colada'
 export const INVENTORY_LOCATIONS_QUERY_KEYS = {
   root: ['inventory', 'locations'] as const,
   rooms: () => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'rooms'] as const,
-  room: (roomId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'room', roomId] as const,
+  room: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'room', roomDocumentId] as const,
+  roomBySlug: (slug: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'roomBySlug', slug] as const,
   equipment: (equipmentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipment', equipmentId] as const,
-  equipmentByRoom: (roomId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentByRoom', roomId] as const
+  equipmentByRoom: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentByRoom', roomDocumentId] as const
 } as const
 
 // Query for all rooms
@@ -21,11 +22,22 @@ export const allRoomsQuery = defineQueryOptions<Room[]>({
 
 // Query for a single room by ID
 export const roomQuery = defineQueryOptions(
-  (roomId: string) => ({
-    key: INVENTORY_LOCATIONS_QUERY_KEYS.room(roomId),
+  (roomDocumentId: string) => ({
+    key: INVENTORY_LOCATIONS_QUERY_KEYS.room(roomDocumentId),
     query: () => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.getRoom.query({ roomId })
+      return $trpc.inventory.locations.getRoom.query({ id: roomDocumentId })
+    }
+  })
+)
+
+// Query for a single room by slug
+export const roomBySlugQuery = defineQueryOptions(
+  (slug: string) => ({
+    key: INVENTORY_LOCATIONS_QUERY_KEYS.roomBySlug(slug),
+    query: () => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.locations.getRoomBySlug.query({ slug })
     }
   })
 )
@@ -43,11 +55,11 @@ export const equipmentQuery = defineQueryOptions(
 
 // Query for all storage equipment in a room
 export const equipmentByRoomQuery = defineQueryOptions(
-  (roomId: string) => ({
-    key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(roomId),
+  (roomDocumentId: string) => ({
+    key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(roomDocumentId),
     query: () => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.getEquipmentByRoom.query({ roomId })
+      return $trpc.inventory.locations.getEquipmentByRoom.query({ roomDocumentId })
     }
   })
 )

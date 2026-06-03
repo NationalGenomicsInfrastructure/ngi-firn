@@ -32,6 +32,14 @@ export const roomTypeSchema = z.enum([
   'other'
 ])
 
+// Allowed building identifiers for room registration
+export const roomBuildingSchema = z.enum([
+  'alfa',
+  'beta',
+  'gamma',
+  'delta'
+])
+
 // Storage equipment types
 export const equipmentTypeSchema = z.enum([
   'cabinet',

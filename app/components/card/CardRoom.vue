@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Room } from '~~/types/inventory'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   room: Room
-}>()
+  showOpenAction?: boolean
+}>(), {
+  showOpenAction: true
+})
 
 const ROOM_TYPE_LABELS: Record<Room['roomType'], string> = {
   basement: 'Basement',
@@ -13,11 +16,20 @@ const ROOM_TYPE_LABELS: Record<Room['roomType'], string> = {
   other: 'Other'
 }
 
+const BUILDING_LABELS: Record<Room['building'], string> = {
+  alfa: 'Alfa',
+  beta: 'Beta',
+  gamma: 'Gamma',
+  delta: 'Delta'
+}
+
 const roomTypeLabel = computed(() => ROOM_TYPE_LABELS[props.room.roomType] ?? props.room.roomType)
+const buildingLabel = computed(() => BUILDING_LABELS[props.room.building] ?? props.room.building)
+const roomDetailPath = computed(() => `/inventory/rooms/${encodeURIComponent(props.room.roomId)}`)
 
 const infoFields = computed(() => [
-  { icon: 'i-lucide-key-round', label: 'Room ID', value: props.room.roomId },
-  { icon: 'i-lucide-building-2', label: 'Building', value: props.room.building },
+  { icon: 'i-lucide-key-round', label: 'Slug', value: props.room.roomId },
+  { icon: 'i-lucide-building-2', label: 'Building', value: buildingLabel.value },
   { icon: 'i-lucide-door-open', label: 'Room number', value: props.room.roomNumber ?? '—' },
   { icon: 'i-lucide-layers', label: 'Floor', value: props.room.floor == null ? '—' : String(props.room.floor) },
   { icon: 'i-lucide-align-left', label: 'Description', value: props.room.description ?? '—' }
@@ -74,5 +86,18 @@ const infoFields = computed(() => [
         </p>
       </div>
     </div>
+
+    <template v-if="showOpenAction">
+      <NSeparator class="my-4" />
+
+      <div class="flex justify-end">
+        <NButton
+          label="Open room"
+          btn="soft-primary hover:outline-primary"
+          trailing="i-lucide-chevron-right"
+          :to="roomDetailPath"
+        />
+      </div>
+    </template>
   </NCard>
 </template>

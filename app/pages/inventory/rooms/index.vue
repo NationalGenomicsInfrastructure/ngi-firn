@@ -17,6 +17,13 @@ const ROOM_TYPE_LABELS: Record<Room['roomType'], string> = {
   other: 'Other'
 }
 
+const BUILDING_LABELS: Record<Room['building'], string> = {
+  alfa: 'Alfa',
+  beta: 'Beta',
+  gamma: 'Gamma',
+  delta: 'Delta'
+}
+
 const ANY_VALUE = 'any'
 const NO_FLOOR_VALUE = 'none'
 
@@ -36,7 +43,7 @@ const errorMessage = computed(() => {
 const rooms = computed(() => roomsState.value.status === 'success' ? roomsState.value.data : [])
 
 const selectedRoomType = ref<typeof ANY_VALUE | Room['roomType']>(ANY_VALUE)
-const selectedBuilding = ref(ANY_VALUE)
+const selectedBuilding = ref<typeof ANY_VALUE | Room['building']>(ANY_VALUE)
 const selectedFloor = ref(ANY_VALUE)
 
 const roomTypeOptions = computed(() => [
@@ -45,10 +52,10 @@ const roomTypeOptions = computed(() => [
 ])
 
 const buildingOptions = computed(() => {
-  const buildings = Array.from(new Set(rooms.value.map(room => room.building).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  const buildings = Array.from(new Set(rooms.value.map(room => room.building))).sort((a, b) => a.localeCompare(b))
   return [
     { value: ANY_VALUE, label: 'Any building' },
-    ...buildings.map(building => ({ value: building, label: building }))
+    ...buildings.map(building => ({ value: building, label: BUILDING_LABELS[building] ?? building }))
   ]
 })
 
@@ -88,7 +95,7 @@ function onRoomTypeFilterUpdate(value: unknown) {
 }
 
 function onBuildingFilterUpdate(value: unknown) {
-  selectedBuilding.value = (value as string | null | undefined) ?? ANY_VALUE
+  selectedBuilding.value = (value as typeof ANY_VALUE | Room['building'] | null | undefined) ?? ANY_VALUE
 }
 
 function onFloorFilterUpdate(value: unknown) {

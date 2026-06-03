@@ -31,7 +31,7 @@ for its audit trail (ActionLogEntry entries).
 
 ### Room
 
-A physical location in a building — the root of every storage hierarchy. Rooms have a human-readable `roomId`, a building, and an optional floor number. Every piece of equipment must belong to exactly one room.
+A physical location in a building — the root of every storage hierarchy. Rooms have a human-readable `roomId` slug, a building, and an optional floor number. Every piece of equipment must belong to exactly one room by document `_id` in `parentId`.
 
 ### StorageEquipment
 

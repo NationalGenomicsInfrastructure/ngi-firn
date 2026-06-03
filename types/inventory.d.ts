@@ -33,6 +33,7 @@ import type { DocumentReferenceMap } from './references'
 
 /* Allowed hierarchy node types used by parent references and location paths. */
 export type InventoryLocationType = 'room' | 'storageEquipment' | 'container'
+export type RoomBuilding = 'alfa' | 'beta' | 'gamma' | 'delta'
 
 /*
  * One ancestry segment in a materialized location path (denormalized for fast reads).
@@ -94,12 +95,13 @@ export interface ActionLogEntry {
 export interface Room extends BaseDocument {
   type: 'room'
   schema: 1
+  /* Stable URL slug (not CouchDB _id). */
   roomId: string
   name: string
   label: string
   roomNumber: string | null
   roomType: 'basement' | 'laboratory' | 'office' | 'storage' | 'other'
-  building: string
+  building: RoomBuilding
   floor: number | null
   description: string | null
   isActive: boolean
@@ -114,8 +116,9 @@ export interface StorageEquipment extends BaseDocument {
   equipmentId: string
   equipmentType: 'cabinet' | 'freezer' | 'fridge' | 'shelf' | 'nitrogenTank' | 'other'
   name: string
-  label: string
+  label: string | null
   description: string | null
+  /* Parent room document ID. */
   parentId: string
   parentType: 'room'
   locationPath: LocationAncestor[]
@@ -290,13 +293,12 @@ export interface InventoryTemplate extends BaseDocument {
 
 /* Create payload for room registration. */
 export interface CreateRoomInput {
-  roomId: string
   name: string
   label: string
-  roomNumber?: string | null
+  roomNumber: string
   roomType: Room['roomType']
-  building: string
-  floor?: number | null
+  building: RoomBuilding
+  floor: number
   description?: string | null
   isActive?: boolean
 }
@@ -305,13 +307,12 @@ export interface CreateRoomInput {
 export interface UpdateRoomInput {
   id: string
   rev: string
-  roomId?: string
   name?: string
   label?: string
-  roomNumber?: string | null
+  roomNumber?: string
   roomType?: Room['roomType']
-  building?: string
-  floor?: number | null
+  building?: RoomBuilding
+  floor?: number
   description?: string | null
   isActive?: boolean
 }

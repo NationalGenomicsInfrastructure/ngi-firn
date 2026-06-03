@@ -11,7 +11,7 @@
 |-------|---------|
 | `/inventory` | Dashboard / overview |
 | `/inventory/rooms` | Room list (cards grid) |
-| `/inventory/rooms/[id]` | Room detail — equipment table inside |
+| `/inventory/rooms/[slug]` | Room detail — equipment table inside |
 | `/inventory/equipment/[id]` | Equipment detail — containers tree/table |
 | `/inventory/containers/[id]` | Container detail — contents table |
 | `/inventory/items/[id]` | Item detail — card with audit log timeline |
@@ -192,7 +192,7 @@ A card grid showing all rooms with equipment counts.
 
 ---
 
-### `/inventory/rooms/[id]` — Room Detail
+### `/inventory/rooms/[slug]` — Room Detail
 
 Shows room metadata and a table of equipment inside it.
 
@@ -200,8 +200,8 @@ Shows room metadata and a table of equipment inside it.
 
 | Query | Source file | Parameters | Purpose |
 |-------|-----------|------------|---------|
-| `roomQuery` | `queries/rooms` | `roomId` (from route param) | Room name, building, notes |
-| `equipmentByRoomQuery` | `queries/rooms` | `roomId` | Table of equipment in this room |
+| `roomBySlugQuery` | `queries/rooms` | `slug` (from route param) | Room name, building, notes |
+| `equipmentByRoomQuery` | `queries/rooms` | `roomDocumentId` (`room._id`) | Table of equipment in this room |
 
 **Mutations:**
 
@@ -422,7 +422,7 @@ All query and mutation files live under `app/utils/`:
 
 ```
 queries/inventory/
-  ├─ rooms.ts    → allRoomsQuery, roomQuery, equipmentQuery, equipmentByRoomQuery
+  ├─ rooms.ts    → allRoomsQuery, roomQuery, roomBySlugQuery, equipmentQuery, equipmentByRoomQuery
   ├─ containers.ts   → containerQuery, containersByParentQuery, containerContentsQuery,
   │                    containerDescendantsQuery, suggestLocationsQuery, containersByProjectQuery
   ├─ items.ts        → itemQuery, itemsByParentQuery, itemsByStatusQuery,
