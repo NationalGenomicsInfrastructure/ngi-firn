@@ -7,7 +7,7 @@ import type {
   UpdateEquipmentSchemaInput,
   MoveEquipmentSchemaInput
 } from '~~/schemas/inventory-locations'
-import { INVENTORY_LOCATIONS_QUERY_KEYS } from '~/utils/queries/inventory/locations'
+import { INVENTORY_LOCATIONS_QUERY_KEYS } from '~/utils/queries/inventory/rooms'
 
 const { showSuccess, showError } = useFirnToast()
 

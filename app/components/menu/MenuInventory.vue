@@ -2,63 +2,18 @@
 const data = {
   menuItems: [
     {
-      title: 'Plates',
+      title: 'Rooms',
       url: '#',
-      icon: 'i-lucide-bot',
+      icon: 'i-lucide-building-2',
+      isActive: true,
       items: [
         {
-          title: 'List Plates',
-          url: '#'
+          title: 'Overview',
+          url: '/inventory/rooms'
         },
         {
-          title: 'Search Plates',
-          url: '#'
-        },
-        {
-          title: 'Manage Plates',
-          url: '#'
-        }
-      ]
-    },
-    {
-      title: 'Freezers',
-      url: '#',
-      icon: 'i-lucide-thermometer-snowflake',
-      items: [
-        {
-          title: 'List Freezers',
-          url: '#'
-        },
-        {
-          title: 'Manage Freezers',
-          url: '#'
-        },
-        {
-          title: 'Configure Racks',
-          url: '#'
-        },
-        {
-          title: 'Freezer Status',
-          url: '#'
-        }
-      ]
-    },
-    {
-      title: 'Documentation',
-      url: '#',
-      icon: 'i-lucide-book-open',
-      items: [
-        {
-          title: 'Introduction',
-          url: '#'
-        },
-        {
-          title: 'Tutorial',
-          url: '#'
-        },
-        {
-          title: 'FAQ',
-          url: '#'
+          title: 'Add room',
+          url: '/inventory/rooms/add'
         }
       ]
     }
