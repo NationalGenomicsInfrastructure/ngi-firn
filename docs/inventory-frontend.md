@@ -10,8 +10,8 @@
 | Route | Purpose |
 |-------|---------|
 | `/inventory` | Dashboard / overview |
-| `/inventory/locations` | Room list (cards grid) |
-| `/inventory/locations/[id]` | Room detail — equipment table inside |
+| `/inventory/rooms` | Room list (cards grid) |
+| `/inventory/rooms/[id]` | Room detail — equipment table inside |
 | `/inventory/equipment/[id]` | Equipment detail — containers tree/table |
 | `/inventory/containers/[id]` | Container detail — contents table |
 | `/inventory/items/[id]` | Item detail — card with audit log timeline |
@@ -31,7 +31,7 @@ Replace the current placeholder links in `MenuInventory.vue` with:
 ```
 Cold Storage Inventory
   ├─ Overview           /inventory
-  ├─ Locations          /inventory/locations
+  ├─ Locations          /inventory/rooms
   ├─ Search             /inventory/search
   ├─ Find Storage Spot  /inventory/find-space
   └─ Templates          /inventory/templates
@@ -139,7 +139,7 @@ The **move** action (relocating an item or container) deserves special mention: 
 
 | Context | Icon |
 |---------|------|
-| Rooms / locations | `i-lucide-building-2` |
+| Rooms / rooms | `i-lucide-building-2` |
 | Freezers / equipment | `i-lucide-thermometer-snowflake` |
 | Containers / boxes | `i-lucide-box` |
 | Items / samples | `i-lucide-test-tubes` |
@@ -163,7 +163,7 @@ The overview page aggregates high-level statistics and surfaces items that need 
 
 | Query | Source file | Parameters | Purpose |
 |-------|-----------|------------|---------|
-| `allRoomsQuery` | `queries/locations` | — | Room count, list for capacity overview |
+| `allRoomsQuery` | `queries/rooms` | — | Room count, list for capacity overview |
 | `expiringItemsQuery` | `queries/items` | `beforeDate: string` (e.g. 30 days from now) | "Expiring soon" warning panel |
 | `overdueTasksQuery` | `queries/tasks` | — | "Overdue tasks" warning panel |
 | `itemsByStatusQuery` | `queries/items` | `status: 'checked_out'` | "Currently checked out" summary |
@@ -172,7 +172,7 @@ The overview page aggregates high-level statistics and surfaces items that need 
 
 ---
 
-### `/inventory/locations` — Rooms List
+### `/inventory/rooms` — Rooms List
 
 A card grid showing all rooms with equipment counts.
 
@@ -180,19 +180,19 @@ A card grid showing all rooms with equipment counts.
 
 | Query | Source file | Parameters | Purpose |
 |-------|-----------|------------|---------|
-| `allRoomsQuery` | `queries/locations` | — | All rooms for the card grid |
+| `allRoomsQuery` | `queries/rooms` | — | All rooms for the card grid |
 
 **Mutations:**
 
 | Mutation | Source file | Trigger | UI component |
 |----------|-----------|---------|--------------|
-| `createRoom` | `mutations/locations` | "Add Room" button | Drawer (form) |
-| `updateRoom` | `mutations/locations` | Edit icon on room card | Drawer (form) |
-| `deleteRoom` | `mutations/locations` | Delete icon on room card | Dialog (confirm) |
+| `createRoom` | `mutations/rooms` | "Add Room" button | Drawer (form) |
+| `updateRoom` | `mutations/rooms` | Edit icon on room card | Drawer (form) |
+| `deleteRoom` | `mutations/rooms` | Delete icon on room card | Dialog (confirm) |
 
 ---
 
-### `/inventory/locations/[id]` — Room Detail
+### `/inventory/rooms/[id]` — Room Detail
 
 Shows room metadata and a table of equipment inside it.
 
@@ -200,18 +200,18 @@ Shows room metadata and a table of equipment inside it.
 
 | Query | Source file | Parameters | Purpose |
 |-------|-----------|------------|---------|
-| `roomQuery` | `queries/locations` | `roomId` (from route param) | Room name, building, notes |
-| `equipmentByRoomQuery` | `queries/locations` | `roomId` | Table of equipment in this room |
+| `roomQuery` | `queries/rooms` | `roomId` (from route param) | Room name, building, notes |
+| `equipmentByRoomQuery` | `queries/rooms` | `roomId` | Table of equipment in this room |
 
 **Mutations:**
 
 | Mutation | Source file | Trigger | UI component |
 |----------|-----------|---------|--------------|
-| `updateRoom` | `mutations/locations` | "Edit Room" button | Drawer (form) |
-| `createEquipment` | `mutations/locations` | "Add Equipment" button | Drawer (form) |
-| `updateEquipment` | `mutations/locations` | Edit action on table row | Drawer (form) |
-| `moveEquipmentToRoom` | `mutations/locations` | Move action on table row | Drawer (tree picker) |
-| `deleteEquipment` | `mutations/locations` | Delete action on table row | Dialog (confirm) |
+| `updateRoom` | `mutations/rooms` | "Edit Room" button | Drawer (form) |
+| `createEquipment` | `mutations/rooms` | "Add Equipment" button | Drawer (form) |
+| `updateEquipment` | `mutations/rooms` | Edit action on table row | Drawer (form) |
+| `moveEquipmentToRoom` | `mutations/rooms` | Move action on table row | Drawer (tree picker) |
+| `deleteEquipment` | `mutations/rooms` | Delete action on table row | Dialog (confirm) |
 
 ---
 
@@ -223,7 +223,7 @@ Shows equipment metadata (temperature, model, serial number) and a tree/table of
 
 | Query | Source file | Parameters | Purpose |
 |-------|-----------|------------|---------|
-| `equipmentQuery` | `queries/locations` | `equipmentId` (from route param) | Equipment metadata |
+| `equipmentQuery` | `queries/rooms` | `equipmentId` (from route param) | Equipment metadata |
 | `containersByParentQuery` | `queries/containers` | `equipmentId` | Top-level containers in this equipment |
 | `itemBreadcrumbQuery` | `queries/items` | `equipmentId` | Breadcrumb (Room → Equipment) |
 
@@ -237,7 +237,7 @@ On expanding a container node in the tree, lazily fetch:
 
 | Mutation | Source file | Trigger | UI component |
 |----------|-----------|---------|--------------|
-| `updateEquipment` | `mutations/locations` | "Edit Equipment" button | Drawer (form) |
+| `updateEquipment` | `mutations/rooms` | "Edit Equipment" button | Drawer (form) |
 | `createContainer` | `mutations/containers` | "Add Container" button | Drawer (form) |
 | `updateContainer` | `mutations/containers` | Edit action on tree node | Drawer (form) |
 | `moveContainer` | `mutations/containers` | Move action on tree node | Drawer (tree picker) |
@@ -329,13 +329,13 @@ A search page with a text input and results table. Optionally combined with the 
 
 ### `/inventory/find-space` — Find Storage Spot Wizard
 
-A stepper-based wizard that helps users find available storage locations.
+A stepper-based wizard that helps users find available storage rooms.
 
 **Queries:**
 
 | Query | Source file | Parameters | Purpose |
 |-------|-----------|------------|---------|
-| `allRoomsQuery` | `queries/locations` | — | Room picker in step 2 (optional filter) |
+| `allRoomsQuery` | `queries/rooms` | — | Room picker in step 2 (optional filter) |
 | `suggestLocationsQuery` | `queries/containers` | `{ category, childType, count, classification?, ancestorId?, temperatureCelsius? }` | Results in step 3 |
 
 **Parameters explained:**
@@ -422,7 +422,7 @@ All query and mutation files live under `app/utils/`:
 
 ```
 queries/inventory/
-  ├─ locations.ts    → allRoomsQuery, roomQuery, equipmentQuery, equipmentByRoomQuery
+  ├─ rooms.ts    → allRoomsQuery, roomQuery, equipmentQuery, equipmentByRoomQuery
   ├─ containers.ts   → containerQuery, containersByParentQuery, containerContentsQuery,
   │                    containerDescendantsQuery, suggestLocationsQuery, containersByProjectQuery
   ├─ items.ts        → itemQuery, itemsByParentQuery, itemsByStatusQuery,
@@ -431,7 +431,7 @@ queries/inventory/
   └─ templates.ts    → templateQuery, templatesQuery
 
 mutations/inventory/
-  ├─ locations.ts    → createRoom, updateRoom, deleteRoom,
+  ├─ rooms.ts    → createRoom, updateRoom, deleteRoom,
   │                    createEquipment, updateEquipment, moveEquipmentToRoom, deleteEquipment
   ├─ containers.ts   → createContainer, updateContainer, moveContainer, deleteContainer
   ├─ items.ts        → createItem, updateItem, moveItem, deleteItem,
