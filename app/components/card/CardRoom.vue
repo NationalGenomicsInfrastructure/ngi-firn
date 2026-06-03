@@ -28,7 +28,7 @@ const buildingLabel = computed(() => BUILDING_LABELS[props.room.building] ?? pro
 const roomDetailPath = computed(() => `/inventory/rooms/${encodeURIComponent(props.room.roomId)}`)
 
 const infoFields = computed(() => [
-  { icon: 'i-lucide-key-round', label: 'Slug', value: props.room.roomId },
+  { icon: 'i-lucide-key-round', label: 'Room identifier', value: props.room.roomId },
   { icon: 'i-lucide-building-2', label: 'Building', value: buildingLabel.value },
   { icon: 'i-lucide-door-open', label: 'Room number', value: props.room.roomNumber ?? '—' },
   { icon: 'i-lucide-layers', label: 'Floor', value: props.room.floor == null ? '—' : String(props.room.floor) },
@@ -39,7 +39,7 @@ const infoFields = computed(() => [
 <template>
   <NCard
     card="outline-gray"
-    class="h-full"
+    class="h-full py-4"
   >
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">

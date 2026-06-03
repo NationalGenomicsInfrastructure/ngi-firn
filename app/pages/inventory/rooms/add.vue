@@ -13,8 +13,7 @@ definePageMeta({
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <NCard
-        title="Create inventory room"
-        description="Fill in the room details below. Required fields are validated before submission."
+        title="Enter room details"
         card="outline-gray"
         class="lg:col-span-2"
         :una="{
@@ -27,24 +26,29 @@ definePageMeta({
       </NCard>
 
       <NCard
-        card="soft-gray"
         class="lg:col-span-1"
       >
         <div class="space-y-3 text-sm">
-          <div class="flex items-center gap-1.5 mb-0.5">
+          <div class="flex items-center gap-1.5 mt-4 mb-0.5">
             <NIcon
               name="i-lucide-info"
-              class="text-primary-400 dark:text-primary-600 text-xs"
+              class="text-primary-400 dark:text-primary-600 text-sm"
             />
-            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
+            <span class="text-sm uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
               Before you add
             </span>
           </div>
           <p class="text-muted">
-            Room slug is generated automatically from building, floor, and room number.
+            Please <NLink
+              href="/inventory/rooms"
+              class="text-primary-400 dark:text-primary-600 hover:underline"
+            >
+              check
+            </NLink> that the room does not already exist in the inventory under a different name or identifier.
           </p>
           <p class="text-muted">
-            Building is limited to Alfa, Beta, Gamma, and Delta. Room number and floor are required.
+            The room identifier is generated automatically from building, floor, and room number. It is used in URLs
+            to link to the room's details and access its contents.
           </p>
         </div>
       </NCard>

@@ -42,9 +42,23 @@ const errorMessage = computed(() => {
 
 const rooms = computed(() => roomsState.value.status === 'success' ? roomsState.value.data : [])
 
-const selectedRoomType = ref<typeof ANY_VALUE | Room['roomType']>(ANY_VALUE)
-const selectedBuilding = ref<typeof ANY_VALUE | Room['building']>(ANY_VALUE)
-const selectedFloor = ref(ANY_VALUE)
+const filterInitialValues = {
+  roomType: ANY_VALUE as typeof ANY_VALUE | Room['roomType'],
+  building: ANY_VALUE as typeof ANY_VALUE | Room['building'],
+  floor: ANY_VALUE
+}
+
+const { resetForm } = useForm({ initialValues: filterInitialValues })
+
+// Bind fields explicitly so NFormField + NSelect stay in sync when filters are cleared programmatically
+const { value: selectedRoomType, setValue: setRoomType } = useField<typeof ANY_VALUE | Room['roomType']>('roomType')
+const { value: selectedBuilding, setValue: setBuilding } = useField<typeof ANY_VALUE | Room['building']>('building')
+const { value: selectedFloor, setValue: setFloor } = useField<string>('floor')
+
+// useField is undefined until NFormField mounts; treat that as "any" so all rooms show on first load
+const effectiveRoomType = computed(() => selectedRoomType.value ?? ANY_VALUE)
+const effectiveBuilding = computed(() => selectedBuilding.value ?? ANY_VALUE)
+const effectiveFloor = computed(() => selectedFloor.value ?? ANY_VALUE)
 
 const roomTypeOptions = computed(() => [
   { value: ANY_VALUE, label: 'Any room type' },
@@ -78,34 +92,19 @@ const floorOptions = computed(() => {
 
 const filteredRooms = computed(() => {
   return rooms.value.filter((room) => {
-    const roomTypeMatch = selectedRoomType.value === ANY_VALUE || room.roomType === selectedRoomType.value
-    const buildingMatch = selectedBuilding.value === ANY_VALUE || room.building === selectedBuilding.value
+    const roomTypeMatch = effectiveRoomType.value === ANY_VALUE || room.roomType === effectiveRoomType.value
+    const buildingMatch = effectiveBuilding.value === ANY_VALUE || room.building === effectiveBuilding.value
 
     const floorMatch
-      = selectedFloor.value === ANY_VALUE
-        || (selectedFloor.value === NO_FLOOR_VALUE ? room.floor == null : String(room.floor) === selectedFloor.value)
+      = effectiveFloor.value === ANY_VALUE
+        || (effectiveFloor.value === NO_FLOOR_VALUE ? room.floor == null : String(room.floor) === effectiveFloor.value)
 
     return roomTypeMatch && buildingMatch && floorMatch
   })
 })
 
-function onRoomTypeFilterUpdate(value: unknown) {
-  const next = value as typeof ANY_VALUE | Room['roomType'] | null | undefined
-  selectedRoomType.value = next ?? ANY_VALUE
-}
-
-function onBuildingFilterUpdate(value: unknown) {
-  selectedBuilding.value = (value as typeof ANY_VALUE | Room['building'] | null | undefined) ?? ANY_VALUE
-}
-
-function onFloorFilterUpdate(value: unknown) {
-  selectedFloor.value = (value as string | null | undefined) ?? ANY_VALUE
-}
-
 function clearFilters() {
-  selectedRoomType.value = ANY_VALUE
-  selectedBuilding.value = ANY_VALUE
-  selectedFloor.value = ANY_VALUE
+  resetForm({ values: filterInitialValues })
 }
 </script>
 
@@ -147,18 +146,27 @@ function clearFilters() {
       v-else
       class="mt-6 space-y-4"
     >
-      <NCard card="soft-gray">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <NCard
+        title="Filter rooms"
+        description="Find rooms matching your criteria."
+        card="soft-gray"
+        class="w-full"
+        :una="{
+          cardContent: 'space-y-4',
+          cardDescription: 'text-accent'
+        }"
+      >
+        <div class="mb-6 flex flex-wrap items-end gap-4">
           <NFormField
             name="roomType"
             label="Room type"
             :una="{ formLabel: FORM_LABEL_STYLE }"
           >
             <NSelect
-              :model-value="selectedRoomType"
+              :model-value="effectiveRoomType"
               :items="roomTypeOptions"
               by="value"
-              @update:model-value="onRoomTypeFilterUpdate"
+              @update:model-value="(v: unknown) => setRoomType((v as typeof ANY_VALUE | Room['roomType'] | null | undefined) ?? ANY_VALUE)"
             />
           </NFormField>
 
@@ -168,10 +176,10 @@ function clearFilters() {
             :una="{ formLabel: FORM_LABEL_STYLE }"
           >
             <NSelect
-              :model-value="selectedBuilding"
+              :model-value="effectiveBuilding"
               :items="buildingOptions"
               by="value"
-              @update:model-value="onBuildingFilterUpdate"
+              @update:model-value="(v: unknown) => setBuilding((v as typeof ANY_VALUE | Room['building'] | null | undefined) ?? ANY_VALUE)"
             />
           </NFormField>
 
@@ -181,14 +189,13 @@ function clearFilters() {
             :una="{ formLabel: FORM_LABEL_STYLE }"
           >
             <NSelect
-              :model-value="selectedFloor"
+              :model-value="effectiveFloor"
               :items="floorOptions"
               by="value"
-              @update:model-value="onFloorFilterUpdate"
+              @update:model-value="(v: unknown) => setFloor((v as string | null | undefined) ?? ANY_VALUE)"
             />
           </NFormField>
-        </div>
-        <div class="mt-4 flex justify-end">
+
           <NButton
             label="Clear filters"
             btn="soft-primary hover:outline-primary"

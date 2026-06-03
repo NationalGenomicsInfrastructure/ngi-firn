@@ -167,14 +167,14 @@ async function onValidating() {
         label="Room name"
         :una="{ formLabel: FORM_LABEL_STYLE }"
       >
-        <NInput placeholder="e.g. NovaSeq freezer room" />
+        <NInput placeholder="e.g. Big Lab" />
       </NFormField>
       <NFormField
         name="label"
-        label="Label"
+        label="Custom label"
         :una="{ formLabel: FORM_LABEL_STYLE }"
       >
-        <NInput placeholder="e.g. NSQ-RM-01" />
+        <NInput placeholder="" />
       </NFormField>
     </div>
 
@@ -194,7 +194,7 @@ async function onValidating() {
 
       <NFormField
         name="building"
-        label="Building"
+        label="Campus Solna Building"
         :una="{ formLabel: FORM_LABEL_STYLE }"
       >
         <NSelect
@@ -212,13 +212,12 @@ async function onValidating() {
         label="Room number"
         :una="{ formLabel: FORM_LABEL_STYLE }"
       >
-        <NInput placeholder="e.g. G312" />
+        <NInput placeholder="e.g. A3590" />
       </NFormField>
 
       <NFormField
         name="floor"
         label="Floor"
-        description="Required integer floor value"
         :una="{
           formLabel: FORM_LABEL_STYLE,
           formDescription: 'text-muted'
@@ -236,7 +235,7 @@ async function onValidating() {
 
     <NFormField
       name="generatedRoomId"
-      label="Generated room slug"
+      label="Room identifier"
       description="Automatically created from building, floor, and room number."
       :una="{
         formLabel: FORM_LABEL_STYLE,
@@ -250,38 +249,38 @@ async function onValidating() {
       />
     </NFormField>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-      <NFormField
-        name="description"
-        label="Description"
-        :una="{ formLabel: FORM_LABEL_STYLE }"
-      >
-        <NInput
-          type="textarea"
-          :rows="3"
-          placeholder="Optional room notes"
-        />
-      </NFormField>
+    <NFormField
+      name="description"
+      label="Description"
+      :una="{ formLabel: FORM_LABEL_STYLE }"
+    >
+      <NInput
+        type="textarea"
+        :rows="3"
+        placeholder="Optional room notes"
+      />
+    </NFormField>
 
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
       <NFormField
         name="isActive"
         label="Status"
-        description="Inactive rooms are hidden from active use."
         :una="{
           formLabel: FORM_LABEL_STYLE,
           formDescription: 'text-muted'
         }"
       >
-        <NCheckbox label="Active room" />
+        <NCheckbox label="Active?" />
       </NFormField>
-    </div>
 
-    <NButton
-      type="submit"
-      btn="soft-primary hover:outline-primary"
-      leading="i-lucide-building-2"
-    >
-      Create room
-    </NButton>
+      <NButton
+        type="submit"
+        btn="soft-primary hover:outline-primary"
+        leading="i-lucide-building-2"
+        class="w-full my-4"
+      >
+        Create room
+      </NButton>
+    </div>
   </form>
 </template>
