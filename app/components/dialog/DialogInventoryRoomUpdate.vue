@@ -28,6 +28,7 @@ function onSaved() {
     <template #trigger>
       <NButton
         label="Edit room"
+        size="sm"
         class="transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
         leading="i-lucide-pencil"

@@ -68,7 +68,7 @@ const room = computed(() => roomState.value.status === 'success' ? roomState.val
     >
       <CardRoom
         :room="room"
-        :show-open-action="false"
+        :link-to-details="false"
       />
 
       <div class="flex justify-end">

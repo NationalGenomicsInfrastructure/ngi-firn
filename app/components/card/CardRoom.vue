@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Room } from '~~/types/inventory'
+import { NLink } from '#components'
 
 const props = withDefaults(defineProps<{
   room: Room
-  showOpenAction?: boolean
+  linkToDetails?: boolean
 }>(), {
-  showOpenAction: true
+  linkToDetails: true
 })
 
 const BUILDING_LABELS: Record<Room['building'], string> = {
@@ -25,68 +26,73 @@ const infoFields = computed(() => [
   { icon: 'i-lucide-layers', label: 'Floor', value: props.room.floor == null ? '—' : String(props.room.floor) },
   { icon: 'i-lucide-align-left', label: 'Description', value: props.room.description ?? '—' }
 ])
+
+const cardBodyTag = computed(() => (props.linkToDetails ? NLink : 'div'))
+const cardBodyBind = computed(() => (props.linkToDetails ? { to: roomDetailPath.value } : {}))
 </script>
 
 <template>
   <NCard
     card="outline-gray"
     class="h-full flex flex-col"
+    :class="linkToDetails ? 'transition-colors hover:border-primary-400 dark:hover:border-primary-500' : undefined"
     :_card-content="{ class: 'flex flex-1 flex-col min-h-0' }"
   >
     <div class="flex flex-1 flex-col py-4 min-h-0">
-      <header class="shrink-0 flex items-start justify-between gap-4">
-        <div class="min-w-0">
-          <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-            Room
-          </p>
-          <h3 class="text-lg font-semibold truncate">
-            {{ room.name }}
-          </h3>
-          <p class="text-sm text-muted truncate">
-            {{ room.label }}
-          </p>
-        </div>
-        <div class="shrink-0 min-h-14 flex flex-col items-end justify-start">
-          <BadgesRoom
-            :room-type="room.roomType"
-            :is-active="room.isActive"
-          />
-        </div>
-      </header>
-
-      <NSeparator class="shrink-0 my-4" />
-
-      <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm content-start">
-        <div
-          v-for="field in infoFields"
-          :key="field.label"
-        >
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              :name="field.icon"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-              {{ field.label }}
-            </span>
+      <component
+        :is="cardBodyTag"
+        v-bind="cardBodyBind"
+        class="flex flex-1 flex-col min-h-0 no-underline text-inherit rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        :class="linkToDetails ? 'cursor-pointer hover:bg-muted/30 -mx-1 px-1 transition-colors' : undefined"
+      >
+        <header class="shrink-0 flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
+              Room
+            </p>
+            <h3 class="text-lg font-semibold truncate">
+              {{ room.name }}
+            </h3>
+            <p class="text-sm text-muted truncate">
+              {{ room.label }}
+            </p>
           </div>
-          <p class="font-medium pl-5">
-            {{ field.value }}
-          </p>
+          <div class="shrink-0 min-h-14 flex flex-col items-end justify-start">
+            <BadgesRoom
+              :room-type="room.roomType"
+              :is-active="room.isActive"
+            />
+          </div>
+        </header>
+
+        <NSeparator class="shrink-0 my-4" />
+
+        <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm content-start">
+          <div
+            v-for="field in infoFields"
+            :key="field.label"
+          >
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <NIcon
+                :name="field.icon"
+                class="text-primary-400 dark:text-primary-600 text-xs"
+              />
+              <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
+                {{ field.label }}
+              </span>
+            </div>
+            <p class="font-medium pl-5">
+              {{ field.value }}
+            </p>
+          </div>
         </div>
-      </div>
+      </component>
 
       <NSeparator class="shrink-0 my-4" />
 
-      <footer class="shrink-0 flex flex-col-reverse items-center gap-2 sm:flex-row sm:justify-center">
+      <footer class="shrink-0 flex flex-wrap items-center justify-center gap-2">
         <DialogInventoryRoomUpdate :room="room" />
-        <NButton
-          v-if="showOpenAction"
-          label="Open room"
-          btn="soft-primary hover:outline-primary"
-          leading="i-lucide-chevron-right"
-          :to="roomDetailPath"
-        />
+        <DialogDeleteRoom :room="room" />
       </footer>
     </div>
   </NCard>
