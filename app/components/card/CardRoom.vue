@@ -95,7 +95,7 @@ const infoFields = computed(() => [
         v-if="showOpenAction"
         label="Open room"
         btn="soft-primary hover:outline-primary"
-        trailing="i-lucide-chevron-right"
+        leading="i-lucide-chevron-right"
         :to="roomDetailPath"
       />
     </div>

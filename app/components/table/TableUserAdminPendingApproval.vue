@@ -124,7 +124,7 @@ const handleApproval = (selectedRows: Row<FormattedUser>[] | undefined) => {
           label="Reject"
           class="transition delay-300 ease-in-out"
           btn="soft-error hover:outline-error"
-          trailing="i-lucide-user-x"
+          leading="i-lucide-user-x"
           @click="handleRejection(table?.getFilteredSelectedRowModel().rows)"
         />
         <NButton

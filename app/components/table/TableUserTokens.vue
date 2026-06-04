@@ -219,7 +219,7 @@ const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
           label="Delete"
           class="transition delay-300 ease-in-out"
           btn="soft-error hover:outline-error"
-          trailing="i-lucide-banknote-x"
+          leading="i-lucide-banknote-x"
           @click="handleDeletion(table?.getFilteredSelectedRowModel().rows)"
         />
       </div>

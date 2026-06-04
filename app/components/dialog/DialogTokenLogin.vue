@@ -213,7 +213,7 @@ const onSubmit = handleSubmit(async (values) => {
                 label="Cancel"
                 class="transition delay-300 ease-in-out"
                 btn="soft-gray hover:outline-gray"
-                trailing="i-lucide-x"
+                leading="i-lucide-x"
               />
             </NDialogClose>
             <NButton
@@ -267,7 +267,7 @@ const onSubmit = handleSubmit(async (values) => {
               label="Cancel"
               class="transition delay-300 ease-in-out"
               btn="soft-gray hover:outline-gray"
-              trailing="i-lucide-x"
+              leading="i-lucide-x"
             />
           </NDialogClose>
           <NButton

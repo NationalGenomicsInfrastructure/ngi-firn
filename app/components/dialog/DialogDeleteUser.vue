@@ -34,7 +34,7 @@ const isDisabled = computed(() => {
         :label="isDisabled ? 'Cannot delete self' : 'Delete user'"
         class="min-w-60 transition delay-300 ease-in-out"
         btn="soft-error hover:outline-error"
-        :trailing="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-x'"
+        :leading="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-x'"
         :disabled="isDisabled"
       />
     </template>
@@ -55,7 +55,7 @@ const isDisabled = computed(() => {
             label="Cancel"
             class="transition delay-300 ease-in-out"
             btn="soft-gray hover:outline-gray"
-            trailing="i-lucide-x"
+            leading="i-lucide-x"
           />
         </NDialogClose>
         <NDialogClose>
@@ -63,7 +63,7 @@ const isDisabled = computed(() => {
             label="Delete User"
             class="transition delay-300 ease-in-out"
             btn="soft-error hover:outline-error"
-            trailing="i-lucide-user-x"
+            leading="i-lucide-user-x"
             @click="handleDelete"
           />
         </NDialogClose>

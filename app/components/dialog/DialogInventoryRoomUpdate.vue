@@ -29,8 +29,8 @@ function onSaved() {
       <NButton
         label="Edit room"
         class="transition delay-300 ease-in-out"
-        btn="soft-gray hover:outline-gray"
-        trailing="i-lucide-pencil"
+        btn="soft-primary hover:outline-primary"
+        leading="i-lucide-pencil"
       />
     </template>
 
@@ -48,7 +48,7 @@ function onSaved() {
             label="Cancel"
             class="transition delay-300 ease-in-out"
             btn="soft-gray hover:outline-gray"
-            trailing="i-lucide-x"
+            leading="i-lucide-x"
           />
         </NDialogClose>
         <NButton

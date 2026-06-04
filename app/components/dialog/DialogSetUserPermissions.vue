@@ -95,7 +95,7 @@ const handleSave = () => {
         :label="isDisabled ? 'Cannot edit self' : 'Administer user'"
         class="min-w-60 transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
-        :trailing="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-pen'"
+        :leading="isDisabled ? 'i-lucide-ban' : 'i-lucide-user-pen'"
         :disabled="isDisabled"
       />
     </template>
@@ -129,7 +129,7 @@ const handleSave = () => {
             label="Cancel"
             class="transition delay-300 ease-in-out"
             btn="soft-gray hover:outline-gray"
-            trailing="i-lucide-x"
+            leading="i-lucide-x"
           />
         </NDialogClose>
         <NDialogClose>
