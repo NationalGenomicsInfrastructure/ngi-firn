@@ -87,17 +87,17 @@ const infoFields = computed(() => [
       </div>
     </div>
 
-    <template v-if="showOpenAction">
-      <NSeparator class="my-4" />
+    <NSeparator class="my-4" />
 
-      <div class="flex justify-end">
-        <NButton
-          label="Open room"
-          btn="soft-primary hover:outline-primary"
-          trailing="i-lucide-chevron-right"
-          :to="roomDetailPath"
-        />
-      </div>
-    </template>
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <DialogInventoryRoomUpdate :room="room" />
+      <NButton
+        v-if="showOpenAction"
+        label="Open room"
+        btn="soft-primary hover:outline-primary"
+        trailing="i-lucide-chevron-right"
+        :to="roomDetailPath"
+      />
+    </div>
   </NCard>
 </template>

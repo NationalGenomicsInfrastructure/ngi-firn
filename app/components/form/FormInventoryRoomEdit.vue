@@ -1,20 +1,32 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import type { CreateRoomSchemaInput } from '~~/schemas/inventory-locations'
 import { createRoomSchema } from '~~/schemas/inventory-locations'
-import { createRoom } from '~/utils/mutations/inventory/rooms'
+import type { Room } from '~~/types/inventory'
+import { updateRoom } from '~/utils/mutations/inventory/rooms'
 import {
   BUILDING_OPTIONS,
   ROOM_FORM_LABEL_STYLE,
   ROOM_TYPE_OPTIONS,
   buildGeneratedRoomId,
-  createEmptyRoomFormValues,
+  createRoomFormValuesFromRoom,
   focusFirstFormFieldError,
-  mapRoomFormValuesToCreatePayload,
+  mapRoomFormValuesToUpdatePayload,
   resolveBuildingFromSelect,
   resolveFloorFromInput,
   resolveRoomTypeFromSelect
 } from '~/utils/inventory/rooms'
+
+const props = defineProps<{
+  room: Room
+  hideSubmit?: boolean
+  formId?: string
+}>()
+
+const emit = defineEmits<{
+  saved: []
+}>()
+
+const formElementId = computed(() => props.formId ?? `inventory-room-edit-${props.room._id}`)
 
 const { showError } = useFirnToast()
 const toastActions = [
@@ -23,7 +35,7 @@ const toastActions = [
     btn: 'solid-primary',
     altText: 'Error',
     onClick: () => {
-      onSubmit()
+      void onValidating()
     }
   },
   {
@@ -38,13 +50,13 @@ const toastActions = [
 
 const formSchema = toTypedSchema(createRoomSchema)
 
-const { handleSubmit, validate, errors, resetForm } = useForm({
+const { handleSubmit, errors, resetForm } = useForm({
   validationSchema: formSchema,
-  initialValues: createEmptyRoomFormValues()
+  initialValues: createRoomFormValuesFromRoom(props.room)
 })
 
-const { value: roomTypeValue, setValue: setRoomTypeValue } = useField<CreateRoomSchemaInput['roomType']>('roomType')
-const { value: buildingValue, setValue: setBuildingValue } = useField<CreateRoomSchemaInput['building']>('building')
+const { value: roomTypeValue, setValue: setRoomTypeValue } = useField<Room['roomType']>('roomType')
+const { value: buildingValue, setValue: setBuildingValue } = useField<Room['building']>('building')
 const { value: roomNumberValue } = useField<string>('roomNumber')
 const { value: floorValue, setValue: setFloorValue } = useField<number | undefined>('floor')
 
@@ -71,33 +83,38 @@ function onFloorUpdate(value: unknown) {
   setFloorValue(resolveFloorFromInput(value))
 }
 
-const onSubmit = handleSubmit(async (values) => {
-  const payload = mapRoomFormValuesToCreatePayload(values)
+const onSubmit = handleSubmit(
+  async (values) => {
+    const payload = mapRoomFormValuesToUpdatePayload(props.room, values)
 
-  try {
-    const { mutateAsync } = createRoom()
-    const result = await mutateAsync(payload)
-    if (result) {
-      resetForm()
+    try {
+      const { mutateAsync } = updateRoom()
+      const result = await mutateAsync(payload)
+      if (!result) {
+        showError(`Room "${payload.name}" could not be updated.`, 'Room update error', { actions: toastActions })
+        return
+      }
+
+      emit('saved')
     }
-    else {
-      showError(`Room "${payload.name}" could not be created.`, 'Room creation error', { actions: toastActions })
+    catch (error) {
+      showError(`Room "${payload.name}" could not be updated: ${error}`, 'Room update error', { actions: toastActions })
     }
+  },
+  async () => {
+    await focusFirstFormFieldError(errors.value)
+    showError('Please correct the highlighted fields before saving.', 'Could not save room')
   }
-  catch (error) {
-    showError(`Room "${payload.name}" could not be created: ${error}`, 'Room creation error', { actions: toastActions })
-  }
-})
+)
 
 async function onValidating() {
-  await validate()
-  await focusFirstFormFieldError(errors.value)
-  onSubmit()
+  await onSubmit()
 }
 </script>
 
 <template>
   <form
+    :id="formElementId"
     class="mx-auto max-w-xl p-4 space-y-4"
     @submit.prevent="onValidating()"
   >
@@ -214,12 +231,13 @@ async function onValidating() {
       </NFormField>
 
       <NButton
+        v-if="!hideSubmit"
         type="submit"
         btn="soft-primary hover:outline-primary"
-        leading="i-lucide-building-2"
+        leading="i-lucide-pencil"
         class="w-full my-4"
       >
-        Create room
+        Save changes
       </NButton>
     </div>
   </form>
