@@ -29,6 +29,9 @@ const infoFields = computed(() => [
 
 const cardBodyTag = computed(() => (props.linkToDetails ? NLink : 'div'))
 const cardBodyBind = computed(() => (props.linkToDetails ? { to: roomDetailPath.value } : {}))
+
+const { user } = useUserSession()
+const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
 </script>
 
 <template>
@@ -92,7 +95,10 @@ const cardBodyBind = computed(() => (props.linkToDetails ? { to: roomDetailPath.
 
       <footer class="shrink-0 flex flex-wrap items-center justify-center gap-2">
         <DialogInventoryRoomUpdate :room="room" />
-        <DialogDeleteRoom :room="room" />
+        <DialogDeleteRoom
+          v-if="isAdmin"
+          :room="room"
+        />
       </footer>
     </div>
   </NCard>
