@@ -22,7 +22,7 @@ export const createRoomSchema = z.object({
 
 export const updateRoomSchema = idRevSchema.extend({
   name: z.string().min(1).optional(),
-  label: z.string().min(1).optional(),
+  label: z.string().optional(),
   roomNumber: z.string().trim().min(1).optional(),
   roomType: roomTypeSchema.optional(),
   building: roomBuildingSchema.optional(),

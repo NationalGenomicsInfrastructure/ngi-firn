@@ -8,14 +8,6 @@ const props = withDefaults(defineProps<{
   showOpenAction: true
 })
 
-const ROOM_TYPE_LABELS: Record<Room['roomType'], string> = {
-  basement: 'Basement',
-  laboratory: 'Laboratory',
-  office: 'Office',
-  storage: 'Storage',
-  other: 'Other'
-}
-
 const BUILDING_LABELS: Record<Room['building'], string> = {
   alfa: 'Alfa',
   beta: 'Beta',
@@ -23,7 +15,6 @@ const BUILDING_LABELS: Record<Room['building'], string> = {
   delta: 'Delta'
 }
 
-const roomTypeLabel = computed(() => ROOM_TYPE_LABELS[props.room.roomType] ?? props.room.roomType)
 const buildingLabel = computed(() => BUILDING_LABELS[props.room.building] ?? props.room.building)
 const roomDetailPath = computed(() => `/inventory/rooms/${encodeURIComponent(props.room.roomId)}`)
 
@@ -39,66 +30,64 @@ const infoFields = computed(() => [
 <template>
   <NCard
     card="outline-gray"
-    class="h-full py-4"
+    class="h-full flex flex-col"
+    :_card-content="{ class: 'flex flex-1 flex-col min-h-0' }"
   >
-    <div class="flex items-start justify-between gap-4">
-      <div class="min-w-0">
-        <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-          Room
-        </p>
-        <h3 class="text-lg font-semibold truncate">
-          {{ room.name }}
-        </h3>
-        <p class="text-sm text-muted truncate">
-          {{ room.label }}
-        </p>
-      </div>
-      <div class="flex flex-col items-end gap-2 shrink-0">
-        <NBadge
-          :badge="room.isActive ? 'solid-success' : 'solid-warning'"
-          :label="room.isActive ? 'Active' : 'Inactive'"
-          :icon="room.isActive ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
-        />
-        <NBadge
-          :una="{ badgeDefaultVariant: 'solid-primary' }"
-          :label="roomTypeLabel"
-        />
-      </div>
-    </div>
-
-    <NSeparator class="my-4" />
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-      <div
-        v-for="field in infoFields"
-        :key="field.label"
-      >
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            :name="field.icon"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-            {{ field.label }}
-          </span>
+    <div class="flex flex-1 flex-col py-4 min-h-0">
+      <header class="shrink-0 flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
+            Room
+          </p>
+          <h3 class="text-lg font-semibold truncate">
+            {{ room.name }}
+          </h3>
+          <p class="text-sm text-muted truncate">
+            {{ room.label }}
+          </p>
         </div>
-        <p class="font-medium pl-5">
-          {{ field.value }}
-        </p>
+        <div class="shrink-0 min-h-14 flex flex-col items-end justify-start">
+          <BadgesRoom
+            :room-type="room.roomType"
+            :is-active="room.isActive"
+          />
+        </div>
+      </header>
+
+      <NSeparator class="shrink-0 my-4" />
+
+      <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm content-start">
+        <div
+          v-for="field in infoFields"
+          :key="field.label"
+        >
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <NIcon
+              :name="field.icon"
+              class="text-primary-400 dark:text-primary-600 text-xs"
+            />
+            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
+              {{ field.label }}
+            </span>
+          </div>
+          <p class="font-medium pl-5">
+            {{ field.value }}
+          </p>
+        </div>
       </div>
-    </div>
 
-    <NSeparator class="my-4" />
+      <NSeparator class="shrink-0 my-4" />
 
-    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <DialogInventoryRoomUpdate :room="room" />
-      <NButton
-        v-if="showOpenAction"
-        label="Open room"
-        btn="soft-primary hover:outline-primary"
-        leading="i-lucide-chevron-right"
-        :to="roomDetailPath"
-      />
+      <footer class="shrink-0 flex flex-col-reverse items-center gap-2 sm:flex-row sm:justify-center">
+        <DialogInventoryRoomUpdate :room="room" />
+        <NButton
+          v-if="showOpenAction"
+          label="Open room"
+          btn="soft-primary hover:outline-primary"
+          leading="i-lucide-chevron-right"
+          :to="roomDetailPath"
+        />
+      </footer>
     </div>
   </NCard>
 </template>
