@@ -55,8 +55,9 @@ const infoFields = computed(() => [
       </div>
       <div class="flex flex-col items-end gap-2 shrink-0">
         <NBadge
-          :una="{ badgeDefaultVariant: room.isActive ? 'solid-success' : 'solid-gray' }"
+          :badge="room.isActive ? 'solid-success' : 'solid-warning'"
           :label="room.isActive ? 'Active' : 'Inactive'"
+          :icon="room.isActive ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
         />
         <NBadge
           :una="{ badgeDefaultVariant: 'solid-primary' }"

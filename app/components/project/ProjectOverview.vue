@@ -41,7 +41,7 @@ const infoFields = computed(() => [
       </h2>
     </div>
 
-    <ProjectBadges
+    <BadgesProject
       :project-id="projectId"
       :status-fields="statusFields"
       :priority="priority"
