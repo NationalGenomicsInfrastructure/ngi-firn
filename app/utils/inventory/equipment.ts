@@ -28,7 +28,6 @@ export const EQUIPMENT_TYPE_LABELS: Record<StorageEquipment['equipmentType'], st
 }
 
 export type EquipmentFormInitialValues = {
-  equipmentId: string
   equipmentType: CreateEquipmentSchemaInput['equipmentType']
   name: string
   label: string
@@ -45,10 +44,9 @@ export type EquipmentFormInitialValues = {
 }
 
 export type EquipmentFormSubmitValues = {
-  equipmentId: string
   equipmentType: CreateEquipmentSchemaInput['equipmentType']
   name: string
-  label: string
+  label?: string | null
   description?: string | null
   rows?: number | null
   columns?: number | null
@@ -63,7 +61,6 @@ export type EquipmentFormSubmitValues = {
 
 export function createEmptyEquipmentFormValues(): EquipmentFormInitialValues {
   return {
-    equipmentId: '',
     equipmentType: 'freezer',
     name: '',
     label: '',
@@ -82,7 +79,6 @@ export function createEmptyEquipmentFormValues(): EquipmentFormInitialValues {
 
 export function createEquipmentFormValuesFromEquipment(equipment: StorageEquipment): EquipmentFormInitialValues {
   return {
-    equipmentId: equipment.equipmentId,
     equipmentType: equipment.equipmentType,
     name: equipment.name,
     label: equipment.label ?? '',
@@ -149,13 +145,11 @@ export function mapEquipmentFormValuesToCreatePayload(
   roomDocumentId: string
 ): CreateEquipmentSchemaInput {
   return {
-    equipmentId: values.equipmentId.trim(),
     equipmentType: values.equipmentType,
     name: values.name.trim(),
-    label: values.label.trim(),
+    label: normalizeOptionalString(values.label),
     description: normalizeOptionalString(values.description),
     parentId: roomDocumentId,
-    parentType: 'room',
     rows: values.rows ?? undefined,
     columns: values.columns ?? undefined,
     levels: values.levels ?? undefined,
@@ -175,10 +169,9 @@ export function mapEquipmentFormValuesToUpdatePayload(
   return {
     id: equipment._id,
     rev: equipment._rev,
-    equipmentId: values.equipmentId.trim(),
     equipmentType: values.equipmentType,
     name: values.name.trim(),
-    label: values.label.trim(),
+    label: normalizeOptionalStringForUpdate(values.label),
     description: normalizeOptionalStringForUpdate(values.description),
     rows: values.rows !== undefined ? values.rows : null,
     columns: values.columns !== undefined ? values.columns : null,

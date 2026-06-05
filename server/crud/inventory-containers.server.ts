@@ -8,9 +8,9 @@
  * isStorageEquipment(doc) - Type guard for storage equipment documents
  * isInventoryItem(doc) - Type guard for inventory item documents
  * assertUserId(userId) - Validate caller identity input
- * getContainerParent(parentId, parentType) - Resolve and validate a legal container parent
+ * getContainerParent(parentId) - Resolve and validate a legal container parent
  * validatePlacement(parent, classification, position, excludeChildId?) - Enforce acceptance, capacity, and grid constraints
- * toContainerDocument(input, locationPath) - Build a normalized container document payload
+ * toContainerDocument(input, locationPath, containerIdentifier) - Build a normalized container document payload
  *
  * CONTAINER CRUD:
  * createContainer(input, userId) - Create a new container under a valid parent
@@ -18,7 +18,7 @@
  * getContainersByParent(parentId) - List direct child containers
  * getContainerContents(containerId) - List direct child containers and items
  * updateContainer(containerId, rev, updates, userId) - Update non-relocation container fields
- * moveContainer(containerId, newParentId, newParentType, position, userId) - Move container and cascade descendant paths
+ * moveContainer(containerId, newParentId, position, userId) - Move container and cascade descendant paths
  * deleteContainer(containerId, rev) - Delete an empty container
  * getDescendants(containerId) - Return all descendant containers/items via ancestry view
  *
@@ -42,6 +42,7 @@ import {
   buildLocationPath,
   cascadeLocationPathUpdate,
   ensureInventoryViews,
+  generateInventoryId,
   validateCapacity,
   validateContainerAcceptance,
   validateGridPosition
@@ -83,18 +84,14 @@ function assertUserId(userId: string): void {
 }
 
 /* Resolve and validate the parent for a container operation. */
-async function getContainerParent(parentId: string, parentType: Container['parentType']): Promise<ContainerParent> {
+async function getContainerParent(parentId: string): Promise<ContainerParent> {
   const parent = await couchDB.getDocument<ContainerParent>(parentId)
   if (!parent) {
     throw new Error(`Parent ${parentId} not found.`)
   }
 
-  if (parentType === 'container' && !isContainer(parent)) {
-    throw new Error(`Parent ${parentId} is not a container.`)
-  }
-
-  if (parentType === 'storageEquipment' && !isStorageEquipment(parent)) {
-    throw new Error(`Parent ${parentId} is not storage equipment.`)
+  if (!isContainer(parent) && !isStorageEquipment(parent)) {
+    throw new Error(`Parent ${parentId} is not a supported inventory location.`)
   }
 
   return parent
@@ -141,20 +138,26 @@ async function validatePlacement(
 }
 
 /* Normalize a create-input payload into a persisted container document shape. */
-function toContainerDocument(input: CreateContainerInput, locationPath: LocationAncestor[]): Omit<Container, '_id' | '_rev'> {
+function toContainerDocument(
+  input: CreateContainerInput,
+  locationPath: LocationAncestor[],
+  containerIdentifier: string,
+  parentId: string,
+  parentType: Container['parentType']
+): Omit<Container, '_id' | '_rev'> {
   const now = new Date().toISOString()
 
   return {
     type: 'container',
-    schema: 1,
-    containerId: input.containerId,
+    schema: 2,
+    containerId: containerIdentifier,
     containerType: input.containerType,
     classification: input.classification,
     name: input.name,
     label: input.label,
     description: input.description ?? null,
-    parentId: input.parentId,
-    parentType: input.parentType,
+    parentId,
+    parentType,
     locationPath,
     position: input.position ?? null,
     rows: input.rows ?? null,
@@ -179,13 +182,18 @@ export const ContainerService = {
     assertUserId(userId)
     await ensureViewsReady()
 
-    const parent = await getContainerParent(input.parentId, input.parentType)
+    const parent = await getContainerParent(input.parentId)
     await validatePlacement(parent, input.classification, input.position ?? null)
 
     const locationPath = buildLocationPath(parent)
-    const newContainer = toContainerDocument(input, locationPath)
+    const containerDocumentId = generateInventoryId('container')
+    const containerIdentifier = generateInventoryId('cnt')
+    const newContainer = toContainerDocument(input, locationPath, containerIdentifier, parent._id, parent.type)
 
-    const { id } = await couchDB.createDocument(newContainer)
+    const { id } = await couchDB.createDocument({
+      ...newContainer,
+      _id: containerDocumentId
+    })
     const created = await couchDB.getDocument<Container>(id)
 
     if (!created || !isContainer(created)) {
@@ -276,7 +284,7 @@ export const ContainerService = {
       throw new Error(`Container ${containerId} not found.`)
     }
 
-    const parent = await getContainerParent(existing.parentId, existing.parentType)
+    const parent = await getContainerParent(existing.parentId)
     const nextClassification = updates.classification ?? existing.classification
     const nextPosition = updates.position === undefined ? existing.position : updates.position
 
@@ -291,7 +299,7 @@ export const ContainerService = {
 
     const updatedDoc: Container = {
       ...existing,
-      containerId: updates.containerId ?? existing.containerId,
+      schema: 2,
       containerType: updates.containerType ?? existing.containerType,
       classification: nextClassification,
       name: updates.name ?? existing.name,
@@ -323,7 +331,6 @@ export const ContainerService = {
   async moveContainer(
     containerId: string,
     newParentId: string,
-    newParentType: Container['parentType'],
     position: GridPosition | null,
     userId: string
   ): Promise<Container> {
@@ -339,12 +346,12 @@ export const ContainerService = {
       throw new Error('Container cannot be moved into itself.')
     }
 
-    const newParent = await getContainerParent(newParentId, newParentType)
+    const newParent = await getContainerParent(newParentId)
     if (isContainer(newParent) && newParent.locationPath.some(ancestor => ancestor.id === containerId)) {
       throw new Error('Container cannot be moved into its own descendant.')
     }
 
-    const sameParent = container.parentId === newParentId && container.parentType === newParentType
+    const sameParent = container.parentId === newParentId && container.parentType === newParent.type
 
     const acceptance = validateContainerAcceptance(newParent, 'container', container.classification)
     if (!acceptance.valid) {
@@ -379,6 +386,7 @@ export const ContainerService = {
     const newLocationPath = buildLocationPath(newParent)
     const updatedContainer: Container = {
       ...container,
+      schema: 2,
       parentId: newParent._id,
       parentType: newParent.type,
       locationPath: newLocationPath,

@@ -30,8 +30,7 @@ const { showError } = useFirnToast()
 
 const equipmentFormSchema = toTypedSchema(
   createEquipmentSchema.omit({
-    parentId: true,
-    parentType: true
+    parentId: true
   })
 )
 
@@ -116,18 +115,6 @@ async function onValidating() {
   >
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <NFormField
-        name="equipmentId"
-        label="Equipment identifier"
-        description="Unique business identifier, e.g. FZ-80-02."
-        :una="{
-          formLabel: EQUIPMENT_FORM_LABEL_STYLE,
-          formDescription: 'text-muted'
-        }"
-      >
-        <NInput placeholder="e.g. FZ-80-02" />
-      </NFormField>
-
-      <NFormField
         name="equipmentType"
         label="Equipment type"
         :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
@@ -153,7 +140,7 @@ async function onValidating() {
       <NFormField
         name="label"
         label="Label"
-        description="Short visible label shown in lists."
+        description="Short visible label shown in lists (optional)."
         :una="{
           formLabel: EQUIPMENT_FORM_LABEL_STYLE,
           formDescription: 'text-muted'

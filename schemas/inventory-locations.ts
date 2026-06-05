@@ -36,13 +36,11 @@ export const deleteRoomSchema = idRevSchema
 // Storage equipment schemas
 
 export const createEquipmentSchema = z.object({
-  equipmentId: z.string().min(1, { message: 'Equipment ID is required' }),
   equipmentType: equipmentTypeSchema,
   name: z.string().min(1, { message: 'Equipment name is required' }),
-  label: z.string().min(1, { message: 'Equipment label is required' }),
+  label: z.string().nullish(),
   description: z.string().nullish(),
   parentId: z.string().min(1, { message: 'Parent room document ID is required' }),
-  parentType: z.literal('room'),
   position: gridPositionSchema.nullish(),
   rows: z.number().int().min(1).nullish(),
   columns: z.number().int().min(1).nullish(),
@@ -56,13 +54,10 @@ export const createEquipmentSchema = z.object({
 })
 
 export const updateEquipmentSchema = idRevSchema.extend({
-  equipmentId: z.string().min(1).optional(),
   equipmentType: equipmentTypeSchema.optional(),
   name: z.string().min(1).optional(),
-  label: z.string().min(1).optional(),
+  label: z.string().nullish(),
   description: z.string().nullish(),
-  parentId: z.string().min(1).optional(),
-  parentType: z.literal('room').optional(),
   position: gridPositionSchema.nullish(),
   rows: z.number().int().min(1).nullish(),
   columns: z.number().int().min(1).nullish(),

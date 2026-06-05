@@ -5,14 +5,12 @@ import {
   inventoryItemCategorySchema,
   inventoryItemClassificationSchema,
   inventoryItemStatusSchema,
-  inventoryLocationTypeSchema,
   documentReferenceMapSchema
 } from './inventory-common'
 
 // Item CRUD schemas
 
 export const createItemSchema = z.object({
-  itemId: z.string().min(1, { message: 'Item ID is required' }),
   category: inventoryItemCategorySchema,
   classification: inventoryItemClassificationSchema,
   name: z.string().min(1, { message: 'Item name is required' }),
@@ -23,7 +21,6 @@ export const createItemSchema = z.object({
   concentration: z.number().nullish(),
   concentrationUnit: z.string().nullish(),
   parentId: z.string().min(1, { message: 'Parent ID is required' }),
-  parentType: inventoryLocationTypeSchema,
   position: gridPositionSchema.nullish(),
   status: inventoryItemStatusSchema.optional(),
   expiryDate: z.string().nullish(),
@@ -36,7 +33,6 @@ export const createItemSchema = z.object({
 })
 
 export const updateItemSchema = idRevSchema.extend({
-  itemId: z.string().min(1).optional(),
   category: inventoryItemCategorySchema.optional(),
   classification: inventoryItemClassificationSchema.optional(),
   name: z.string().min(1).optional(),
@@ -64,7 +60,6 @@ export const deleteItemSchema = idRevSchema
 export const moveItemSchema = z.object({
   itemId: z.string().min(1, { message: 'Item ID is required' }),
   newParentId: z.string().min(1, { message: 'Target parent ID is required' }),
-  newParentType: inventoryLocationTypeSchema,
   position: gridPositionSchema.nullish()
 })
 
@@ -75,7 +70,6 @@ export const checkoutItemSchema = z.object({
 export const returnItemSchema = z.object({
   itemId: z.string().min(1, { message: 'Item ID is required' }),
   parentId: z.string().min(1, { message: 'Return location ID is required' }),
-  parentType: inventoryLocationTypeSchema,
   position: gridPositionSchema.nullish()
 })
 

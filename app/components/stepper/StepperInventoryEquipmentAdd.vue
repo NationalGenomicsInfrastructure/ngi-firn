@@ -21,14 +21,14 @@ const emit = defineEmits<{
   created: []
 }>()
 
-const STEP1_FIELDS = ['equipmentId', 'equipmentType', 'name', 'label'] as const
+const STEP1_FIELDS = ['equipmentType', 'name'] as const
 const STEP2_FIELDS = ['rows', 'columns', 'levels', 'temperatureCelsius', 'capacity'] as const
 type StepField = typeof STEP1_FIELDS[number] | typeof STEP2_FIELDS[number]
 
 const items = [
   {
     title: 'Basics',
-    description: 'Set identity and type',
+    description: 'Set type and labels',
     icon: 'i-lucide-info',
     stage: 1
   },
@@ -51,8 +51,7 @@ const { showError } = useFirnToast()
 
 const equipmentFormSchema = toTypedSchema(
   createEquipmentSchema.omit({
-    parentId: true,
-    parentType: true
+    parentId: true
   })
 )
 
@@ -182,20 +181,11 @@ async function onValidatingSubmit() {
         >
           <NCard
             title="Equipment basics"
-            description="Set the identifier, type, and visible labels."
+            description="Set the type and visible labels."
             card="outline-gray"
             :una="{ cardContent: 'space-y-4', cardDescription: 'text-muted' }"
           >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <NFormField
-                name="equipmentId"
-                label="Equipment identifier"
-                description="Unique business identifier, e.g. FZ-80-02."
-                :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
-              >
-                <NInput placeholder="e.g. FZ-80-02" />
-              </NFormField>
-
               <NFormField
                 name="equipmentType"
                 label="Equipment type"
@@ -222,7 +212,7 @@ async function onValidatingSubmit() {
               <NFormField
                 name="label"
                 label="Label"
-                description="Short visible label shown in lists."
+                description="Short visible label shown in lists (optional)."
                 :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
               >
                 <NInput placeholder="e.g. -80 #2" />
@@ -413,14 +403,6 @@ async function onValidatingSubmit() {
             :una="{ cardDescription: 'text-muted' }"
           >
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-              <div>
-                <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-0.5">
-                  Identifier
-                </p>
-                <p class="font-medium">
-                  {{ values.equipmentId || '—' }}
-                </p>
-              </div>
               <div>
                 <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-0.5">
                   Type

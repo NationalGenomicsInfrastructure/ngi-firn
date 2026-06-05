@@ -69,7 +69,7 @@ function isLocationEntity(doc: unknown): doc is LocationEntity {
     typeof maybeDoc._id === 'string'
     && (maybeDoc.type === 'room' || maybeDoc.type === 'storageEquipment' || maybeDoc.type === 'container')
     && typeof maybeDoc.name === 'string'
-    && typeof maybeDoc.label === 'string'
+    && (maybeDoc.label == null || typeof maybeDoc.label === 'string')
   )
 }
 

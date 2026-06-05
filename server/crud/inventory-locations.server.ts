@@ -6,9 +6,8 @@
  * isRoom(doc) - Check whether a fetched document is a Room
  * isStorageEquipment(doc) - Check whether a fetched document is StorageEquipment
  * ensureUniqueRoomSlug(roomSlug, currentId?) - Prevent duplicate room slugs
- * ensureUniqueEquipmentId(equipmentId, currentId?) - Prevent duplicate equipment business IDs
  * getRequiredRoom(roomDocumentId) - Load room or throw
- * getRequiredEquipment(equipmentId) - Load equipment or throw
+ * getRequiredEquipment(equipmentDocumentId) - Load equipment or throw
  *
  * ROOM CRUD:
  * createRoom(input, userId) - Create a room document
@@ -20,11 +19,11 @@
  *
  * STORAGE EQUIPMENT CRUD:
  * createEquipment(input, userId) - Create storage equipment within a room
- * getEquipment(equipmentId) - Fetch one equipment document by ID
+ * getEquipment(equipmentDocumentId) - Fetch one equipment document by ID
  * getEquipmentByRoom(roomDocumentId) - List equipment in a room
- * updateEquipment(equipmentId, rev, updates, userId) - Update equipment and cascade path updates
- * deleteEquipment(equipmentId, rev) - Delete equipment when empty
- * moveEquipmentToRoom(equipmentId, newRoomId, userId) - Re-home equipment to another room
+ * updateEquipment(equipmentDocumentId, rev, updates, userId) - Update equipment metadata
+ * deleteEquipment(equipmentDocumentId, rev) - Delete equipment when empty
+ * moveEquipmentToRoom(equipmentDocumentId, newRoomId, userId) - Re-home equipment to another room
  */
 
 import { couchDB } from '../database/couchdb'
@@ -71,15 +70,6 @@ async function ensureUniqueRoomSlug(roomSlug: string, currentId?: string): Promi
   }
 }
 
-/* Enforce uniqueness for the human-readable equipment ID. */
-async function ensureUniqueEquipmentId(equipmentId: string, currentId?: string): Promise<void> {
-  const existing = await couchDB.queryDocuments<StorageEquipment>({ type: 'storageEquipment', equipmentId })
-  const conflict = existing.find(equipment => equipment._id !== currentId)
-  if (conflict) {
-    throw new Error(`Equipment ID "${equipmentId}" already exists.`)
-  }
-}
-
 /* Load an existing room and fail loudly when missing. */
 async function getRequiredRoom(roomDocumentId: string): Promise<Room> {
   const room = await couchDB.getDocument<Room>(roomDocumentId)
@@ -90,10 +80,10 @@ async function getRequiredRoom(roomDocumentId: string): Promise<Room> {
 }
 
 /* Load existing storage equipment and fail loudly when missing. */
-async function getRequiredEquipment(equipmentId: string): Promise<StorageEquipment> {
-  const equipment = await couchDB.getDocument<StorageEquipment>(equipmentId)
+async function getRequiredEquipment(equipmentDocumentId: string): Promise<StorageEquipment> {
+  const equipment = await couchDB.getDocument<StorageEquipment>(equipmentDocumentId)
   if (!isStorageEquipment(equipment)) {
-    throw new Error(`Storage equipment "${equipmentId}" was not found.`)
+    throw new Error(`Storage equipment "${equipmentDocumentId}" was not found.`)
   }
   return equipment
 }
@@ -230,16 +220,17 @@ export const LocationService = {
   async createEquipment(input: CreateStorageEquipmentInput, userId: string): Promise<StorageEquipment> {
     void userId
     const room = await getRequiredRoom(input.parentId)
-    await ensureUniqueEquipmentId(input.equipmentId)
+    const equipmentDocumentId = generateInventoryId('equipment')
+    const equipmentBusinessId = generateInventoryId('eqp')
 
     const now = new Date().toISOString()
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
       type: 'storageEquipment',
-      schema: 1,
-      equipmentId: input.equipmentId,
+      schema: 2,
+      equipmentId: equipmentBusinessId,
       equipmentType: input.equipmentType,
       name: input.name,
-      label: input.label,
+      label: input.label?.trim() || null,
       description: input.description ?? null,
       parentId: room._id,
       parentType: 'room',
@@ -261,7 +252,7 @@ export const LocationService = {
 
     const created = await couchDB.createDocument({
       ...equipmentDocument,
-      _id: generateInventoryId('equipment')
+      _id: equipmentDocumentId
     })
 
     const equipment = await couchDB.getDocument<StorageEquipment>(created.id)
@@ -272,8 +263,8 @@ export const LocationService = {
   },
 
   /* Fetch one equipment document by document ID. */
-  async getEquipment(equipmentId: string): Promise<StorageEquipment | null> {
-    const equipment = await couchDB.getDocument<StorageEquipment>(equipmentId)
+  async getEquipment(equipmentDocumentId: string): Promise<StorageEquipment | null> {
+    const equipment = await couchDB.getDocument<StorageEquipment>(equipmentDocumentId)
     return isStorageEquipment(equipment) ? equipment : null
   },
 
@@ -289,37 +280,26 @@ export const LocationService = {
 
   /* Update equipment attributes and cascade path changes to all descendants. */
   async updateEquipment(
-    equipmentId: string,
+    equipmentDocumentId: string,
     rev: string,
     updates: UpdateStorageEquipmentInput,
     userId: string
   ): Promise<StorageEquipment> {
     void userId
-    const existing = await getRequiredEquipment(equipmentId)
+    const existing = await getRequiredEquipment(equipmentDocumentId)
     if (existing._rev !== rev) {
       throw new Error('Storage equipment revision conflict.')
     }
 
-    const nextEquipmentId = updates.equipmentId ?? existing.equipmentId
-    if (nextEquipmentId !== existing.equipmentId) {
-      await ensureUniqueEquipmentId(nextEquipmentId, existing._id)
-    }
-
-    const targetRoomId = updates.parentId ?? existing.parentId
-    const targetRoom = await getRequiredRoom(targetRoomId)
-    const updatedLocationPath = buildLocationPath(targetRoom)
     const now = new Date().toISOString()
 
     const updatedEquipment: StorageEquipment = {
       ...existing,
-      equipmentId: nextEquipmentId,
+      schema: 2,
       equipmentType: updates.equipmentType ?? existing.equipmentType,
       name: updates.name ?? existing.name,
-      label: updates.label ?? existing.label,
+      label: updates.label !== undefined ? (updates.label?.trim() || null) : existing.label,
       description: updates.description !== undefined ? updates.description : existing.description,
-      parentId: targetRoom._id,
-      parentType: 'room',
-      locationPath: updatedLocationPath,
       position: updates.position !== undefined ? updates.position : existing.position,
       rows: updates.rows !== undefined ? updates.rows : existing.rows,
       columns: updates.columns !== undefined ? updates.columns : existing.columns,
@@ -336,44 +316,60 @@ export const LocationService = {
     const result = await couchDB.updateDocument(updatedEquipment._id, updatedEquipment, rev)
     updatedEquipment._rev = result.rev
 
-    await cascadeLocationPathUpdate(updatedEquipment._id, 'storageEquipment', [
-      ...updatedLocationPath,
-      {
-        id: updatedEquipment._id,
-        type: 'storageEquipment'
-      }
-    ])
-
     return updatedEquipment
   },
 
   /* Delete equipment only when no direct child containers/items remain. */
-  async deleteEquipment(equipmentId: string, rev: string): Promise<void> {
+  async deleteEquipment(equipmentDocumentId: string, rev: string): Promise<void> {
     const children = await couchDB.queryDocuments<{ _id: string }>({
-      parentId: equipmentId,
+      parentId: equipmentDocumentId,
       type: { $in: ['container', 'inventoryItem'] }
     })
 
     if (children.length > 0) {
-      throw new Error(`Cannot delete equipment "${equipmentId}" because it still contains child inventory.`)
+      throw new Error(`Cannot delete equipment "${equipmentDocumentId}" because it still contains child inventory.`)
     }
 
-    await couchDB.deleteDocument(equipmentId, rev)
+    await couchDB.deleteDocument(equipmentDocumentId, rev)
   },
 
-  /* Move equipment to another room using the standard update flow. */
-  async moveEquipmentToRoom(equipmentId: string, newRoomId: string, userId: string): Promise<StorageEquipment> {
-    const equipment = await getRequiredEquipment(equipmentId)
-    return this.updateEquipment(
-      equipmentId,
-      equipment._rev,
+  /* Move equipment to another room and cascade descendant location paths. */
+  async moveEquipmentToRoom(equipmentDocumentId: string, newRoomId: string, userId: string): Promise<StorageEquipment> {
+    const equipment = await getRequiredEquipment(equipmentDocumentId)
+    const targetRoom = await getRequiredRoom(newRoomId)
+    const now = new Date().toISOString()
+    const nextLocationPath = buildLocationPath(targetRoom)
+
+    const movedEquipment: StorageEquipment = {
+      ...equipment,
+      schema: 2,
+      parentId: targetRoom._id,
+      parentType: 'room',
+      locationPath: nextLocationPath,
+      actionLog: [
+        ...(equipment.actionLog ?? []),
+        {
+          actionType: 'move',
+          userId,
+          timestamp: now,
+          fromParentId: equipment.parentId,
+          toParentId: targetRoom._id
+        }
+      ],
+      updatedAt: now
+    }
+
+    const result = await couchDB.updateDocument(movedEquipment._id, movedEquipment, equipment._rev)
+    movedEquipment._rev = result.rev
+
+    await cascadeLocationPathUpdate(movedEquipment._id, 'storageEquipment', [
+      ...nextLocationPath,
       {
-        id: equipmentId,
-        rev: equipment._rev,
-        parentId: newRoomId,
-        parentType: 'room'
-      },
-      userId
-    )
+        id: movedEquipment._id,
+        type: 'storageEquipment'
+      }
+    ])
+
+    return movedEquipment
   }
 }

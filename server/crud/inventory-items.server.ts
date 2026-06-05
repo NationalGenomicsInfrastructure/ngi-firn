@@ -7,7 +7,7 @@
  * isParentEntity(doc) - Type guard for room/equipment/container parents
  * isInventoryItem(doc) - Type guard for inventory items
  * ensureItem(item, itemId) - Require an existing item or throw
- * getParent(parentId, parentType) - Resolve and validate parent entity/type match
+ * getParent(parentId) - Resolve and validate parent entity
  * validatePlacement(parent, category, position, excludeChildId?) - Enforce acceptance/capacity/grid rules
  * appendActionLog(item, actionType, userId, opts?) - Append an ActionLogEntry to the item and save
  * updateItemDocument(item, updates) - Build normalized item update payload
@@ -22,11 +22,11 @@
  * getExpiringItems(beforeDate) - Find items expiring at/before threshold
  * updateItem(itemId, rev, updates, userId) - Update fields and log modify entry
  * checkoutItem(itemId, userId) - Mark item checked out and create planned return task
- * returnItem(itemId, parentId, parentType, position, userId) - Return item to storage and mark available
+ * returnItem(itemId, parentId, position, userId) - Return item to storage and mark available
  * reserveItem(itemId, userId, description?) - Reserve item for upcoming work
  * unreserveItem(itemId, userId) - Release reservation and restore availability
  * disposeItem(itemId, userId, notes?) - Dispose item and log entry
- * moveItem(itemId, newParentId, newParentType, position, userId) - Move item location
+ * moveItem(itemId, newParentId, position, userId) - Move item location
  * flagItem(itemId, userId, description) - Append a flag log entry to the item
  * getItemLocationBreadcrumb(itemId) - Resolve ancestry breadcrumb for display
  */
@@ -36,6 +36,7 @@ import { couchDB } from '../database/couchdb'
 import {
   buildLocationPath,
   ensureInventoryViews,
+  generateInventoryId,
   resolveLocationBreadcrumb,
   validateCapacity,
   validateContainerAcceptance,
@@ -92,15 +93,11 @@ function ensureItem(item: InventoryItem | null, itemId: string): InventoryItem {
   return item
 }
 
-/* Resolve a parent by ID and ensure the expected parent type matches. */
-async function getParent(parentId: string, parentType: InventoryItem['parentType']): Promise<ParentEntity> {
+/* Resolve a parent by ID and ensure it is a valid inventory location. */
+async function getParent(parentId: string): Promise<ParentEntity> {
   const parent = await couchDB.getDocument<ParentEntity>(parentId)
   if (!isParentEntity(parent)) {
     throw new Error(`Parent "${parentId}" not found.`)
-  }
-
-  if (parent.type !== parentType) {
-    throw new Error(`Parent type mismatch. Expected "${parentType}", got "${parent.type}".`)
   }
 
   return parent
@@ -177,7 +174,7 @@ function updateItemDocument(item: InventoryItem, updates: Partial<InventoryItem>
     _id: item._id,
     _rev: item._rev,
     type: 'inventoryItem',
-    schema: 1,
+    schema: 2,
     updatedAt: nowIso()
   }
 }
@@ -196,8 +193,10 @@ export const ItemService = {
   async createItem(input: CreateInventoryItemInput, userId: string): Promise<InventoryItem> {
     await ensureInventoryViews()
 
-    const parent = await getParent(input.parentId, input.parentType)
+    const parent = await getParent(input.parentId)
     const position = input.position ?? null
+    const itemDocumentId = generateInventoryId('item')
+    const itemIdentifier = generateInventoryId('itm')
 
     await validatePlacement(parent, input.category, position)
 
@@ -210,8 +209,8 @@ export const ItemService = {
 
     const newItem: Omit<InventoryItem, '_id' | '_rev'> = {
       type: 'inventoryItem',
-      schema: 1,
-      itemId: input.itemId,
+      schema: 2,
+      itemId: itemIdentifier,
       category: input.category,
       classification: input.classification,
       name: input.name,
@@ -239,7 +238,10 @@ export const ItemService = {
       updatedAt: nowIso()
     }
 
-    const created = await couchDB.createDocument(newItem)
+    const created = await couchDB.createDocument({
+      ...newItem,
+      _id: itemDocumentId
+    })
     const item = await couchDB.getDocument<InventoryItem>(created.id)
 
     if (!isInventoryItem(item)) {
@@ -275,7 +277,7 @@ export const ItemService = {
     })
 
     return items.filter((item) => {
-      const haystack = [item.itemId, item.name, item.label, item.description ?? '', item.barcode ?? '']
+      const haystack = [item.name, item.label, item.description ?? '', item.barcode ?? '']
         .join(' ')
         .toLowerCase()
 
@@ -325,11 +327,10 @@ export const ItemService = {
     const position = updates.position ?? item.position
 
     const category = updates.category ?? item.category
-    const currentParent = await getParent(item.parentId, item.parentType)
+    const currentParent = await getParent(item.parentId)
     await validatePlacement(currentParent, category, position, item._id)
 
     const next = updateItemDocument(item, {
-      itemId: updates.itemId ?? item.itemId,
       category,
       classification: updates.classification ?? item.classification,
       name: updates.name ?? item.name,
@@ -390,12 +391,11 @@ export const ItemService = {
   async returnItem(
     itemId: string,
     parentId: string,
-    parentType: InventoryItem['parentType'],
     position: GridPosition | null,
     userId: string
   ): Promise<InventoryItem> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
-    const parent = await getParent(parentId, parentType)
+    const parent = await getParent(parentId)
 
     await validatePlacement(parent, item.category, position, item._id)
 
@@ -458,12 +458,11 @@ export const ItemService = {
   async moveItem(
     itemId: string,
     newParentId: string,
-    newParentType: InventoryItem['parentType'],
     position: GridPosition | null,
     userId: string
   ): Promise<InventoryItem> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
-    const newParent = await getParent(newParentId, newParentType)
+    const newParent = await getParent(newParentId)
 
     await validatePlacement(newParent, item.category, position, item._id)
 

@@ -177,7 +177,7 @@ export interface Container extends BaseDocument {
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
-  schema: 1
+  schema: 1 
   itemId: string
   /* Physical form factor of the item (what it IS). */
   category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle'
@@ -319,13 +319,11 @@ export interface UpdateRoomInput {
 
 /* Create payload for storage equipment in a room. */
 export interface CreateStorageEquipmentInput {
-  equipmentId: string
   equipmentType: StorageEquipment['equipmentType']
   name: string
-  label: string
+  label?: string | null
   description?: string | null
   parentId: string
-  parentType: StorageEquipment['parentType']
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
@@ -342,13 +340,10 @@ export interface CreateStorageEquipmentInput {
 export interface UpdateStorageEquipmentInput {
   id: string
   rev: string
-  equipmentId?: string
   equipmentType?: StorageEquipment['equipmentType']
   name?: string
-  label?: string
+  label?: string | null
   description?: string | null
-  parentId?: string
-  parentType?: StorageEquipment['parentType']
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
@@ -363,14 +358,12 @@ export interface UpdateStorageEquipmentInput {
 
 /* Create payload for containers in the hierarchy. */
 export interface CreateContainerInput {
-  containerId: string
   containerType: Container['containerType']
   classification: Container['classification']
   name: string
   label: string
   description?: string | null
   parentId: string
-  parentType: Container['parentType']
   position?: GridPosition | null
   rows?: number | null
   columns?: number | null
@@ -388,7 +381,6 @@ export interface CreateContainerInput {
 export interface UpdateContainerInput {
   id: string
   rev: string
-  containerId?: string
   containerType?: Container['containerType']
   classification?: Container['classification']
   name?: string
@@ -410,7 +402,6 @@ export interface UpdateContainerInput {
 
 /* Create payload for trackable inventory items. */
 export interface CreateInventoryItemInput {
-  itemId: string
   category: InventoryItem['category']
   classification: InventoryItem['classification']
   name: string
@@ -421,7 +412,6 @@ export interface CreateInventoryItemInput {
   concentration?: number | null
   concentrationUnit?: string | null
   parentId: string
-  parentType: InventoryItem['parentType']
   position?: GridPosition | null
   status?: InventoryItem['status']
   expiryDate?: string | null
@@ -437,7 +427,6 @@ export interface CreateInventoryItemInput {
 export interface UpdateInventoryItemInput {
   id: string
   rev: string
-  itemId?: string
   category?: InventoryItem['category']
   classification?: InventoryItem['classification']
   name?: string

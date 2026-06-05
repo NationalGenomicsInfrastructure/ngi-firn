@@ -101,7 +101,6 @@ export const containersRouter = createTRPCRouter({
       return ContainerService.moveContainer(
         input.containerId,
         input.newParentId,
-        input.newParentType,
         input.position ?? null,
         ctx.secure!.id
       )

@@ -138,7 +138,6 @@ export const itemsRouter = createTRPCRouter({
       return ItemService.moveItem(
         input.itemId,
         input.newParentId,
-        input.newParentType,
         input.position ?? null,
         ctx.secure!.id
       )
@@ -158,7 +157,6 @@ export const itemsRouter = createTRPCRouter({
       return ItemService.returnItem(
         input.itemId,
         input.parentId,
-        input.parentType,
         input.position ?? null,
         ctx.secure!.id
       )
@@ -208,7 +206,6 @@ export const itemsRouter = createTRPCRouter({
       return ItemService.returnItem(
         input.itemId,
         input.parentId,
-        input.parentType,
         input.position ?? null,
         ctx.secure!.id
       )

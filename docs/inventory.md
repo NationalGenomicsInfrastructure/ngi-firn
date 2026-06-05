@@ -153,11 +153,11 @@ The codebase has a generic `DocumentReference` type (in `types/references.d.ts`)
 The inventory hierarchy intentionally does **not** use this mechanism:
 
 - All inventory documents live in the same database — the `db` field would be constant noise.
-- The hierarchy relies on `parentType` being mandatory for validation, view queries, and acceptance rules. `DocumentReference.type` is optional.
+- The hierarchy relies on persisted `parentType` for view queries and acceptance checks, but it is canonicalized on the server from the fetched parent document (clients provide only `parentId`).
 - `locationPath` is a domain-specific concept (ordered ancestry array) that has no equivalent in the generic reference model.
 - CouchDB views emit `parentId` as a simple string key. Wrapping it in `{db, id, type?}` objects would complicate every view for zero benefit.
 
-The `parentId`/`parentType` pair is the right pattern for a dense, single-database tree with validation logic tied to the parent relationship.
+The `parentId`/`parentType` pair remains the right pattern for a dense, single-database tree, with `parentType` owned by the server as a derived field rather than a client-controlled input.
 
 ### 5. Hybrid action model: embedded log + separate tasks
 
