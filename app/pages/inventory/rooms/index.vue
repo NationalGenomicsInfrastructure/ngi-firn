@@ -222,6 +222,32 @@ function clearFilters() {
           :key="room._id"
           :room="room"
         />
+        <NuxtLink
+          to="/inventory/rooms/add"
+          class="block h-full no-underline text-inherit group"
+        >
+          <NCard
+            card="outline-gray"
+            class="h-full transition-colors group-hover:border-primary-400 dark:group-hover:border-primary-500"
+            :_card-content="{ class: 'flex flex-1 flex-col min-h-0' }"
+          >
+            <div class="flex flex-1 flex-col items-center justify-center text-center my-20">
+              <div
+                class="flex items-center justify-center size-20 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 transition-colors group-hover:bg-primary-200 dark:group-hover:bg-primary-900/60"
+              >
+                <span class="flex items-center justify-center">
+                  <NIcon
+                    name="i-lucide-plus"
+                    class="text-6xl"
+                  />
+                </span>
+              </div>
+              <p class="text-xl font-semibold text-primary-600 dark:text-primary-400">
+                Add new room
+              </p>
+            </div>
+          </NCard>
+        </NuxtLink>
       </div>
     </div>
   </main>
