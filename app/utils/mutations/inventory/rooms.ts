@@ -13,6 +13,8 @@ const { showSuccess, showError } = useFirnToast()
 
 type DeleteRoomInput = { id: string, rev: string, roomName?: string }
 type DeleteEquipmentInput = { id: string, rev: string, equipmentName?: string, roomDocumentId?: string }
+type UpdateEquipmentInput = UpdateEquipmentSchemaInput & { roomDocumentId?: string }
+type MoveEquipmentInput = MoveEquipmentSchemaInput & { currentRoomDocumentId?: string }
 
 // Room mutations
 
@@ -145,6 +147,7 @@ export const createEquipment = defineMutation(() => {
         key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.parentId),
         exact: true
       })
+      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
     }
   })
   return { createEquipment: mutate, ...mutation }
@@ -152,9 +155,11 @@ export const createEquipment = defineMutation(() => {
 
 export const updateEquipment = defineMutation(() => {
   const { mutate, ...mutation } = useMutation({
-    mutation: (input: UpdateEquipmentSchemaInput) => {
+    mutation: (input: UpdateEquipmentInput) => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.updateEquipment.mutate(input)
+      const { roomDocumentId, ...payload } = input
+      void roomDocumentId
+      return $trpc.inventory.locations.updateEquipment.mutate(payload)
     },
     onMutate(input) {
       const queryCache = useQueryCache()
@@ -176,6 +181,12 @@ export const updateEquipment = defineMutation(() => {
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
       queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.equipment(input.id), exact: true })
+      if (input.roomDocumentId) {
+        queryCache.invalidateQueries({
+          key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.roomDocumentId),
+          exact: true
+        })
+      }
       queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
     }
   })
@@ -184,9 +195,11 @@ export const updateEquipment = defineMutation(() => {
 
 export const moveEquipmentToRoom = defineMutation(() => {
   const { mutate, ...mutation } = useMutation({
-    mutation: (input: MoveEquipmentSchemaInput) => {
+    mutation: (input: MoveEquipmentInput) => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.moveEquipmentToRoom.mutate(input)
+      const { currentRoomDocumentId, ...payload } = input
+      void currentRoomDocumentId
+      return $trpc.inventory.locations.moveEquipmentToRoom.mutate(payload)
     },
     onError(error: Error) {
       showError(error.message, 'Equipment could not be moved')
@@ -197,6 +210,16 @@ export const moveEquipmentToRoom = defineMutation(() => {
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
       queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.equipment(input.equipmentId), exact: true })
+      queryCache.invalidateQueries({
+        key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.newRoomId),
+        exact: true
+      })
+      if (input.currentRoomDocumentId) {
+        queryCache.invalidateQueries({
+          key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.currentRoomDocumentId),
+          exact: true
+        })
+      }
       queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
     }
   })
