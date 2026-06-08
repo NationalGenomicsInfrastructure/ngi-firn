@@ -32,6 +32,16 @@ const room = computed(() => roomState.value.status === 'success' ? roomState.val
 
 <template>
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
+    <div class="mb-6 flex items-center gap-3">
+      
+      <NButton
+        btn="ghost-gray"
+        leading="i-lucide-arrow-left"
+        size="sm"
+        label="Back to rooms"
+        to="/inventory/rooms"
+      />
+    </div>
     <PageTitle
       :title="room ? room.name : 'Room details'"
       :description="room ? `${room.roomId}` : ''"
@@ -76,10 +86,11 @@ const room = computed(() => roomState.value.status === 'success' ? roomState.val
       <InventoryRoomEquipmentSection :room="room" />
 
       <div class="flex justify-end">
-        <NButton
-          label="Back to rooms"
-          btn="soft-primary hover:outline-primary"
+          <NButton
+          btn="ghost-gray"
           leading="i-lucide-arrow-left"
+          size="sm"
+          label="Back to rooms"
           to="/inventory/rooms"
         />
       </div>

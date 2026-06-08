@@ -93,8 +93,8 @@ const projectSummaryLinks = computed(() =>
         btn="ghost-gray"
         leading="i-lucide-arrow-left"
         size="sm"
-        label="Projects"
-        @click="$router.push('/projects')"
+        label="Back to projects"
+        to="/projects"
       />
     </div>
 
@@ -224,6 +224,16 @@ const projectSummaryLinks = computed(() =>
           <StepperProjectTimeline :project="project" />
         </NTabsContent>
       </NTabs>
+
+      <div class="flex justify-end mt-6">
+        <NButton
+          btn="ghost-gray"
+          leading="i-lucide-arrow-left"
+          size="sm"
+          label="Back to projects"
+          to="/projects"
+        />
+      </div>
     </template>
   </main>
 </template>

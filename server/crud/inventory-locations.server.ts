@@ -295,7 +295,7 @@ export const LocationService = {
 
     const updatedEquipment: StorageEquipment = {
       ...existing,
-      schema: 2,
+      schema: 1,
       equipmentType: updates.equipmentType ?? existing.equipmentType,
       name: updates.name ?? existing.name,
       label: updates.label !== undefined ? (updates.label?.trim() || null) : existing.label,
@@ -342,7 +342,7 @@ export const LocationService = {
 
     const movedEquipment: StorageEquipment = {
       ...equipment,
-      schema: 2,
+      schema: 1,
       parentId: targetRoom._id,
       parentType: 'room',
       locationPath: nextLocationPath,

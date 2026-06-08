@@ -161,6 +161,17 @@ watch(includeWeekday, (isRelative) => {
             variant="ghost"
             size="xs"
           />
+          <NTooltip
+            content="View project details"
+          >
+            <NButton
+              label="i-lucide-file-input"
+              icon
+              btn="ghost-gray"
+              size="xs"
+              :to="`/projects/details/${cell.row.original.project_id}`"
+            />
+          </NTooltip>
         </div>
       </template>
 

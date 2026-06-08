@@ -34,8 +34,9 @@ export const createRoom = defineMutation(() => {
       queryCache.setQueryData(INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), context.rooms ?? [])
       showError(error.message, 'Room could not be created')
     },
-    onSuccess(_data, input) {
-      showSuccess(`Room "${input.name}" created successfully.`, 'Room created')
+    onSuccess(response: Room) {
+      showSuccess(`Room "${response.name}" created successfully.`, 'Room created')
+      navigateTo(`/inventory/rooms/${encodeURIComponent(response.roomId)}`)
     },
     onSettled() {
       const queryCache = useQueryCache()
@@ -66,8 +67,9 @@ export const updateRoom = defineMutation(() => {
       }
       showError(error.message, 'Room could not be updated')
     },
-    onSuccess() {
-      showSuccess('Room updated successfully.', 'Room updated')
+    onSuccess(response: Room) {
+      showSuccess(`Room "${response.name}" updated successfully.`, 'Room updated')
+      navigateTo(`/inventory/rooms/${encodeURIComponent(response.roomId)}`)
     },
     onSettled(_, _error, input) {
       const queryCache = useQueryCache()
@@ -105,6 +107,7 @@ export const deleteRoom = defineMutation(() => {
         `Room${input.roomName ? ` "${input.roomName}"` : ''} deleted successfully.`,
         'Room deleted'
       )
+      navigateTo('/inventory/rooms')
     },
     onSettled() {
       const queryCache = useQueryCache()
