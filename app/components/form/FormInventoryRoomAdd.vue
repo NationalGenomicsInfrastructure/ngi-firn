@@ -215,8 +215,8 @@ async function onValidating() {
 
       <NButton
         type="submit"
-        btn="soft-primary hover:outline-primary"
-        leading="i-lucide-building-2"
+        btn="soft-success hover:outline-success"
+        leading="i-lucide-house-plus"
         class="w-full my-4"
       >
         Create room

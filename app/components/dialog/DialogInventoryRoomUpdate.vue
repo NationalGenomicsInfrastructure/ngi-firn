@@ -57,7 +57,7 @@ function onSaved() {
           :form="formId"
           label="Save changes"
           class="transition delay-300 ease-in-out"
-          btn="soft-primary hover:outline-primary"
+          btn="soft-success hover:outline-success"
           trailing="i-lucide-check"
         />
       </div>

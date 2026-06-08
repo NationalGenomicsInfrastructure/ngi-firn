@@ -56,7 +56,7 @@ function onSaved() {
           type="submit"
           :form="formId"
           label="Save changes"
-          btn="soft-primary hover:outline-primary"
+          btn="soft-success hover:outline-success"
           trailing="i-lucide-check"
         />
       </div>

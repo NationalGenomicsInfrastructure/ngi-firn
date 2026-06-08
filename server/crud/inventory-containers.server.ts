@@ -149,7 +149,7 @@ function toContainerDocument(
 
   return {
     type: 'container',
-    schema: 2,
+    schema: 1,
     containerId: containerIdentifier,
     containerType: input.containerType,
     classification: input.classification,
@@ -299,7 +299,7 @@ export const ContainerService = {
 
     const updatedDoc: Container = {
       ...existing,
-      schema: 2,
+      schema: 1,
       containerType: updates.containerType ?? existing.containerType,
       classification: nextClassification,
       name: updates.name ?? existing.name,
@@ -386,7 +386,7 @@ export const ContainerService = {
     const newLocationPath = buildLocationPath(newParent)
     const updatedContainer: Container = {
       ...container,
-      schema: 2,
+      schema: 1,
       parentId: newParent._id,
       parentType: newParent.type,
       locationPath: newLocationPath,

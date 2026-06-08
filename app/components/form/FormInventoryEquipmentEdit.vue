@@ -286,7 +286,7 @@ async function onValidating() {
     <NButton
       v-if="!hideSubmit"
       type="submit"
-      btn="soft-primary hover:outline-primary"
+      btn="soft-success hover:outline-success"
       leading="i-lucide-pencil"
       class="w-full"
     >

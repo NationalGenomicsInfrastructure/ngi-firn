@@ -225,7 +225,7 @@ const projectSummaryLinks = computed(() =>
         </NTabsContent>
       </NTabs>
 
-      <div class="flex justify-end mt-6">
+      <div class="flex justify-end mt-4">
         <NButton
           btn="ghost-gray"
           leading="i-lucide-arrow-left"

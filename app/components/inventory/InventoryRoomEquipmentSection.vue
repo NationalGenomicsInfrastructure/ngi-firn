@@ -30,71 +30,67 @@ const equipmentErrorMessage = computed(() => {
 </script>
 
 <template>
-  <NCard
-    title="Storage equipment"
-    description="Manage freezers, fridges, shelves, and nitrogen tanks in this room."
-    card="outline-gray"
-  >
-    <NTabs default-value="list">
-      <NTabsList class="mx-auto">
-        <NTabsTrigger value="list">
-          <NIcon name="i-lucide-list" />
-          List equipment
-        </NTabsTrigger>
-        <NTabsTrigger value="add">
-          <NIcon name="i-lucide-plus" />
-          Add equipment
-        </NTabsTrigger>
-      </NTabsList>
+  <PageHeadline
+    section="Storage equipment in this room"
+  />
+  <NTabs default-value="list">
+    <NTabsList class="mx-auto">
+      <NTabsTrigger value="list">
+        <NIcon name="i-lucide-list" />
+        List equipment
+      </NTabsTrigger>
+      <NTabsTrigger value="add">
+        <NIcon name="i-lucide-plus" />
+        Add equipment
+      </NTabsTrigger>
+    </NTabsList>
 
-      <NTabsContent
-        value="list"
-        class="mt-4"
+    <NTabsContent
+      value="list"
+      class="mt-4"
+    >
+      <NAlert
+        v-if="isLoadingEquipment"
+        alert="border-gray"
+        title="Loading equipment..."
+        description="Fetching storage equipment in this room."
+        icon="i-lucide-loader-2"
+      />
+
+      <NAlert
+        v-else-if="isEquipmentError"
+        alert="border-error"
+        title="Error loading equipment"
+        :description="equipmentErrorMessage"
+        icon="i-lucide-alert-circle"
+      />
+
+      <NAlert
+        v-else-if="equipment.length === 0"
+        alert="border-warning"
+        title="No equipment registered"
+        description="This room has no storage equipment yet."
+        icon="i-lucide-thermometer-snowflake"
+      />
+
+      <div
+        v-else
+        class="grid grid-cols-1 gap-4"
       >
-        <NAlert
-          v-if="isLoadingEquipment"
-          alert="border-gray"
-          title="Loading equipment..."
-          description="Fetching storage equipment in this room."
-          icon="i-lucide-loader-2"
+        <CardEquipment
+          v-for="equipmentEntry in equipment"
+          :key="equipmentEntry._id"
+          :equipment="equipmentEntry"
+          :room-document-id="room._id"
         />
+      </div>
+    </NTabsContent>
 
-        <NAlert
-          v-else-if="isEquipmentError"
-          alert="border-error"
-          title="Error loading equipment"
-          :description="equipmentErrorMessage"
-          icon="i-lucide-alert-circle"
-        />
-
-        <NAlert
-          v-else-if="equipment.length === 0"
-          alert="border-warning"
-          title="No equipment registered"
-          description="This room has no storage equipment yet."
-          icon="i-lucide-thermometer-snowflake"
-        />
-
-        <div
-          v-else
-          class="grid grid-cols-1 gap-4"
-        >
-          <CardEquipment
-            v-for="equipmentEntry in equipment"
-            :key="equipmentEntry._id"
-            :equipment="equipmentEntry"
-            :room-document-id="room._id"
-          />
-        </div>
-      </NTabsContent>
-
-      <NTabsContent
-        value="add"
-        class="mt-4"
-      >
-        <PageHeadline section="Register storage equipment" />
-        <StepperInventoryEquipmentAdd :room-document-id="room._id" />
-      </NTabsContent>
-    </NTabs>
-  </NCard>
+    <NTabsContent
+      value="add"
+      class="mt-4"
+    >
+      <StepperInventoryEquipmentAdd :room-document-id="room._id" />
+    </NTabsContent>
+  </NTabs>
 </template>

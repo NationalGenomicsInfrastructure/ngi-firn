@@ -174,7 +174,7 @@ function updateItemDocument(item: InventoryItem, updates: Partial<InventoryItem>
     _id: item._id,
     _rev: item._rev,
     type: 'inventoryItem',
-    schema: 2,
+    schema: 1,
     updatedAt: nowIso()
   }
 }
@@ -209,7 +209,7 @@ export const ItemService = {
 
     const newItem: Omit<InventoryItem, '_id' | '_rev'> = {
       type: 'inventoryItem',
-      schema: 2,
+      schema: 1,
       itemId: itemIdentifier,
       category: input.category,
       classification: input.classification,

@@ -226,7 +226,7 @@ export const LocationService = {
     const now = new Date().toISOString()
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
       type: 'storageEquipment',
-      schema: 2,
+      schema: 1,
       equipmentId: equipmentBusinessId,
       equipmentType: input.equipmentType,
       name: input.name,

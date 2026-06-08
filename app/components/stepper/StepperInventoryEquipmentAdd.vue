@@ -57,7 +57,8 @@ const equipmentFormSchema = toTypedSchema(
 
 const { handleSubmit, validate, errors, resetForm, values } = useForm({
   validationSchema: equipmentFormSchema,
-  initialValues: createEmptyEquipmentFormValues()
+  initialValues: createEmptyEquipmentFormValues(),
+  keepValuesOnUnmount: true
 })
 
 const { value: equipmentTypeValue, setValue: setEquipmentTypeValue } = useField<'cabinet' | 'freezer' | 'fridge' | 'shelf' | 'nitrogenTank' | 'other'>('equipmentType')
@@ -198,6 +199,13 @@ async function onValidatingSubmit() {
                   @update:model-value="onEquipmentTypeUpdate"
                 />
               </NFormField>
+              <NFormField
+                name="isActive"
+                label="Status"
+                :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
+              >
+                <NCheckbox label="Active?" />
+              </NFormField>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -206,16 +214,15 @@ async function onValidatingSubmit() {
                 label="Name"
                 :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
               >
-                <NInput placeholder="e.g. Main -80 freezer" />
+                <NInput placeholder="e.g. Big freezer" />
               </NFormField>
 
               <NFormField
                 name="label"
-                label="Label"
-                description="Short visible label shown in lists (optional)."
+                label="Additional label"
                 :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
               >
-                <NInput placeholder="e.g. -80 #2" />
+                <NInput placeholder="Antarctica" />
               </NFormField>
             </div>
 
@@ -229,14 +236,6 @@ async function onValidatingSubmit() {
                 :rows="3"
                 placeholder="Optional notes"
               />
-            </NFormField>
-
-            <NFormField
-              name="isActive"
-              label="Status"
-              :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
-            >
-              <NCheckbox label="Active?" />
             </NFormField>
           </NCard>
 
@@ -325,8 +324,7 @@ async function onValidatingSubmit() {
 
               <NFormField
                 name="capacity"
-                label="Capacity"
-                description="Maximum direct children."
+                label="Capacity (number of direct children)"
                 :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
               >
                 <NInput
@@ -458,7 +456,7 @@ async function onValidatingSubmit() {
               type="submit"
               label="Create equipment"
               btn="soft-primary hover:outline-primary"
-              trailing="i-lucide-check"
+              trailing="i-lucide-layers-plus"
             />
           </div>
         </form>

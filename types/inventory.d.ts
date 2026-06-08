@@ -177,7 +177,7 @@ export interface Container extends BaseDocument {
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
-  schema: 1 
+  schema: 1
   itemId: string
   /* Physical form factor of the item (what it IS). */
   category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle'

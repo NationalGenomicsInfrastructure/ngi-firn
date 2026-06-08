@@ -27,7 +27,7 @@ const deleteButtonLabel = computed(() => {
     return 'Checking…'
   }
   if (hasEquipment.value) {
-    return 'Cannot delete room with equipment'
+    return 'Contains stock'
   }
   return 'Delete room'
 })

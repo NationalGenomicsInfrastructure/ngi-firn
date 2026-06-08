@@ -33,7 +33,6 @@ const room = computed(() => roomState.value.status === 'success' ? roomState.val
 <template>
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
     <div class="mb-6 flex items-center gap-3">
-      
       <NButton
         btn="ghost-gray"
         leading="i-lucide-arrow-left"
@@ -85,8 +84,8 @@ const room = computed(() => roomState.value.status === 'success' ? roomState.val
 
       <InventoryRoomEquipmentSection :room="room" />
 
-      <div class="flex justify-end">
-          <NButton
+      <div class="flex justify-end mt-4">
+        <NButton
           btn="ghost-gray"
           leading="i-lucide-arrow-left"
           size="sm"

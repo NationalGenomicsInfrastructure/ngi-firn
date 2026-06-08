@@ -6,6 +6,15 @@ definePageMeta({
 
 <template>
   <div class="mx-auto max-w-5xl">
+    <div class="mb-6 flex items-center gap-3">
+      <NButton
+        btn="ghost-gray"
+        leading="i-lucide-arrow-left"
+        size="sm"
+        label="Back to rooms"
+        to="/inventory/rooms"
+      />
+    </div>
     <PageTitle
       title="Add room"
       description="Register a new room in the inventory."
@@ -52,6 +61,15 @@ definePageMeta({
           </p>
         </div>
       </NCard>
+    </div>
+    <div class="flex justify-end mt-4">
+      <NButton
+        btn="ghost-gray"
+        leading="i-lucide-arrow-left"
+        size="sm"
+        label="Back to rooms"
+        to="/inventory/rooms"
+      />
     </div>
   </div>
 </template>
