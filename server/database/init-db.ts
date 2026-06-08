@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { DateTime } from 'luxon'
 import { couchDB } from './couchdb'
 import { createIndexes } from '../crud/indices'
+import { ensureInventoryViews } from '../crud/inventory-helpers.server'
 import { UserService } from '../crud/users.server'
 import type { FirnUser } from '../../types/auth'
 
@@ -27,6 +28,10 @@ export async function initializeDatabase() {
     // Create indexes
     await createIndexes()
     console.log('Indexes created')
+
+    // Ensure inventory CouchDB views (design documents) are in place
+    await ensureInventoryViews()
+    console.log('Inventory views ensured')
 
     // Check if we need to create the first admin user
     const adminUsers = await couchDB.queryDocuments<FirnUser>({

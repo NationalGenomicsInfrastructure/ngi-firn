@@ -347,6 +347,53 @@ export class CouchDBConnector {
   }
 
   /**
+   * Get a design document by its full ID (e.g. '_design/firn-inventory').
+   * The Cloudant SDK rejects _design/ prefixed IDs in getDocument(),
+   * so this method strips the prefix and uses the dedicated API.
+   */
+  async getDesignDocument<T extends CloudantV1.DesignDocument>(designDocId: string): Promise<T | null> {
+    const ddocName = designDocId.replace(/^_design\//, '')
+    try {
+      const response = await this.client.getDesignDocument({
+        db: this.database,
+        ddoc: ddocName
+      })
+      return response.result as T
+    }
+    catch (error: unknown) {
+      const err = error as { code?: number, status?: number, message?: string }
+      if (err.code === 404 || err.status === 404) {
+        return null
+      }
+      console.error('Error getting design document:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create or update a design document.
+   * Uses the dedicated Cloudant SDK method that handles _design/ IDs correctly.
+   */
+  async putDesignDocument(designDocId: string, document: CloudantV1.DesignDocument): Promise<{ id: string, rev: string }> {
+    const ddocName = designDocId.replace(/^_design\//, '')
+    try {
+      const response = await this.client.putDesignDocument({
+        db: this.database,
+        ddoc: ddocName,
+        designDocument: { ...document, _id: designDocId }
+      })
+      return {
+        id: response.result.id!,
+        rev: response.result.rev!
+      }
+    }
+    catch (error) {
+      console.error('Error putting design document:', error)
+      throw error
+    }
+  }
+
+  /**
    * Query a CouchDB/Cloudant view.
    * Returns rows with id, key, value, and optionally doc. Compatible with CouchViewResponse<TRow>.
    */

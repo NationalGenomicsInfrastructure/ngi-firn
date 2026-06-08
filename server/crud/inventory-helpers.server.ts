@@ -103,21 +103,21 @@ async function loadDesignDoc(pathParts: string[], fallbackId: string): Promise<D
 
 /* Upsert a CouchDB design document while preserving current revision control. */
 async function upsertDesignDoc(designDoc: DesignDocDefinition): Promise<void> {
-  const existing = await couchDB.getDocument<DesignDocDefinition>(designDoc._id)
+  const existing = await couchDB.getDesignDocument<DesignDocDefinition & CloudantV1.DesignDocument>(designDoc._id)
 
   if (existing && existing._rev) {
-    const nextDoc: DesignDocDefinition = {
+    const nextDoc = {
       ...existing,
       ...designDoc,
       _id: designDoc._id,
       _rev: existing._rev
     }
 
-    await couchDB.updateDocument(designDoc._id, nextDoc, existing._rev)
+    await couchDB.putDesignDocument(designDoc._id, nextDoc as CloudantV1.DesignDocument)
     return
   }
 
-  await couchDB.bulkUpdateDocuments<CloudantV1.Document>([designDoc as CloudantV1.Document])
+  await couchDB.putDesignDocument(designDoc._id, designDoc as unknown as CloudantV1.DesignDocument)
 }
 
 /* Generate compact, prefixed IDs for inventory entities and actions. */
