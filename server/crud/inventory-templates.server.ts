@@ -45,7 +45,7 @@ export const TemplateService = {
     const newTemplate: Omit<InventoryTemplate, '_id' | '_rev'> = {
       type: 'inventoryTemplate',
       schema: 1,
-      templateId: generateInventoryId('template'),
+      slug: generateInventoryId('template'),
       name: input.name,
       description: input.description ?? null,
       templateFor: input.templateFor,

@@ -31,13 +31,14 @@ import type {
   Room,
   StorageEquipment
 } from '../../types/inventory'
+import type { TypedDocumentReference } from '../../types/references'
 
 type LocationEntity = Room | StorageEquipment | Container
 type InventoryChildDocument = (StorageEquipment | Container | InventoryItem) & {
   _id: string
   _rev: string
   locationPath?: LocationAncestor[]
-  parentId?: string
+  parent?: { db: string, id: string, type?: string }
   updatedAt?: string
 }
 
@@ -126,6 +127,11 @@ export function generateInventoryId(prefix: string): string {
   const timestamp = Date.now().toString(36)
   const randomSuffix = Math.random().toString(36).slice(2, 8)
   return `${safePrefix}-${timestamp}-${randomSuffix}`
+}
+
+/* Build a TypedDocumentReference from a parent entity for the `parent` field. */
+export function toParentRef(entity: Room | StorageEquipment | Container): TypedDocumentReference {
+  return { db: 'firn', id: entity._id, type: entity.type }
 }
 
 /* Build a child's locationPath from its parent's ancestry + parent node. */
@@ -323,8 +329,8 @@ export async function validateCapacity(parentId: string, parentCapacity: number 
 
   const children = await couchDB.queryDocuments<CloudantV1.Document>(
     {
-      parentId,
-      type: { $in: CASCADE_ENTITY_TYPES }
+      'parent.id': parentId,
+      'type': { $in: CASCADE_ENTITY_TYPES }
     },
     ['_id']
   )
@@ -357,8 +363,8 @@ export async function validateGridPosition(
 
   const siblings = await couchDB.queryDocuments<InventoryChildDocument>(
     {
-      parentId,
-      type: { $in: CASCADE_ENTITY_TYPES }
+      'parent.id': parentId,
+      'type': { $in: CASCADE_ENTITY_TYPES }
     },
     ['_id', 'position']
   )

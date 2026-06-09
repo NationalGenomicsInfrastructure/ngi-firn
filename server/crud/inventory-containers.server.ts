@@ -43,6 +43,7 @@ import {
   cascadeLocationPathUpdate,
   ensureInventoryViews,
   generateInventoryId,
+  toParentRef,
   validateCapacity,
   validateContainerAcceptance,
   validateGridPosition
@@ -141,23 +142,21 @@ async function validatePlacement(
 function toContainerDocument(
   input: CreateContainerInput,
   locationPath: LocationAncestor[],
-  containerIdentifier: string,
-  parentId: string,
-  parentType: Container['parentType']
+  containerSlug: string,
+  parentEntity: ContainerParent
 ): Omit<Container, '_id' | '_rev'> {
   const now = new Date().toISOString()
 
   return {
     type: 'container',
     schema: 1,
-    containerId: containerIdentifier,
+    slug: containerSlug,
     containerType: input.containerType,
     classification: input.classification,
     name: input.name,
-    label: input.label,
+    label: input.label ?? null,
     description: input.description ?? null,
-    parentId,
-    parentType,
+    parent: toParentRef(parentEntity),
     locationPath,
     position: input.position ?? null,
     rows: input.rows ?? null,
@@ -188,7 +187,7 @@ export const ContainerService = {
     const locationPath = buildLocationPath(parent)
     const containerDocumentId = generateInventoryId('container')
     const containerIdentifier = generateInventoryId('cnt')
-    const newContainer = toContainerDocument(input, locationPath, containerIdentifier, parent._id, parent.type)
+    const newContainer = toContainerDocument(input, locationPath, containerIdentifier, parent)
 
     const { id } = await couchDB.createDocument({
       ...newContainer,
@@ -222,7 +221,7 @@ export const ContainerService = {
       return []
     }
 
-    const result = await couchDB.queryView<[Container['parentType'], string], null, Container>(
+    const result = await couchDB.queryView<[string, string], null, Container>(
       'firn-inventory',
       'by_parent',
       {
@@ -284,7 +283,7 @@ export const ContainerService = {
       throw new Error(`Container ${containerId} not found.`)
     }
 
-    const parent = await getContainerParent(existing.parentId)
+    const parent = await getContainerParent(existing.parent.id)
     const nextClassification = updates.classification ?? existing.classification
     const nextPosition = updates.position === undefined ? existing.position : updates.position
 
@@ -351,7 +350,7 @@ export const ContainerService = {
       throw new Error('Container cannot be moved into its own descendant.')
     }
 
-    const sameParent = container.parentId === newParentId && container.parentType === newParent.type
+    const sameParent = container.parent.id === newParentId && container.parent.type === newParent.type
 
     const acceptance = validateContainerAcceptance(newParent, 'container', container.classification)
     if (!acceptance.valid) {
@@ -387,8 +386,7 @@ export const ContainerService = {
     const updatedContainer: Container = {
       ...container,
       schema: 1,
-      parentId: newParent._id,
-      parentType: newParent.type,
+      parent: toParentRef(newParent),
       locationPath: newLocationPath,
       position,
       updatedAt: new Date().toISOString()
@@ -536,7 +534,7 @@ export const ContainerService = {
 
       // Optional ancestor subtree filter
       if (opts.ancestorId) {
-        const inSubtree = doc.locationPath?.some(a => a.id === opts.ancestorId) || doc.parentId === opts.ancestorId
+        const inSubtree = doc.locationPath?.some(a => a.id === opts.ancestorId) || doc.parent?.id === opts.ancestorId
         if (!inSubtree) continue
       }
 
@@ -557,8 +555,8 @@ export const ContainerService = {
       }
 
       suggestions.push({
-        containerId: doc._id,
-        containerName: doc.roomId ? doc.roomId : doc.name,
+        slug: doc.slug,
+        containerName: doc.name,
         containerType: isContainer(doc) ? doc.containerType : 'other',
         capacity,
         occupied,

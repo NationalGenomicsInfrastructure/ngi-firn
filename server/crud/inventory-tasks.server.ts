@@ -92,7 +92,7 @@ function ensureTaskCanTransition(task: InventoryTask, nextStatus: InventoryTask[
   }
 
   if (isTerminalStatus(task.status)) {
-    throw new Error(`Task "${task.taskId}" is already "${task.status}" and cannot transition to "${nextStatus}"`)
+    throw new Error(`Task "${task.slug}" is already "${task.status}" and cannot transition to "${nextStatus}"`)
   }
 }
 
@@ -126,7 +126,7 @@ export const TaskService = {
       const createdTask: Omit<InventoryTask, '_id' | '_rev'> = {
         type: 'inventoryTask',
         schema: 1,
-        taskId: generateInventoryId('inventory-task'),
+        slug: generateInventoryId('inventory-task'),
         actionType: input.actionType,
         status,
         targetId: input.targetId,
@@ -171,7 +171,7 @@ export const TaskService = {
 
       const byTaskId = await couchDB.queryDocuments<InventoryTask>({
         type: 'inventoryTask',
-        taskId
+        slug: taskId
       })
 
       return byTaskId.find(task => task.type === 'inventoryTask') ?? null
@@ -302,7 +302,7 @@ export const TaskService = {
             notes: notes ?? task.notes ?? undefined,
             fromParentId: task.fromParentId ?? undefined,
             toParentId: task.toParentId ?? undefined,
-            linkedTaskId: task.taskId
+            linkedTaskId: task.slug
           }
           const updatedLog = [...(target.actionLog || []), log]
           await couchDB.updateDocument(target._id!, { ...target, actionLog: updatedLog }, target._rev!)
@@ -385,8 +385,8 @@ export const TaskService = {
           toParentType: checkoutTask.fromParentType ?? null,
           fromPosition: checkoutTask.toPosition ?? null,
           toPosition: checkoutTask.fromPosition ?? null,
-          linkedTaskId: checkoutTask.taskId,
-          description: `Return task linked to checkout "${checkoutTask.taskId}"`
+          linkedTaskId: checkoutTask.slug,
+          description: `Return task linked to checkout "${checkoutTask.slug}"`
         },
         userId
       )

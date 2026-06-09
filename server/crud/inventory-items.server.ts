@@ -38,6 +38,7 @@ import {
   ensureInventoryViews,
   generateInventoryId,
   resolveLocationBreadcrumb,
+  toParentRef,
   validateCapacity,
   validateContainerAcceptance,
   validateGridPosition
@@ -49,6 +50,7 @@ import type {
   GridPosition,
   InventoryActionType,
   InventoryItem,
+  InventoryLocationType,
   InventoryTask,
   Room,
   StorageEquipment,
@@ -82,7 +84,7 @@ function isInventoryItem(doc: unknown): doc is InventoryItem {
   }
 
   const maybeItem = doc as Partial<InventoryItem>
-  return maybeItem.type === 'inventoryItem' && typeof maybeItem.itemId === 'string'
+  return maybeItem.type === 'inventoryItem' && typeof maybeItem.slug === 'string'
 }
 
 /* Ensure an item exists before applying a mutation workflow. */
@@ -196,7 +198,7 @@ export const ItemService = {
     const parent = await getParent(input.parentId)
     const position = input.position ?? null
     const itemDocumentId = generateInventoryId('item')
-    const itemIdentifier = generateInventoryId('itm')
+    const itemSlug = generateInventoryId('itm')
 
     await validatePlacement(parent, input.category, position)
 
@@ -210,18 +212,17 @@ export const ItemService = {
     const newItem: Omit<InventoryItem, '_id' | '_rev'> = {
       type: 'inventoryItem',
       schema: 1,
-      itemId: itemIdentifier,
+      slug: itemSlug,
       category: input.category,
       classification: input.classification,
       name: input.name,
-      label: input.label,
+      label: input.label ?? null,
       description: input.description ?? null,
       quantity: input.quantity ?? null,
       unit: input.unit ?? null,
       concentration: input.concentration ?? null,
       concentrationUnit: input.concentrationUnit ?? null,
-      parentId: parent._id,
-      parentType: parent.type,
+      parent: toParentRef(parent),
       locationPath: buildLocationPath(parent),
       position,
       status: input.status ?? 'available',
@@ -260,8 +261,8 @@ export const ItemService = {
   /* List direct child items for one parent document. */
   async getItemsByParent(parentId: string): Promise<InventoryItem[]> {
     return await couchDB.queryDocuments<InventoryItem>({
-      type: 'inventoryItem',
-      parentId
+      'type': 'inventoryItem',
+      'parent.id': parentId
     })
   },
 
@@ -327,7 +328,7 @@ export const ItemService = {
     const position = updates.position ?? item.position
 
     const category = updates.category ?? item.category
-    const currentParent = await getParent(item.parentId)
+    const currentParent = await getParent(item.parent.id)
     await validatePlacement(currentParent, category, position, item._id)
 
     const next = updateItemDocument(item, {
@@ -365,7 +366,7 @@ export const ItemService = {
     }), item._rev)
 
     const loggedItem = await appendActionLog(updatedItem, 'checkout', userId, {
-      fromParentId: updatedItem.parentId
+      fromParentId: updatedItem.parent.id
     })
 
     const { TaskService } = await import('./inventory-tasks.server')
@@ -375,10 +376,10 @@ export const ItemService = {
       status: 'planned',
       targetId: loggedItem._id,
       targetType: 'inventoryItem',
-      toParentId: loggedItem.parentId,
-      toParentType: loggedItem.parentType,
+      toParentId: loggedItem.parent.id,
+      toParentType: loggedItem.parent.type as InventoryLocationType,
       toPosition: loggedItem.position,
-      description: `Item ${loggedItem.itemId} checked out; pending return.`
+      description: `Item ${loggedItem.slug} checked out; pending return.`
     }, userId)
 
     return {
@@ -401,15 +402,14 @@ export const ItemService = {
 
     const updatedItem = await saveItem(updateItemDocument(item, {
       status: 'available',
-      parentId: parent._id,
-      parentType: parent.type,
+      parent: toParentRef(parent),
       locationPath: buildLocationPath(parent),
       position
     }), item._rev)
 
     return await appendActionLog(updatedItem, 'return', userId, {
-      fromParentId: item.parentId,
-      toParentId: updatedItem.parentId
+      fromParentId: item.parent.id,
+      toParentId: updatedItem.parent.id
     })
   },
 
@@ -467,15 +467,14 @@ export const ItemService = {
     await validatePlacement(newParent, item.category, position, item._id)
 
     const movedItem = await saveItem(updateItemDocument(item, {
-      parentId: newParent._id,
-      parentType: newParent.type,
+      parent: toParentRef(newParent),
       locationPath: buildLocationPath(newParent),
       position
     }), item._rev)
 
     return await appendActionLog(movedItem, 'move', userId, {
-      fromParentId: item.parentId,
-      toParentId: movedItem.parentId
+      fromParentId: item.parent.id,
+      toParentId: movedItem.parent.id
     })
   },
 
@@ -491,7 +490,7 @@ export const ItemService = {
   /* Resolve a simplified breadcrumb for human-readable location display. */
   async getItemLocationBreadcrumb(itemId: string): Promise<Array<{ id: string, type: string, name: string }>> {
     const item = ensureItem(await ItemService.getItem(itemId), itemId)
-    const breadcrumb = await resolveLocationBreadcrumb(item.locationPath, item.parentId)
+    const breadcrumb = await resolveLocationBreadcrumb(item.locationPath, item.parent.id)
 
     return breadcrumb.map(entry => ({
       id: entry.id,
