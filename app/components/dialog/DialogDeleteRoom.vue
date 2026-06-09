@@ -64,7 +64,7 @@ const handleDelete = () => {
 
     <div class="grid gap-4 p-4 ml-4">
       <p class="text-muted">
-        This action will permanently remove <span class="font-semibold text-error">{{ props.room.name }}</span> ({{ props.room.roomId }}) from the inventory.
+        This action will permanently remove <span class="font-semibold text-error">{{ props.room.name }}</span> ({{ props.room.slug }}) from the inventory.
       </p>
       <p
         v-if="hasEquipment"

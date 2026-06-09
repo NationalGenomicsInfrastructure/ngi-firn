@@ -43,7 +43,7 @@ const room = computed(() => roomState.value.status === 'success' ? roomState.val
     </div>
     <PageTitle
       :title="room ? room.name : 'Room details'"
-      :description="room ? `${room.roomId}` : ''"
+      :description="room ? `${room.slug}` : ''"
     />
 
     <NAlert

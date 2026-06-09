@@ -130,8 +130,8 @@ export function generateInventoryId(prefix: string): string {
 }
 
 /* Build a TypedDocumentReference from a parent entity for the `parent` field. */
-export function toParentRef(entity: Room | StorageEquipment | Container): TypedDocumentReference {
-  return { db: 'firn', id: entity._id, type: entity.type }
+export function toParentRef<T extends Room | StorageEquipment | Container>(entity: T): TypedDocumentReference<T> {
+  return { db: 'firn', id: entity._id, type: entity.type } as TypedDocumentReference<T>
 }
 
 /* Build a child's locationPath from its parent's ancestry + parent node. */

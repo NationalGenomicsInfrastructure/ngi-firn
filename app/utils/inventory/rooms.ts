@@ -33,7 +33,7 @@ export type RoomFormInitialValues = {
 /** Validated form output from `createRoomSchema`. */
 export type RoomFormSubmitValues = {
   name: string
-  label?: string
+  label?: string | null
   roomNumber: string
   roomType: CreateRoomSchemaInput['roomType']
   building: CreateRoomSchemaInput['building']

@@ -7,7 +7,8 @@ export const INVENTORY_LOCATIONS_QUERY_KEYS = {
   rooms: () => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'rooms'] as const,
   room: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'room', roomDocumentId] as const,
   roomBySlug: (slug: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'roomBySlug', slug] as const,
-  equipment: (equipmentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipment', equipmentId] as const,
+  equipment: (equipmentDocId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipment', equipmentDocId] as const,
+  equipmentBySlug: (slug: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentBySlug', slug] as const,
   equipmentByRoom: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentByRoom', roomDocumentId] as const
 } as const
 
@@ -42,13 +43,24 @@ export const roomBySlugQuery = defineQueryOptions(
   })
 )
 
-// Query for a single storage equipment by ID
+// Query for a single storage equipment by CouchDB _id
 export const equipmentQuery = defineQueryOptions(
-  (equipmentId: string) => ({
-    key: INVENTORY_LOCATIONS_QUERY_KEYS.equipment(equipmentId),
+  (equipmentDocId: string) => ({
+    key: INVENTORY_LOCATIONS_QUERY_KEYS.equipment(equipmentDocId),
     query: () => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.getEquipment.query({ equipmentId })
+      return $trpc.inventory.locations.getEquipment.query({ equipmentId: equipmentDocId })
+    }
+  })
+)
+
+// Query for a single storage equipment by slug
+export const equipmentBySlugQuery = defineQueryOptions(
+  (slug: string) => ({
+    key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentBySlug(slug),
+    query: () => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.locations.getEquipmentBySlug.query({ slug })
     }
   })
 )

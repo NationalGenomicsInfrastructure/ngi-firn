@@ -5,6 +5,7 @@ import { defineQueryOptions } from '@pinia/colada'
 export const INVENTORY_ITEMS_QUERY_KEYS = {
   root: ['inventory', 'items'] as const,
   item: (itemId: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'item', itemId] as const,
+  itemBySlug: (slug: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'itemBySlug', slug] as const,
   byParent: (parentId: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'byParent', parentId] as const,
   byStatus: (status: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'byStatus', status] as const,
   expiring: (beforeDate: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'expiring', beforeDate] as const,
@@ -19,6 +20,17 @@ export const itemQuery = defineQueryOptions(
     query: () => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.items.getItem.query({ itemId })
+    }
+  })
+)
+
+// Query for a single item by slug
+export const itemBySlugQuery = defineQueryOptions(
+  (slug: string) => ({
+    key: INVENTORY_ITEMS_QUERY_KEYS.itemBySlug(slug),
+    query: () => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.items.getItemBySlug.query({ slug })
     }
   })
 )

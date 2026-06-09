@@ -73,7 +73,7 @@ function handleDelete() {
 
     <div class="grid gap-4 p-4 ml-4">
       <p class="text-muted">
-        This will permanently remove <span class="font-semibold text-error">{{ equipment.name }}</span> ({{ equipment.equipmentId }}) from inventory.
+        This will permanently remove <span class="font-semibold text-error">{{ equipment.name }}</span> ({{ equipment.slug }}) from inventory.
       </p>
       <p
         v-if="hasChildren"

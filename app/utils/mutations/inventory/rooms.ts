@@ -36,7 +36,7 @@ export const createRoom = defineMutation(() => {
     },
     onSuccess(response: Room) {
       showSuccess(`Room "${response.name}" created successfully.`, 'Room created')
-      navigateTo(`/inventory/rooms/${encodeURIComponent(response.roomId)}`)
+      navigateTo(`/inventory/rooms/${encodeURIComponent(response.slug)}`)
     },
     onSettled() {
       const queryCache = useQueryCache()
@@ -69,7 +69,7 @@ export const updateRoom = defineMutation(() => {
     },
     onSuccess(response: Room) {
       showSuccess(`Room "${response.name}" updated successfully.`, 'Room updated')
-      navigateTo(`/inventory/rooms/${encodeURIComponent(response.roomId)}`)
+      navigateTo(`/inventory/rooms/${encodeURIComponent(response.slug)}`)
     },
     onSettled(_, _error, input) {
       const queryCache = useQueryCache()

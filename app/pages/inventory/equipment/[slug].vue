@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
 import {
-  equipmentQuery,
+  equipmentBySlugQuery,
   roomQuery
 } from '~/utils/queries/inventory/rooms'
 import { containersByParentQuery } from '~/utils/queries/inventory/containers'
@@ -13,13 +13,13 @@ definePageMeta({
 })
 
 const route = useRoute()
-const equipmentDocumentId = computed(() => {
-  const value = route.params.id
+const slug = computed(() => {
+  const value = route.params.slug
   return Array.isArray(value) ? value[0] ?? '' : value ?? ''
 })
 
 const { state: equipmentState, asyncStatus: equipmentStatus } = useQueryColada(
-  () => equipmentQuery(equipmentDocumentId.value)
+  () => equipmentBySlugQuery(slug.value)
 )
 
 const isLoading = computed(() => equipmentStatus.value === 'loading')
@@ -38,19 +38,28 @@ const equipment = computed(() =>
   equipmentState.value.status === 'success' ? equipmentState.value.data : null
 )
 
-const parentRoomDocumentId = computed(() => equipment.value?.parentId ?? '__pending_room__')
-const { state: parentRoomState } = useQueryColada(() => roomQuery(parentRoomDocumentId.value))
+const parentRoomDocumentId = computed(() => equipment.value?.parent?.id ?? '')
+const { state: parentRoomState } = useQueryColada(() => ({
+  ...roomQuery(parentRoomDocumentId.value),
+  enabled: parentRoomDocumentId.value.length > 0
+}))
 const parentRoom = computed(() =>
   parentRoomState.value.status === 'success' ? parentRoomState.value.data : null
 )
 
 const parentRoomRoute = computed(() =>
-  parentRoom.value ? `/inventory/rooms/${encodeURIComponent(parentRoom.value.roomId)}` : '/inventory/rooms'
+  parentRoom.value ? `/inventory/rooms/${encodeURIComponent(parentRoom.value.slug)}` : '/inventory/rooms'
 )
 
-const currentEquipmentId = computed(() => equipment.value?._id ?? '__pending_equipment__')
-const { state: childContainersState } = useQueryColada(() => containersByParentQuery(currentEquipmentId.value))
-const { state: childItemsState } = useQueryColada(() => itemsByParentQuery(currentEquipmentId.value))
+const currentEquipmentDocId = computed(() => equipment.value?._id ?? '')
+const { state: childContainersState } = useQueryColada(() => ({
+  ...containersByParentQuery(currentEquipmentDocId.value),
+  enabled: currentEquipmentDocId.value.length > 0
+}))
+const { state: childItemsState } = useQueryColada(() => ({
+  ...itemsByParentQuery(currentEquipmentDocId.value),
+  enabled: currentEquipmentDocId.value.length > 0
+}))
 
 const childContainerCount = computed(() =>
   childContainersState.value.status === 'success' ? childContainersState.value.data.length : 0
@@ -81,7 +90,7 @@ const infoFields = computed(() => {
   }
 
   return [
-    { icon: 'i-lucide-key-round', label: 'Identifier', value: equipment.value.equipmentId },
+    { icon: 'i-lucide-key-round', label: 'Identifier', value: equipment.value.slug },
     { icon: 'i-lucide-thermometer-snowflake', label: 'Type', value: equipmentTypeLabel.value },
     {
       icon: 'i-lucide-thermometer',
@@ -106,7 +115,7 @@ const infoFields = computed(() => {
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
     <PageTitle
       :title="equipment ? equipment.name : 'Equipment details'"
-      :description="equipment ? equipment.equipmentId : ''"
+      :description="equipment ? equipment.slug : ''"
     />
 
     <NAlert
@@ -189,13 +198,13 @@ const infoFields = computed(() => {
         <footer class="flex flex-wrap items-center justify-end gap-2">
           <DialogInventoryEquipmentUpdate
             :equipment="equipment"
-            :room-document-id="equipment.parentId"
+            :room-document-id="equipment.parent.id"
           />
           <DialogMoveEquipment :equipment="equipment" />
           <DialogDeleteEquipment
             v-if="isAdmin"
             :equipment="equipment"
-            :room-document-id="equipment.parentId"
+            :room-document-id="equipment.parent.id"
           />
         </footer>
       </NCard>
@@ -208,7 +217,7 @@ const infoFields = computed(() => {
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="text-sm">
             <p class="text-muted">
-              {{ parentRoom ? `${parentRoom.name} (${parentRoom.roomId})` : `Room document: ${equipment.parentId}` }}
+              {{ parentRoom ? `${parentRoom.name} (${parentRoom.slug})` : `Room document: ${equipment.parent.id}` }}
             </p>
           </div>
           <NButton

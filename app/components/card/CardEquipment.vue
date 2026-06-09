@@ -10,7 +10,7 @@ const props = defineProps<{
 const { user } = useUserSession()
 const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
 
-const equipmentDetailPath = computed(() => `/inventory/equipment/${encodeURIComponent(props.equipment._id)}`)
+const equipmentDetailPath = computed(() => `/inventory/equipment/${encodeURIComponent(props.equipment.slug)}`)
 
 const infoFields = computed(() => {
   const gridLabel = props.equipment.rows && props.equipment.columns
@@ -21,7 +21,7 @@ const infoFields = computed(() => {
     {
       icon: 'i-lucide-key-round',
       label: 'Identifier',
-      value: props.equipment.equipmentId
+      value: props.equipment.slug
     },
     {
       icon: 'i-lucide-thermometer-snowflake',

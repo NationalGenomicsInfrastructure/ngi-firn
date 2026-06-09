@@ -4,6 +4,7 @@ import { defineQueryOptions } from '@pinia/colada'
 export const INVENTORY_CONTAINERS_QUERY_KEYS = {
   root: ['inventory', 'containers'] as const,
   container: (containerId: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'container', containerId] as const,
+  containerBySlug: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'containerBySlug', slug] as const,
   byParent: (parentId: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'byParent', parentId] as const,
   contents: (containerId: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'contents', containerId] as const,
   descendants: (containerId: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'descendants', containerId] as const,
@@ -18,6 +19,17 @@ export const containerQuery = defineQueryOptions(
     query: () => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.getContainer.query({ containerId })
+    }
+  })
+)
+
+// Query for a single container by slug
+export const containerBySlugQuery = defineQueryOptions(
+  (slug: string) => ({
+    key: INVENTORY_CONTAINERS_QUERY_KEYS.containerBySlug(slug),
+    query: () => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.getContainerBySlug.query({ slug })
     }
   })
 )

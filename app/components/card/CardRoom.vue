@@ -17,10 +17,10 @@ const BUILDING_LABELS: Record<Room['building'], string> = {
 }
 
 const buildingLabel = computed(() => BUILDING_LABELS[props.room.building] ?? props.room.building)
-const roomDetailPath = computed(() => `/inventory/rooms/${encodeURIComponent(props.room.roomId)}`)
+const roomDetailPath = computed(() => `/inventory/rooms/${encodeURIComponent(props.room.slug)}`)
 
 const infoFields = computed(() => [
-  { icon: 'i-lucide-key-round', label: 'Room identifier', value: props.room.roomId },
+  { icon: 'i-lucide-key-round', label: 'Room identifier', value: props.room.slug },
   { icon: 'i-lucide-building-2', label: 'Building', value: buildingLabel.value },
   { icon: 'i-lucide-door-open', label: 'Room number', value: props.room.roomNumber ?? '—' },
   { icon: 'i-lucide-layers', label: 'Floor', value: props.room.floor == null ? '—' : String(props.room.floor) },

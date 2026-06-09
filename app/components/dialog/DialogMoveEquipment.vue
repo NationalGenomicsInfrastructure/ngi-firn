@@ -17,14 +17,14 @@ const { state: roomsState, asyncStatus: roomsStatus } = useQueryColada(allRoomsQ
 
 const availableRooms = computed(() =>
   roomsState.value.status === 'success'
-    ? roomsState.value.data.filter(room => room._id !== props.equipment.parentId)
+    ? roomsState.value.data.filter(room => room._id !== props.equipment.parent?.id)
     : []
 )
 
 const roomOptions = computed(() =>
   availableRooms.value.map(room => ({
     value: room._id,
-    label: `${room.name} (${room.roomId})`
+    label: `${room.name} (${room.slug})`
   }))
 )
 
@@ -83,7 +83,7 @@ async function handleMove() {
   const result = await mutateAsync({
     equipmentId: props.equipment._id,
     newRoomId: selectedRoomId.value,
-    currentRoomDocumentId: props.equipment.parentId
+    currentRoomDocumentId: props.equipment.parent?.id
   })
 
   if (result) {
