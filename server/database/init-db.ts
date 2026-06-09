@@ -4,6 +4,7 @@ import { couchDB } from './couchdb'
 import { createIndexes } from '../crud/indices'
 import { ensureInventoryViews } from '../crud/inventory-helpers.server'
 import { UserService } from '../crud/users.server'
+import { generateCouchDocId } from '../utils/ids'
 import type { FirnUser } from '../../types/auth'
 
 export async function initializeDatabase() {
@@ -84,7 +85,10 @@ export async function initializeDatabase() {
         preferences: []
       }
 
-      const result = await couchDB.createDocument(firstAdmin)
+      const result = await couchDB.createDocument({
+        ...firstAdmin,
+        _id: generateCouchDocId('user')
+      })
       console.log(`First admin user created with ID: ${result.id}`)
     }
     else {

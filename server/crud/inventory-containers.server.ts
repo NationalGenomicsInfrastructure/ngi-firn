@@ -42,7 +42,7 @@ import {
   buildLocationPath,
   cascadeLocationPathUpdate,
   ensureInventoryViews,
-  generateInventoryId,
+  generateCouchDocId,
   toParentRef,
   validateCapacity,
   validateContainerAcceptance,
@@ -185,8 +185,8 @@ export const ContainerService = {
     await validatePlacement(parent, input.classification, input.position ?? null)
 
     const locationPath = buildLocationPath(parent)
-    const containerDocumentId = generateInventoryId('container')
-    const containerIdentifier = generateInventoryId('cnt')
+    const containerDocumentId = generateCouchDocId('container')
+    const containerIdentifier = generateCouchDocId('cnt')
     const newContainer = toContainerDocument(input, locationPath, containerIdentifier, parent)
 
     const { id } = await couchDB.createDocument({

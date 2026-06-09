@@ -39,6 +39,7 @@
 import { DateTime } from 'luxon'
 
 import { couchDB } from '../database/couchdb'
+import { generateCouchDocId } from '../utils/ids'
 import { ProductivityService } from './productivity.server'
 import { ProjectService, PROJECTS_DB_NAME } from './projects.server'
 import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers } from '../../types/auth'
@@ -94,13 +95,12 @@ export const UserService = {
    * Create a new FirnUser
    */
   async createUser(user: Omit<FirnUser, '_id' | '_rev'>): Promise<FirnUser | null> {
-    const document = await couchDB.createDocument(user)
-    // query the new user by document id
-    const newUser = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      _id: document.id
+    const document = await couchDB.createDocument({
+      ...user,
+      _id: generateCouchDocId('user')
     })
-    return newUser[0] as FirnUser
+    const newUser = await couchDB.getDocument<FirnUser>(document.id)
+    return newUser ?? null
   },
 
   /*
@@ -157,13 +157,12 @@ export const UserService = {
     }
 
     // Create the user
-    const document = await couchDB.createDocument(newFirnUser)
-    // query the new user by document id
-    const newUser = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      _id: document.id
+    const document = await couchDB.createDocument({
+      ...newFirnUser,
+      _id: generateCouchDocId('user')
     })
-    return newUser[0] as FirnUser
+    const createdUser = await couchDB.getDocument<FirnUser>(document.id)
+    return createdUser ?? null
   },
 
   /*

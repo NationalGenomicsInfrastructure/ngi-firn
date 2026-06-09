@@ -15,7 +15,7 @@
  */
 
 import { couchDB } from '../database/couchdb'
-import { generateInventoryId } from './inventory-helpers.server'
+import { generateCouchDocId } from './inventory-helpers.server'
 import type {
   CreateContainerInput,
   CreateInventoryItemInput,
@@ -45,7 +45,7 @@ export const TemplateService = {
     const newTemplate: Omit<InventoryTemplate, '_id' | '_rev'> = {
       type: 'inventoryTemplate',
       schema: 1,
-      slug: generateInventoryId('template'),
+      slug: generateCouchDocId('template'),
       name: input.name,
       description: input.description ?? null,
       templateFor: input.templateFor,

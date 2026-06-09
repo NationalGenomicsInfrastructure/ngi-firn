@@ -9,7 +9,7 @@
  * upsertDesignDoc(designDoc) - Insert/update a CouchDB design document
  *
  * GENERAL HELPERS:
- * generateInventoryId(prefix) - Generate stable prefixed IDs for inventory entities
+ * generateCouchDocId(prefix) - Generate prefixed CouchDB document IDs (re-exported from server/utils/ids)
  * buildLocationPath(parent) - Build child ancestry path from a parent entity
  * resolveLocationBreadcrumb(locationPath, parentId) - Batch-fetch ancestor names for display breadcrumb
  * cascadeLocationPathUpdate(entityId, entityType, newPath) - Propagate ancestry changes to descendants
@@ -122,12 +122,7 @@ async function upsertDesignDoc(designDoc: DesignDocDefinition): Promise<void> {
 }
 
 /* Generate compact, prefixed IDs for inventory entities and actions. */
-export function generateInventoryId(prefix: string): string {
-  const safePrefix = prefix.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'inventory'
-  const timestamp = Date.now().toString(36)
-  const randomSuffix = Math.random().toString(36).slice(2, 8)
-  return `${safePrefix}-${timestamp}-${randomSuffix}`
-}
+export { generateCouchDocId } from '../utils/ids'
 
 /* Build a TypedDocumentReference from a parent entity for the `parent` field. */
 export function toParentRef<T extends Room | StorageEquipment | Container>(entity: T): TypedDocumentReference<T> {

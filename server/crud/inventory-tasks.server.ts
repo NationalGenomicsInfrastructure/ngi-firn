@@ -28,7 +28,7 @@
 
 import type { CloudantV1 } from '@ibm-cloud/cloudant'
 import { couchDB } from '../database/couchdb'
-import { ensureInventoryViews, generateInventoryId } from './inventory-helpers.server'
+import { ensureInventoryViews, generateCouchDocId } from './inventory-helpers.server'
 import type {
   ActionLogEntry,
   CreateInventoryTaskInput,
@@ -126,7 +126,7 @@ export const TaskService = {
       const createdTask: Omit<InventoryTask, '_id' | '_rev'> = {
         type: 'inventoryTask',
         schema: 1,
-        slug: generateInventoryId('inventory-task'),
+        slug: generateCouchDocId('inventory-task'),
         actionType: input.actionType,
         status,
         targetId: input.targetId,

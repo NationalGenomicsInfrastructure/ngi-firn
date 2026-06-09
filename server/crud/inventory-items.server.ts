@@ -36,7 +36,7 @@ import { couchDB } from '../database/couchdb'
 import {
   buildLocationPath,
   ensureInventoryViews,
-  generateInventoryId,
+  generateCouchDocId,
   resolveLocationBreadcrumb,
   toParentRef,
   validateCapacity,
@@ -197,8 +197,8 @@ export const ItemService = {
 
     const parent = await getParent(input.parentId)
     const position = input.position ?? null
-    const itemDocumentId = generateInventoryId('item')
-    const itemSlug = generateInventoryId('itm')
+    const itemDocumentId = generateCouchDocId('item')
+    const itemSlug = generateCouchDocId('itm')
 
     await validatePlacement(parent, input.category, position)
 

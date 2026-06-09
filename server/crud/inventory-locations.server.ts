@@ -30,7 +30,7 @@ import { couchDB } from '../database/couchdb'
 import {
   buildLocationPath,
   cascadeLocationPathUpdate,
-  generateInventoryId,
+  generateCouchDocId,
   toParentRef
 } from './inventory-helpers.server'
 import type {
@@ -123,7 +123,7 @@ export const LocationService = {
 
     const created = await couchDB.createDocument({
       ...roomDocument,
-      _id: generateInventoryId('room')
+      _id: generateCouchDocId('room')
     })
 
     const room = await couchDB.getDocument<Room>(created.id)
@@ -221,8 +221,8 @@ export const LocationService = {
   async createEquipment(input: CreateStorageEquipmentInput, userId: string): Promise<StorageEquipment> {
     void userId
     const room = await getRequiredRoom(input.parentId)
-    const equipmentDocumentId = generateInventoryId('equipment')
-    const equipmentSlug = generateInventoryId('eqp')
+    const equipmentDocumentId = generateCouchDocId('equipment')
+    const equipmentSlug = generateCouchDocId('eqp')
 
     const now = new Date().toISOString()
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
