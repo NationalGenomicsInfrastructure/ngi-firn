@@ -11,7 +11,7 @@ import {
 
 export const createRoomSchema = z.object({
   name: z.string().min(1, { message: 'Room name is required' }),
-  label: z.string().optional(),
+  label: z.string().nullish(),
   roomNumber: z.string().trim().min(1, { message: 'Room number is required' }),
   roomType: roomTypeSchema,
   building: roomBuildingSchema,
@@ -22,7 +22,7 @@ export const createRoomSchema = z.object({
 
 export const updateRoomSchema = idRevSchema.extend({
   name: z.string().min(1).optional(),
-  label: z.string().optional(),
+  label: z.string().nullish(),
   roomNumber: z.string().trim().min(1).optional(),
   roomType: roomTypeSchema.optional(),
   building: roomBuildingSchema.optional(),

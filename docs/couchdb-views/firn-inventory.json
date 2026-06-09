@@ -5,14 +5,17 @@
     "by_type": {
       "map": "function (doc) { if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTemplate') { emit(doc.type, null); } }"
     },
+    "by_slug": {
+      "map": "function (doc) { if (!doc.slug) { return; } if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTask' || doc.type === 'inventoryTemplate') { emit([doc.type, doc.slug], null); } }"
+    },
     "by_parent": {
-      "map": "function (doc) { if ((doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && doc.parentId) { emit([doc.parentType || null, doc.parentId], null); } }"
+      "map": "function (doc) { if ((doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && doc.parent && doc.parent.id) { emit([doc.parent.type || null, doc.parent.id], null); } }"
     },
     "by_room": {
-      "map": "function (doc) { if (!(doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem')) { return; } if (doc.type === 'room') { emit(doc._id, null); return; } var roomId = null; if (doc.locationPath && doc.locationPath.length) { for (var i = 0; i < doc.locationPath.length; i++) { var ancestor = doc.locationPath[i]; if (ancestor && ancestor.type === 'room' && ancestor.id) { roomId = ancestor.id; break; } } } if (!roomId && doc.parentType === 'room' && doc.parentId) { roomId = doc.parentId; } if (roomId) { emit(roomId, null); } }"
+      "map": "function (doc) { if (!(doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem')) { return; } if (doc.type === 'room') { emit(doc._id, null); return; } var roomId = null; if (doc.locationPath && doc.locationPath.length) { for (var i = 0; i < doc.locationPath.length; i++) { var ancestor = doc.locationPath[i]; if (ancestor && ancestor.type === 'room' && ancestor.id) { roomId = ancestor.id; break; } } } if (!roomId && doc.parent && doc.parent.type === 'room' && doc.parent.id) { roomId = doc.parent.id; } if (roomId) { emit(roomId, null); } }"
     },
     "by_ancestor": {
-      "map": "function (doc) { if (!(doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem')) { return; } if (doc.locationPath && doc.locationPath.length) { for (var i = 0; i < doc.locationPath.length; i++) { var ancestor = doc.locationPath[i]; if (ancestor && ancestor.id) { emit([ancestor.type || null, ancestor.id], null); } } } if (doc.parentId) { emit([doc.parentType || null, doc.parentId], null); } }"
+      "map": "function (doc) { if (!(doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem')) { return; } if (doc.locationPath && doc.locationPath.length) { for (var i = 0; i < doc.locationPath.length; i++) { var ancestor = doc.locationPath[i]; if (ancestor && ancestor.id) { emit([ancestor.type || null, ancestor.id], null); } } } if (doc.parent && doc.parent.id) { emit([doc.parent.type || null, doc.parent.id], null); } }"
     },
     "by_status": {
       "map": "function (doc) { if (doc.type === 'inventoryItem' && doc.status) { emit(doc.status, null); } }"
@@ -30,7 +33,7 @@
       "map": "function (doc) { if (doc.type === 'inventoryTemplate') { emit([doc.templateFor || null, doc.containerType || null], null); } }"
     },
     "children_count": {
-      "map": "function (doc) { if ((doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && doc.parentId) { emit(doc.parentId, 1); } }",
+      "map": "function (doc) { if ((doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && doc.parent && doc.parent.id) { emit(doc.parent.id, 1); } }",
       "reduce": "_count"
     },
     "capacity_by_accepted_category": {
