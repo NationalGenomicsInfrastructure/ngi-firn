@@ -1,5 +1,5 @@
 import type { BaseDocument } from '../server/database/couchdb'
-import type { DocumentReferenceMap } from './references'
+import type { DocumentReferenceMap, TypedDocumentReference } from './references'
 
 /*
  * Inventory Types - Table of Contents
@@ -95,10 +95,10 @@ export interface ActionLogEntry {
 export interface Room extends BaseDocument {
   type: 'room'
   schema: 1
-  /* Stable URL slug (not CouchDB _id). */
-  roomId: string
+  /* Stable URL slug (e.g. "alfa-1-123"), not the CouchDB _id. */
+  slug: string
   name: string
-  label: string
+  label: string | null
   roomNumber: string | null
   roomType: 'basement' | 'laboratory' | 'office' | 'storage' | 'other'
   building: RoomBuilding
@@ -113,14 +113,14 @@ export interface Room extends BaseDocument {
 export interface StorageEquipment extends BaseDocument {
   type: 'storageEquipment'
   schema: 1
-  equipmentId: string
+  /* Stable URL slug (e.g. "eqp-m42x1c-abc123"), not the CouchDB _id. */
+  slug: string
   equipmentType: 'cabinet' | 'freezer' | 'fridge' | 'shelf' | 'nitrogenTank' | 'other'
   name: string
   label: string | null
   description: string | null
-  /* Parent room document ID. */
-  parentId: string
-  parentType: 'room'
+  /* Typed reference to the parent room document. */
+  parent: TypedDocumentReference<Room>
   locationPath: LocationAncestor[]
   position: GridPosition | null
   rows: number | null
@@ -143,14 +143,15 @@ export interface StorageEquipment extends BaseDocument {
 export interface Container extends BaseDocument {
   type: 'container'
   schema: 1
-  containerId: string
+  /* Stable URL slug (e.g. "cnt-m42x1c-abc123"), not the CouchDB _id. */
+  slug: string
   containerType: 'rack' | 'box' | 'bag' | 'bottle' | 'jar' | 'plate' | 'other'
   classification: 'sample' | 'reagent' | 'equipment' | 'consumable' | 'other'
   name: string
-  label: string
+  label: string | null
   description: string | null
-  parentId: string
-  parentType: Exclude<InventoryLocationType, 'room'>
+  /* Typed reference to the parent document (storage equipment or another container). */
+  parent: TypedDocumentReference<StorageEquipment | Container>
   locationPath: LocationAncestor[]
   position: GridPosition | null
   rows: number | null
@@ -178,22 +179,23 @@ export interface Container extends BaseDocument {
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
   schema: 1
-  itemId: string
+  /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
+  slug: string
   /* Physical form factor of the item (what it IS). */
   category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle'
     | 'plate96' | 'plate384' | 'microscopySlide' | 'other'
   /* Purpose/domain classification (what it's FOR). */
   classification: 'sample' | 'reagent' | 'library' | 'consumable' | 'equipment' | 'other'
   name: string
-  label: string
+  label: string | null
   description: string | null
   quantity: number | null
   unit: string | null
   /* Sample/reagent concentration. */
   concentration: number | null
   concentrationUnit: string | null
-  parentId: string
-  parentType: InventoryLocationType
+  /* Typed reference to the parent document (room, equipment, or container). */
+  parent: TypedDocumentReference<Room | StorageEquipment | Container>
   locationPath: LocationAncestor[]
   position: GridPosition | null
   status: 'available' | 'checked_out' | 'reserved' | 'expired' | 'disposed' | 'lost' | 'damaged'
@@ -229,7 +231,8 @@ export type InventoryTaskStatus = 'planned' | 'completed' | 'skipped' | 'cancell
 export interface InventoryTask extends BaseDocument {
   type: 'inventoryTask'
   schema: 1
-  taskId: string
+  /* Stable URL slug (e.g. "inventory-task-m42x1c-abc123"), not the CouchDB _id. */
+  slug: string
   actionType: InventoryActionType
   status: InventoryTaskStatus
   /* Target entity this task applies to. */
@@ -264,7 +267,8 @@ export interface InventoryTask extends BaseDocument {
 export interface InventoryTemplate extends BaseDocument {
   type: 'inventoryTemplate'
   schema: 1
-  templateId: string
+  /* Stable URL slug (e.g. "template-m42x1c-abc123"), not the CouchDB _id. */
+  slug: string
   name: string
   description: string | null
   templateFor: 'storageEquipment' | 'container' | 'inventoryItem'
@@ -294,7 +298,7 @@ export interface InventoryTemplate extends BaseDocument {
 /* Create payload for room registration. */
 export interface CreateRoomInput {
   name: string
-  label: string
+  label?: string | null
   roomNumber: string
   roomType: Room['roomType']
   building: RoomBuilding
@@ -308,7 +312,7 @@ export interface UpdateRoomInput {
   id: string
   rev: string
   name?: string
-  label?: string
+  label?: string | null
   roomNumber?: string
   roomType?: Room['roomType']
   building?: RoomBuilding
@@ -361,7 +365,7 @@ export interface CreateContainerInput {
   containerType: Container['containerType']
   classification: Container['classification']
   name: string
-  label: string
+  label?: string | null
   description?: string | null
   parentId: string
   position?: GridPosition | null
@@ -384,7 +388,7 @@ export interface UpdateContainerInput {
   containerType?: Container['containerType']
   classification?: Container['classification']
   name?: string
-  label?: string
+  label?: string | null
   description?: string | null
   position?: GridPosition | null
   rows?: number | null
@@ -405,7 +409,7 @@ export interface CreateInventoryItemInput {
   category: InventoryItem['category']
   classification: InventoryItem['classification']
   name: string
-  label: string
+  label?: string | null
   description?: string | null
   quantity?: number | null
   unit?: string | null
@@ -430,7 +434,7 @@ export interface UpdateInventoryItemInput {
   category?: InventoryItem['category']
   classification?: InventoryItem['classification']
   name?: string
-  label?: string
+  label?: string | null
   description?: string | null
   quantity?: number | null
   unit?: string | null
@@ -449,7 +453,7 @@ export interface UpdateInventoryItemInput {
 
 /* Result of the free-capacity suggestion query — one candidate container with availability info. */
 export interface SuggestedLocation {
-  containerId: string
+  slug: string
   containerName: string
   containerType: Container['containerType']
   capacity: number
