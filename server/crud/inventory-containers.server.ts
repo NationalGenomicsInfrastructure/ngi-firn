@@ -212,6 +212,13 @@ export const ContainerService = {
     return container
   },
 
+  /* Fetch one container by slug. */
+  async getContainerBySlug(slug: string): Promise<Container | null> {
+    const results = await couchDB.queryDocuments<Container>({ type: 'container', slug })
+    const container = results[0]
+    return container && isContainer(container) ? container : null
+  },
+
   /* List direct child containers for one parent entity. */
   async getContainersByParent(parentId: string): Promise<Container[]> {
     await ensureViewsReady()

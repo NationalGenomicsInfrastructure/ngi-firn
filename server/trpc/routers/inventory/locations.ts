@@ -70,7 +70,7 @@ export const locationsRouter = createTRPCRouter({
     .input(createRoomSchema)
     .mutation(async ({ input, ctx }): Promise<Room> => {
       const { LocationService } = await import('../../../crud/inventory-locations.server')
-      return LocationService.createRoom({ ...input, label: input.label ?? '' }, ctx.secure!.id)
+      return LocationService.createRoom(input, ctx.secure!.id)
     }),
 
   updateRoom: authedProcedure
@@ -95,6 +95,13 @@ export const locationsRouter = createTRPCRouter({
     .query(async ({ input }): Promise<StorageEquipment | null> => {
       const { LocationService } = await import('../../../crud/inventory-locations.server')
       return LocationService.getEquipment(input.equipmentId)
+    }),
+
+  getEquipmentBySlug: authedProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ input }): Promise<StorageEquipment | null> => {
+      const { LocationService } = await import('../../../crud/inventory-locations.server')
+      return LocationService.getEquipmentBySlug(input.slug)
     }),
 
   getEquipmentByRoom: authedProcedure

@@ -258,6 +258,13 @@ export const ItemService = {
     return isInventoryItem(item) ? item : null
   },
 
+  /* Fetch one inventory item by slug. */
+  async getItemBySlug(slug: string): Promise<InventoryItem | null> {
+    const results = await couchDB.queryDocuments<InventoryItem>({ type: 'inventoryItem', slug })
+    const item = results[0]
+    return item && isInventoryItem(item) ? item : null
+  },
+
   /* List direct child items for one parent document. */
   async getItemsByParent(parentId: string): Promise<InventoryItem[]> {
     return await couchDB.queryDocuments<InventoryItem>({

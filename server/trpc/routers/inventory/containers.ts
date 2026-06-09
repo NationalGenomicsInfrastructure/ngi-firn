@@ -42,6 +42,13 @@ export const containersRouter = createTRPCRouter({
       return ContainerService.getContainer(input.containerId)
     }),
 
+  getContainerBySlug: authedProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ input }): Promise<Container | null> => {
+      const { ContainerService } = await import('../../../crud/inventory-containers.server')
+      return ContainerService.getContainerBySlug(input.slug)
+    }),
+
   getContainersByParent: authedProcedure
     .input(z.object({ parentId: z.string().min(1) }))
     .query(async ({ input }): Promise<Container[]> => {

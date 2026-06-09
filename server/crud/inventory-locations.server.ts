@@ -268,6 +268,13 @@ export const LocationService = {
     return isStorageEquipment(equipment) ? equipment : null
   },
 
+  /* Fetch one equipment document by slug. */
+  async getEquipmentBySlug(slug: string): Promise<StorageEquipment | null> {
+    const results = await couchDB.queryDocuments<StorageEquipment>({ type: 'storageEquipment', slug })
+    const equipment = results[0]
+    return equipment && isStorageEquipment(equipment) ? equipment : null
+  },
+
   /* List all equipment that belongs to one room. */
   async getEquipmentByRoom(roomDocumentId: string): Promise<StorageEquipment[]> {
     const equipment = await couchDB.queryDocuments<StorageEquipment>({

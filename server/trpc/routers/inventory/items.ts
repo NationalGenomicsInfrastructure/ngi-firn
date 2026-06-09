@@ -63,6 +63,13 @@ export const itemsRouter = createTRPCRouter({
       return ItemService.getItem(input.itemId)
     }),
 
+  getItemBySlug: authedProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ input }): Promise<InventoryItem | null> => {
+      const { ItemService } = await import('../../../crud/inventory-items.server')
+      return ItemService.getItemBySlug(input.slug)
+    }),
+
   getItemsByParent: authedProcedure
     .input(z.object({ parentId: z.string().min(1) }))
     .query(async ({ input }): Promise<InventoryItem[]> => {
