@@ -220,29 +220,77 @@ const infoFields = computed(() => {
       </NCard>
 
       <NCard
-        title="Top-level children"
-        description="Containers and items directly placed in this equipment."
+        title="Child containers"
+        description="Containers directly placed in this equipment."
         card="outline-gray"
       >
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <IndicatorIconLarge
-            icon="i-lucide-box"
-            label="Containers"
-            :value="childContainerCount"
-          />
-          <IndicatorIconLarge
-            icon="i-lucide-test-tubes"
-            label="Items"
-            :value="childItemCount"
+        <div v-if="childContainerCount === 0" class="text-sm text-muted">
+          No containers yet. <NButton
+            label="Add one"
+            btn="ghost-primary"
+            size="sm"
+            :to="`/inventory/containers/add?parent=${encodeURIComponent(equipment.slug)}`"
+          />.
+        </div>
+        <div
+          v-else
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          <CardContainer
+            v-for="container in childContainersState.data"
+            :key="container._id"
+            :container="container"
           />
         </div>
-        <NAlert
-          class="mt-4"
-          alert="border-gray"
-          title="Container management coming next"
-          description="This page is prepared for upcoming container tree/table components."
-          icon="i-lucide-list-tree"
-        />
+      </NCard>
+
+      <NCard
+        title="Child items"
+        description="Items directly placed in this equipment."
+        card="outline-gray"
+      >
+        <div v-if="childItemCount === 0" class="text-sm text-muted">
+          No items yet.
+        </div>
+        <div
+          v-else
+          class="overflow-x-auto"
+        >
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b">
+                <th class="text-left px-4 py-2">Name</th>
+                <th class="text-left px-4 py-2">Category</th>
+                <th class="text-left px-4 py-2">Status</th>
+                <th class="text-left px-4 py-2">Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in childItemsState.data"
+                :key="item._id"
+                class="border-b hover:bg-muted/30"
+              >
+                <td class="px-4 py-2 font-medium">
+                  <NuxtLink
+                    :to="`/inventory/items/${encodeURIComponent(item.slug)}`"
+                    class="text-primary-400 dark:text-primary-600 hover:underline"
+                  >
+                    {{ item.name }}
+                  </NuxtLink>
+                </td>
+                <td class="px-4 py-2">{{ item.category }}</td>
+                <td class="px-4 py-2">
+                  <NBadge
+                    :label="item.status"
+                    :badge="item.status === 'available' ? 'solid-success' : 'solid-gray'"
+                  />
+                </td>
+                <td class="px-4 py-2">{{ item.quantity ?? '—' }} {{ item.unit ?? '' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </NCard>
 
       <div class="flex justify-end">

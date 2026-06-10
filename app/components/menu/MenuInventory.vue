@@ -16,6 +16,28 @@ const data = {
           url: '/inventory/rooms/add'
         }
       ]
+    },
+    {
+      title: 'Containers',
+      url: '#',
+      icon: 'i-lucide-box',
+      items: [
+        {
+          title: 'Overview',
+          url: '/inventory/containers'
+        }
+      ]
+    },
+    {
+      title: 'Items',
+      url: '#',
+      icon: 'i-lucide-test-tubes',
+      items: [
+        {
+          title: 'Overview',
+          url: '/inventory/items'
+        }
+      ]
     }
   ],
   worksets: [
