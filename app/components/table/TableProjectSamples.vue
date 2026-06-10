@@ -294,7 +294,10 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       </template>
     </NTable>
 
-    <div class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4">
+    <div
+      v-if="table?.getFilteredRowModel().rows.length ?? 0 > 20"
+      class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
+    >
       <div class="flex items-center justify-center text-sm font-medium">
         Page {{ (table?.getState().pagination.pageIndex ?? 0) + 1 }} of
         {{ table?.getPageCount().toLocaleString() }}

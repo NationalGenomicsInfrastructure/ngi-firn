@@ -160,6 +160,7 @@ function getDetailFields(bookmark: FirnProjectBookmark): BookmarkDetailField[] {
       </template>
     </NTable>
     <div
+      v-if="table?.getFilteredRowModel().rows.length ?? 0 > 5"
       class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
     >
       <div
