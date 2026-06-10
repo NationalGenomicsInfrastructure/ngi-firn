@@ -2,6 +2,7 @@
 import { useQuery as useQueryColada } from '@pinia/colada'
 import {
   equipmentBySlugQuery,
+  equipmentDescendantsQuery,
   roomQuery
 } from '~/utils/queries/inventory/rooms'
 import { itemsByParentQuery } from '~/utils/queries/inventory/items'
@@ -58,6 +59,15 @@ const { state: childItemsState } = useQueryColada(() => ({
 
 const childItemCount = computed(() =>
   childItemsState.value.status === 'success' ? childItemsState.value.data.length : 0
+)
+
+const { state: descendantsState } = useQueryColada(() => ({
+  ...equipmentDescendantsQuery(currentEquipmentDocId.value),
+  enabled: currentEquipmentDocId.value.length > 0
+}))
+
+const descendants = computed(() =>
+  descendantsState.value.status === 'success' ? descendantsState.value.data : []
 )
 
 const { user } = useUserSession()
@@ -217,8 +227,11 @@ const infoFields = computed(() => {
         description="Items directly placed in this equipment."
         card="outline-gray"
       >
+        <div class="flex justify-end mb-4">
+          <DialogInventoryItemAdd :parent-id="equipment._id" />
+        </div>
         <div v-if="childItemCount === 0" class="text-sm text-muted">
-          No items yet.
+          No items yet. Use “Add item” to create one.
         </div>
         <div
           v-else
@@ -259,6 +272,18 @@ const infoFields = computed(() => {
             </tbody>
           </table>
         </div>
+      </NCard>
+
+      <NCard
+        v-if="equipment"
+        title="All contents"
+        description="Every container and item nested anywhere beneath this equipment."
+        card="outline-gray"
+      >
+        <TableInventoryContents
+          :entries="descendants"
+          :root="{ id: equipment._id, name: equipment.name }"
+        />
       </NCard>
 
       <div class="flex justify-end">

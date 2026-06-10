@@ -9,7 +9,8 @@ export const INVENTORY_LOCATIONS_QUERY_KEYS = {
   roomBySlug: (slug: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'roomBySlug', slug] as const,
   equipment: (equipmentDocId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipment', equipmentDocId] as const,
   equipmentBySlug: (slug: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentBySlug', slug] as const,
-  equipmentByRoom: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentByRoom', roomDocumentId] as const
+  equipmentByRoom: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentByRoom', roomDocumentId] as const,
+  equipmentDescendants: (equipmentDocId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentDescendants', equipmentDocId] as const
 } as const
 
 // Query for all rooms
@@ -72,6 +73,17 @@ export const equipmentByRoomQuery = defineQueryOptions(
     query: () => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.locations.getEquipmentByRoom.query({ roomDocumentId })
+    }
+  })
+)
+
+// Query for all descendant containers/items beneath an equipment (flat)
+export const equipmentDescendantsQuery = defineQueryOptions(
+  (equipmentDocId: string) => ({
+    key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentDescendants(equipmentDocId),
+    query: () => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.locations.getEquipmentDescendants.query({ equipmentId: equipmentDocId })
     }
   })
 )

@@ -3,7 +3,8 @@ import { useQuery as useQueryColada } from '@pinia/colada'
 import type { Container } from '~~/types/inventory'
 import {
   containerBySlugQuery,
-  containerContentsQuery
+  containerContentsQuery,
+  containerDescendantsQuery
 } from '~/utils/queries/inventory/containers'
 import { CONTAINER_CLASSIFICATION_LABELS, CONTAINER_TYPE_LABELS } from '~/utils/inventory/containers'
 
@@ -49,6 +50,15 @@ const childContainers = computed(() =>
 
 const childItems = computed(() =>
   contentsState.value.status === 'success' ? contentsState.value.data.items : []
+)
+
+const { state: descendantsState } = useQueryColada(() => ({
+  ...containerDescendantsQuery(currentContainerDocId.value),
+  enabled: currentContainerDocId.value.length > 0
+}))
+
+const descendants = computed(() =>
+  descendantsState.value.status === 'success' ? descendantsState.value.data : []
 )
 
 const { user } = useUserSession()
@@ -208,8 +218,11 @@ const infoFields = computed(() => {
         description="Items stored in this container."
         card="outline-gray"
       >
+        <div class="flex justify-end mb-4">
+          <DialogInventoryItemAdd :parent-id="container._id" />
+        </div>
         <div v-if="childItems.length === 0" class="text-sm text-muted">
-          No items. <NLink href="#" class="text-primary-400 dark:text-primary-600">Add an item</NLink>.
+          No items yet. Use “Add item” to create one.
         </div>
         <div
           v-else
@@ -252,6 +265,18 @@ const infoFields = computed(() => {
             </tbody>
           </table>
         </div>
+      </NCard>
+
+      <NCard
+        v-if="container"
+        title="All contents"
+        description="Every container and item nested anywhere beneath this container."
+        card="outline-gray"
+      >
+        <TableInventoryContents
+          :entries="descendants"
+          :root="{ id: container._id, name: container.name }"
+        />
       </NCard>
 
       <div class="flex justify-end">

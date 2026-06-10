@@ -8,6 +8,7 @@ import {
   ACCEPTED_ITEM_CATEGORY_OPTIONS,
   CONTAINER_CLASSIFICATION_LABELS,
   CONTAINER_CLASSIFICATION_OPTIONS,
+  CONTAINER_DIMENSION_FIELDS,
   CONTAINER_FORM_LABEL_STYLE,
   CONTAINER_TYPE_LABELS,
   CONTAINER_TYPE_OPTIONS,
@@ -86,6 +87,10 @@ const columnsInputValue = computed(() => columnsValue.value == null ? '' : Strin
 const levelsInputValue = computed(() => levelsValue.value == null ? '' : String(levelsValue.value))
 const capacityInputValue = computed(() => capacityValue.value == null ? '' : String(capacityValue.value))
 
+const dimensionFields = computed(() =>
+  CONTAINER_DIMENSION_FIELDS[containerTypeValue.value] ?? CONTAINER_DIMENSION_FIELDS.other
+)
+
 const selectedTypeLabel = computed(() =>
   containerTypeValue.value ? CONTAINER_TYPE_LABELS[containerTypeValue.value] : '—'
 )
@@ -115,8 +120,24 @@ const acceptedContainersLabel = computed(() => {
 
 function onContainerTypeUpdate(value: unknown) {
   const resolved = resolveContainerTypeFromSelect(value)
-  if (resolved) {
-    setContainerTypeValue(resolved)
+  if (!resolved) {
+    return
+  }
+  setContainerTypeValue(resolved)
+
+  // Clear values for fields the new type doesn't expose. Load-bearing because
+  // the form keeps values on unmount, so hidden fields would otherwise submit
+  // stale dimensions.
+  const fields = CONTAINER_DIMENSION_FIELDS[resolved]
+  if (!fields.grid) {
+    setRowsValue(undefined)
+    setColumnsValue(undefined)
+  }
+  if (!fields.levels) {
+    setLevelsValue(undefined)
+  }
+  if (!fields.capacity) {
+    setCapacityValue(undefined)
   }
 }
 
@@ -339,8 +360,12 @@ async function onValidatingSubmit() {
             card="outline-gray"
             :una="{ cardContent: 'space-y-4', cardDescription: 'text-muted' }"
           >
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+              v-if="dimensionFields.grid || dimensionFields.levels"
+              class="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
               <NFormField
+                v-if="dimensionFields.grid"
                 name="rows"
                 label="Rows"
                 :una="{ formLabel: CONTAINER_FORM_LABEL_STYLE }"
@@ -356,6 +381,7 @@ async function onValidatingSubmit() {
               </NFormField>
 
               <NFormField
+                v-if="dimensionFields.grid"
                 name="columns"
                 label="Columns"
                 :una="{ formLabel: CONTAINER_FORM_LABEL_STYLE }"
@@ -371,6 +397,7 @@ async function onValidatingSubmit() {
               </NFormField>
 
               <NFormField
+                v-if="dimensionFields.levels"
                 name="levels"
                 label="Levels"
                 :una="{ formLabel: CONTAINER_FORM_LABEL_STYLE }"
@@ -386,13 +413,17 @@ async function onValidatingSubmit() {
               </NFormField>
             </div>
 
-            <div class="text-xs text-muted">
+            <div
+              v-if="dimensionFields.grid"
+              class="text-xs text-muted"
+            >
               Grid: {{ gridLabel }}
             </div>
 
-            <NSeparator />
+            <NSeparator v-if="dimensionFields.capacity && (dimensionFields.grid || dimensionFields.levels)" />
 
             <NFormField
+              v-if="dimensionFields.capacity"
               name="capacity"
               label="Capacity (max direct children)"
               :una="{ formLabel: CONTAINER_FORM_LABEL_STYLE }"

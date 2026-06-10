@@ -13,8 +13,6 @@ export const CONTAINER_TYPE_OPTIONS: Array<{
   { label: 'Box', value: 'box' },
   { label: 'Rack', value: 'rack' },
   { label: 'Bag', value: 'bag' },
-  { label: 'Bottle', value: 'bottle' },
-  { label: 'Jar', value: 'jar' },
   { label: 'Plate', value: 'plate' },
   { label: 'Other', value: 'other' }
 ]
@@ -23,8 +21,6 @@ export const CONTAINER_TYPE_LABELS: Record<Container['containerType'], string> =
   box: 'Box',
   rack: 'Rack',
   bag: 'Bag',
-  bottle: 'Bottle',
-  jar: 'Jar',
   plate: 'Plate',
   other: 'Other'
 }
@@ -59,14 +55,15 @@ export interface AcceptanceCategoryOption {
  * These match the `category` values on InventoryItem.
  */
 export const ACCEPTED_ITEM_CATEGORY_OPTIONS: AcceptanceCategoryOption[] = [
-  { label: 'Eppendorf', value: 'eppendorf', icon: 'i-lucide-test-tubes' },
+  { label: 'Eppendorf', value: 'eppendorf', icon: 'i-lucide-test-tube-diagonal' },
   { label: 'Falcon', value: 'falcon', icon: 'i-lucide-flask-conical' },
   { label: 'Cryovial', value: 'cryovial', icon: 'i-lucide-snowflake' },
   { label: 'Vial', value: 'vial', icon: 'i-lucide-test-tube' },
   { label: 'Bottle', value: 'bottle', icon: 'i-lucide-flask-round' },
-  { label: 'Plate 96', value: 'plate96', icon: 'i-lucide-grid-3x3' },
-  { label: 'Plate 384', value: 'plate384', icon: 'i-lucide-grid-2x2' },
-  { label: 'Slide', value: 'microscopySlide', icon: 'i-lucide-scan-line' },
+  { label: 'Jar', value: 'jar', icon: 'i-lucide-cylinder' },
+  { label: 'Plate 96', value: 'plate96', icon: 'i-lucide-grid-2x2' },
+  { label: 'Plate 384', value: 'plate384', icon: 'i-lucide-grid-3x3' },
+  { label: 'Slide', value: 'microscopySlide', icon: 'i-lucide-mirror-rectangular' },
   { label: 'Other', value: 'other', icon: 'i-lucide-help-circle' }
 ]
 
@@ -78,11 +75,28 @@ export const ACCEPTED_CONTAINER_CATEGORY_OPTIONS: AcceptanceCategoryOption[] = [
   { label: 'Box', value: 'box', icon: 'i-lucide-box' },
   { label: 'Rack', value: 'rack', icon: 'i-lucide-columns-3' },
   { label: 'Bag', value: 'bag', icon: 'i-lucide-shopping-bag' },
-  { label: 'Bottle', value: 'bottle', icon: 'i-lucide-flask-round' },
-  { label: 'Jar', value: 'jar', icon: 'i-lucide-cylinder' },
   { label: 'Plate', value: 'plate', icon: 'i-lucide-grid-3x3' },
   { label: 'Other', value: 'other', icon: 'i-lucide-help-circle' }
 ]
+
+export interface ContainerDimensionFields {
+  grid: boolean // rows + columns
+  levels: boolean // 3rd dimension
+  capacity: boolean // standalone "max direct children"
+}
+
+/*
+ * Which storage-layout fields make sense per container type.
+ * Grid types (box/rack/plate) define slots via rows × columns, so their
+ * capacity is derivable and hidden. Non-grid types expose capacity instead.
+ */
+export const CONTAINER_DIMENSION_FIELDS: Record<Container['containerType'], ContainerDimensionFields> = {
+  box: { grid: true, levels: true, capacity: false },
+  rack: { grid: true, levels: true, capacity: false },
+  plate: { grid: true, levels: false, capacity: false },
+  bag: { grid: false, levels: false, capacity: true },
+  other: { grid: true, levels: true, capacity: true }
+}
 
 export type ContainerFormInitialValues = {
   containerType: CreateContainerSchemaInput['containerType']

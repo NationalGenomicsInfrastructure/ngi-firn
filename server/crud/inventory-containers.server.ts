@@ -42,6 +42,7 @@ import {
   buildLocationPath,
   cascadeLocationPathUpdate,
   ensureInventoryViews,
+  getDescendantsByAncestor,
   generateCouchDocId,
   toParentRef,
   validateCapacity,
@@ -434,33 +435,7 @@ export const ContainerService = {
 
   /* Return all descendant containers/items using the ancestry view. */
   async getDescendants(containerId: string): Promise<Array<Container | InventoryItem>> {
-    await ensureViewsReady()
-
-    const result = await couchDB.queryView<['container', string], null, Descendant>(
-      'firn-inventory',
-      'by_ancestor',
-      {
-        key: ['container', containerId],
-        include_docs: true
-      }
-    )
-
-    const seen = new Set<string>()
-    const descendants: Array<Container | InventoryItem> = []
-
-    for (const row of result.rows) {
-      const doc = row.doc
-      if (!doc || seen.has(doc._id)) {
-        continue
-      }
-      if (!isContainer(doc) && !isInventoryItem(doc)) {
-        continue
-      }
-      seen.add(doc._id)
-      descendants.push(doc)
-    }
-
-    return descendants
+    return getDescendantsByAncestor('container', containerId)
   },
 
   /*

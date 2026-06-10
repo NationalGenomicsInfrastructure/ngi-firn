@@ -15,6 +15,7 @@ export const ITEM_CATEGORY_OPTIONS: Array<{
   { label: 'Cryovial', value: 'cryovial' },
   { label: 'Vial', value: 'vial' },
   { label: 'Bottle', value: 'bottle' },
+  { label: 'Jar', value: 'jar' },
   { label: 'Plate 96-well', value: 'plate96' },
   { label: 'Plate 384-well', value: 'plate384' },
   { label: 'Microscopy slide', value: 'microscopySlide' },
@@ -27,6 +28,7 @@ export const ITEM_CATEGORY_LABELS: Record<InventoryItem['category'], string> = {
   cryovial: 'Cryovial',
   vial: 'Vial',
   bottle: 'Bottle',
+  jar: 'Jar',
   plate96: 'Plate 96-well',
   plate384: 'Plate 384-well',
   microscopySlide: 'Microscopy slide',
@@ -206,6 +208,28 @@ function normalizeOptionalString(value: string | null | undefined): string | und
 function normalizeOptionalStringForUpdate(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed != null && trimmed.length > 0 ? trimmed : null
+}
+
+export function mapItemFormValuesToCreatePayload(
+  values: ItemFormSubmitValues,
+  parentId: string
+): CreateItemSchemaInput {
+  return {
+    category: values.category,
+    classification: values.classification,
+    name: values.name.trim(),
+    label: normalizeOptionalString(values.label),
+    parentId,
+    quantity: values.quantity ?? undefined,
+    unit: normalizeOptionalString(values.unit),
+    concentration: values.concentration ?? undefined,
+    concentrationUnit: normalizeOptionalString(values.concentrationUnit),
+    status: values.status,
+    expiryDate: normalizeOptionalString(values.expiryDate),
+    lotNumber: normalizeOptionalString(values.lotNumber),
+    barcode: normalizeOptionalString(values.barcode),
+    notes: normalizeOptionalString(values.notes)
+  }
 }
 
 export function mapItemFormValuesToUpdatePayload(

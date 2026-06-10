@@ -145,7 +145,7 @@ export interface Container extends BaseDocument {
   schema: 1
   /* Stable URL slug (e.g. "cnt-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
-  containerType: 'rack' | 'box' | 'bag' | 'bottle' | 'jar' | 'plate' | 'other'
+  containerType: 'rack' | 'box' | 'bag' | 'plate' | 'other'
   classification: 'sample' | 'reagent' | 'equipment' | 'consumable' | 'other'
   name: string
   label: string | null
@@ -182,7 +182,7 @@ export interface InventoryItem extends BaseDocument {
   /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   /* Physical form factor of the item (what it IS). */
-  category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle'
+  category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle' | 'jar'
     | 'plate96' | 'plate384' | 'microscopySlide' | 'other'
   /* Purpose/domain classification (what it's FOR). */
   classification: 'sample' | 'reagent' | 'library' | 'consumable' | 'equipment' | 'other'

@@ -55,8 +55,6 @@ export const containerTypeSchema = z.enum([
   'rack',
   'box',
   'bag',
-  'bottle',
-  'jar',
   'plate',
   'other'
 ])
@@ -77,6 +75,7 @@ export const inventoryItemCategorySchema = z.enum([
   'cryovial',
   'vial',
   'bottle',
+  'jar',
   'plate96',
   'plate384',
   'microscopySlide',

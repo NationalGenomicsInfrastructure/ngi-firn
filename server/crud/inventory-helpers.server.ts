@@ -266,7 +266,7 @@ export function validateContainerAcceptance(
 ): { valid: boolean, reason?: string } {
   if (childType === 'container') {
     if (parent.type === 'container') {
-      if (parent.containerType === 'bag' || parent.containerType === 'bottle' || parent.containerType === 'jar') {
+      if (parent.containerType === 'bag') {
         return {
           valid: false,
           reason: `Container type "${parent.containerType}" cannot contain other containers.`
@@ -384,6 +384,44 @@ export async function validateGridPosition(
   }
 
   return { valid: true }
+}
+
+/*
+ * Return all descendant containers/items beneath an ancestor (equipment or
+ * container) as a flat list, using the `by_ancestor` ancestry view. Each
+ * descendant document carries its own `locationPath` for path reconstruction.
+ */
+export async function getDescendantsByAncestor(
+  ancestorType: 'storageEquipment' | 'container',
+  ancestorId: string
+): Promise<Array<Container | InventoryItem>> {
+  await ensureInventoryViews()
+
+  const result = await couchDB.queryView<[string, string], null, Container | InventoryItem>(
+    'firn-inventory',
+    'by_ancestor',
+    {
+      key: [ancestorType, ancestorId],
+      include_docs: true
+    }
+  )
+
+  const seen = new Set<string>()
+  const descendants: Array<Container | InventoryItem> = []
+
+  for (const row of result.rows) {
+    const doc = row.doc
+    if (!doc || seen.has(doc._id)) {
+      continue
+    }
+    if (doc.type !== 'container' && doc.type !== 'inventoryItem') {
+      continue
+    }
+    seen.add(doc._id)
+    descendants.push(doc)
+  }
+
+  return descendants
 }
 
 /* Ensure both inventory design-doc view sets are available in CouchDB. */

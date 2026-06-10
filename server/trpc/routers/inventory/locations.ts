@@ -17,6 +17,7 @@
  * EQUIPMENT QUERIES (authedProcedure):
  * getEquipment - Fetch a single equipment document by ID
  * getEquipmentByRoom - List equipment in a room
+ * getEquipmentDescendants - Return all containers/items beneath an equipment (flat)
  *
  * EQUIPMENT MUTATIONS (authedProcedure):
  * createEquipment - Create storage equipment within a room
@@ -38,7 +39,7 @@ import {
   deleteEquipmentSchema,
   moveEquipmentSchema
 } from '~~/schemas/inventory-locations'
-import type { Room, StorageEquipment } from '~~/types/inventory'
+import type { Container, InventoryItem, Room, StorageEquipment } from '~~/types/inventory'
 
 export const locationsRouter = createTRPCRouter({
 
@@ -109,6 +110,13 @@ export const locationsRouter = createTRPCRouter({
     .query(async ({ input }): Promise<StorageEquipment[]> => {
       const { LocationService } = await import('../../../crud/inventory-locations.server')
       return LocationService.getEquipmentByRoom(input.roomDocumentId)
+    }),
+
+  getEquipmentDescendants: authedProcedure
+    .input(z.object({ equipmentId: z.string().min(1) }))
+    .query(async ({ input }): Promise<(Container | InventoryItem)[]> => {
+      const { LocationService } = await import('../../../crud/inventory-locations.server')
+      return LocationService.getEquipmentDescendants(input.equipmentId)
     }),
 
   // Equipment mutations

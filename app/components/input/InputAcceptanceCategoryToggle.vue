@@ -3,24 +3,33 @@ import type { AcceptanceCategoryOption } from '~/utils/inventory/containers'
 
 const modelValue = defineModel<string[]>({ default: () => [] })
 
-const props = defineProps<{
+defineProps<{
   options: AcceptanceCategoryOption[]
 }>()
 
-const toggleGroupItems = computed(() =>
-  props.options.map(o => ({
-    value: o.value,
-    label: o.label,
-    leading: o.icon
-  }))
-)
+function isSelected(value: string) {
+  return modelValue.value.includes(value)
+}
+
+function toggle(value: string) {
+  modelValue.value = isSelected(value)
+    ? modelValue.value.filter(v => v !== value)
+    : [...modelValue.value, value]
+}
 </script>
 
 <template>
-  <NToggleGroup
-    v-model="modelValue"
-    :items="toggleGroupItems"
-    type="multiple"
-    class="flex-wrap"
-  />
+  <div class="flex flex-wrap gap-2">
+    <NButton
+      v-for="option in options"
+      :key="option.value"
+      type="button"
+      size="sm"
+      :leading="option.icon"
+      :label="option.label"
+      :btn="isSelected(option.value) ? 'solid-primary' : 'soft-gray hover:soft-primary'"
+      :aria-pressed="isSelected(option.value)"
+      @click="toggle(option.value)"
+    />
+  </div>
 </template>

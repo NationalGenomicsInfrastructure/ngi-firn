@@ -31,11 +31,14 @@ import {
   buildLocationPath,
   cascadeLocationPathUpdate,
   generateCouchDocId,
+  getDescendantsByAncestor,
   toParentRef
 } from './inventory-helpers.server'
 import type {
+  Container,
   CreateRoomInput,
   CreateStorageEquipmentInput,
+  InventoryItem,
   Room,
   StorageEquipment,
   UpdateRoomInput,
@@ -283,6 +286,11 @@ export const LocationService = {
       'parent.type': 'room'
     })
     return equipment.sort((a, b) => a.name.localeCompare(b.name))
+  },
+
+  /* Return all descendant containers/items beneath one equipment, flat. */
+  async getEquipmentDescendants(equipmentDocumentId: string): Promise<Array<Container | InventoryItem>> {
+    return getDescendantsByAncestor('storageEquipment', equipmentDocumentId)
   },
 
   /* Update equipment attributes and cascade path changes to all descendants. */

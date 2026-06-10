@@ -7,6 +7,7 @@ import {
   ACCEPTED_CONTAINER_CATEGORY_OPTIONS,
   ACCEPTED_ITEM_CATEGORY_OPTIONS,
   CONTAINER_CLASSIFICATION_OPTIONS,
+  CONTAINER_DIMENSION_FIELDS,
   CONTAINER_FORM_LABEL_STYLE,
   CONTAINER_TYPE_OPTIONS,
   createContainerFormValuesFromContainer,
@@ -51,6 +52,10 @@ const columnsInputValue = computed(() => columnsValue.value == null ? '' : Strin
 const levelsInputValue = computed(() => levelsValue.value == null ? '' : String(levelsValue.value))
 const capacityInputValue = computed(() => capacityValue.value == null ? '' : String(capacityValue.value))
 
+const dimensionFields = computed(() =>
+  CONTAINER_DIMENSION_FIELDS[containerTypeValue.value] ?? CONTAINER_DIMENSION_FIELDS.other
+)
+
 const gridLabel = computed(() => {
   if (!rowsValue.value || !columnsValue.value) {
     return '—'
@@ -60,8 +65,22 @@ const gridLabel = computed(() => {
 
 function onContainerTypeUpdate(value: unknown) {
   const resolved = resolveContainerTypeFromSelect(value)
-  if (resolved) {
-    setContainerTypeValue(resolved)
+  if (!resolved) {
+    return
+  }
+  setContainerTypeValue(resolved)
+
+  // Clear dimensions the new type doesn't expose so hidden fields aren't saved.
+  const fields = CONTAINER_DIMENSION_FIELDS[resolved]
+  if (!fields.grid) {
+    setRowsValue(undefined)
+    setColumnsValue(undefined)
+  }
+  if (!fields.levels) {
+    setLevelsValue(undefined)
+  }
+  if (!fields.capacity) {
+    setCapacityValue(undefined)
   }
 }
 
@@ -180,8 +199,12 @@ async function onValidating() {
         Storage layout (optional)
       </h3>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div
+        v-if="dimensionFields.grid || dimensionFields.levels"
+        class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
+      >
         <NFormField
+          v-if="dimensionFields.grid"
           name="rows"
           label="Rows"
           :una="{ formLabel: CONTAINER_FORM_LABEL_STYLE }"
@@ -197,6 +220,7 @@ async function onValidating() {
         </NFormField>
 
         <NFormField
+          v-if="dimensionFields.grid"
           name="columns"
           label="Columns"
           :una="{ formLabel: CONTAINER_FORM_LABEL_STYLE }"
@@ -212,6 +236,7 @@ async function onValidating() {
         </NFormField>
 
         <NFormField
+          v-if="dimensionFields.levels"
           name="levels"
           label="Levels"
           description="Optional depth/height dimension"
@@ -233,6 +258,7 @@ async function onValidating() {
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <NFormField
+          v-if="dimensionFields.capacity"
           name="capacity"
           label="Total capacity"
           description="Max number of items/containers"
@@ -264,7 +290,10 @@ async function onValidating() {
         </NFormField>
       </div>
 
-      <div class="text-xs text-muted mt-2">
+      <div
+        v-if="dimensionFields.grid"
+        class="text-xs text-muted mt-2"
+      >
         Current grid: {{ gridLabel }}
       </div>
     </div>
