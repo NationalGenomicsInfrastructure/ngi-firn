@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import type { Container } from '~~/types/inventory'
-import type { UpdateContainerSchemaInput } from '~~/schemas/inventory-containers'
 import { updateContainerSchema } from '~~/schemas/inventory-containers'
 import { updateContainer } from '~/utils/mutations/inventory/containers'
 import {
@@ -33,7 +32,7 @@ const formSchema = toTypedSchema(
   updateContainerSchema.omit({ id: true, rev: true })
 )
 
-const { handleSubmit, validate, errors, resetForm, setFieldValue } = useForm({
+const { handleSubmit, validate } = useForm({
   validationSchema: formSchema,
   initialValues: createContainerFormValuesFromContainer(props.container)
 })
@@ -44,8 +43,8 @@ const { value: rowsValue, setValue: setRowsValue } = useField<number | undefined
 const { value: columnsValue, setValue: setColumnsValue } = useField<number | undefined>('columns')
 const { value: levelsValue, setValue: setLevelsValue } = useField<number | undefined>('levels')
 const { value: capacityValue, setValue: setCapacityValue } = useField<number | undefined>('capacity')
-const { value: acceptedItemCategoriesValue, setValue: setAcceptedItemCategories } = useField<string[]>('acceptedItemCategories')
-const { value: acceptedContainerCategoriesValue, setValue: setAcceptedContainerCategories } = useField<string[]>('acceptedContainerCategories')
+const { value: acceptedItemCategoriesValue } = useField<string[]>('acceptedItemCategories')
+const { value: acceptedContainerCategoriesValue } = useField<string[]>('acceptedContainerCategories')
 
 const rowsInputValue = computed(() => rowsValue.value == null ? '' : String(rowsValue.value))
 const columnsInputValue = computed(() => columnsValue.value == null ? '' : String(columnsValue.value))
@@ -87,26 +86,6 @@ function onLevelsUpdate(value: unknown) {
 
 function onCapacityUpdate(value: unknown) {
   setCapacityValue(resolveNullableNumberFromInput(value))
-}
-
-function toggleAcceptedItemCategory(category: string) {
-  const current = acceptedItemCategoriesValue.value ?? []
-  if (current.includes(category)) {
-    setAcceptedItemCategories(current.filter(c => c !== category))
-  }
-  else {
-    setAcceptedItemCategories([...current, category])
-  }
-}
-
-function toggleAcceptedContainerCategory(category: string) {
-  const current = acceptedContainerCategoriesValue.value ?? []
-  if (current.includes(category)) {
-    setAcceptedContainerCategories(current.filter(c => c !== category))
-  }
-  else {
-    setAcceptedContainerCategories([...current, category])
-  }
 }
 
 const onSubmit = handleSubmit(async (values) => {
@@ -303,34 +282,20 @@ async function onValidating() {
           <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-2">
             Accepted item categories
           </p>
-          <div class="flex flex-wrap gap-2">
-            <NButton
-              v-for="option in ACCEPTED_ITEM_CATEGORY_OPTIONS"
-              :key="option.value"
-              size="xs"
-              :btn="(acceptedItemCategoriesValue ?? []).includes(option.value) ? 'solid-primary' : 'outline-gray'"
-              :label="option.label"
-              type="button"
-              @click="toggleAcceptedItemCategory(option.value)"
-            />
-          </div>
+          <InputAcceptanceCategoryToggle
+            v-model="acceptedItemCategoriesValue"
+            :options="ACCEPTED_ITEM_CATEGORY_OPTIONS"
+          />
         </div>
 
         <div>
           <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-2">
             Accepted container types
           </p>
-          <div class="flex flex-wrap gap-2">
-            <NButton
-              v-for="option in ACCEPTED_CONTAINER_CATEGORY_OPTIONS"
-              :key="option.value"
-              size="xs"
-              :btn="(acceptedContainerCategoriesValue ?? []).includes(option.value) ? 'solid-primary' : 'outline-gray'"
-              :label="option.label"
-              type="button"
-              @click="toggleAcceptedContainerCategory(option.value)"
-            />
-          </div>
+          <InputAcceptanceCategoryToggle
+            v-model="acceptedContainerCategoriesValue"
+            :options="ACCEPTED_CONTAINER_CATEGORY_OPTIONS"
+          />
         </div>
       </div>
     </div>

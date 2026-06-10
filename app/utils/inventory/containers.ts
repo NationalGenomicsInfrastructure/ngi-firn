@@ -48,34 +48,40 @@ export const CONTAINER_CLASSIFICATION_LABELS: Record<Container['classification']
   other: 'Other'
 }
 
+export interface AcceptanceCategoryOption {
+  label: string
+  value: string
+  icon: string
+}
+
 /*
  * Options for the acceptedItemCategories multi-select.
  * These match the `category` values on InventoryItem.
  */
-export const ACCEPTED_ITEM_CATEGORY_OPTIONS: Array<{ label: string, value: string }> = [
-  { label: 'Eppendorf', value: 'eppendorf' },
-  { label: 'Falcon', value: 'falcon' },
-  { label: 'Cryovial', value: 'cryovial' },
-  { label: 'Vial', value: 'vial' },
-  { label: 'Bottle', value: 'bottle' },
-  { label: 'Plate 96-well', value: 'plate96' },
-  { label: 'Plate 384-well', value: 'plate384' },
-  { label: 'Microscopy slide', value: 'microscopySlide' },
-  { label: 'Other', value: 'other' }
+export const ACCEPTED_ITEM_CATEGORY_OPTIONS: AcceptanceCategoryOption[] = [
+  { label: 'Eppendorf', value: 'eppendorf', icon: 'i-lucide-test-tubes' },
+  { label: 'Falcon', value: 'falcon', icon: 'i-lucide-flask-conical' },
+  { label: 'Cryovial', value: 'cryovial', icon: 'i-lucide-snowflake' },
+  { label: 'Vial', value: 'vial', icon: 'i-lucide-test-tube' },
+  { label: 'Bottle', value: 'bottle', icon: 'i-lucide-flask-round' },
+  { label: 'Plate 96', value: 'plate96', icon: 'i-lucide-grid-3x3' },
+  { label: 'Plate 384', value: 'plate384', icon: 'i-lucide-grid-2x2' },
+  { label: 'Slide', value: 'microscopySlide', icon: 'i-lucide-scan-line' },
+  { label: 'Other', value: 'other', icon: 'i-lucide-help-circle' }
 ]
 
 /*
  * Options for the acceptedContainerCategories multi-select.
  * These match the `containerType` values on Container.
  */
-export const ACCEPTED_CONTAINER_CATEGORY_OPTIONS: Array<{ label: string, value: string }> = [
-  { label: 'Box', value: 'box' },
-  { label: 'Rack', value: 'rack' },
-  { label: 'Bag', value: 'bag' },
-  { label: 'Bottle', value: 'bottle' },
-  { label: 'Jar', value: 'jar' },
-  { label: 'Plate', value: 'plate' },
-  { label: 'Other', value: 'other' }
+export const ACCEPTED_CONTAINER_CATEGORY_OPTIONS: AcceptanceCategoryOption[] = [
+  { label: 'Box', value: 'box', icon: 'i-lucide-box' },
+  { label: 'Rack', value: 'rack', icon: 'i-lucide-columns-3' },
+  { label: 'Bag', value: 'bag', icon: 'i-lucide-shopping-bag' },
+  { label: 'Bottle', value: 'bottle', icon: 'i-lucide-flask-round' },
+  { label: 'Jar', value: 'jar', icon: 'i-lucide-cylinder' },
+  { label: 'Plate', value: 'plate', icon: 'i-lucide-grid-3x3' },
+  { label: 'Other', value: 'other', icon: 'i-lucide-help-circle' }
 ]
 
 export type ContainerFormInitialValues = {

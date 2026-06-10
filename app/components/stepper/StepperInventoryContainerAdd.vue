@@ -113,17 +113,6 @@ const acceptedContainersLabel = computed(() => {
   return cats.map(c => ACCEPTED_CONTAINER_CATEGORY_OPTIONS.find(o => o.value === c)?.label ?? c).join(', ')
 })
 
-// NToggleGroup items use `label` for the display text
-const acceptedItemToggleItems = ACCEPTED_ITEM_CATEGORY_OPTIONS.map(o => ({
-  value: o.value,
-  label: o.label
-}))
-
-const acceptedContainerToggleItems = ACCEPTED_CONTAINER_CATEGORY_OPTIONS.map(o => ({
-  value: o.value,
-  label: o.label
-}))
-
 function onContainerTypeUpdate(value: unknown) {
   const resolved = resolveContainerTypeFromSelect(value)
   if (resolved) {
@@ -465,11 +454,9 @@ async function onValidatingSubmit() {
               <p class="text-xs text-muted mb-3">
                 Select which item types this container can hold. None selected means any item is accepted.
               </p>
-              <NToggleGroup
+              <InputAcceptanceCategoryToggle
                 v-model="acceptedItemCategoriesValue"
-                :items="acceptedItemToggleItems"
-                type="multiple"
-                class="flex-wrap"
+                :options="ACCEPTED_ITEM_CATEGORY_OPTIONS"
               />
             </div>
 
@@ -482,11 +469,9 @@ async function onValidatingSubmit() {
               <p class="text-xs text-muted mb-3">
                 Select which nested container types this container can hold. None selected means any container is accepted.
               </p>
-              <NToggleGroup
+              <InputAcceptanceCategoryToggle
                 v-model="acceptedContainerCategoriesValue"
-                :items="acceptedContainerToggleItems"
-                type="multiple"
-                class="flex-wrap"
+                :options="ACCEPTED_CONTAINER_CATEGORY_OPTIONS"
               />
             </div>
           </NCard>
