@@ -101,7 +101,7 @@ async function handleMove() {
   >
     <template #trigger>
       <NButton
-        label="Move to another room"
+        label="Move"
         size="sm"
         btn="soft-primary hover:outline-primary"
         leading="i-lucide-combine"
@@ -150,7 +150,7 @@ async function handleMove() {
           />
         </NDialogClose>
         <NButton
-          label="Move equipment"
+          label="Move to room"
           btn="soft-success hover:outline-success"
           trailing="i-lucide-combine"
           :disabled="isMoveDisabled"
