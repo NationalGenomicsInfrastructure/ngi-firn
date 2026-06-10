@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { createEquipmentSchema } from '~~/schemas/inventory-locations'
+import { updateEquipmentSchema } from '~~/schemas/inventory-locations'
 import type { StorageEquipment } from '~~/types/inventory'
 import { updateEquipment } from '~/utils/mutations/inventory/rooms'
 import {
@@ -9,7 +9,8 @@ import {
   EQUIPMENT_TYPE_OPTIONS,
   mapEquipmentFormValuesToUpdatePayload,
   resolveEquipmentTypeFromSelect,
-  resolveNullableNumberFromInput
+  resolveNullableNumberFromInput,
+  type EquipmentFormSubmitValues
 } from '~/utils/inventory/equipment'
 import { focusFirstFormFieldError } from '~/utils/inventory/rooms'
 
@@ -29,8 +30,9 @@ const formElementId = computed(() => props.formId ?? `inventory-equipment-edit-$
 const { showError } = useFirnToast()
 
 const equipmentFormSchema = toTypedSchema(
-  createEquipmentSchema.omit({
-    parentId: true
+  updateEquipmentSchema.omit({
+    id: true,
+    rev: true
   })
 )
 
@@ -80,7 +82,7 @@ function onCapacityUpdate(value: unknown) {
 }
 
 const onSubmit = handleSubmit(async (values) => {
-  const payload = mapEquipmentFormValuesToUpdatePayload(props.equipment, values)
+  const payload = mapEquipmentFormValuesToUpdatePayload(props.equipment, values as EquipmentFormSubmitValues)
 
   try {
     const { mutateAsync } = updateEquipment()
