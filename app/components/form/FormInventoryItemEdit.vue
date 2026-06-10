@@ -30,7 +30,9 @@ const emit = defineEmits<{
 
 const { showError } = useFirnToast()
 
-const formSchema = toTypedSchema(updateItemSchema)
+const formSchema = toTypedSchema(
+  updateItemSchema.omit({ id: true, rev: true })
+)
 
 const { handleSubmit, validate, errors } = useForm({
   validationSchema: formSchema,

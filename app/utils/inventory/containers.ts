@@ -48,6 +48,36 @@ export const CONTAINER_CLASSIFICATION_LABELS: Record<Container['classification']
   other: 'Other'
 }
 
+/*
+ * Options for the acceptedItemCategories multi-select.
+ * These match the `category` values on InventoryItem.
+ */
+export const ACCEPTED_ITEM_CATEGORY_OPTIONS: Array<{ label: string, value: string }> = [
+  { label: 'Eppendorf', value: 'eppendorf' },
+  { label: 'Falcon', value: 'falcon' },
+  { label: 'Cryovial', value: 'cryovial' },
+  { label: 'Vial', value: 'vial' },
+  { label: 'Bottle', value: 'bottle' },
+  { label: 'Plate 96-well', value: 'plate96' },
+  { label: 'Plate 384-well', value: 'plate384' },
+  { label: 'Microscopy slide', value: 'microscopySlide' },
+  { label: 'Other', value: 'other' }
+]
+
+/*
+ * Options for the acceptedContainerCategories multi-select.
+ * These match the `containerType` values on Container.
+ */
+export const ACCEPTED_CONTAINER_CATEGORY_OPTIONS: Array<{ label: string, value: string }> = [
+  { label: 'Box', value: 'box' },
+  { label: 'Rack', value: 'rack' },
+  { label: 'Bag', value: 'bag' },
+  { label: 'Bottle', value: 'bottle' },
+  { label: 'Jar', value: 'jar' },
+  { label: 'Plate', value: 'plate' },
+  { label: 'Other', value: 'other' }
+]
+
 export type ContainerFormInitialValues = {
   containerType: CreateContainerSchemaInput['containerType']
   classification: CreateContainerSchemaInput['classification']
@@ -58,6 +88,8 @@ export type ContainerFormInitialValues = {
   columns: number | undefined
   levels: number | undefined
   capacity: number | undefined
+  acceptedItemCategories: string[]
+  acceptedContainerCategories: string[]
   color: string
   isActive: boolean
 }
@@ -72,6 +104,8 @@ export type ContainerFormSubmitValues = {
   columns?: number | null
   levels?: number | null
   capacity?: number | null
+  acceptedItemCategories?: string[] | null
+  acceptedContainerCategories?: string[] | null
   color?: string | null
   isActive?: boolean
 }
@@ -87,6 +121,8 @@ export function createEmptyContainerFormValues(): ContainerFormInitialValues {
     columns: undefined,
     levels: undefined,
     capacity: undefined,
+    acceptedItemCategories: [],
+    acceptedContainerCategories: [],
     color: '',
     isActive: true
   }
@@ -103,6 +139,8 @@ export function createContainerFormValuesFromContainer(container: Container): Co
     columns: container.columns ?? undefined,
     levels: container.levels ?? undefined,
     capacity: container.capacity ?? undefined,
+    acceptedItemCategories: container.acceptedItemCategories ?? [],
+    acceptedContainerCategories: container.acceptedContainerCategories ?? [],
     color: container.color ?? '',
     isActive: container.isActive
   }
@@ -162,6 +200,20 @@ function normalizeOptionalStringForUpdate(value: string | null | undefined): str
   return trimmed != null && trimmed.length > 0 ? trimmed : null
 }
 
+function normalizeOptionalStringArray(value: string[] | null | undefined): string[] | undefined {
+  if (!value || value.length === 0) {
+    return undefined
+  }
+  return value
+}
+
+function normalizeOptionalStringArrayForUpdate(value: string[] | null | undefined): string[] | null {
+  if (!value || value.length === 0) {
+    return null
+  }
+  return value
+}
+
 export function mapContainerFormValuesToCreatePayload(
   values: ContainerFormSubmitValues,
   parentId: string
@@ -177,6 +229,8 @@ export function mapContainerFormValuesToCreatePayload(
     columns: values.columns ?? undefined,
     levels: values.levels ?? undefined,
     capacity: values.capacity ?? undefined,
+    acceptedItemCategories: normalizeOptionalStringArray(values.acceptedItemCategories),
+    acceptedContainerCategories: normalizeOptionalStringArray(values.acceptedContainerCategories),
     color: normalizeOptionalString(values.color),
     isActive: values.isActive
   }
@@ -198,6 +252,8 @@ export function mapContainerFormValuesToUpdatePayload(
     columns: values.columns !== undefined ? values.columns : null,
     levels: values.levels !== undefined ? values.levels : null,
     capacity: values.capacity !== undefined ? values.capacity : null,
+    acceptedItemCategories: normalizeOptionalStringArrayForUpdate(values.acceptedItemCategories),
+    acceptedContainerCategories: normalizeOptionalStringArrayForUpdate(values.acceptedContainerCategories),
     color: normalizeOptionalStringForUpdate(values.color),
     isActive: values.isActive
   }

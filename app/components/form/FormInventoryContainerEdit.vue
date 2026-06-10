@@ -5,6 +5,8 @@ import type { UpdateContainerSchemaInput } from '~~/schemas/inventory-containers
 import { updateContainerSchema } from '~~/schemas/inventory-containers'
 import { updateContainer } from '~/utils/mutations/inventory/containers'
 import {
+  ACCEPTED_CONTAINER_CATEGORY_OPTIONS,
+  ACCEPTED_ITEM_CATEGORY_OPTIONS,
   CONTAINER_CLASSIFICATION_OPTIONS,
   CONTAINER_FORM_LABEL_STYLE,
   CONTAINER_TYPE_OPTIONS,
@@ -27,7 +29,9 @@ const emit = defineEmits<{
 
 const { showError } = useFirnToast()
 
-const formSchema = toTypedSchema(updateContainerSchema)
+const formSchema = toTypedSchema(
+  updateContainerSchema.omit({ id: true, rev: true })
+)
 
 const { handleSubmit, validate, errors, resetForm, setFieldValue } = useForm({
   validationSchema: formSchema,
@@ -40,6 +44,8 @@ const { value: rowsValue, setValue: setRowsValue } = useField<number | undefined
 const { value: columnsValue, setValue: setColumnsValue } = useField<number | undefined>('columns')
 const { value: levelsValue, setValue: setLevelsValue } = useField<number | undefined>('levels')
 const { value: capacityValue, setValue: setCapacityValue } = useField<number | undefined>('capacity')
+const { value: acceptedItemCategoriesValue, setValue: setAcceptedItemCategories } = useField<string[]>('acceptedItemCategories')
+const { value: acceptedContainerCategoriesValue, setValue: setAcceptedContainerCategories } = useField<string[]>('acceptedContainerCategories')
 
 const rowsInputValue = computed(() => rowsValue.value == null ? '' : String(rowsValue.value))
 const columnsInputValue = computed(() => columnsValue.value == null ? '' : String(columnsValue.value))
@@ -81,6 +87,26 @@ function onLevelsUpdate(value: unknown) {
 
 function onCapacityUpdate(value: unknown) {
   setCapacityValue(resolveNullableNumberFromInput(value))
+}
+
+function toggleAcceptedItemCategory(category: string) {
+  const current = acceptedItemCategoriesValue.value ?? []
+  if (current.includes(category)) {
+    setAcceptedItemCategories(current.filter(c => c !== category))
+  }
+  else {
+    setAcceptedItemCategories([...current, category])
+  }
+}
+
+function toggleAcceptedContainerCategory(category: string) {
+  const current = acceptedContainerCategoriesValue.value ?? []
+  if (current.includes(category)) {
+    setAcceptedContainerCategories(current.filter(c => c !== category))
+  }
+  else {
+    setAcceptedContainerCategories([...current, category])
+  }
 }
 
 const onSubmit = handleSubmit(async (values) => {
@@ -261,6 +287,51 @@ async function onValidating() {
 
       <div class="text-xs text-muted mt-2">
         Current grid: {{ gridLabel }}
+      </div>
+    </div>
+
+    <div class="border-t pt-4">
+      <h3 class="text-sm font-semibold mb-2 text-primary-700 dark:text-primary-300">
+        Acceptance rules (optional)
+      </h3>
+      <p class="text-xs text-muted mb-4">
+        Restrict which item or container types can be placed inside. Leave empty to accept anything.
+      </p>
+
+      <div class="space-y-4">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-2">
+            Accepted item categories
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <NButton
+              v-for="option in ACCEPTED_ITEM_CATEGORY_OPTIONS"
+              :key="option.value"
+              size="xs"
+              :btn="(acceptedItemCategoriesValue ?? []).includes(option.value) ? 'solid-primary' : 'outline-gray'"
+              :label="option.label"
+              type="button"
+              @click="toggleAcceptedItemCategory(option.value)"
+            />
+          </div>
+        </div>
+
+        <div>
+          <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-2">
+            Accepted container types
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <NButton
+              v-for="option in ACCEPTED_CONTAINER_CATEGORY_OPTIONS"
+              :key="option.value"
+              size="xs"
+              :btn="(acceptedContainerCategoriesValue ?? []).includes(option.value) ? 'solid-primary' : 'outline-gray'"
+              :label="option.label"
+              type="button"
+              @click="toggleAcceptedContainerCategory(option.value)"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
