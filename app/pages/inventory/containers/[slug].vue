@@ -198,25 +198,10 @@ const infoFields = computed(() => {
         </div>
       </NCard>
 
-      <NCard
-        title="Child containers"
-        description="Nested containers within this container."
-        card="outline-gray"
-      >
-        <div v-if="childContainers.length === 0" class="text-sm text-muted">
-          No child containers. <NLink href="#" class="text-primary-400 dark:text-primary-600">Add a container</NLink>.
-        </div>
-        <div
-          v-else
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <CardContainer
-            v-for="childContainer in childContainers"
-            :key="childContainer._id"
-            :container="childContainer"
-          />
-        </div>
-      </NCard>
+      <InventoryContainerChildSection
+        :container="container"
+        :child-containers="childContainers"
+      />
 
       <NCard
         title="Inventory items"

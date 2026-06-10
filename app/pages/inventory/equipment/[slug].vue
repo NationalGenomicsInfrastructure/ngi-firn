@@ -4,7 +4,6 @@ import {
   equipmentBySlugQuery,
   roomQuery
 } from '~/utils/queries/inventory/rooms'
-import { containersByParentQuery } from '~/utils/queries/inventory/containers'
 import { itemsByParentQuery } from '~/utils/queries/inventory/items'
 import { EQUIPMENT_TYPE_LABELS } from '~/utils/inventory/equipment'
 
@@ -52,18 +51,10 @@ const parentRoomRoute = computed(() =>
 )
 
 const currentEquipmentDocId = computed(() => equipment.value?._id ?? '')
-const { state: childContainersState } = useQueryColada(() => ({
-  ...containersByParentQuery(currentEquipmentDocId.value),
-  enabled: currentEquipmentDocId.value.length > 0
-}))
 const { state: childItemsState } = useQueryColada(() => ({
   ...itemsByParentQuery(currentEquipmentDocId.value),
   enabled: currentEquipmentDocId.value.length > 0
 }))
-
-const childContainerCount = computed(() =>
-  childContainersState.value.status === 'success' ? childContainersState.value.data.length : 0
-)
 
 const childItemCount = computed(() =>
   childItemsState.value.status === 'success' ? childItemsState.value.data.length : 0
@@ -219,30 +210,7 @@ const infoFields = computed(() => {
         </div>
       </NCard>
 
-      <NCard
-        title="Child containers"
-        description="Containers directly placed in this equipment."
-        card="outline-gray"
-      >
-        <div v-if="childContainerCount === 0" class="text-sm text-muted">
-          No containers yet. <NButton
-            label="Add one"
-            btn="ghost-primary"
-            size="sm"
-            :to="`/inventory/containers/add?parent=${encodeURIComponent(equipment.slug)}`"
-          />.
-        </div>
-        <div
-          v-else
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <CardContainer
-            v-for="container in childContainersState.data"
-            :key="container._id"
-            :container="container"
-          />
-        </div>
-      </NCard>
+      <InventoryEquipmentContainerSection :equipment="equipment" />
 
       <NCard
         title="Child items"

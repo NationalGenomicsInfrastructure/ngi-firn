@@ -7,7 +7,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const router = useRouter()
 
 // Expect query param for parent ID, or fall back to rooms list
 const parentSlug = computed(() => {
@@ -81,53 +80,20 @@ const pageDescription = computed(() => {
       :description="pageDescription"
     />
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <NCard
-        title="Enter container details"
-        card="outline-gray"
-        class="lg:col-span-2"
-        :una="{
-          cardTitle: 'text-center scroll-m-20 font-semibold text-primary-700 dark:text-primary-400 text-lg lg:text-xl',
-          cardContent: 'space-y-4',
-          cardDescription: 'text-muted'
-        }"
-      >
-        <FormInventoryContainerAdd
-          v-if="effectiveParentId"
-          :parent-id="effectiveParentId"
-        />
-        <NAlert
-          v-else
-          alert="border-warning"
-          title="Parent container required"
-          description="Please specify a parent container or equipment."
-          icon="i-lucide-alert-circle"
-        />
-      </NCard>
-
-      <NCard class="lg:col-span-1">
-        <div class="space-y-3 text-sm">
-          <div class="flex items-center gap-1.5 mt-4 mb-0.5">
-            <NIcon
-              name="i-lucide-info"
-              class="text-primary-400 dark:text-primary-600 text-sm"
-            />
-            <span class="text-sm uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-              Before you add
-            </span>
-          </div>
-          <p class="text-muted">
-            Containers must have a parent (equipment or another container) and a unique name within that parent.
-          </p>
-          <p class="text-muted">
-            Define the storage layout (rows, columns, levels) if this container will hold multiple items or nested containers.
-          </p>
-          <p class="text-muted">
-            A color identifier helps distinguish containers visually in the lab.
-          </p>
-        </div>
-      </NCard>
+    <div
+      v-if="effectiveParentId"
+      class="mt-4"
+    >
+      <StepperInventoryContainerAdd :parent-id="effectiveParentId" />
     </div>
+    <NAlert
+      v-else
+      alert="border-warning"
+      title="Parent required"
+      description="Please specify a parent container or equipment via the URL query parameter."
+      icon="i-lucide-alert-circle"
+      class="mt-4"
+    />
 
     <div class="flex justify-end mt-4">
       <NButton
