@@ -115,7 +115,7 @@ const infoFields = computed(() => {
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
     <PageTitle
       :title="equipment ? equipment.name : 'Equipment details'"
-      :description="equipment ? equipment.slug : ''"
+      :description="equipmentTypeLabel"
     />
 
     <NAlert
@@ -200,7 +200,6 @@ const infoFields = computed(() => {
             :equipment="equipment"
             :room-document-id="equipment.parent.id"
           />
-          <DialogMoveEquipment :equipment="equipment" />
           <DialogDeleteEquipment
             v-if="isAdmin"
             :equipment="equipment"
@@ -210,16 +209,17 @@ const infoFields = computed(() => {
       </NCard>
 
       <NCard
-        title="Location"
-        description="Current parent room for this equipment."
-        card="outline-gray"
+      title="Equipment location"
+      description="Current parent room for this equipment."
+      card="outline-gray"
       >
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div class="text-sm">
-            <p class="text-muted">
-              {{ parentRoom ? `${parentRoom.name} (${parentRoom.slug})` : `Room document: ${equipment.parent.id}` }}
-            </p>
-          </div>
+      <IndicatorIconLarge
+        icon="i-lucide-building-2"
+        label="Assigned to room"
+        :value="parentRoom ? `${parentRoom.name} (${parentRoom.slug})` : `Room document: ${equipment.parent.id}`"
+      />
+        <div class="flex flex-wrap items-center justify-end gap-4">
+          <DialogMoveEquipment :equipment="equipment" />
           <NButton
             label="Open room"
             btn="soft-primary hover:outline-primary"
@@ -235,34 +235,16 @@ const infoFields = computed(() => {
         card="outline-gray"
       >
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="p-4 rounded-md bg-muted/30">
-            <div class="flex items-center gap-2 mb-2">
-              <NIcon
-                name="i-lucide-box"
-                class="text-muted"
-              />
-              <h4 class="text-sm font-semibold">
-                Containers
-              </h4>
-            </div>
-            <p class="text-2xl font-bold">
-              {{ childContainerCount }}
-            </p>
-          </div>
-          <div class="p-4 rounded-md bg-muted/30">
-            <div class="flex items-center gap-2 mb-2">
-              <NIcon
-                name="i-lucide-test-tubes"
-                class="text-muted"
-              />
-              <h4 class="text-sm font-semibold">
-                Items
-              </h4>
-            </div>
-            <p class="text-2xl font-bold">
-              {{ childItemCount }}
-            </p>
-          </div>
+          <IndicatorIconLarge
+            icon="i-lucide-box"
+            label="Containers"
+            :value="childContainerCount"
+          />
+          <IndicatorIconLarge
+            icon="i-lucide-test-tubes"
+            label="Items"
+            :value="childItemCount"
+          />
         </div>
         <NAlert
           class="mt-4"
