@@ -85,53 +85,35 @@ const greeting = computed(() => {
 
     <!-- Info fields -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
-      <!-- Firn ID -->
-      <div>
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            name="i-lucide-snowflake"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Firn ID</span>
-        </div>
-        <p class="font-medium pl-5 text-muted">
-          <template v-if="isLoading">
-            <span class="inline-block w-20 h-3.5 rounded bg-muted/40 animate-pulse" />
-          </template>
-          <span v-else>{{ user.firnId ?? '—' }}</span>
-        </p>
-      </div>
+      <IndicatorIconCard
+        icon="i-lucide-snowflake"
+        label="Firn ID"
+        value-class="text-muted"
+      >
+        <template v-if="isLoading">
+          <span class="inline-block w-20 h-3.5 rounded bg-muted/40 animate-pulse" />
+        </template>
+        <span v-else>{{ user.firnId ?? '—' }}</span>
+      </IndicatorIconCard>
 
-      <!-- Provider -->
-      <div>
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            name="i-lucide-log-in"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Signed in via</span>
-        </div>
-        <p class="font-medium pl-5 capitalize text-muted">
-          {{ sessionUser?.provider || '—' }}
-        </p>
-      </div>
+      <IndicatorIconCard
+        icon="i-lucide-log-in"
+        label="Signed in via"
+        :value="sessionUser?.provider || '—'"
+        value-class="capitalize text-muted"
+      />
 
-      <!-- Google email -->
-      <div class="sm:col-span-2">
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            name="i-simple-icons-google"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Google account</span>
-        </div>
-        <p class="font-medium pl-5 text-muted">
-          <template v-if="isLoading">
-            <span class="inline-block w-44 h-3.5 rounded bg-muted/40 animate-pulse" />
-          </template>
-          <span v-else>{{ user.googleEmail || '—' }}</span>
-        </p>
-      </div>
+      <IndicatorIconCard
+        icon="i-simple-icons-google"
+        label="Google account"
+        value-class="text-muted"
+        class="sm:col-span-2"
+      >
+        <template v-if="isLoading">
+          <span class="inline-block w-44 h-3.5 rounded bg-muted/40 animate-pulse" />
+        </template>
+        <span v-else>{{ user.googleEmail || '—' }}</span>
+      </IndicatorIconCard>
     </div>
   </NCard>
 </template>

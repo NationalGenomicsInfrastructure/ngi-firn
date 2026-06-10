@@ -174,23 +174,13 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-          <div
+          <IndicatorIconCard
             v-for="field in infoFields"
             :key="field.label"
-          >
-            <div class="flex items-center gap-1.5 mb-0.5">
-              <NIcon
-                :name="field.icon"
-                class="text-primary-400 dark:text-primary-600 text-xs"
-              />
-              <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-                {{ field.label }}
-              </span>
-            </div>
-            <p class="font-medium pl-5">
-              {{ field.value }}
-            </p>
-          </div>
+            :icon="field.icon"
+            :label="field.label"
+            :value="field.value"
+          />
         </div>
 
         <NSeparator />
@@ -209,15 +199,15 @@ const infoFields = computed(() => {
       </NCard>
 
       <NCard
-      title="Equipment location"
-      description="Current parent room for this equipment."
-      card="outline-gray"
+        title="Equipment location"
+        description="Current parent room for this equipment."
+        card="outline-gray"
       >
-      <IndicatorIconLarge
-        icon="i-lucide-building-2"
-        label="Assigned to room"
-        :value="parentRoom ? `${parentRoom.name} (${parentRoom.slug})` : `Room document: ${equipment.parent.id}`"
-      />
+        <IndicatorIconLarge
+          icon="i-lucide-building-2"
+          label="Assigned to room"
+          :value="parentRoom ? `${parentRoom.name} (${parentRoom.slug})` : `Room document: ${equipment.parent.id}`"
+        />
         <div class="flex flex-wrap items-center justify-end gap-4">
           <DialogMoveEquipment :equipment="equipment" />
           <NButton

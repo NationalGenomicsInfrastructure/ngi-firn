@@ -61,72 +61,37 @@ const orderFields = computed(() => {
         </h4>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-sm">
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-user"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Name</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ orderDetails.owner.name ?? '—' }}
-          </p>
-        </div>
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-mail"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Email</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ orderDetails.owner.email ?? '—' }}
-          </p>
-        </div>
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-building-2"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Affiliation</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ orderDetails.owner.affiliation ?? '—' }}
-          </p>
-        </div>
+        <IndicatorIconCard
+          icon="i-lucide-user"
+          label="Name"
+          :value="orderDetails.owner.name ?? '—'"
+        />
+        <IndicatorIconCard
+          icon="i-lucide-mail"
+          label="Email"
+          :value="orderDetails.owner.email ?? '—'"
+        />
+        <IndicatorIconCard
+          icon="i-lucide-building-2"
+          label="Affiliation"
+          :value="orderDetails.owner.affiliation ?? '—'"
+        />
       </div>
     </div>
 
     <NSeparator class="my-4" />
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm mb-4">
-      <div>
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            name="i-lucide-calendar-plus"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Created</span>
-        </div>
-        <p class="font-medium pl-5">
-          {{ formatDate(orderDetails.created) }}
-        </p>
-      </div>
-      <div>
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            name="i-lucide-calendar-check"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Modified</span>
-        </div>
-        <p class="font-medium pl-5">
-          {{ formatDate(orderDetails.modified) }}
-        </p>
-      </div>
+      <IndicatorIconCard
+        icon="i-lucide-calendar-plus"
+        label="Created"
+        :value="formatDate(orderDetails.created)"
+      />
+      <IndicatorIconCard
+        icon="i-lucide-calendar-check"
+        label="Modified"
+        :value="formatDate(orderDetails.modified)"
+      />
     </div>
 
     <template v-if="orderFields.length">

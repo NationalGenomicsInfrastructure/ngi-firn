@@ -71,23 +71,13 @@ const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
         <NSeparator class="shrink-0 my-4" />
 
         <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm content-start">
-          <div
+          <IndicatorIconCard
             v-for="field in infoFields"
             :key="field.label"
-          >
-            <div class="flex items-center gap-1.5 mb-0.5">
-              <NIcon
-                :name="field.icon"
-                class="text-primary-400 dark:text-primary-600 text-xs"
-              />
-              <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-                {{ field.label }}
-              </span>
-            </div>
-            <p class="font-medium pl-5">
-              {{ field.value }}
-            </p>
-          </div>
+            :icon="field.icon"
+            :label="field.label"
+            :value="field.value"
+          />
         </div>
       </component>
 
