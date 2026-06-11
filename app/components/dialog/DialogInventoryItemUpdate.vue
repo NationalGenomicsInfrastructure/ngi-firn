@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { InventoryItem } from '~~/types/inventory'
 
-const props = defineProps<{
+defineProps<{
   item: InventoryItem
 }>()
 

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
-import type { InventoryItem } from '~~/types/inventory'
 import { itemBySlugQuery } from '~/utils/queries/inventory/items'
 import {
   ITEM_CATEGORY_LABELS,

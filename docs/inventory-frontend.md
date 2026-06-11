@@ -115,6 +115,41 @@ The project already has `DialogZxingReader`. Hook it into item lookup — scan a
 
 The **move** action (relocating an item or container) deserves special mention: the drawer should contain a mini tree-picker showing the hierarchy so users can click on the destination. This is far better than typing an ID or selecting from a flat dropdown.
 
+### 3.12 Form Validation (VeeValidate)
+
+All create and edit forms use **VeeValidate** with **Zod** schemas for validation. The standard pattern is:
+
+1. Convert the Zod schema to a VeeValidate-compatible schema with `toTypedSchema()`.
+2. Destructure `handleSubmit`, `validate`, and `errors` from `useForm()`.
+3. Use `useField()` for fields that need programmatic access (selects, computed values).
+4. Define an `onValidating()` function that validates, focuses the first error, and then submits:
+
+```ts
+import { toTypedSchema } from '@vee-validate/zod'
+import { focusFirstFormFieldError } from '~/utils/inventory/rooms'
+
+const formSchema = toTypedSchema(myZodSchema.omit({ id: true, rev: true }))
+
+const { handleSubmit, validate, errors } = useForm({
+  validationSchema: formSchema,
+  initialValues: { /* ... */ }
+})
+
+const onSubmit = handleSubmit(async (values) => {
+  // call tRPC mutation
+})
+
+async function onValidating() {
+  await validate()
+  await focusFirstFormFieldError(errors.value)
+  onSubmit()
+}
+```
+
+5. Bind the form element: `<form @submit.prevent="onValidating()">`.
+
+> **Important**: `errors` from `useForm()` must always be destructured and passed to `focusFirstFormFieldError()` inside `onValidating()`. Without this, validation errors are enforced but the user gets no visual feedback about which field failed. The `focusFirstFormFieldError` helper lives in `app/utils/inventory/rooms.ts` and scrolls/focuses the first invalid field.
+
 ---
 
 ## 4. Summary Matrix

@@ -2,8 +2,6 @@
 definePageMeta({
   layout: 'private'
 })
-
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-700 dark:text-primary-300 font-medium'
 </script>
 
 <template>

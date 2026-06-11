@@ -362,6 +362,34 @@ When adding or renaming a custom color theme, update **all four** of these files
 
 File name suffix determines the HTTP method: `hello.get.ts`, `hello.post.ts`, etc. Validate request bodies with Zod via `readValidatedBody(event, schema.parse)`. Schemas live in `schemas/`.
 
+### Form Validation (VeeValidate)
+
+All create/edit forms use **VeeValidate** with **Zod** schemas. Every form must follow this pattern:
+
+```ts
+import { toTypedSchema } from '@vee-validate/zod'
+import { focusFirstFormFieldError } from '~/utils/inventory/rooms'
+
+const formSchema = toTypedSchema(myZodSchema.omit({ id: true, rev: true }))
+
+const { handleSubmit, validate, errors } = useForm({
+  validationSchema: formSchema,
+  initialValues: { /* ... */ }
+})
+
+const onSubmit = handleSubmit(async (values) => {
+  // call tRPC mutation
+})
+
+async function onValidating() {
+  await validate()
+  await focusFirstFormFieldError(errors.value)  // scroll to first invalid field
+  onSubmit()
+}
+```
+
+Bind with `<form @submit.prevent="onValidating()">`. The `errors` object from `useForm()` **must** be destructured and passed to `focusFirstFormFieldError()` — omitting it means validation still blocks submission but the user sees no indication of which field failed.
+
 ### ESLint Style
 
 Single quotes, no trailing commas (configured in `nuxt.config.ts` eslint stylistic settings).

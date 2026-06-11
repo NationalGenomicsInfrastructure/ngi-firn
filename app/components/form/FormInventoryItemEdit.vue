@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import type { InventoryItem } from '~~/types/inventory'
-import type { UpdateItemSchemaInput } from '~~/schemas/inventory-items'
 import { updateItemSchema } from '~~/schemas/inventory-items'
 import { updateItem } from '~/utils/mutations/inventory/items'
 import {
@@ -18,6 +17,7 @@ import {
   resolveNullableNumberFromInput,
   type ItemFormSubmitValues
 } from '~/utils/inventory/items'
+import { focusFirstFormFieldError } from '~/utils/inventory/rooms'
 
 const props = defineProps<{
   item: InventoryItem
@@ -100,6 +100,7 @@ const onSubmit = handleSubmit(async (values) => {
 
 async function onValidating() {
   await validate()
+  await focusFirstFormFieldError(errors.value)
   onSubmit()
 }
 </script>

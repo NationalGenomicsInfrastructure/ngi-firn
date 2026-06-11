@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
-import type { Container } from '~~/types/inventory'
 import {
   containerBySlugQuery,
   containerContentsQuery,
