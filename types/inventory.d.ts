@@ -145,7 +145,7 @@ export interface Container extends BaseDocument {
   schema: 1
   /* Stable URL slug (e.g. "cnt-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
-  containerType: 'rack' | 'box' | 'bag' | 'plate' | 'other'
+  containerType: 'rack' | 'box' | 'bag' | 'tray' | 'other'
   classification: 'sample' | 'reagent' | 'equipment' | 'consumable' | 'other'
   name: string
   label: string | null

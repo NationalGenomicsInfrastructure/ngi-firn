@@ -17,7 +17,7 @@ Finally, **templates** capture frequently used configurations (e.g., "cardboard 
 ```
 Room                          (top-level; hierarchy root)
   └── StorageEquipment        (freezer, fridge, shelf, nitrogen tank, …)
-        └── Container         (rack, box, bag, plate, …)
+        └── Container         (rack, box, bag, tray, …)
               ├── Container   (containers can nest arbitrarily)
               │     └── InventoryItem
               └── InventoryItem

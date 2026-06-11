@@ -166,7 +166,10 @@ const infoFields = computed(() => {
         description="History of actions on this item"
         card="outline-gray"
       >
-        <div v-if="item.actionLog && item.actionLog.length > 0" class="space-y-4">
+        <div
+          v-if="item.actionLog && item.actionLog.length > 0"
+          class="space-y-4"
+        >
           <div
             v-for="(entry, index) in item.actionLog"
             :key="index"
@@ -179,14 +182,31 @@ const infoFields = computed(() => {
               />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="font-medium">{{ entry.actionType }}</p>
-              <p class="text-sm text-muted">{{ entry.timestamp }}</p>
-              <p v-if="entry.userId" class="text-xs text-muted">By: {{ entry.userId }}</p>
-              <p v-if="entry.notes" class="text-sm mt-1">{{ entry.notes }}</p>
+              <p class="font-medium">
+                {{ entry.actionType }}
+              </p>
+              <p class="text-sm text-muted">
+                {{ entry.timestamp }}
+              </p>
+              <p
+                v-if="entry.userId"
+                class="text-xs text-muted"
+              >
+                By: {{ entry.userId }}
+              </p>
+              <p
+                v-if="entry.notes"
+                class="text-sm mt-1"
+              >
+                {{ entry.notes }}
+              </p>
             </div>
           </div>
         </div>
-        <div v-else class="text-sm text-muted">
+        <div
+          v-else
+          class="text-sm text-muted"
+        >
           No action history yet.
         </div>
       </NCard>

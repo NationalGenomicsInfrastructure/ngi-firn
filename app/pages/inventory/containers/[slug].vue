@@ -221,7 +221,10 @@ const infoFields = computed(() => {
         <div class="flex justify-end mb-4">
           <DialogInventoryItemAdd :parent-id="container._id" />
         </div>
-        <div v-if="childItems.length === 0" class="text-sm text-muted">
+        <div
+          v-if="childItems.length === 0"
+          class="text-sm text-muted"
+        >
           No items yet. Use “Add item” to create one.
         </div>
         <div
@@ -231,11 +234,21 @@ const infoFields = computed(() => {
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b">
-                <th class="text-left px-4 py-2">Name</th>
-                <th class="text-left px-4 py-2">Category</th>
-                <th class="text-left px-4 py-2">Status</th>
-                <th class="text-left px-4 py-2">Quantity</th>
-                <th class="text-left px-4 py-2">Expiry</th>
+                <th class="text-left px-4 py-2">
+                  Name
+                </th>
+                <th class="text-left px-4 py-2">
+                  Category
+                </th>
+                <th class="text-left px-4 py-2">
+                  Status
+                </th>
+                <th class="text-left px-4 py-2">
+                  Quantity
+                </th>
+                <th class="text-left px-4 py-2">
+                  Expiry
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -252,15 +265,21 @@ const infoFields = computed(() => {
                     {{ item.name }}
                   </NuxtLink>
                 </td>
-                <td class="px-4 py-2">{{ item.category }}</td>
+                <td class="px-4 py-2">
+                  {{ item.category }}
+                </td>
                 <td class="px-4 py-2">
                   <NBadge
                     :label="item.status"
                     :badge="item.status === 'available' ? 'solid-success' : 'solid-gray'"
                   />
                 </td>
-                <td class="px-4 py-2">{{ item.quantity ?? '—' }} {{ item.unit ?? '' }}</td>
-                <td class="px-4 py-2">{{ item.expiryDate ?? '—' }}</td>
+                <td class="px-4 py-2">
+                  {{ item.quantity ?? '—' }} {{ item.unit ?? '' }}
+                </td>
+                <td class="px-4 py-2">
+                  {{ item.expiryDate ?? '—' }}
+                </td>
               </tr>
             </tbody>
           </table>

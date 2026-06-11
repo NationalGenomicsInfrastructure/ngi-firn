@@ -13,7 +13,7 @@ export const CONTAINER_TYPE_OPTIONS: Array<{
   { label: 'Box', value: 'box' },
   { label: 'Rack', value: 'rack' },
   { label: 'Bag', value: 'bag' },
-  { label: 'Plate', value: 'plate' },
+  { label: 'Tray', value: 'tray' },
   { label: 'Other', value: 'other' }
 ]
 
@@ -21,7 +21,7 @@ export const CONTAINER_TYPE_LABELS: Record<Container['containerType'], string> =
   box: 'Box',
   rack: 'Rack',
   bag: 'Bag',
-  plate: 'Plate',
+  tray: 'Tray',
   other: 'Other'
 }
 
@@ -75,7 +75,7 @@ export const ACCEPTED_CONTAINER_CATEGORY_OPTIONS: AcceptanceCategoryOption[] = [
   { label: 'Box', value: 'box', icon: 'i-lucide-box' },
   { label: 'Rack', value: 'rack', icon: 'i-lucide-columns-3' },
   { label: 'Bag', value: 'bag', icon: 'i-lucide-shopping-bag' },
-  { label: 'Plate', value: 'plate', icon: 'i-lucide-grid-3x3' },
+  { label: 'Tray', value: 'tray', icon: 'i-lucide-grid-3x3' },
   { label: 'Other', value: 'other', icon: 'i-lucide-help-circle' }
 ]
 
@@ -87,13 +87,13 @@ export interface ContainerDimensionFields {
 
 /*
  * Which storage-layout fields make sense per container type.
- * Grid types (box/rack/plate) define slots via rows × columns, so their
+ * Grid types (box/rack/tray) define slots via rows × columns, so their
  * capacity is derivable and hidden. Non-grid types expose capacity instead.
  */
 export const CONTAINER_DIMENSION_FIELDS: Record<Container['containerType'], ContainerDimensionFields> = {
   box: { grid: true, levels: true, capacity: false },
   rack: { grid: true, levels: true, capacity: false },
-  plate: { grid: true, levels: false, capacity: false },
+  tray: { grid: true, levels: false, capacity: false },
   bag: { grid: false, levels: false, capacity: true },
   other: { grid: true, levels: true, capacity: true }
 }

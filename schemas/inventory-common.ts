@@ -55,7 +55,7 @@ export const containerTypeSchema = z.enum([
   'rack',
   'box',
   'bag',
-  'plate',
+  'tray',
   'other'
 ])
 
