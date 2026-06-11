@@ -1,4 +1,4 @@
-import type { Room } from '~~/types/inventory'
+import type { Room, StorageEquipment } from '~~/types/inventory'
 import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for inventory locations domain
@@ -10,7 +10,8 @@ export const INVENTORY_LOCATIONS_QUERY_KEYS = {
   equipment: (equipmentDocId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipment', equipmentDocId] as const,
   equipmentBySlug: (slug: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentBySlug', slug] as const,
   equipmentByRoom: (roomDocumentId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentByRoom', roomDocumentId] as const,
-  equipmentDescendants: (equipmentDocId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentDescendants', equipmentDocId] as const
+  equipmentDescendants: (equipmentDocId: string) => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'equipmentDescendants', equipmentDocId] as const,
+  allEquipment: () => [...INVENTORY_LOCATIONS_QUERY_KEYS.root, 'allEquipment'] as const
 } as const
 
 // Query for all rooms
@@ -87,3 +88,12 @@ export const equipmentDescendantsQuery = defineQueryOptions(
     }
   })
 )
+
+// Query for all storage equipment across all rooms
+export const allEquipmentQuery = defineQueryOptions<StorageEquipment[]>({
+  key: INVENTORY_LOCATIONS_QUERY_KEYS.allEquipment(),
+  query: () => {
+    const { $trpc } = useNuxtApp()
+    return $trpc.inventory.locations.getAllEquipment.query()
+  }
+})

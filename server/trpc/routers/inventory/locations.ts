@@ -15,6 +15,7 @@
  * deleteRoom - Delete an empty room (cascading risk)
  *
  * EQUIPMENT QUERIES (authedProcedure):
+ * getAllEquipment - List all storage equipment across all rooms
  * getEquipment - Fetch a single equipment document by ID
  * getEquipmentByRoom - List equipment in a room
  * getEquipmentDescendants - Return all containers/items beneath an equipment (flat)
@@ -90,6 +91,12 @@ export const locationsRouter = createTRPCRouter({
     }),
 
   // Equipment queries
+
+  getAllEquipment: authedProcedure
+    .query(async (): Promise<StorageEquipment[]> => {
+      const { LocationService } = await import('../../../crud/inventory-locations.server')
+      return LocationService.getAllEquipment()
+    }),
 
   getEquipment: authedProcedure
     .input(z.object({ equipmentId: z.string().min(1) }))

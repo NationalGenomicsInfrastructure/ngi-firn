@@ -114,6 +114,13 @@ const infoFields = computed(() => {
 
 <template>
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
+    <NButton
+        btn="ghost-gray"
+        leading="i-lucide-arrow-left"
+        size="sm"
+        label="Back to equipment list"
+        to="/inventory/equipment"
+      />
     <PageTitle
       :title="equipment ? equipment.name : 'Equipment details'"
       :description="equipmentTypeLabel"
@@ -286,12 +293,13 @@ const infoFields = computed(() => {
         />
       </NCard>
 
-      <div class="flex justify-end">
+      <div class="flex justify-end mt-4">
         <NButton
-          label="Back to rooms"
-          btn="soft-primary hover:outline-primary"
+          btn="ghost-gray"
           leading="i-lucide-arrow-left"
-          to="/inventory/rooms"
+          size="sm"
+          label="Back to equipment list"
+          to="/inventory/equipment"
         />
       </div>
     </div>

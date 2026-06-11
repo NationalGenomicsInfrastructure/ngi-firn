@@ -20,6 +20,7 @@
  * STORAGE EQUIPMENT CRUD:
  * createEquipment(input, userId) - Create storage equipment within a room
  * getEquipment(equipmentDocumentId) - Fetch one equipment document by ID
+ * getAllEquipment() - List all storage equipment across all rooms
  * getEquipmentByRoom(roomDocumentId) - List equipment in a room
  * updateEquipment(equipmentDocumentId, rev, updates, userId) - Update equipment metadata
  * deleteEquipment(equipmentDocumentId, rev) - Delete equipment when empty
@@ -276,6 +277,12 @@ export const LocationService = {
     const results = await couchDB.queryDocuments<StorageEquipment>({ type: 'storageEquipment', slug })
     const equipment = results[0]
     return equipment && isStorageEquipment(equipment) ? equipment : null
+  },
+
+  /* List all storage equipment across all rooms, sorted by name. */
+  async getAllEquipment(): Promise<StorageEquipment[]> {
+    const equipment = await couchDB.queryDocuments<StorageEquipment>({ type: 'storageEquipment' })
+    return equipment.sort((a, b) => a.name.localeCompare(b.name))
   },
 
   /* List all equipment that belongs to one room. */

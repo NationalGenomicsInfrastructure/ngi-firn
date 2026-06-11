@@ -18,6 +18,22 @@ const data = {
       ]
     },
     {
+      title: 'Equipment',
+      url: '#',
+      icon: 'i-lucide-refrigerator',
+      isActive: true,
+      items: [
+        {
+          title: 'Overview',
+          url: '/inventory/equipment'
+        },
+        {
+          title: 'Add equipment',
+          url: '/inventory/equipment/add'
+        }
+      ]
+    },
+    {
       title: 'Containers',
       url: '#',
       icon: 'i-lucide-box',
@@ -62,7 +78,7 @@ const data = {
 
 <template>
   <NavigationGroups
-    title="Actions"
+    title="Pages"
     :items="data.menuItems"
   />
   <NavigationWorksets
