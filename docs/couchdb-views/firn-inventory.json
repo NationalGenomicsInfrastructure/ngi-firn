@@ -3,7 +3,8 @@
   "language": "javascript",
   "views": {
     "by_type": {
-      "map": "function (doc) { if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTemplate') { emit(doc.type, null); } }"
+      "map": "function (doc) { if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTemplate') { emit(doc.type, null); } }",
+      "reduce": "_count"
     },
     "by_slug": {
       "map": "function (doc) { if (!doc.slug) { return; } if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTask' || doc.type === 'inventoryTemplate') { emit([doc.type, doc.slug], null); } }"

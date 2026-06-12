@@ -11,6 +11,8 @@ definePageMeta({
       description="Manage rooms and storage equipment."
     />
 
+    <CardInventorySummary />
+
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
       <NCard
         title="Rooms"
@@ -35,6 +37,32 @@ definePageMeta({
           btn="soft-primary hover:outline-primary"
           leading="i-lucide-plus"
           to="/inventory/rooms/add"
+        />
+      </NCard>
+
+      <NCard
+        title="Equipment"
+        description="Browse all registered equipment."
+        card="outline-gray"
+      >
+        <NButton
+          label="Open equipment"
+          btn="soft-primary hover:outline-primary"
+          leading="i-lucide-refrigerator"
+          to="/inventory/equipment"
+        />
+      </NCard>
+
+      <NCard
+        title="Add equipment"
+        description="Register a new equipment in the inventory."
+        card="outline-gray"
+      >
+        <NButton
+          label="Create equipment"
+          btn="soft-primary hover:outline-primary"
+          leading="i-lucide-plus"
+          to="/inventory/equipment/add"
         />
       </NCard>
     </div>
