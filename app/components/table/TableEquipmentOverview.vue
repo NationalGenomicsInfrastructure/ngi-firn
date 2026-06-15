@@ -249,9 +249,8 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
 
           <!-- Footer actions -->
           <div class="flex flex-wrap items-center justify-end gap-2">
-            <DialogMoveEquipment :equipment="rowToEquipment(row.original)" />
             <NButton
-              label="View details"
+              label="View contents"
               btn="soft-primary hover:outline-primary"
               leading="i-lucide-eye"
               :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}`"

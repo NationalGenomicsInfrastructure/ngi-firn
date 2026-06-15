@@ -82,10 +82,10 @@ async function handleMove() {
   const { mutateAsync } = useMoveEquipmentMutation()
   const result = await mutateAsync({
     equipmentId: props.equipment._id,
-    newRoomId: selectedRoomId.value,
-    currentRoomDocumentId: props.equipment.parent?.id
+    newRoomId: selectedRoomId.value
   })
 
+  // Close the dialog if the move was successful
   if (result) {
     isDialogOpen.value = false
   }
