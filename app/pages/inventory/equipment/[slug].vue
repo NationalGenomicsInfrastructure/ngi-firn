@@ -2,9 +2,9 @@
 import { useQuery as useQueryColada } from '@pinia/colada'
 import {
   equipmentBySlugQuery,
-  equipmentDescendantsQuery,
-  roomQuery
-} from '~/utils/queries/inventory/rooms'
+  equipmentDescendantsQuery
+} from '~/utils/queries/inventory/equipment'
+import { roomQuery } from '~/utils/queries/inventory/rooms'
 import { itemsByParentQuery } from '~/utils/queries/inventory/items'
 import { EQUIPMENT_TYPE_LABELS } from '~/utils/inventory/equipment'
 

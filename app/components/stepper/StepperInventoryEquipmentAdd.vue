@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { createEquipmentSchema } from '~~/schemas/inventory-locations'
-import { createEquipment } from '~/utils/mutations/inventory/rooms'
+import { createEquipment } from '~/utils/mutations/inventory/equipment'
 import {
   createEmptyEquipmentFormValues,
   EQUIPMENT_FORM_LABEL_STYLE,

@@ -3,7 +3,7 @@ import { useQuery as useQueryColada } from '@pinia/colada'
 import type { StorageEquipment } from '~~/types/inventory'
 import { containersByParentQuery } from '~/utils/queries/inventory/containers'
 import { itemsByParentQuery } from '~/utils/queries/inventory/items'
-import { deleteEquipment as useDeleteEquipmentMutation } from '~/utils/mutations/inventory/rooms'
+import { deleteEquipment as useDeleteEquipmentMutation } from '~/utils/mutations/inventory/equipment'
 
 const props = defineProps<{
   equipment: StorageEquipment

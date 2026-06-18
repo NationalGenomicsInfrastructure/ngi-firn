@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
-import { allEquipmentQuery, allRoomsQuery } from '~/utils/queries/inventory/rooms'
+import { allEquipmentQuery } from '~/utils/queries/inventory/equipment'
+import { allRoomsQuery } from '~/utils/queries/inventory/rooms'
 
 definePageMeta({
   layout: 'private'

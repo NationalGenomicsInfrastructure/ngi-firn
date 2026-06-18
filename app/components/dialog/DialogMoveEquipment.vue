@@ -2,7 +2,7 @@
 import { useQuery as useQueryColada } from '@pinia/colada'
 import type { StorageEquipment } from '~~/types/inventory'
 import { allRoomsQuery } from '~/utils/queries/inventory/rooms'
-import { moveEquipmentToRoom as useMoveEquipmentMutation } from '~/utils/mutations/inventory/rooms'
+import { moveEquipmentToRoom as useMoveEquipmentMutation } from '~/utils/mutations/inventory/equipment'
 
 const props = defineProps<{
   equipment: StorageEquipment

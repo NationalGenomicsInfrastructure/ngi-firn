@@ -2,7 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { updateEquipmentSchema } from '~~/schemas/inventory-locations'
 import type { StorageEquipment } from '~~/types/inventory'
-import { updateEquipment } from '~/utils/mutations/inventory/rooms'
+import { updateEquipment } from '~/utils/mutations/inventory/equipment'
 import {
   createEquipmentFormValuesFromEquipment,
   EQUIPMENT_FORM_LABEL_STYLE,

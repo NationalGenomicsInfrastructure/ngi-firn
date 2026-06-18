@@ -1,20 +1,15 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
-import type { Room, StorageEquipment } from '~~/types/inventory'
+import type { Room } from '~~/types/inventory'
 import type {
   CreateRoomSchemaInput,
-  UpdateRoomSchemaInput,
-  CreateEquipmentSchemaInput,
-  UpdateEquipmentSchemaInput,
-  MoveEquipmentSchemaInput
+  UpdateRoomSchemaInput
 } from '~~/schemas/inventory-locations'
-import { INVENTORY_LOCATIONS_QUERY_KEYS } from '~/utils/queries/inventory/rooms'
+import { INVENTORY_ROOMS_QUERY_KEYS } from '~/utils/queries/inventory/rooms'
+import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
 
 const { showSuccess, showError } = useFirnToast()
 
 type DeleteRoomInput = { id: string, rev: string, roomName?: string }
-type DeleteEquipmentInput = { id: string, rev: string, equipmentName?: string, roomDocumentId?: string }
-type UpdateEquipmentInput = UpdateEquipmentSchemaInput & { roomDocumentId?: string }
-type MoveEquipmentInput = MoveEquipmentSchemaInput & { currentRoomDocumentId?: string }
 
 // Room mutations
 
@@ -26,12 +21,12 @@ export const createRoom = defineMutation(() => {
     },
     onMutate() {
       const queryCache = useQueryCache()
-      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_LOCATIONS_QUERY_KEYS.rooms()) || []
+      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
       return { rooms }
     },
     onError(error: Error, _input, context) {
       const queryCache = useQueryCache()
-      queryCache.setQueryData(INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), context.rooms ?? [])
+      queryCache.setQueryData(INVENTORY_ROOMS_QUERY_KEYS.list(), context.rooms ?? [])
       showError(error.message, 'Room could not be created')
     },
     onSuccess(response: Room) {
@@ -40,8 +35,8 @@ export const createRoom = defineMutation(() => {
     },
     onSettled() {
       const queryCache = useQueryCache()
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), exact: true })
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
+      queryCache.invalidateQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.list(), exact: true })
+      queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
     }
   })
   return { createRoom: mutate, ...mutation }
@@ -55,15 +50,15 @@ export const updateRoom = defineMutation(() => {
     },
     onMutate(input) {
       const queryCache = useQueryCache()
-      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_LOCATIONS_QUERY_KEYS.rooms()) || []
-      const room = queryCache.getQueryData<Room>(INVENTORY_LOCATIONS_QUERY_KEYS.room(input.id))
+      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
+      const room = queryCache.getQueryData<Room>(INVENTORY_ROOMS_QUERY_KEYS.detail(input.id))
       return { rooms, room }
     },
     onError(error: Error, input, context) {
       const queryCache = useQueryCache()
-      queryCache.setQueryData(INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), context.rooms ?? [])
+      queryCache.setQueryData(INVENTORY_ROOMS_QUERY_KEYS.list(), context.rooms ?? [])
       if (context.room) {
-        queryCache.setQueryData(INVENTORY_LOCATIONS_QUERY_KEYS.room(input.id), context.room)
+        queryCache.setQueryData(INVENTORY_ROOMS_QUERY_KEYS.detail(input.id), context.room)
       }
       showError(error.message, 'Room could not be updated')
     },
@@ -71,11 +66,13 @@ export const updateRoom = defineMutation(() => {
       showSuccess(`Room "${response.name}" updated successfully.`, 'Room updated')
       navigateTo(`/inventory/rooms/${encodeURIComponent(response.slug)}`)
     },
-    onSettled(_, _error, input) {
+    onSettled(data, _error, input) {
       const queryCache = useQueryCache()
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), exact: true })
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.room(input.id), exact: true })
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
+      queryCache.invalidateQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.detail(input.id), exact: true })
+      if (data) {
+        queryCache.invalidateQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.detailBySlug(data.slug), exact: true })
+      }
+      queryCache.invalidateQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.list(), exact: true })
     }
   })
   return { updateRoom: mutate, ...mutation }
@@ -89,17 +86,17 @@ export const deleteRoom = defineMutation(() => {
     },
     onMutate(input) {
       const queryCache = useQueryCache()
-      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_LOCATIONS_QUERY_KEYS.rooms()) || []
-      queryCache.cancelQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), exact: true })
+      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
+      queryCache.cancelQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.list(), exact: true })
       queryCache.setQueryData(
-        INVENTORY_LOCATIONS_QUERY_KEYS.rooms(),
+        INVENTORY_ROOMS_QUERY_KEYS.list(),
         rooms.filter(r => r._id !== input.id)
       )
       return { rooms }
     },
     onError(error: Error, _input, context) {
       const queryCache = useQueryCache()
-      queryCache.setQueryData(INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), context.rooms ?? [])
+      queryCache.setQueryData(INVENTORY_ROOMS_QUERY_KEYS.list(), context.rooms ?? [])
       showError(error.message, 'Room could not be deleted')
     },
     onSuccess(_data, input) {
@@ -111,174 +108,9 @@ export const deleteRoom = defineMutation(() => {
     },
     onSettled() {
       const queryCache = useQueryCache()
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.rooms(), exact: true })
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
+      queryCache.invalidateQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.list(), exact: true })
+      queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
     }
   })
   return { deleteRoom: mutate, ...mutation }
-})
-
-// Equipment mutations
-
-export const createEquipment = defineMutation(() => {
-  const { mutate, ...mutation } = useMutation({
-    mutation: (input: CreateEquipmentSchemaInput) => {
-      const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.createEquipment.mutate(input)
-    },
-    onMutate(input) {
-      const queryCache = useQueryCache()
-      const equipment = queryCache.getQueryData<StorageEquipment[]>(
-        INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.parentId)
-      ) || []
-      return { equipment }
-    },
-    onError(error: Error, input, context) {
-      const queryCache = useQueryCache()
-      queryCache.setQueryData(
-        INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.parentId),
-        context.equipment ?? []
-      )
-      showError(error.message, 'Equipment could not be created')
-    },
-    onSuccess(_data, input) {
-      showSuccess(`Equipment "${input.name}" created successfully.`, 'Equipment created')
-    },
-    onSettled(_data, _error, input) {
-      const queryCache = useQueryCache()
-      queryCache.invalidateQueries({
-        key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.parentId),
-        exact: true
-      })
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
-    }
-  })
-  return { createEquipment: mutate, ...mutation }
-})
-
-export const updateEquipment = defineMutation(() => {
-  const { mutate, ...mutation } = useMutation({
-    mutation: (input: UpdateEquipmentInput) => {
-      const { $trpc } = useNuxtApp()
-      const { roomDocumentId, ...payload } = input
-      void roomDocumentId
-      return $trpc.inventory.locations.updateEquipment.mutate(payload)
-    },
-    onMutate(input) {
-      const queryCache = useQueryCache()
-      const equipment = queryCache.getQueryData<StorageEquipment>(
-        INVENTORY_LOCATIONS_QUERY_KEYS.equipment(input.id)
-      )
-      return { equipment }
-    },
-    onError(error: Error, input, context) {
-      const queryCache = useQueryCache()
-      if (context.equipment) {
-        queryCache.setQueryData(INVENTORY_LOCATIONS_QUERY_KEYS.equipment(input.id), context.equipment)
-      }
-      showError(error.message, 'Equipment could not be updated')
-    },
-    onSuccess() {
-      showSuccess('Equipment updated successfully.', 'Equipment updated')
-    },
-    onSettled(_data, _error, input) {
-      const queryCache = useQueryCache()
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.equipment(input.id), exact: true })
-      if (input.roomDocumentId) {
-        queryCache.invalidateQueries({
-          key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.roomDocumentId),
-          exact: true
-        })
-      }
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
-    }
-  })
-  return { updateEquipment: mutate, ...mutation }
-})
-
-export const moveEquipmentToRoom = defineMutation(() => {
-  const { mutate, ...mutation } = useMutation({
-    mutation: (input: MoveEquipmentInput) => {
-      const { $trpc } = useNuxtApp()
-      const { currentRoomDocumentId, ...payload } = input
-      void currentRoomDocumentId
-      return $trpc.inventory.locations.moveEquipmentToRoom.mutate(payload)
-    },
-    onError(error: Error) {
-      showError(error.message, 'Equipment could not be moved')
-    },
-    onSuccess() {
-      showSuccess('Equipment moved successfully.', 'Equipment moved')
-    },
-    onSettled(_data, _error, input) {
-      const queryCache = useQueryCache()
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.equipment(input.equipmentId), exact: true })
-      queryCache.invalidateQueries({
-        key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.newRoomId),
-        exact: true
-      })
-      if (input.currentRoomDocumentId) {
-        queryCache.invalidateQueries({
-          key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.currentRoomDocumentId),
-          exact: true
-        })
-      }
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
-    }
-  })
-  return { moveEquipmentToRoom: mutate, ...mutation }
-})
-
-export const deleteEquipment = defineMutation(() => {
-  const { mutate, ...mutation } = useMutation({
-    mutation: (input: DeleteEquipmentInput) => {
-      const { $trpc } = useNuxtApp()
-      return $trpc.inventory.locations.deleteEquipment.mutate({ id: input.id, rev: input.rev })
-    },
-    onMutate(input) {
-      const queryCache = useQueryCache()
-      if (input.roomDocumentId) {
-        const equipment = queryCache.getQueryData<StorageEquipment[]>(
-          INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.roomDocumentId)
-        ) || []
-        queryCache.cancelQueries({
-          key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.roomDocumentId),
-          exact: true
-        })
-        queryCache.setQueryData(
-          INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.roomDocumentId),
-          equipment.filter(e => e._id !== input.id)
-        )
-        return { equipment, roomDocumentId: input.roomDocumentId }
-      }
-      return { equipment: undefined, roomDocumentId: undefined }
-    },
-    onError(error: Error, _input, context) {
-      const queryCache = useQueryCache()
-      if (context.roomDocumentId && context.equipment) {
-        queryCache.setQueryData(
-          INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(context.roomDocumentId),
-          context.equipment
-        )
-      }
-      showError(error.message, 'Equipment could not be deleted')
-    },
-    onSuccess(_data, input) {
-      showSuccess(
-        `Equipment${input.equipmentName ? ` "${input.equipmentName}"` : ''} deleted successfully.`,
-        'Equipment deleted'
-      )
-    },
-    onSettled(_data, _error, input) {
-      const queryCache = useQueryCache()
-      if (input.roomDocumentId) {
-        queryCache.invalidateQueries({
-          key: INVENTORY_LOCATIONS_QUERY_KEYS.equipmentByRoom(input.roomDocumentId),
-          exact: true
-        })
-      }
-      queryCache.invalidateQueries({ key: INVENTORY_LOCATIONS_QUERY_KEYS.root })
-    }
-  })
-  return { deleteEquipment: mutate, ...mutation }
 })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
 import type { Room } from '~~/types/inventory'
-import { equipmentByRoomQuery } from '~/utils/queries/inventory/rooms'
+import { equipmentByRoomQuery } from '~/utils/queries/inventory/equipment'
 
 const props = defineProps<{
   room: Room
