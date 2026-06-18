@@ -212,6 +212,7 @@ export const ItemService = {
     const newItem: Omit<InventoryItem, '_id' | '_rev'> = {
       type: 'inventoryItem',
       schema: 1,
+      parent: toParentRef(parent),
       slug: itemSlug,
       category: input.category,
       classification: input.classification,
@@ -222,7 +223,6 @@ export const ItemService = {
       unit: input.unit ?? null,
       concentration: input.concentration ?? null,
       concentrationUnit: input.concentrationUnit ?? null,
-      parent: toParentRef(parent),
       locationPath: buildLocationPath(parent),
       position,
       status: input.status ?? 'available',

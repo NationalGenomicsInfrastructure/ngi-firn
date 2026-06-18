@@ -225,12 +225,12 @@ export const LocationService = {
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
       type: 'storageEquipment',
       schema: 1,
+      parent: toParentRef(room),
       slug: equipmentSlug,
       equipmentType: input.equipmentType,
       name: input.name,
       label: input.label?.trim() || null,
       description: input.description ?? null,
-      parent: toParentRef(room),
       locationPath: buildLocationPath(room),
       position: input.position ?? null,
       rows: input.rows ?? null,

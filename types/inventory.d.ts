@@ -113,14 +113,14 @@ export interface Room extends BaseDocument {
 export interface StorageEquipment extends BaseDocument {
   type: 'storageEquipment'
   schema: 1
+  /* Typed reference to the parent room document. */
+  parent: TypedDocumentReference<Room>
   /* Stable URL slug (e.g. "eqp-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   equipmentType: 'cabinet' | 'freezer' | 'fridge' | 'shelf' | 'nitrogenTank' | 'other'
   name: string
   label: string | null
   description: string | null
-  /* Typed reference to the parent room document. */
-  parent: TypedDocumentReference<Room>
   locationPath: LocationAncestor[]
   position: GridPosition | null
   rows: number | null
@@ -143,6 +143,8 @@ export interface StorageEquipment extends BaseDocument {
 export interface Container extends BaseDocument {
   type: 'container'
   schema: 1
+  /* Typed reference to the parent document (storage equipment or another container). */
+  parent: TypedDocumentReference<StorageEquipment | Container>
   /* Stable URL slug (e.g. "cnt-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   containerType: 'rack' | 'box' | 'bag' | 'tray' | 'other'
@@ -150,8 +152,6 @@ export interface Container extends BaseDocument {
   name: string
   label: string | null
   description: string | null
-  /* Typed reference to the parent document (storage equipment or another container). */
-  parent: TypedDocumentReference<StorageEquipment | Container>
   locationPath: LocationAncestor[]
   position: GridPosition | null
   rows: number | null
@@ -179,6 +179,8 @@ export interface Container extends BaseDocument {
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
   schema: 1
+  /* Typed reference to the parent document (room, equipment, or container). */
+  parent: TypedDocumentReference<Room | StorageEquipment | Container>
   /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   /* Physical form factor of the item (what it IS). */
@@ -194,8 +196,6 @@ export interface InventoryItem extends BaseDocument {
   /* Sample/reagent concentration. */
   concentration: number | null
   concentrationUnit: string | null
-  /* Typed reference to the parent document (room, equipment, or container). */
-  parent: TypedDocumentReference<Room | StorageEquipment | Container>
   locationPath: LocationAncestor[]
   position: GridPosition | null
   status: 'available' | 'checked_out' | 'reserved' | 'expired' | 'disposed' | 'lost' | 'damaged'
