@@ -198,13 +198,6 @@ export const LocationService = {
     const result = await couchDB.updateDocument(updatedRoom._id, updatedRoom, rev)
     updatedRoom._rev = result.rev
 
-    await cascadeLocationPathUpdate(updatedRoom._id, 'room', [
-      {
-        id: updatedRoom._id,
-        type: 'room'
-      }
-    ])
-
     return updatedRoom
   },
 
