@@ -7,6 +7,6 @@ export default defineNitroPlugin(async () => {
   }
   catch (error) {
     console.error('❌ Fatal error during database validation:', error)
-    throw new Error('Database connection validation failed')
+    throw new Error('Database connection validation failed', { cause: error })
   }
 })

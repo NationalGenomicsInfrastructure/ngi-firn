@@ -673,7 +673,7 @@ export const UserService = {
    * Convert a FirnUser to a SessionUser
    */
   async convertToSessionUser(user: FirnUser, provider: 'google' | 'github' | 'token'): Promise<[SessionUser, SessionUserSecure]> {
-    let avatar: string | null = null
+    let avatar: string | null
     let name: string
 
     if (provider === 'github') {
