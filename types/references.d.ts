@@ -12,7 +12,9 @@ import type { BaseDocument } from '../server/database/couchdb'
  */
 export type DocumentDatabaseName = 'firn' | 'projects' | (string & {})
 
-// Minimal, robust reference to another CouchDB/Cloudant document.
+/**
+ *. Minimal, robust reference to another CouchDB/Cloudant document.
+ */
 export interface DocumentReference {
   // Logical database name where the target document lives.
   db: DocumentDatabaseName
@@ -38,20 +40,21 @@ export type TypedDocumentReference<TDoc extends BaseDocument = BaseDocument>
   }
 
 /**
- * Collection helpers for common shapes of references.
+ * Semantic relation label for a document edge, allowing to express the nature of the relationship between two documents.
  */
-export type DocumentReferenceList = DocumentReference[]
-export type DocumentReferenceMap = Record<string, DocumentReference | DocumentReferenceList>
+export type DocumentRelation = 'parent' | 'child' | 'dependsOn' | 'derivedFrom' | 'bidirectional' | (string & {})
 
 /**
- * Optional edge-style link with a semantic relation label.
- * This is useful if you want to model an explicit graph of documents.
+ * Edge-style link with a semantic relation label.
  */
 export interface DocumentEdge {
   from: DocumentReference
   to: DocumentReference
-  /**
-   * Relation label, e.g. 'parent', 'child', 'dependsOn', 'derivedFrom', 'relatedTo'.
-   */
-  relation?: string
+  relation?: DocumentRelation
 }
+
+/**
+ * Collection helpers for common shapes of references.
+ */
+export type DocumentReferenceList = DocumentReference[]
+export type DocumentReferenceMap = Record<string, DocumentReference | DocumentReferenceList>

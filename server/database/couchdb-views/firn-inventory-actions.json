@@ -1,0 +1,18 @@
+{
+  "_id": "_design/firn-inventory-actions",
+  "language": "javascript",
+  "views": {
+    "by_target": {
+      "map": "function (doc) { if (doc.type === 'inventoryTask' && doc.targetId) { emit([doc.targetType || null, doc.targetId], null); } }"
+    },
+    "by_status": {
+      "map": "function (doc) { if (doc.type === 'inventoryTask' && doc.status) { emit([doc.status, doc.plannedAt || null], null); } }"
+    },
+    "by_assignee": {
+      "map": "function (doc) { if (doc.type !== 'inventoryTask') { return; } var assignee = doc.assignedTo || doc.createdBy || null; if (assignee) { emit(assignee, null); } }"
+    },
+    "planned_for_target": {
+      "map": "function (doc) { if (doc.type !== 'inventoryTask' || !doc.targetId) { return; } if (doc.status === 'planned' && doc.dueAt) { emit([doc.targetType || null, doc.targetId, doc.dueAt], null); return; } if (doc.status === 'planned' && doc.plannedAt) { emit([doc.targetType || null, doc.targetId, doc.plannedAt], null); } }"
+    }
+  }
+}

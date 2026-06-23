@@ -1,0 +1,47 @@
+{
+  "_id": "_design/firn-inventory",
+  "language": "javascript",
+  "views": {
+    "by_type": {
+      "map": "function (doc) { if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTemplate') { emit(doc.type, null); } }",
+      "reduce": "_count"
+    },
+    "by_slug": {
+      "map": "function (doc) { if (!doc.slug) { return; } if (doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem' || doc.type === 'inventoryTask' || doc.type === 'inventoryTemplate') { emit([doc.type, doc.slug], null); } }"
+    },
+    "by_parent": {
+      "map": "function (doc) { if ((doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && doc.parent && doc.parent.id) { emit([doc.parent.type || null, doc.parent.id], null); } }"
+    },
+    "by_room": {
+      "map": "function (doc) { if (!(doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem')) { return; } if (doc.type === 'room') { emit(doc._id, null); return; } var roomId = null; if (doc.locationPath && doc.locationPath.length) { for (var i = 0; i < doc.locationPath.length; i++) { var ancestor = doc.locationPath[i]; if (ancestor && ancestor.type === 'room' && ancestor.id) { roomId = ancestor.id; break; } } } if (!roomId && doc.parent && doc.parent.type === 'room' && doc.parent.id) { roomId = doc.parent.id; } if (roomId) { emit(roomId, null); } }"
+    },
+    "by_ancestor": {
+      "map": "function (doc) { if (!(doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem')) { return; } if (doc.locationPath && doc.locationPath.length) { for (var i = 0; i < doc.locationPath.length; i++) { var ancestor = doc.locationPath[i]; if (ancestor && ancestor.id) { emit([ancestor.type || null, ancestor.id], null); } } } if (doc.parent && doc.parent.id) { emit([doc.parent.type || null, doc.parent.id], null); } }"
+    },
+    "by_status": {
+      "map": "function (doc) { if (doc.type === 'inventoryItem' && doc.status) { emit(doc.status, null); } }"
+    },
+    "by_expiry": {
+      "map": "function (doc) { if (doc.type !== 'inventoryItem') { return; } var expiry = doc.expiryDate || null; if (expiry) { emit(expiry, null); } }"
+    },
+    "by_barcode": {
+      "map": "function (doc) { var metadata = doc.metadata || {}; var barcode = doc.barcode || metadata.barcode || metadata.qrCode || null; if ((doc.type === 'room' || doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && barcode) { emit(barcode, null); } }"
+    },
+    "by_category": {
+      "map": "function (doc) { if (doc.type === 'inventoryItem') { emit(doc.category || 'other', null); return; } if (doc.type === 'container') { emit(doc.classification || doc.containerType || 'other', null); return; } if (doc.type === 'storageEquipment') { emit(doc.equipmentType || 'other', null); } }"
+    },
+    "templates_by_kind": {
+      "map": "function (doc) { if (doc.type === 'inventoryTemplate') { emit([doc.templateFor || null, doc.containerType || null], null); } }"
+    },
+    "children_count": {
+      "map": "function (doc) { if ((doc.type === 'storageEquipment' || doc.type === 'container' || doc.type === 'inventoryItem') && doc.parent && doc.parent.id) { emit(doc.parent.id, 1); } }",
+      "reduce": "_count"
+    },
+    "capacity_by_accepted_category": {
+      "map": "function (doc) { if (doc.type === 'container' && doc.capacity != null && doc.isActive) { var info = { capacity: doc.capacity, classification: doc.classification || null, containerType: doc.containerType || null }; if (doc.acceptedItemCategories && doc.acceptedItemCategories.length) { for (var i = 0; i < doc.acceptedItemCategories.length; i++) { emit(['item', doc.acceptedItemCategories[i]], info); } } if (doc.acceptedContainerCategories && doc.acceptedContainerCategories.length) { for (var i = 0; i < doc.acceptedContainerCategories.length; i++) { emit(['container', doc.acceptedContainerCategories[i]], info); } } if (!doc.acceptedItemCategories && !doc.acceptedContainerCategories) { emit(['any', 'any'], info); } } if (doc.type === 'storageEquipment' && doc.capacity != null && doc.isActive) { emit(['any', 'any'], { capacity: doc.capacity, classification: null, containerType: null }); } }"
+    },
+    "by_project": {
+      "map": "function (doc) { if ((doc.type === 'container' || doc.type === 'inventoryItem') && doc.projectRefs) { var keys = Object.keys(doc.projectRefs); for (var i = 0; i < keys.length; i++) { var ref = doc.projectRefs[keys[i]]; if (Array.isArray(ref)) { for (var j = 0; j < ref.length; j++) { if (ref[j] && ref[j].id) { emit([ref[j].db || 'projects', ref[j].id], { type: doc.type, name: doc.name || doc.label }); } } } else if (ref && ref.id) { emit([ref.db || 'projects', ref.id], { type: doc.type, name: doc.name || doc.label }); } } } }"
+    }
+  }
+}

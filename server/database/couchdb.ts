@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { CloudantV1 } from '@ibm-cloud/cloudant'
 import 'dotenv/config'
 
@@ -14,6 +16,13 @@ interface CouchDBConfig {
 interface BaseDocument extends CloudantV1.Document {
   _id: string
   _rev: string
+}
+
+interface ViewsDocument extends CloudantV1.Document {
+  _id: string
+  _rev?: string
+  language?: string
+  views: Record<string, unknown>
 }
 
 // Parse CLOUDANT_COMPRESSION environment variable
@@ -52,6 +61,22 @@ function createCloudantClient(config: CouchDBConfig): CloudantV1 {
   // Set gzip compression based on config (defaults to false if not specified)
   client.setEnableGzipCompression(config.enableGzipCompression ?? false)
   return client
+}
+
+/**
+ * Generate a prefixed, timestamped CouchDB document ID.
+ *
+ * Format: `<prefix>-<base36 timestamp>-<10 random alphanumeric chars>`
+ *
+ * The prefix is sanitised to lowercase alphanumeric + hyphens.
+ * The timestamp gives rough chronological ordering and the random
+ * suffix avoids collisions even at high insert rates.
+ */
+export function generateCouchDocId(prefix: string): string {
+  const safePrefix = prefix.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'doc'
+  const timestamp = Date.now().toString(36)
+  const random = (Math.random().toString(36).slice(4) + Math.random().toString(36).slice(4)).slice(0, 10)
+  return `${safePrefix}-${timestamp}-${random}`
 }
 
 // Database operations
@@ -539,5 +564,52 @@ export async function validateDatabaseConnection() {
   await couchDB.validateConnection()
 }
 
+// Helper function to load and validate a design-document JSON file from server/database/couchdb-views.
+export async function loadDesignDoc(pathParts: string[], fallbackId: string): Promise<ViewsDocument | null> {
+  try {
+    const filePath = join(process.cwd(), ...pathParts)
+    const raw = await readFile(filePath, 'utf-8')
+    const parsed = JSON.parse(raw) as Partial<ViewsDocument>
+
+    if (!parsed || typeof parsed !== 'object' || !parsed.views || typeof parsed.views !== 'object') {
+      throw new Error(`Invalid CouchDB view definition at ${filePath}`)
+    }
+
+    return {
+      ...(parsed as ViewsDocument),
+      _id: parsed._id ?? fallbackId,
+      language: parsed.language ?? 'javascript'
+    }
+  }
+  catch (error: unknown) {
+    const err = error as { code?: string, message?: string }
+    if (err.code === 'ENOENT') {
+      console.warn(`Inventory view definition not found: ${pathParts.join('/')}`)
+      return null
+    }
+
+    throw new Error(`Failed to load inventory view definition (${pathParts.join('/')}): ${err.message ?? 'Unknown error'}`, { cause: error })
+  }
+}
+
+/* Helper function to upsert a CouchDB design document while preserving current revision control. */
+export async function upsertDesignDoc(designDoc: ViewsDocument): Promise<void> {
+  const existing = await couchDB.getDesignDocument<ViewsDocument & CloudantV1.DesignDocument>(designDoc._id)
+
+  if (existing && existing._rev) {
+    const nextDoc = {
+      ...existing,
+      ...designDoc,
+      _id: designDoc._id,
+      _rev: existing._rev
+    }
+
+    await couchDB.putDesignDocument(designDoc._id, nextDoc as CloudantV1.DesignDocument)
+    return
+  }
+
+  await couchDB.putDesignDocument(designDoc._id, designDoc as unknown as CloudantV1.DesignDocument)
+}
+
 // Export types for use in other modules
-export type { BaseDocument }
+export type { BaseDocument, ViewsDocument }
