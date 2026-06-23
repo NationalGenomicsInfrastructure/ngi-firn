@@ -121,6 +121,14 @@ To test your database connection, you can run
 pnpm db:test
 ```
 
+### Ensuring and updating database views
+
+To ensure that all relevant views for the Firn database are available and up to date, you can run
+
+```bash
+pnpm db:views
+```
+
 ## Initialize Database
 
 To create the first administrator user, you need to set the environment variable `FIRST_ADMIN_EMAIL` to a valid `@scilifelab.se` e-mail, for example `firn.user@scilifelab.se`. Then you can run the database initialization script:
@@ -130,3 +138,5 @@ pnpm db:init
 ```
 
 This will create the respective administrator account in the database, unless an administrator already exists. In that case, ask that administrator to create or approve your account via the user interface instead.
+
+The script will also ensure all relevant views are added.
