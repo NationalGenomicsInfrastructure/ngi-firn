@@ -16,7 +16,7 @@
 
 import { DateTime } from 'luxon'
 
-import { couchDB } from '../database/couchdb'
+import { couchDB, generateCouchDocId } from '../database/couchdb'
 import type { TodoDocument, TodoItem, TodoStatus } from '../../types/productivity'
 import type { TypedDocumentReference } from '../../types/references'
 import type { FirnUser } from '../../types/auth'
@@ -66,7 +66,10 @@ export const ProductivityService = {
       createdAt: now,
       updatedAt: now
     }
-    const result = await couchDB.createDocument(newDoc)
+    const result = await couchDB.createDocument({
+      ...newDoc,
+      _id: generateCouchDocId('todo')
+    })
     const created = await couchDB.getDocument<TodoDocument>(result.id)
     return created
   },

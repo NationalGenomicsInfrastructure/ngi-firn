@@ -1,0 +1,30 @@
+{
+  "_id": "_design/firn-users",
+  "language": "javascript",
+  "views": {
+    "by_googleId": {
+      "map": "function (doc) { if (doc.type === 'firnUser' && doc.googleId != null) { emit(doc.googleId, null); } }"
+    },
+    "by_githubId": {
+      "map": "function (doc) { if (doc.type === 'firnUser' && doc.githubId != null) { emit(doc.githubId, null); } }"
+    },
+    "by_googleEmail": {
+      "map": "function (doc) { if (doc.type === 'firnUser' && doc.googleEmail) { emit(doc.googleEmail, null); } }"
+    },
+    "by_firnId": {
+      "map": "function (doc) { if (doc.type === 'firnUser' && doc.firnId) { emit(doc.firnId, doc.googleId); } }"
+    },
+    "by_allowLogin": {
+      "map": "function (doc) { if (doc.type === 'firnUser') { emit(doc.allowLogin, null); } }"
+    },
+    "by_isRetired": {
+      "map": "function (doc) { if (doc.type === 'firnUser') { emit(doc.isRetired, null); } }"
+    },
+    "by_access": {
+      "map": "function (doc) { if (doc.type === 'firnUser') { emit([doc.allowLogin, doc.isRetired], null); } }"
+    },
+    "by_admin": {
+      "map": "function (doc) { if (doc.type === 'firnUser') { emit(doc.isAdmin, null); } }"
+    }
+  }
+}

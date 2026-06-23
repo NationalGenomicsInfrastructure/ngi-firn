@@ -38,7 +38,7 @@
 
 import { DateTime } from 'luxon'
 
-import { couchDB } from '../database/couchdb'
+import { couchDB, generateCouchDocId } from '../database/couchdb'
 import { ProductivityService } from './productivity.server'
 import { ProjectService, PROJECTS_DB_NAME } from './projects.server'
 import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers } from '../../types/auth'
@@ -55,6 +55,11 @@ function todoDocToRef(doc: TodoDocument): TypedDocumentReference<TodoDocument> {
   return { db: couchDB.database, id: doc._id }
 }
 
+/* Unwrap the documents from a firn-users view query (queried with include_docs: true). */
+function firnUsersFromViewRows(rows: Array<{ doc?: FirnUser }>): FirnUser[] {
+  return rows.flatMap(row => (row.doc ? [row.doc] : []))
+}
+
 export const UserService = {
   /**
    * Generate unique firnId and googleId for a new user. The firnId is a short unique identifier for the user
@@ -65,14 +70,15 @@ export const UserService = {
    */
   async generateUniqueFirnIdAndGoogleId(): Promise<{ firnId: string, googleId: number }> {
     // Query all user documents to find existing firnIds and googleIds.
-    const users = await couchDB.queryDocuments<FirnUser>({ type: 'firnUser' })
+    // The by_firnId view emits firnId as key and googleId as value, so no documents are needed.
+    const result = await couchDB.queryView<string, number>('firn-users', 'by_firnId')
 
     const existingFirnIds: string[] = []
     const existingGoogleIds: number[] = []
 
-    for (const user of users) {
-      existingFirnIds.push(user.firnId)
-      existingGoogleIds.push(user.googleId)
+    for (const row of result.rows) {
+      existingFirnIds.push(row.key)
+      existingGoogleIds.push(row.value)
     }
 
     // Generate a unique firnId
@@ -94,13 +100,12 @@ export const UserService = {
    * Create a new FirnUser
    */
   async createUser(user: Omit<FirnUser, '_id' | '_rev'>): Promise<FirnUser | null> {
-    const document = await couchDB.createDocument(user)
-    // query the new user by document id
-    const newUser = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      _id: document.id
+    const document = await couchDB.createDocument({
+      ...user,
+      _id: generateCouchDocId('user')
     })
-    return newUser[0] as FirnUser
+    // fetch the new user by document id
+    return await couchDB.getDocument<FirnUser>(document.id)
   },
 
   /*
@@ -147,23 +152,23 @@ export const UserService = {
       }
 
     // Check if the user already exists by e-mail address
-    const existingUserByGoogleMail = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      googleEmail: newFirnUser.googleEmail
-    })
-    if (existingUserByGoogleMail.length > 0) {
+    const existingByGoogleEmail = await couchDB.queryView<string, null>(
+      'firn-users',
+      'by_googleEmail',
+      { key: newFirnUser.googleEmail }
+    )
+    if (existingByGoogleEmail.rows.length > 0) {
       // User already exists - throw an explicit error to indicate that the user already exists
       throw new Error('User with this email already exists')
     }
 
     // Create the user
-    const document = await couchDB.createDocument(newFirnUser)
-    // query the new user by document id
-    const newUser = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      _id: document.id
+    const document = await couchDB.createDocument({
+      ...newFirnUser,
+      _id: generateCouchDocId('user')
     })
-    return newUser[0] as FirnUser
+    // fetch the new user by document id
+    return await couchDB.getDocument<FirnUser>(document.id)
   },
 
   /*
@@ -171,10 +176,12 @@ export const UserService = {
    */
   async deleteUserByAdmin(user: DeleteUserByAdminInput): Promise<FirnUser | null> {
     // First, try to find user by Google ID
-    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      googleId: user.googleId
-    })
+    const existingUserByGoogleId = firnUsersFromViewRows(
+      (await couchDB.queryView<number, null, FirnUser>('firn-users', 'by_googleId', {
+        key: user.googleId,
+        include_docs: true
+      })).rows
+    )
 
     if (existingUserByGoogleId.length > 0) {
       const foundUser = existingUserByGoogleId[0]
@@ -193,10 +200,12 @@ export const UserService = {
    */
   async setUserAccessByAdmin(userSettings: SetUserAccessByAdminInput): Promise<FirnUser | null> {
     // First, try to find user by Google ID (Google is source of truth)
-    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      googleId: userSettings.googleId
-    })
+    const existingUserByGoogleId = firnUsersFromViewRows(
+      (await couchDB.queryView<number, null, FirnUser>('firn-users', 'by_googleId', {
+        key: userSettings.googleId,
+        include_docs: true
+      })).rows
+    )
 
     if (existingUserByGoogleId.length > 0) {
       const user = existingUserByGoogleId[0]
@@ -270,10 +279,12 @@ export const UserService = {
    * Match a FirnUser by firnId
    */
   async matchFirnUserByFirnQuery(firnQuery: FirnUserQuery): Promise<FirnUser | null> {
-    const existingUserByFirnId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      firnId: firnQuery.firnId
-    })
+    const existingUserByFirnId = firnUsersFromViewRows(
+      (await couchDB.queryView<string, number, FirnUser>('firn-users', 'by_firnId', {
+        key: firnQuery.firnId,
+        include_docs: true
+      })).rows
+    )
 
     if (existingUserByFirnId.length > 0) {
       const user = existingUserByFirnId[0]
@@ -296,10 +307,12 @@ export const UserService = {
    */
   async matchGoogleUser(oauthUser: GoogleUser): Promise<FirnUser | null> {
     // First, try to find user by Google ID (Google is source of truth)
-    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      googleId: oauthUser.googleId
-    })
+    const existingUserByGoogleId = firnUsersFromViewRows(
+      (await couchDB.queryView<number, null, FirnUser>('firn-users', 'by_googleId', {
+        key: oauthUser.googleId,
+        include_docs: true
+      })).rows
+    )
 
     if (existingUserByGoogleId.length > 0) {
       const user = existingUserByGoogleId[0]
@@ -330,10 +343,12 @@ export const UserService = {
       * When an admin creates a user in advance, they know the e-mail address, but not the Google ID
       * When a user self-registers, we can get the GoogleID directly from the OAuth response.
       */
-      const existingUserByEmail = await couchDB.queryDocuments<FirnUser>({
-        type: 'firnUser',
-        googleEmail: oauthUser.googleEmail
-      })
+      const existingUserByEmail = firnUsersFromViewRows(
+        (await couchDB.queryView<string, null, FirnUser>('firn-users', 'by_googleEmail', {
+          key: oauthUser.googleEmail,
+          include_docs: true
+        })).rows
+      )
 
       if (existingUserByEmail.length > 0) {
         const user = existingUserByEmail[0]
@@ -370,10 +385,12 @@ export const UserService = {
    */
   async matchGoogleUserByGoogleQuery(googleQuery: GoogleUserQuery): Promise<FirnUser | null> {
     // First, try to find user by Google ID (Google is source of truth)
-    const existingUserByGoogleId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      googleId: googleQuery.googleId
-    })
+    const existingUserByGoogleId = firnUsersFromViewRows(
+      (await couchDB.queryView<number, null, FirnUser>('firn-users', 'by_googleId', {
+        key: googleQuery.googleId,
+        include_docs: true
+      })).rows
+    )
 
     if (existingUserByGoogleId.length > 0) {
       const user = existingUserByGoogleId[0] as FirnUser
@@ -396,10 +413,12 @@ export const UserService = {
    */
   async matchGitHubUser(oauthUser: GitHubUser): Promise<FirnUser | null> {
     // Find user by GitHub ID, matching based on the e-mail address is too flaky.
-    const existingUserByGitHubId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      githubId: oauthUser.githubId
-    })
+    const existingUserByGitHubId = firnUsersFromViewRows(
+      (await couchDB.queryView<number, null, FirnUser>('firn-users', 'by_githubId', {
+        key: oauthUser.githubId,
+        include_docs: true
+      })).rows
+    )
 
     if (existingUserByGitHubId.length > 0) {
       const user = existingUserByGitHubId[0]
@@ -434,46 +453,45 @@ export const UserService = {
    */
   async matchSessionUserSecure(sessionUserSecure: SessionUserSecure): Promise<FirnUser | null> {
     // First, try to find user by Document ID
-    const existingUserByDocumentId = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      _id: sessionUserSecure.id
-    })
+    const existingUserByDocumentId = await couchDB.getDocument<FirnUser>(sessionUserSecure.id)
 
-    return existingUserByDocumentId[0] as FirnUser
+    return existingUserByDocumentId as FirnUser
   },
 
   /*
    * Get all pending users
    */
   async getPendingUsers(): Promise<FirnUser[]> {
-    const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      allowLogin: false,
-      isRetired: false
-    })
-    return users
+    const result = await couchDB.queryView<[boolean, boolean], null, FirnUser>(
+      'firn-users',
+      'by_access',
+      { key: [false, false], include_docs: true }
+    )
+    return firnUsersFromViewRows(result.rows)
   },
 
   /*
    * Get all retired users
    */
   async getRetiredUsers(): Promise<FirnUser[]> {
-    const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      isRetired: true
-    })
-    return users
+    const result = await couchDB.queryView<boolean, null, FirnUser>(
+      'firn-users',
+      'by_isRetired',
+      { key: true, include_docs: true }
+    )
+    return firnUsersFromViewRows(result.rows)
   },
 
   /*
    * Get all active users
    */
   async getApprovedUsers(): Promise<FirnUser[]> {
-    const users = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      allowLogin: true
-    })
-    return users
+    const result = await couchDB.queryView<boolean, null, FirnUser>(
+      'firn-users',
+      'by_allowLogin',
+      { key: true, include_docs: true }
+    )
+    return firnUsersFromViewRows(result.rows)
   },
 
   /*

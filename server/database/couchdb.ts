@@ -355,22 +355,6 @@ export class CouchDBConnector {
     }
   }
 
-  // Create indexes for better query performance
-  async createIndex(fields: string[]): Promise<void> {
-    try {
-      await this.client.postIndex({
-        db: this.database,
-        index: {
-          fields: fields.map(field => ({ [field]: 'asc' }))
-        }
-      })
-    }
-    catch (error) {
-      console.error('Error creating index:', error)
-      throw error
-    }
-  }
-
   /**
    * Get a design document by its full ID (e.g. '_design/firn-inventory').
    * The Cloudant SDK rejects _design/ prefixed IDs in getDocument(),

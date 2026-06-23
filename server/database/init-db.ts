@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { DateTime } from 'luxon'
 import { couchDB, generateCouchDocId } from './couchdb'
-import { createIndexes, ensureInventoryViews } from '../crud/views'
+import { ensureViews } from '../crud/views'
 import { UserService } from '../crud/users.server'
 import type { FirnUser } from '../../types/auth'
 
@@ -24,22 +24,19 @@ export async function initializeDatabase() {
     await couchDB.ensureDatabase()
     console.log('Database ensured')
 
-    // Create indexes
-    await createIndexes()
-    console.log('Indexes created')
-
-    // Ensure inventory CouchDB views (design documents) are in place
-    await ensureInventoryViews()
-    console.log('Inventory views ensured')
+    // Ensure all CouchDB views (design documents) are in place
+    await ensureViews()
+    console.log('Views ensured')
 
     // Check if we need to create the first admin user
-    const adminUsers = await couchDB.queryDocuments<FirnUser>({
-      type: 'firnUser',
-      isAdmin: true
-    })
+    const adminUsersResult = await couchDB.queryView<boolean, null, FirnUser>(
+      'firn-users',
+      'by_admin',
+      { key: true }
+    )
 
     // Hopefully, this check adds some extra security, since no further admin user can be created once we already have one.
-    if (adminUsers.length === 0) {
+    if (adminUsersResult.rows.length === 0) {
       console.log('No admin users found, creating first admin...')
       // Check if FIRST_ADMIN_EMAIL is set and is a valid SciLifeLab email
       if (!process.env.FIRST_ADMIN_EMAIL) {
@@ -90,7 +87,7 @@ export async function initializeDatabase() {
       console.log(`First admin user created with ID: ${result.id}`)
     }
     else {
-      console.log(`Found ${adminUsers.length} admin user(s)`)
+      console.log(`Found ${adminUsersResult.rows.length} admin user(s)`)
     }
 
     console.log('Database initialization completed successfully')
