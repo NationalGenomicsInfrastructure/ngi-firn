@@ -242,6 +242,72 @@ export class CouchDBConnector {
     }
   }
 
+  /**
+   * Get multiple documents by ID using one request.
+   * Returns documents in the same order as the input IDs, with null for missing docs.
+   */
+  async getDocumentsByIds<T extends CloudantV1.Document>(ids: string[]): Promise<(T | null)[]> {
+    try {
+      if (ids.length === 0) {
+        return []
+      }
+
+      const response = await this.client.postAllDocs({
+        db: this.database,
+        keys: ids,
+        includeDocs: true
+      })
+
+      const rowsById = new Map<string, T | null>()
+      for (const row of response.result.rows) {
+        const rowId = row.id || String(row.key)
+        if ('error' in row && row.error === 'not_found') {
+          rowsById.set(rowId, null)
+          continue
+        }
+        rowsById.set(rowId, row.doc as T)
+      }
+
+      return ids.map(id => rowsById.get(id) ?? null)
+    }
+    catch (error) {
+      console.error('Error getting documents by IDs:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update multiple documents in a single bulk operation.
+   * Returns normalized per-document result metadata.
+   */
+  async bulkUpdateDocuments<T extends CloudantV1.Document>(
+    docs: T[]
+  ): Promise<Array<{ id: string, rev: string, ok?: boolean, error?: string }>> {
+    try {
+      if (docs.length === 0) {
+        return []
+      }
+
+      const response = await this.client.postBulkDocs({
+        db: this.database,
+        bulkDocs: {
+          docs
+        }
+      })
+
+      return response.result.map(result => ({
+        id: result.id!,
+        rev: result.rev ?? '',
+        ok: result.ok,
+        error: result.error
+      }))
+    }
+    catch (error) {
+      console.error('Error bulk updating documents:', error)
+      throw error
+    }
+  }
+
   // Create database if it doesn't exist
   async ensureDatabase(): Promise<void> {
     try {
@@ -281,6 +347,53 @@ export class CouchDBConnector {
   }
 
   /**
+   * Get a design document by its full ID (e.g. '_design/firn-inventory').
+   * The Cloudant SDK rejects _design/ prefixed IDs in getDocument(),
+   * so this method strips the prefix and uses the dedicated API.
+   */
+  async getDesignDocument<T extends CloudantV1.DesignDocument>(designDocId: string): Promise<T | null> {
+    const ddocName = designDocId.replace(/^_design\//, '')
+    try {
+      const response = await this.client.getDesignDocument({
+        db: this.database,
+        ddoc: ddocName
+      })
+      return response.result as T
+    }
+    catch (error: unknown) {
+      const err = error as { code?: number, status?: number, message?: string }
+      if (err.code === 404 || err.status === 404) {
+        return null
+      }
+      console.error('Error getting design document:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create or update a design document.
+   * Uses the dedicated Cloudant SDK method that handles _design/ IDs correctly.
+   */
+  async putDesignDocument(designDocId: string, document: CloudantV1.DesignDocument): Promise<{ id: string, rev: string }> {
+    const ddocName = designDocId.replace(/^_design\//, '')
+    try {
+      const response = await this.client.putDesignDocument({
+        db: this.database,
+        ddoc: ddocName,
+        designDocument: { ...document, _id: designDocId }
+      })
+      return {
+        id: response.result.id!,
+        rev: response.result.rev!
+      }
+    }
+    catch (error) {
+      console.error('Error putting design document:', error)
+      throw error
+    }
+  }
+
+  /**
    * Query a CouchDB/Cloudant view.
    * Returns rows with id, key, value, and optionally doc. Compatible with CouchViewResponse<TRow>.
    */
@@ -289,12 +402,15 @@ export class CouchDBConnector {
     viewName: string,
     options?: {
       key?: TKey
+      keys?: TKey[]
       startkey?: TKey
       endkey?: TKey
       limit?: number
       skip?: number
       include_docs?: boolean
       descending?: boolean
+      group?: boolean
+      reduce?: boolean
     }
   ): Promise<{ total_rows?: number, offset?: number, rows: Array<{ id?: string, key: TKey, value: TValue, doc?: TDoc }> }> {
     try {
@@ -303,12 +419,15 @@ export class CouchDBConnector {
         ddoc: designDoc,
         view: viewName,
         key: options?.key,
+        keys: options?.keys as unknown[],
         startKey: options?.startkey,
         endKey: options?.endkey,
         limit: options?.limit,
         skip: options?.skip,
         includeDocs: options?.include_docs,
-        descending: options?.descending
+        descending: options?.descending,
+        group: options?.group,
+        reduce: options?.reduce
       })
       const result = response.result as { total_rows?: number, totalRows?: number, update_seq?: string, rows: Array<{ id?: string, key: TKey, value: TValue, doc?: TDoc }> }
       const totalRows = result.total_rows ?? (result as { totalRows?: number }).totalRows
