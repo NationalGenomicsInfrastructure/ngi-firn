@@ -92,15 +92,31 @@ The database operations are handled through the `CouchDBConnector` class in `ser
 - **Read**: `getDocument()` - Retrieves a document by ID
 - **Update**: `updateDocument()` - Updates an existing document (requires revision)
 - **Delete**: `deleteDocument()` - Deletes a document (requires revision)
-- **Query**: `queryDocuments()` - Performs Mango queries for complex searches
+- **Query**: `queryView()` - Queries a predefined view (the preferred way to search; see below)
+
+> Note: `queryDocuments()` (Mango queries) still exists on the connector, but it is **deprecated** for application use. We are migrating all queries to Views, which are precomputed and considerably faster than ad-hoc Mango queries.
 
 The `CouchDBConnector` is instantiated as `couchDB` and exported for use throughout the application. For specific document types, service classes provide domain-specific methods that build on the connector's abstract methods. For example, the `UserService` class in `server/crud/users.ts` provides user-specific operations.
 
-### Indexing
+### Views
 
-CouchDB uses indexes to improve query performance. The indices created by the application are defined in `server/crud/indices.ts`.
+Firn queries CouchDB through **views** rather than Mango queries. A view is a precomputed, incrementally maintained index defined by a `map` (and optionally `reduce`) function inside a [design document](https://docs.couchdb.org/en/stable/ddocs/views/intro.html). Because the result is materialized and updated as documents change, view lookups are far cheaper than the ad-hoc Mango queries they replace.
 
-- `type_userid_idx`: For querying documents by type and user ID.
+The application's own views are kept as design-document JSON files in `server/database/couchdb-views/` (e.g. `firn-users.json`, `firn-inventory.json`). These are the source of truth: `ensureViews()` in `server/crud/views.ts` loads them and upserts each design document into CouchDB, preserving the current revision. Run it with:
+
+```bash
+pnpm db:views
+```
+
+Query a view from a service class via the connector's `queryView()` method, passing the design-document name, the view name, and optional key/range/pagination options.
+
+#### Caching the read-only `projects` database views
+
+Firn also connects, read-only, to an external [`projects` database](#configuration) whose design documents are **outside our control**. To optimize queries against it, `pullProjectsViews()` (also in `server/crud/views.ts`) downloads every design document from that database into a local, gitignored cache at `server/database/couchdb-views/projects/`, so the view definitions are available as a reference while writing queries. The pull is diff-aware — it reports which views were added, changed, or unchanged — and never writes back to the `projects` database. Refresh the cache with:
+
+```bash
+pnpm db:views:projects
+```
 
 ## Configuration
 
@@ -110,6 +126,7 @@ The database connection is configured through environment variables:
 - `CLOUDANT_USERNAME`: Username for authentication
 - `CLOUDANT_PASSWORD`: Password for authentication
 - `CLOUDANT_DATABASE`: Database name (default: 'firn')
+- `CLOUDANT_PROJECTS_DATABASE`: Name of the external, read-only `projects` database (optional; default: 'projects')
 
 Set these in your application's environment.
 
@@ -127,6 +144,12 @@ To ensure that all relevant views for the Firn database are available and up to 
 
 ```bash
 pnpm db:views
+```
+
+To refresh the local, read-only cache of the external `projects` database's views (see [Views](#views)), run:
+
+```bash
+pnpm db:views:projects
 ```
 
 ## Initialize Database

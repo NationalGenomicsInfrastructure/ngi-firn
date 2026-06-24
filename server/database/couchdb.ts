@@ -380,6 +380,32 @@ export class CouchDBConnector {
   }
 
   /**
+   * List all design documents in the database, including their full content.
+   * Generic: returns whatever design docs exist (does not assume any name).
+   * Returns an empty array if the database does not exist (404).
+   * Useful for caching the views of an external, read-only database.
+   */
+  async listDesignDocuments<T extends CloudantV1.DesignDocument>(): Promise<T[]> {
+    try {
+      const response = await this.client.postDesignDocs({
+        db: this.database,
+        includeDocs: true
+      })
+      return response.result.rows
+        .map(row => row.doc as T | undefined)
+        .filter((doc): doc is T => doc != null)
+    }
+    catch (error: unknown) {
+      const err = error as { code?: number, status?: number }
+      if (err.code === 404 || err.status === 404) {
+        return []
+      }
+      console.error('Error listing design documents:', error)
+      throw error
+    }
+  }
+
+  /**
    * Create or update a design document.
    * Uses the dedicated Cloudant SDK method that handles _design/ IDs correctly.
    */

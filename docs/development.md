@@ -102,6 +102,16 @@ pnpm db:init
 
 This will create the respective administrator account in the database, unless an administrator already exists. In that case, ask an administrator to create or approve your account via the user interface instead.
 
+### Caching the projects database views
+
+Firn queries are being migrated to CouchDB [views](./couchDatabase.md#views) for performance. If you have access to the external, read-only `projects` database, you can pull its view definitions into a local, gitignored cache (`server/database/couchdb-views/projects/`) so they are available as a reference while optimizing queries:
+
+```bash
+pnpm db:views:projects
+```
+
+The command is diff-aware and never writes back to the `projects` database. It is optional — when the database is unavailable it simply warns and exits.
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
@@ -130,6 +140,8 @@ The project includes several useful scripts:
 - `pnpm lint` - Run ESLint to check code quality
 - `pnpm db:init` - Initialize the database and create the first admin user
 - `pnpm db:test` - Test the database connection
+- `pnpm db:views` - Ensure the application's CouchDB views are present and up to date
+- `pnpm db:views:projects` - Cache the read-only `projects` database views locally
 
 For more information about production builds, see [Deployment](./deployment.md).
 
