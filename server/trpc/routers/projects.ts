@@ -50,7 +50,9 @@ export const projectsRouter = createTRPCRouter({
         available: true,
         items: result.items,
         total_rows: result.total_rows,
-        offset: result.offset
+        offset: result.offset,
+        scan_truncated: result.scan_truncated,
+        scan_at_max: result.scan_at_max
       }
     }),
 
@@ -69,7 +71,9 @@ export const projectsRouter = createTRPCRouter({
         available: true,
         items: result.items as WithDetailsSuccess['items'],
         total_rows: result.total_rows,
-        offset: result.offset
+        offset: result.offset,
+        scan_truncated: result.scan_truncated,
+        scan_at_max: result.scan_at_max
       }
     }),
 

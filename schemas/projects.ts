@@ -140,6 +140,8 @@ export const listProjectsSummaryInputSchema = z.object({
   /** Filter by project_name: case-insensitive substring match (e.g. "User" matches "A.User_25_01"). */
   project_name_filter: z.string().optional(),
   application_filter: z.string().optional(),
+  /** How many summary rows to scan per status when a name/application filter is active ("Retrieve more" raises this). Clamped server-side. */
+  scan_limit: z.number().int().positive().optional(),
   limit: z.number().optional(),
   skip: z.number().optional()
 }).strict()
@@ -189,7 +191,11 @@ export const projectListResultSchema = z.discriminatedUnion('available', [
     available: z.literal(true),
     items: z.array(projectSummaryListItemSchema),
     total_rows: z.number().optional(),
-    offset: z.number().optional()
+    offset: z.number().optional(),
+    /** True when a name/application filter scan filled the window; more matches may exist beyond it (offer "Retrieve more"). */
+    scan_truncated: z.boolean().optional(),
+    /** True when the scan window has reached its hard ceiling; "Retrieve more" cannot scan any deeper. */
+    scan_at_max: z.boolean().optional()
   }),
   z.object({ available: z.literal(false) })
 ])
@@ -201,7 +207,11 @@ export const projectListWithDetailsResultSchema = z.discriminatedUnion('availabl
     available: z.literal(true),
     items: z.array(projectSummaryWithDetailsItemSchema),
     total_rows: z.number().optional(),
-    offset: z.number().optional()
+    offset: z.number().optional(),
+    /** True when a name/application filter scan filled the window; more matches may exist beyond it (offer "Retrieve more"). */
+    scan_truncated: z.boolean().optional(),
+    /** True when the scan window has reached its hard ceiling; "Retrieve more" cannot scan any deeper. */
+    scan_at_max: z.boolean().optional()
   }),
   z.object({ available: z.literal(false) })
 ])

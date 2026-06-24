@@ -48,6 +48,11 @@ const { value: applicationFilterValue, setValue: setApplicationFilterValue } = u
 // Applied search params (set on submit or when project ID/name become valid); query uses these
 const searchParams = ref<ListProjectsSummaryInputSchema & { status?: 'open' | 'closed' }>({})
 
+// How deep the server scans for name/application matches. Raised on demand via "Retrieve more";
+// reset to undefined (server default) on every new search.
+const SCAN_STEP = 1000
+const scanLimit = ref<number | undefined>(undefined)
+
 const queryParams = computed<ListProjectsSummaryInputSchema>(() => {
   const p = searchParams.value
   const out: ListProjectsSummaryInputSchema = {}
@@ -55,6 +60,7 @@ const queryParams = computed<ListProjectsSummaryInputSchema>(() => {
   if (p.ngi_project_id?.trim()) out.ngi_project_id = p.ngi_project_id.trim()
   if (p.project_name_filter?.trim()) out.project_name_filter = p.project_name_filter.trim()
   if (p.application_filter?.trim()) out.application_filter = p.application_filter.trim()
+  if (scanLimit.value != null) out.scan_limit = scanLimit.value
   if (p.limit != null) out.limit = p.limit
   if (p.skip != null) out.skip = p.skip
   return out
@@ -66,8 +72,19 @@ const isLoading = computed(() => asyncStatus.value === 'loading')
 const isError = computed(() => state.value.status === 'error')
 const error = computed(() => state.value.status === 'error' ? state.value.error : undefined)
 const responseData = computed(() => state.value.status === 'success' ? state.value.data : undefined)
+// True when a name/application filter scan filled its window; more matches may exist beyond the shown set.
+const scanTruncated = computed(() => responseData.value?.available === true && responseData.value.scan_truncated === true)
+// True when the scan has reached its hard ceiling; we can no longer offer to scan deeper.
+const scanAtMax = computed(() => responseData.value?.available === true && responseData.value.scan_at_max === true)
+
+// "Retrieve more": scan one step deeper. The server clamps to its ceiling and signals scan_at_max when reached.
+function retrieveMore() {
+  scanLimit.value = (scanLimit.value ?? 0) + SCAN_STEP
+}
 
 function applySearchValues(values: SearchFormValues) {
+  // New search criteria: start scanning shallow again.
+  scanLimit.value = undefined
   searchParams.value = {
     ...(values.status && values.status !== 'any' && { status: values.status }),
     ...(values.ngi_project_id?.trim() && { ngi_project_id: values.ngi_project_id.trim() }),
@@ -116,7 +133,7 @@ const searchTriggerDebounce = useDebounceFn(() => {
   })
 }, 400)
 
-watch([projectIdPrefixValue, projectNameFilterValue], () => {
+watch([projectIdPrefixValue, projectNameFilterValue, applicationFilterValue], () => {
   searchTriggerDebounce()
 }, { deep: true })
 </script>
@@ -229,6 +246,29 @@ watch([projectIdPrefixValue, projectNameFilterValue], () => {
       v-else-if="responseData && responseData.available"
       class="mt-6"
     >
+      <div
+        v-if="scanTruncated"
+        class="mb-4 flex flex-wrap items-center gap-3"
+      >
+        <NAlert
+          :alert="scanAtMax ? 'border-warning' : 'border-info'"
+          title="Showing the first matches only"
+          :description="scanAtMax
+            ? 'There may be more matches than we can scan. Refine the project name or application, or narrow by project ID, to see the rest.'
+            : 'More projects may match your filter further down the list.'"
+          icon="i-lucide-list-filter"
+          class="grow"
+        />
+        <NButton
+          v-if="!scanAtMax"
+          btn="soft-primary"
+          leading="i-lucide-chevrons-down"
+          :loading="isLoading"
+          @click="retrieveMore()"
+        >
+          Retrieve more
+        </NButton>
+      </div>
       <TableProjectSummaryDisplay
         :projects="responseData.items"
         :loading="isLoading"
