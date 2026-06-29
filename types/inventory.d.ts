@@ -98,10 +98,10 @@ export interface Room extends BaseDocument {
   slug: string
   name: string
   label: string | null
-  roomNumber: string | null
   roomType: RoomType
   building: SciLifeLabBuilding
-  floor: number | null
+  floor: number
+  roomNumber: number
   description: string | null
   isActive: boolean
   createdAt: string
