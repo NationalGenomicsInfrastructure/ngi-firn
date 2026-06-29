@@ -1,6 +1,7 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
+import type { RoomType, SciLifeLabBuilding } from './inventory-rooms'
 
 /*
  * Inventory Types - Table of Contents
@@ -98,8 +99,8 @@ export interface Room extends BaseDocument {
   name: string
   label: string | null
   roomNumber: string | null
-  roomType: 'basement' | 'laboratory' | 'office' | 'storage' | 'other'
-  building: 'alfa' | 'beta' | 'gamma' | 'delta'
+  roomType: RoomType
+  building: SciLifeLabBuilding
   floor: number | null
   description: string | null
   isActive: boolean
