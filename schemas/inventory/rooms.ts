@@ -2,11 +2,11 @@ import { z } from 'zod'
 
 // Room type classifications
 export const roomTypeSchema = z.enum([
-  'basement',
-  'laboratory',
-  'office',
-  'storage',
-  'other'
+  'Basement',
+  'Laboratory',
+  'Office',
+  'Storage',
+  'Other'
 ])
 
 // Allowed building identifiers for room registration

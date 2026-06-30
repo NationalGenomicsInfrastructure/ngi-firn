@@ -7,7 +7,7 @@ definePageMeta({
 <template>
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
     <PageTitle
-      title="Cold Storage Inventory"
+      title="Storage Inventory"
       description="Manage rooms and storage equipment."
     />
 
