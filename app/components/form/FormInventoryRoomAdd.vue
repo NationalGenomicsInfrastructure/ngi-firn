@@ -51,24 +51,18 @@ const toastActions = [
 
 const onSubmit = handleSubmit(
   async (values) => {
-    const payload = {
-      ...values,
-      label: values.label?.trim() || null,
-      description: values.description?.trim() || null
-    }
-
     try {
       const { mutateAsync } = createRoom()
-      const result = await mutateAsync(payload)
+      const result = await mutateAsync(values)
       if (result) {
         resetForm({ values: { ...initialValues } })
       }
       else {
-        showError(`Room "${payload.name}" could not be created.`, 'Room creation error', { actions: toastActions })
+        showError(`Room "${values.name}" could not be created.`, 'Room creation error', { actions: toastActions })
       }
     }
     catch (error) {
-      showError(`Room "${payload.name}" could not be created: ${error}`, 'Room creation error', { actions: toastActions })
+      showError(`Room "${values.name}" could not be created: ${error}`, 'Room creation error', { actions: toastActions })
     }
   },
   async () => {

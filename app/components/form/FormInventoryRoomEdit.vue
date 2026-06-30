@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { createRoomSchema } from '~~/schemas/inventory/rooms'
+import { updateRoomSchema } from '~~/schemas/inventory/rooms'
 import type { Room } from '~~/types/inventory'
 import { updateRoom } from '~/utils/mutations/inventory/rooms'
 import {
@@ -43,11 +43,12 @@ const toastActions = [
   }
 ]
 
-const formSchema = toTypedSchema(createRoomSchema)
+const formSchema = toTypedSchema(updateRoomSchema)
 
 const { handleSubmit, errors, resetForm } = useForm({
   validationSchema: formSchema,
   initialValues: {
+    slug: props.room.slug,
     name: props.room.name,
     label: props.room.label ?? '',
     roomType: props.room.roomType,
@@ -61,26 +62,18 @@ const { handleSubmit, errors, resetForm } = useForm({
 
 const onSubmit = handleSubmit(
   async (values) => {
-    const payload = {
-      ...values,
-      slug: props.room.slug,
-      name: values.name.trim(),
-      label: values.label?.trim() || null,
-      description: values.description?.trim() || null
-    }
-
     try {
       const { mutateAsync } = updateRoom()
-      const result = await mutateAsync(payload)
+      const result = await mutateAsync(values)
       if (!result) {
-        showError(`Room "${payload.name}" could not be updated.`, 'Room update error', { actions: toastActions })
+        showError(`Room "${values.name}" could not be updated.`, 'Room update error', { actions: toastActions })
         return
       }
 
       emit('saved')
     }
     catch (error) {
-      showError(`Room "${payload.name}" could not be updated: ${error}`, 'Room update error', { actions: toastActions })
+      showError(`Room "${values.name}" could not be updated: ${error}`, 'Room update error', { actions: toastActions })
     }
   },
   async () => {

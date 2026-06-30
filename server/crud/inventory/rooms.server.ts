@@ -122,7 +122,14 @@ export const RoomService = {
     }
 
     const updatedRoom: Room = {
-      ...existing, ...updates, slug: nextRoomSlug, updatedAt: new Date().toISOString()
+      ...existing,
+      ...updates,
+      slug: nextRoomSlug,
+      // Optional text fields are absent when not edited (partial update) and
+      // null when cleared; only overwrite the stored value when one is provided.
+      label: updates.label === undefined ? existing.label : updates.label,
+      description: updates.description === undefined ? existing.description : updates.description,
+      updatedAt: new Date().toISOString()
     }
 
     const result = await couchDB.updateDocument(existing._id, updatedRoom, existing._rev)
