@@ -19,7 +19,7 @@
 
 import { couchDB, generateCouchDocId } from '../../database/couchdb'
 import type { Room, StorageEquipment } from '../../../types/inventory'
-import type { CreateRoomInput, UpdateRoomInput, DeleteRoomInput } from '../../../schemas/inventory/inventory-rooms.ts'
+import type { CreateRoomInput, UpdateRoomInput, DeleteRoomInput } from '../../../schemas/inventory/rooms'
 
 /* Check if a document is a Room document. */
 function isRoom(doc: unknown): doc is Room {
