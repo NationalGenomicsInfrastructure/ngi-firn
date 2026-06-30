@@ -1,7 +1,7 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
-import type { RoomType, SciLifeLabBuilding } from './inventory-rooms'
+import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
 /*
  * Inventory Types - Table of Contents
