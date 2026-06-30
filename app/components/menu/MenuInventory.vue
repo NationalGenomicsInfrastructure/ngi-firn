@@ -2,63 +2,56 @@
 const data = {
   menuItems: [
     {
-      title: 'Plates',
+      title: 'Rooms',
       url: '#',
-      icon: 'i-lucide-bot',
+      icon: 'i-lucide-building-2',
+      isActive: true,
       items: [
         {
-          title: 'List Plates',
-          url: '#'
+          title: 'Overview',
+          url: '/inventory/rooms'
         },
         {
-          title: 'Search Plates',
-          url: '#'
-        },
-        {
-          title: 'Manage Plates',
-          url: '#'
+          title: 'Add room',
+          url: '/inventory/rooms/add'
         }
       ]
     },
     {
-      title: 'Freezers',
+      title: 'Equipment',
       url: '#',
-      icon: 'i-lucide-thermometer-snowflake',
+      icon: 'i-lucide-refrigerator',
+      isActive: true,
       items: [
         {
-          title: 'List Freezers',
-          url: '#'
+          title: 'Overview',
+          url: '/inventory/equipment'
         },
         {
-          title: 'Manage Freezers',
-          url: '#'
-        },
-        {
-          title: 'Configure Racks',
-          url: '#'
-        },
-        {
-          title: 'Freezer Status',
-          url: '#'
+          title: 'Add equipment',
+          url: '/inventory/equipment/add'
         }
       ]
     },
     {
-      title: 'Documentation',
+      title: 'Containers',
       url: '#',
-      icon: 'i-lucide-book-open',
+      icon: 'i-lucide-box',
       items: [
         {
-          title: 'Introduction',
-          url: '#'
-        },
+          title: 'Overview',
+          url: '/inventory/containers'
+        }
+      ]
+    },
+    {
+      title: 'Items',
+      url: '#',
+      icon: 'i-lucide-test-tubes',
+      items: [
         {
-          title: 'Tutorial',
-          url: '#'
-        },
-        {
-          title: 'FAQ',
-          url: '#'
+          title: 'Overview',
+          url: '/inventory/items'
         }
       ]
     }
@@ -85,7 +78,7 @@ const data = {
 
 <template>
   <NavigationGroups
-    title="Actions"
+    title="Pages"
     :items="data.menuItems"
   />
   <NavigationWorksets
