@@ -71,8 +71,16 @@ export type ProjectQueryResult = ProjectSingleResultSchema
 // Query for project bookmarks of the current user
 export const projectBookmarksQuery = defineQueryOptions<FirnProjectBookmark[]>({
   key: PROJECTS_QUERY_KEYS.bookmarks(),
-  query: () => {
+  query: async () => {
     const { $trpc } = useNuxtApp()
-    return $trpc.projects.getProjectBookmarks.query()
+    const bookmarks = await $trpc.projects.getProjectBookmarks.query()
+
+    // Sort bookmarks by last name.
+    return [...bookmarks].sort((a, b) => {
+      const aSecondFragment = a.projectName?.split(/[_.]/g)[1] ?? ''
+      const bSecondFragment = b.projectName?.split(/[_.]/g)[1] ?? ''
+
+      return aSecondFragment.localeCompare(bSecondFragment, undefined, { numeric: true, sensitivity: 'base' })
+    })
   }
 })
