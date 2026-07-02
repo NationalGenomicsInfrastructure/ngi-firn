@@ -41,7 +41,7 @@ const infoFields = computed(() => [
       </h2>
     </div>
 
-    <ProjectBadges
+    <BadgesProject
       :project-id="projectId"
       :status-fields="statusFields"
       :priority="priority"
@@ -49,21 +49,13 @@ const infoFields = computed(() => [
 
     <NSeparator class="my-4" />
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-      <div
+      <IndicatorIconCard
         v-for="field in infoFields"
         :key="field.label"
-      >
-        <div class="flex items-center gap-1.5 mb-0.5">
-          <NIcon
-            :name="field.icon"
-            class="text-primary-400 dark:text-primary-600 text-xs"
-          />
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">{{ field.label }}</span>
-        </div>
-        <p class="font-medium pl-5">
-          {{ field.value }}
-        </p>
-      </div>
+        :icon="field.icon"
+        :label="field.label"
+        :value="field.value"
+      />
     </div>
   </NCard>
 </template>
