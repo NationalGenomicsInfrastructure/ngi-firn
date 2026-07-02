@@ -49,8 +49,8 @@
   },
   "dependencies": {
     "@ibm-cloud/cloudant": "^0.12.22",
-    "@iconify-json/lucide": "^1.2.114",
-    "@iconify-json/simple-icons": "^1.2.87",
+    "@iconify-json/lucide": "^1.2.115",
+    "@iconify-json/simple-icons": "^1.2.88",
     "@nuxthub/core": "^0.10.7",
     "@pinia/colada": "^0.21.7",
     "@pinia/colada-nuxt": "^0.3.2",
@@ -87,14 +87,14 @@
     "@unocss/preset-wind4": "66.6.2",
     "dotenv": "^17.4.2",
     "esbuild": "^0.28.1",
-    "eslint": "^10.5.0",
-    "form-data": "4.0.5",
+    "eslint": "^10.6.0",
+    "form-data": "4.0.6",
     "rollup-plugin-visualizer": "^7.0.1",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "unocss": "66.6.2",
-    "vue-tsc": "^3.3.5",
-    "wrangler": "^4.103.0"
+    "vue-tsc": "^3.3.6",
+    "wrangler": "^4.106.0"
   },
-  "packageManager": "pnpm@10.30.3"
+  "packageManager": "pnpm@11.9.0"
 }
