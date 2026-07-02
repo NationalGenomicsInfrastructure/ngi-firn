@@ -7,3 +7,5 @@ allowBuilds:
   unrs-resolver: true
   vue-demi: true
   workerd: true
+minimumReleaseAgeExclude:
+  - tsx@4.22.5
