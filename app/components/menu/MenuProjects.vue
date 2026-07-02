@@ -19,7 +19,7 @@ const data = {
 
 <template>
   <NavigationGroups
-    title="Actions"
+    title="Pages"
     :items="data.menuItems"
   />
   <NavigationProjectBookmarks title="Your bookmarked projects" />
