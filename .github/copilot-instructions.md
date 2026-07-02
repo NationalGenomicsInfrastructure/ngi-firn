@@ -6,7 +6,9 @@ NGI Firn is a **Nuxt 4** laboratory freezer inventory management system for the 
 
 ```bash
 pnpm dev           # Start dev server (http://localhost:3000)
+pnpm dev-https     # Start with HTTPS (requires mkcert; set LOCALHOST_HTTPS_KEY/CERT)
 pnpm build         # Production build
+pnpm build-analyze # Production build with bundle size analysis
 pnpm typecheck     # TypeScript type-check (not run during dev, only at build)
 pnpm lint          # ESLint
 pnpm db:test       # Verify CouchDB connection
@@ -14,6 +16,22 @@ pnpm db:init       # Create first admin user (set FIRST_ADMIN_EMAIL first)
 ```
 
 There is no automated test suite. `pnpm` is enforced as the package manager (a `preinstall` script blocks npm/yarn). Node ≥ 24 is required.
+
+## Feature Development Workflow
+
+When building a new feature, work through these layers **in order**. Each step is a natural stopping point — commit after completing it before moving on. This keeps the diff reviewable and makes it easy to step through the work incrementally.
+
+1. **Types** (`types/`) — Define TypeScript interfaces for any new document types, extending `BaseDocument`. Increment `schema` if modifying an existing document shape.
+2. **Database** (`server/crud/`) — Implement the service class methods (create, read, update, delete) that talk to CouchDB via `CouchDBConnector`.
+3. **tRPC routers** (`server/trpc/routers/`) — Expose the CRUD operations as tRPC procedures. Choose the right procedure type (`authedProcedure`, `adminProcedure`, etc.) and wire up input validation.
+4. **Schemas** (`schemas/`) — Write the Zod schemas for procedure inputs. These are also used by REST handlers if needed.
+5. **Queries** (`app/utils/queries/`) — Define query keys and `defineQueryOptions` entries for data the UI needs to read.
+6. **Mutations** (`app/utils/mutations/`) — Implement `defineMutation` wrappers with optimistic updates, rollback, and cache invalidation.
+7. **Composables** (`app/composables/`) — Add shared reactive logic if multiple components need the same derived state or side effects.
+8. **Components** (`app/components/`) — Build the UI building blocks.
+9. **Pages** (`app/pages/`) — Assemble components into routed pages. This is the final step.
+
+> Agents should **commit after each step** rather than delivering everything as one large changeset. Smaller, focused commits are much easier to review.
 
 ## Architecture
 
@@ -56,6 +74,30 @@ Defined in `server/trpc/init.ts`. Use the appropriate procedure type:
 | `tokenProcedure` | Allows token-based auth (lab tablets) |
 
 The tRPC context (`server/trpc/init.ts`) populates `ctx.user`, `ctx.secure`, and `ctx.firnUser` from either session cookies or the `Authorization` header token.
+
+#### Always await the CRUD operation on the server in the tRPC procedure
+
+This is mandatory to implement optimistic updates correctly. If you forget to `await` the server call,  the UI will freeze until the server responds.
+
+```ts
+// ❌ BAD: forgets to await the server call
+  updateRoom: authedProcedure
+    .input(updateRoomSchema)
+    .mutation(async ({ input }): Promise<Room> => {
+      const { RoomService } = await import('../../../crud/inventory/rooms.server')
+      return RoomService.updateRoom(input)
+    }),
+```
+
+```ts
+// ✅ GOOD: awaits the server call
+  updateRoom: authedProcedure
+    .input(updateRoomSchema)
+    .mutation(async ({ input }): Promise<Room> => {
+      const { RoomService } = await import('../../../crud/inventory/rooms.server')
+      return await RoomService.updateRoom(input)
+    }),
+```
 
 ### State Management & Data Fetching
 
@@ -190,6 +232,13 @@ The pattern used throughout the codebase for mutations that touch multiple cache
 
 For mutations that move items between lists (e.g. promoting a pending user to approved), apply all list changes in `onMutate` before returning the snapshots. See `setUserAccessByAdmin` in `app/utils/mutations/users.ts` for the full cross-list pattern.
 
+To **pre-fetch and ensure** a query is populated before use:
+
+```ts
+const queryCache = useQueryCache()
+queryCache.refresh(queryCache.ensure(approvedUsersQuery))
+```
+
 #### tRPC call convention by context
 
 | Location | Pattern |
@@ -245,7 +294,18 @@ All UnaUI components are prefixed with `N` (configured via `una: { prefix: 'N' }
 const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
 ```
 
-Apply via `:una="{ formLabel: FORM_LABEL_STYLE }"` on `NFormField`. Use `text-primary-700 dark:text-primary-300` instead when the background is gray (`card="soft-gray"`).
+Apply via `:una="{ formLabel: FORM_LABEL_STYLE }"` on `NFormField`. For descriptions also pass `formDescription: 'text-muted'`. Use `text-primary-700 dark:text-primary-300` instead when the background is gray (`card="soft-gray"`).
+
+For **toggle controls and sliders**, use `NFormGroup` instead of `NFormField`:
+
+```vue
+<NFormGroup
+  :label="toggleLabel"
+  :una="{ formGroupLabel: FORM_LABEL_STYLE }"
+>
+  <NSwitch v-model="value" />
+</NFormGroup>
+```
 
 **Table headers** share a single constant:
 
@@ -253,7 +313,66 @@ Apply via `:una="{ formLabel: FORM_LABEL_STYLE }"` on `NFormField`. Use `text-pr
 const TABLE_HEAD_STYLE = 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
 ```
 
-Default card variant: `card="outline-gray"`. Badge variants for status: `solid-primary`, `solid-error`, `solid-success`, `solid-gray`, `solid-yellow`, `solid-indigo`.
+Default card variant: `card="outline-gray"`. Badge variants for status: `solid-primary`, `solid-error`, `solid-success`, `solid-gray`, `solid-yellow`, `solid-indigo`. Use `badge="outline"` for neutral identifiers (IDs, codes). QC badges should use labels "Passed"/"Failed", not raw `true`/`false`.
+
+**Section headings inside cards** (use `NSeparator` between logical sections):
+
+```vue
+<NSeparator class="my-4" />
+<div class="flex items-center gap-2 mb-3">
+  <NIcon name="i-lucide-clipboard-list" class="text-muted" />
+  <h4 class="text-sm font-semibold">Section title</h4>
+</div>
+```
+
+**Grid layout for fields** (responsive, used inside cards and expanded rows):
+
+```vue
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+  <!-- label/value items -->
+</div>
+```
+
+**Expanded table row container**:
+
+```vue
+<div class="p-4 text-sm bg-muted/30 rounded-md">
+  <!-- label/value grid and separators -->
+</div>
+```
+
+**Rounding floating-point numbers** for display (concentrations, volumes, amounts) — define per component:
+
+```ts
+function roundNum(val: unknown, decimals = 2): string {
+  if (val == null) return '—'
+  const n = Number(val)
+  if (Number.isNaN(n)) return String(val)
+  if (Number.isInteger(n)) return String(n)
+  return n.toFixed(decimals)
+}
+```
+
+**Icon context map** (use `i-lucide-*` consistently):
+
+| Context | Icon |
+|---------|------|
+| Calendar / dates | `i-lucide-calendar`, `i-lucide-calendar-check`, `i-lucide-calendar-plus` |
+| User / contact | `i-lucide-user`, `i-lucide-user-circle` |
+| Email | `i-lucide-mail` |
+| Building / affiliation | `i-lucide-building-2` |
+| Samples / lab | `i-lucide-test-tubes`, `i-lucide-flask-conical` |
+| DNA / genome | `i-lucide-dna` |
+| Delivery | `i-lucide-truck` |
+| Tokens / keys | `i-lucide-key-round` |
+| Status flags | `i-lucide-lock-open`, `i-lucide-lock`, `i-lucide-play`, `i-lucide-clock`, `i-lucide-ban` |
+| Links | `i-lucide-link`, `i-lucide-external-link` |
+
+**Lazy hydration** for below-the-fold components:
+
+```vue
+<LazyFrontpageFooter hydrate-on-visible />
+```
 
 ### Custom Themes
 
@@ -266,6 +385,34 @@ When adding or renaming a custom color theme, update **all four** of these files
 ### REST API Routes (server/api/)
 
 File name suffix determines the HTTP method: `hello.get.ts`, `hello.post.ts`, etc. Validate request bodies with Zod via `readValidatedBody(event, schema.parse)`. Schemas live in `schemas/`.
+
+### Form Validation (VeeValidate)
+
+All create/edit forms use **VeeValidate** with **Zod** schemas. Every form must follow this pattern:
+
+```ts
+import { toTypedSchema } from '@vee-validate/zod'
+import { focusFirstFormFieldError } from '~/utils/inventory/rooms'
+
+const formSchema = toTypedSchema(myZodSchema.omit({ id: true, rev: true }))
+
+const { handleSubmit, validate, errors } = useForm({
+  validationSchema: formSchema,
+  initialValues: { /* ... */ }
+})
+
+const onSubmit = handleSubmit(async (values) => {
+  // call tRPC mutation
+})
+
+async function onValidating() {
+  await validate()
+  await focusFirstFormFieldError(errors.value)  // scroll to first invalid field
+  onSubmit()
+}
+```
+
+Bind with `<form @submit.prevent="onValidating()">`. The `errors` object from `useForm()` **must** be destructured and passed to `focusFirstFormFieldError()` — omitting it means validation still blocks submission but the user sees no indication of which field failed.
 
 ### ESLint Style
 
