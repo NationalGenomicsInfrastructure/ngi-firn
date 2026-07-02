@@ -161,6 +161,17 @@ watch(includeWeekday, (isRelative) => {
             variant="ghost"
             size="xs"
           />
+          <NTooltip
+            content="View project details"
+          >
+            <NButton
+              label="i-lucide-file-input"
+              icon
+              btn="ghost-gray"
+              size="xs"
+              :to="`/projects/details/${cell.row.original.project_id}`"
+            />
+          </NTooltip>
         </div>
       </template>
 
@@ -281,6 +292,7 @@ watch(includeWeekday, (isRelative) => {
       </template>
     </NTable>
     <div
+      v-if="table?.getFilteredRowModel().rows.length ?? 0 > 10"
       class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
     >
       <div

@@ -260,6 +260,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
     </NTable>
     <!-- pagination -->
     <div
+      v-if="table?.getFilteredRowModel().rows.length ?? 0 > 10"
       class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
     >
       <div

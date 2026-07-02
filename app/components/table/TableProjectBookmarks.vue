@@ -137,7 +137,7 @@ function getDetailFields(bookmark: FirnProjectBookmark): BookmarkDetailField[] {
 
           <div
             v-if="getDetailFields(cell.row.original).length"
-            class="grid grid-cols-3 sm:grid-cols-5 gap-x-3 gap-y-1 text-xs w-full mt-2"
+            class="grid grid-cols-3 sm:grid-cols-5 gap-x-3 gap-y-1 text-xs w-full mt-2 text-muted"
           >
             <div
               v-for="field in getDetailFields(cell.row.original)"
@@ -160,6 +160,7 @@ function getDetailFields(bookmark: FirnProjectBookmark): BookmarkDetailField[] {
       </template>
     </NTable>
     <div
+      v-if="(table?.getFilteredRowModel().rows.length ?? 0) > 5"
       class="flex flex-wrap items-center justify-between gap-4 overflow-auto px-2 mt-4"
     >
       <div
