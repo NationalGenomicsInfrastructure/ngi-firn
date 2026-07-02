@@ -49,6 +49,10 @@ This name was chosen for the application as it aptly reflects the cold storage c
 - [Authentication and authorization](docs/auth.md)
 - [Tokens](docs/tokens.md)
 
+#### Functionality
+
+- [Inventory](docs/inventory.md)
+
 ### Running the application
 
 - [Deployment](docs/deployment.md)
