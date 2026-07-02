@@ -31,7 +31,8 @@ const rooms = computed(() => roomsState.value.status === 'success' ? roomsState.
 const filterInitialValues = {
   roomType: ANY_VALUE as typeof ANY_VALUE | RoomType,
   building: ANY_VALUE as typeof ANY_VALUE | SciLifeLabBuilding,
-  floor: ANY_VALUE
+  floor: ANY_VALUE,
+  status: 'active' as 'active' | 'inactive' | typeof ANY_VALUE
 }
 
 const { resetForm } = useForm({ initialValues: filterInitialValues })
@@ -40,11 +41,13 @@ const { resetForm } = useForm({ initialValues: filterInitialValues })
 const { value: selectedRoomType, setValue: setRoomType } = useField<typeof ANY_VALUE | RoomType>('roomType')
 const { value: selectedBuilding, setValue: setBuilding } = useField<typeof ANY_VALUE | SciLifeLabBuilding>('building')
 const { value: selectedFloor, setValue: setFloor } = useField<string>('floor')
+const { value: selectedStatus, setValue: setStatus } = useField<'active' | 'inactive' | typeof ANY_VALUE>('status')
 
 // useField is undefined until NFormField mounts; treat that as "any" so all rooms show on first load
 const effectiveRoomType = computed(() => selectedRoomType.value ?? ANY_VALUE)
 const effectiveBuilding = computed(() => selectedBuilding.value ?? ANY_VALUE)
 const effectiveFloor = computed(() => selectedFloor.value ?? ANY_VALUE)
+const effectiveStatus = computed(() => selectedStatus.value ?? 'active')
 
 const roomTypeOptions = computed(() => [
   { value: ANY_VALUE, label: 'Any room type' },
@@ -55,6 +58,12 @@ const buildingOptions = computed(() => [
   { value: ANY_VALUE, label: 'Any building' },
   ...SciLifeLabBuildingSchema.options.map(building => ({ value: building, label: building }))
 ])
+
+const statusOptions = [
+  { value: 'active', label: 'Active only' },
+  { value: 'inactive', label: 'Inactive only' },
+  { value: ANY_VALUE, label: 'All rooms' }
+]
 
 const floorOptions = computed(() => {
   const floors = Array.from(new Set(
@@ -82,7 +91,11 @@ const filteredRooms = computed(() => {
       = effectiveFloor.value === ANY_VALUE
         || (effectiveFloor.value === NO_FLOOR_VALUE ? room.floor == null : String(room.floor) === effectiveFloor.value)
 
-    return roomTypeMatch && buildingMatch && floorMatch
+    const roomStatusMatch
+      = effectiveStatus.value === ANY_VALUE
+        || (effectiveStatus.value === 'active' ? room.isActive === true : room.isActive !== true)
+
+    return roomTypeMatch && buildingMatch && floorMatch && roomStatusMatch
   })
 })
 
@@ -176,6 +189,19 @@ function clearFilters() {
               :items="floorOptions"
               by="value"
               @update:model-value="(v: unknown) => setFloor((v as string | null | undefined) ?? ANY_VALUE)"
+            />
+          </NFormField>
+
+          <NFormField
+            name="status"
+            label="Status"
+            :una="{ formLabel: FORM_LABEL_STYLE }"
+          >
+            <NSelect
+              :model-value="effectiveStatus"
+              :items="statusOptions"
+              by="value"
+              @update:model-value="(v: unknown) => setStatus((v as 'active' | 'inactive' | typeof ANY_VALUE | null | undefined) ?? 'active')"
             />
           </NFormField>
 
