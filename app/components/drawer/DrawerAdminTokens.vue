@@ -118,7 +118,7 @@ const getExpirationStatus = (expiresAt: string) => {
         label="Administer tokens"
         class="min-w-60 transition delay-300 ease-in-out"
         btn="soft-primary hover:outline-primary"
-        trailing="i-lucide-qr-code"
+        leading="i-lucide-qr-code"
         :disabled="!props.tokens || props.tokens.length === 0"
       />
     </NDrawerTrigger>
@@ -230,7 +230,7 @@ const getExpirationStatus = (expiresAt: string) => {
               label="Cancel"
               class="transition delay-300 ease-in-out"
               btn="soft-gray hover:outline-gray"
-              trailing="i-lucide-x"
+              leading="i-lucide-x"
             />
           </NDrawerClose>
           <NButton
