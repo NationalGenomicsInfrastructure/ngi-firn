@@ -5,12 +5,13 @@
  * TYPE GUARDS AND VALIDATION:
  * isRoom(doc) - Check whether a fetched document is a Room
  * ensureUniqueRoomSlug(roomSlug, currentId?) - Prevent duplicate room slugs
- * getRequiredRoom(roomDocumentId) - Load room or throw
+ * buildRoomSlug(building, floor, roomNumber) - Build the room URL slug from required location attributes
  *
  * LISTING ROOMS:
  * getRoom(roomDocumentId) - Fetch one room by document ID
  * getRoomBySlug(slug) - Fetch one room by slug
  * getAllRooms() - List and sort all rooms
+ * 
  * CREATE, UPDATE, DELETE ROOMS:
  * createRoom(input) - Create a room document
  * updateRoom(roomDocumentId, rev, updates) - Update room fields and cascade path updates
@@ -36,7 +37,7 @@ async function ensureUniqueRoomSlug(roomSlug: string, currentId?: string): Promi
   const existing = await couchDB.queryDocuments<Room>({ type: 'room', slug: roomSlug })
   const conflict = existing.find(room => room._id !== currentId)
   if (conflict) {
-    throw new Error(`Room slug "${roomSlug}" already exists.`)
+    throw new Error(`A room with the identifier "${roomSlug}" already exists. Please check if the room number is correct or if the room has already been registered.`)
   }
 }
 
