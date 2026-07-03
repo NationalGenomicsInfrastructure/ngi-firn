@@ -1,6 +1,7 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
+import type { EquipmentCapacityCount, EquipmentType } from '../schemas/inventory/equipment'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
 /*
@@ -66,7 +67,7 @@ export type InventoryStatusType
     | 'disposed'
     | 'lost'
     | 'damaged'
-  
+
 /* Canonical classification categories used for inventory items. */
 export type InventoryClassification
   = | 'sample'
@@ -123,20 +124,17 @@ export interface StorageEquipment extends BaseDocument {
   type: 'storageEquipment'
   schema: 1
   /* Typed reference to the parent room document. */
-  parent: TypedDocumentReference<Room> | null
+  parent: TypedDocumentReference<Room>
   /* Stable URL slug, not the CouchDB _id. */
   slug: string
-  equipmentType: 'cabinet' | 'freezer' | 'fridge' | 'shelf' | 'nitrogenTank' | 'other'
+  equipmentType: EquipmentType
   name: string
   label: string | null
   description: string | null
-  rows: number | null
-  columns: number | null
-  levels: number | null
+  capacity: EquipmentCapacityCount[] | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null
-  capacity: number | null
   /* Hardware identification for maintenance and tracking. */
   manufacturer: string | null
   model: string | null
@@ -223,8 +221,6 @@ export interface InventoryItem extends BaseDocument {
   createdAt: string
   updatedAt: string
 }
-
-
 
 export type InventoryTaskStatus = 'planned' | 'completed' | 'skipped' | 'cancelled'
 

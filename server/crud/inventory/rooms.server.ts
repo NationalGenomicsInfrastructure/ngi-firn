@@ -11,7 +11,7 @@
  * getRoom(roomDocumentId) - Fetch one room by document ID
  * getRoomBySlug(slug) - Fetch one room by slug
  * getAllRooms() - List and sort all rooms
- * 
+ *
  * CREATE, UPDATE, DELETE ROOMS:
  * createRoom(input) - Create a room document
  * updateRoom(roomDocumentId, rev, updates) - Update room fields and cascade path updates
