@@ -8,7 +8,7 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  * **********************************
  *
  * CORE LOCATION MODEL:
- * InventoryLocationType - Allowed node types in the physical storage hierarchy
+ * LocationEntity - Allowed node types in the physical storage hierarchy
  * GridPosition - Optional slot position within grid-like containers (with optional label)
  *
  * EMBEDDED AUDIT LOG:
@@ -32,7 +32,7 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  */
 
 /* Allowed hierarchy node types used by parent references and location paths. */
-export type InventoryLocationType = 'room' | 'storageEquipment' | 'container'
+export type LocationEntity = Room | StorageEquipment | Container
 
 /* Position inside grid-based storage layouts (e.g. box slots, rack coordinates). */
 export interface GridPosition {
@@ -66,6 +66,16 @@ export type InventoryStatusType
     | 'disposed'
     | 'lost'
     | 'damaged'
+  
+/* Canonical classification categories used for inventory items. */
+export type InventoryClassification
+  = | 'sample'
+    | 'reagent'
+    | 'control'
+    | 'library'
+    | 'consumable'
+    | 'equipment'
+    | 'other'
 
 /*
  * Compact audit log entry embedded directly in entity documents.
@@ -113,7 +123,7 @@ export interface StorageEquipment extends BaseDocument {
   type: 'storageEquipment'
   schema: 1
   /* Typed reference to the parent room document. */
-  parent: TypedDocumentReference<Room>
+  parent: TypedDocumentReference<Room> | null
   /* Stable URL slug, not the CouchDB _id. */
   slug: string
   equipmentType: 'cabinet' | 'freezer' | 'fridge' | 'shelf' | 'nitrogenTank' | 'other'
@@ -143,11 +153,11 @@ export interface Container extends BaseDocument {
   type: 'container'
   schema: 1
   /* Typed reference to the parent document (storage equipment or another container). */
-  parent: TypedDocumentReference<StorageEquipment | Container>
+  parent: TypedDocumentReference<StorageEquipment | Container> | null
   /* Stable URL slug */
   slug: string
   containerType: 'rack' | 'box' | 'bag' | 'tray' | 'other'
-  classification: 'sample' | 'control' | 'reagent' | 'equipment' | 'consumable' | 'other'
+  classification: InventoryClassification
   name: string
   label: string | null
   description: string | null
@@ -178,14 +188,14 @@ export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
   schema: 1
   /* Typed reference to the parent document (room, equipment, or container). */
-  parent: TypedDocumentReference<Room | StorageEquipment | Container>
+  parent: TypedDocumentReference<Room | StorageEquipment | Container> | null
   /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   /* Physical form factor of the item (what it IS). */
-  category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle' | 'jar'
+  category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle' | 'jar' | 'plate12'
     | 'plate96' | 'plate384' | 'microscopySlide' | 'other'
   /* Purpose/domain classification (what it's FOR). */
-  classification: 'sample' | 'reagent' | 'control' | 'library' | 'consumable' | 'equipment' | 'other'
+  classification: InventoryClassification
   name: string
   label: string | null
   description: string | null
@@ -213,6 +223,8 @@ export interface InventoryItem extends BaseDocument {
   createdAt: string
   updatedAt: string
 }
+
+
 
 export type InventoryTaskStatus = 'planned' | 'completed' | 'skipped' | 'cancelled'
 
@@ -245,8 +257,8 @@ export interface InventoryTask extends BaseDocument {
   /* When it was completed/skipped/cancelled. */
   completedAt: string | null
   /* Location context for move/checkout/return tasks. */
-  fromParent: TypedDocumentReference<Room | StorageEquipment | Container | InventoryItem> | null
-  toParent: TypedDocumentReference<Room | StorageEquipment | Container | InventoryItem> | null
+  fromParent: TypedDocumentReference<LocationEntity> | null
+  toParent: TypedDocumentReference<LocationEntity> | null
   fromPosition: GridPosition | null
   toPosition: GridPosition | null
   /* Links paired tasks, e.g. checkout → auto-created return task. */
