@@ -79,6 +79,14 @@ export function generateCouchDocId(prefix: string): string {
   return `${safePrefix}-${timestamp}-${random}`
 }
 
+/**
+ * Generate a slug from a name string.
+ * The slug is lowercased, spaces are replaced with hyphens, and a random 7-character alphanumeric suffix is appended to ensure uniqueness.
+ */
+export function generateSlug(name: string): string {
+  return `${name.trim().toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).substring(3, 10)}`
+}
+
 // Database operations
 export class CouchDBConnector {
   private client: CloudantV1

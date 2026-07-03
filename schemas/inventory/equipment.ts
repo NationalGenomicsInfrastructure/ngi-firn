@@ -68,5 +68,6 @@ export const moveEquipmentSchema = z.object({
 })
 
 export type CreateEquipmentInput = z.infer<typeof createEquipmentSchema>
+export type DeleteEquipmentInput = z.infer<typeof deleteEquipmentSchema>
 export type UpdateEquipmentInput = z.infer<typeof updateEquipmentSchema>
 export type MoveEquipmentInput = z.infer<typeof moveEquipmentSchema>

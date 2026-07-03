@@ -140,8 +140,6 @@ export interface StorageEquipment extends BaseDocument {
   model: string | null
   serialNumber: string | null
   isActive: boolean
-  /* Embedded audit trail — append-only log of handling events. */
-  actionLog: ActionLogEntry[]
   createdAt: string
   updatedAt: string
 }
