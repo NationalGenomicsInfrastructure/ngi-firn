@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { useQuery } from '@pinia/colada'
 import { allRoomsQuery } from '~/utils/queries/inventory/rooms'
 
@@ -17,10 +17,10 @@ const items = computed(() => rooms.value ?? [])
 
 const selectedRoom = computed({
   get: () => items.value.find(r => r.slug === props.modelValue) ?? undefined,
-  set: (value: Room | undefined) => emit('update:modelValue', value?.slug)
+  set: (value: DisplayRoom | undefined) => emit('update:modelValue', value?.slug)
 })
 
-function displayName(room: Room): string {
+function displayName(room: DisplayRoom): string {
   const parts = [room.name]
   if (room.label) parts.push(`(${room.label})`)
   return parts.join(' ')

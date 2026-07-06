@@ -1,4 +1,4 @@
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for inventory rooms domain
@@ -10,7 +10,7 @@ export const INVENTORY_ROOMS_QUERY_KEYS = {
 } as const
 
 // Query for all rooms
-export const allRoomsQuery = defineQueryOptions<Room[]>({
+export const allRoomsQuery = defineQueryOptions<DisplayRoom[]>({
   key: INVENTORY_ROOMS_QUERY_KEYS.list(),
   query: () => {
     const { $trpc } = useNuxtApp()

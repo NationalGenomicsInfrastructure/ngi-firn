@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { NLink } from '#components'
 import { getRoomDetailPath, getRoomInfoFields } from '~/utils/inventory/room'
 
 const props = withDefaults(defineProps<{
-  room: Room
+  room: DisplayRoom
   linkToDetails?: boolean
 }>(), {
   linkToDetails: true

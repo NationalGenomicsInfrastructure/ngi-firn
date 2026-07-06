@@ -22,16 +22,17 @@ import {
   updateRoomSchema,
   deleteRoomSchema
 } from '~~/schemas/inventory/rooms'
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 
 export const roomsRouter = createTRPCRouter({
 
   // Room queries
 
   getAllRooms: authedProcedure
-    .query(async (): Promise<Room[]> => {
+    .query(async (): Promise<DisplayRoom[]> => {
       const { RoomService } = await import('../../../crud/inventory/rooms.server')
-      return await RoomService.getAllRooms()
+      const rooms = await RoomService.getAllRooms()
+      return rooms.map(room => RoomService.convertToDisplayRoom(room))
     }),
 
   // getRoom - Fetch a single room by document ID is deliberately omitted from the API. Use getRoomBySlug instead.
@@ -39,32 +40,36 @@ export const roomsRouter = createTRPCRouter({
 
   getRoomBySlug: authedProcedure
     .input(z.object({ slug: z.string().min(1) }))
-    .query(async ({ input }): Promise<Room | null> => {
+    .query(async ({ input }): Promise<DisplayRoom | null> => {
       const { RoomService } = await import('../../../crud/inventory/rooms.server')
-      return await RoomService.getRoomBySlug(input.slug)
+      const room = await RoomService.getRoomBySlug(input.slug)
+      return room ? RoomService.convertToDisplayRoom(room) : null
     }),
 
   // Room mutations
 
   createRoom: authedProcedure
     .input(createRoomSchema)
-    .mutation(async ({ input }): Promise<Room> => {
+    .mutation(async ({ input }): Promise<DisplayRoom> => {
       const { RoomService } = await import('../../../crud/inventory/rooms.server')
-      return await RoomService.createRoom(input)
+      const room = await RoomService.createRoom(input)
+      return RoomService.convertToDisplayRoom(room)
     }),
 
   updateRoom: authedProcedure
     .input(updateRoomSchema)
-    .mutation(async ({ input }): Promise<Room> => {
+    .mutation(async ({ input }): Promise<DisplayRoom> => {
       const { RoomService } = await import('../../../crud/inventory/rooms.server')
-      return await RoomService.updateRoom(input)
+      const room = await RoomService.updateRoom(input)
+      return RoomService.convertToDisplayRoom(room)
     }),
 
   deleteRoom: adminProcedure
     .input(deleteRoomSchema)
-    .mutation(async ({ input }): Promise<Room[]> => {
+    .mutation(async ({ input }): Promise<DisplayRoom[]> => {
       const { RoomService } = await import('../../../crud/inventory/rooms.server')
-      return await RoomService.deleteRoom(input)
+      const rooms = await RoomService.deleteRoom(input)
+      return rooms.map(room => RoomService.convertToDisplayRoom(room))
     })
 
 })

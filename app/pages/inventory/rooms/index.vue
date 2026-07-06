@@ -228,7 +228,7 @@ function clearFilters() {
       >
         <CardRoom
           v-for="room in filteredRooms"
-          :key="room._id"
+          :key="room.slug"
           :room="room"
         />
         <NuxtLink

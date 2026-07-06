@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { ROOM_TYPE_BADGE_STYLES, getRoomTypeLabel } from '~/utils/inventory/room'
 
 const props = defineProps<{
-  roomType: Room['roomType']
+  roomType: DisplayRoom['roomType']
   isActive?: boolean
 }>()
 

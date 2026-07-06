@@ -16,10 +16,13 @@
  * createRoom(input) - Create a room document
  * updateRoom(roomDocumentId, rev, updates) - Update room fields and cascade path updates
  * deleteRoom(slug) - Delete an empty room
+ *
+ * TYPE CONVERSION:
+ * convertToDisplayRoom(room) - Strip CouchDB-internal fields before sending to the client
  */
 
 import { couchDB, generateCouchDocId } from '../../database/couchdb'
-import type { Room, StorageEquipment } from '../../../types/inventory'
+import type { Room, StorageEquipment, DisplayRoom } from '../../../types/inventory'
 import type { CreateRoomInput, UpdateRoomInput, DeleteRoomInput } from '../../../schemas/inventory/rooms'
 
 /* Check if a document is a Room document. */
@@ -48,6 +51,9 @@ function buildRoomSlug(building: Room['building'], floor: number, roomNumber: nu
 }
 
 export const RoomService = {
+
+  /* Type guard — exposed so cross-service code can validate batch-fetched Room documents. */
+  isRoomPublic: isRoom,
 
   /* Fetch one room by document ID. */
   async getRoom(roomDocumentId: string): Promise<Room | null> {
@@ -160,6 +166,23 @@ export const RoomService = {
       deletedRooms.push(room)
     }
     return deletedRooms
+  },
+
+  /* Strip CouchDB-internal fields before sending a Room to the client. */
+  convertToDisplayRoom(room: Room): DisplayRoom {
+    return {
+      slug: room.slug,
+      name: room.name,
+      label: room.label,
+      roomType: room.roomType,
+      building: room.building,
+      floor: room.floor,
+      roomNumber: room.roomNumber,
+      description: room.description,
+      isActive: room.isActive,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt
+    }
   }
 
 }

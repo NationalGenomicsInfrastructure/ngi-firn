@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { updateRoomSchema } from '~~/schemas/inventory/rooms'
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { updateRoom } from '~/utils/mutations/inventory/rooms'
 import {
   BUILDING_OPTIONS,
@@ -12,7 +12,7 @@ import {
 } from '~/utils/inventory/room'
 
 const props = defineProps<{
-  room: Room
+  room: DisplayRoom
   hideSubmit?: boolean
   formId?: string
 }>()
@@ -21,7 +21,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const formElementId = computed(() => props.formId ?? `${ROOM_EDIT_FORM_ID_PREFIX}${props.room._id}`)
+const formElementId = computed(() => props.formId ?? `${ROOM_EDIT_FORM_ID_PREFIX}${props.room.slug}`)
 
 const { showError } = useFirnToast()
 const toastActions = [

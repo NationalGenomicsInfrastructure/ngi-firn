@@ -12,10 +12,14 @@
  *
  * CREATE, UPDATE, DELETE EQUIPMENT:
  *
- * createEquipment(input, userId) - Create storage equipment within a room
- * updateEquipment(equipmentDocumentId, rev, updates, userId) - Update equipment metadata
- * deleteEquipment(equipmentDocumentId, rev) - Delete equipment when empty
- * moveEquipmentToRoom(equipmentDocumentId, newRoomId, userId) - Re-home equipment to another room
+ * createEquipment(input) - Create storage equipment within a room
+ * updateEquipment(updates) - Update equipment metadata
+ * deleteEquipment(equipment) - Delete equipment when empty
+ * moveEquipmentToRoom(input) - Re-home equipment to another room
+ *
+ * TYPE CONVERSION:
+ * convertToDisplayStorageEquipment(equipment, room) - Strip CouchDB-internal fields (room pre-fetched)
+ * convertMultipleToDisplayStorageEquipment(equipment[]) - Batch-convert, resolving parent rooms efficiently
  */
 
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
@@ -26,7 +30,9 @@ import {
 import { RoomService } from './rooms.server'
 import type {
   Container,
+  DisplayStorageEquipment,
   InventoryItem,
+  Room,
   StorageEquipment
 } from '../../../types/inventory'
 import type { CreateEquipmentInput, DeleteEquipmentInput, UpdateEquipmentInput, MoveEquipmentInput, EquipmentCapacityCount } from '~~/schemas/inventory/equipment'
@@ -260,5 +266,59 @@ export const EquipmentService = {
     movedEquipment._rev = result.rev
 
     return movedEquipment
+  },
+
+  /*
+   * Strip CouchDB-internal fields before sending a single StorageEquipment to the client.
+   * The caller must supply the pre-fetched parent Room to avoid an extra DB round-trip
+   * when this method is called inside a batch loop.
+   */
+  convertToDisplayStorageEquipment(equipment: StorageEquipment, parentRoom: Room): DisplayStorageEquipment {
+    return {
+      slug: equipment.slug,
+      equipmentType: equipment.equipmentType,
+      name: equipment.name,
+      label: equipment.label,
+      description: equipment.description,
+      capacity: equipment.capacity,
+      temperatureCelsius: equipment.temperatureCelsius,
+      temperatureSensorId: equipment.temperatureSensorId,
+      manufacturer: equipment.manufacturer,
+      model: equipment.model,
+      serialNumber: equipment.serialNumber,
+      isActive: equipment.isActive,
+      parentRoom: { slug: parentRoom.slug, name: parentRoom.name },
+      createdAt: equipment.createdAt,
+      updatedAt: equipment.updatedAt
+    }
+  },
+
+  /*
+   * Convert a list of StorageEquipment documents to their display projections.
+   * Batch-fetches the distinct parent rooms to avoid N+1 queries.
+   */
+  async convertMultipleToDisplayStorageEquipment(equipment: StorageEquipment[]): Promise<DisplayStorageEquipment[]> {
+    if (equipment.length === 0) {
+      return []
+    }
+
+    // Collect the distinct parent room document IDs and batch-fetch them.
+    const roomIds = [...new Set(equipment.map(e => e.parent.id))]
+    const roomDocs = await couchDB.getDocumentsByIds<Room>(roomIds)
+
+    const roomMap = new Map<string, Room>()
+    for (const doc of roomDocs) {
+      if (doc && RoomService.isRoomPublic(doc)) {
+        roomMap.set(doc._id, doc)
+      }
+    }
+
+    return equipment.map((e) => {
+      const parentRoom = roomMap.get(e.parent.id)
+      if (!parentRoom) {
+        throw new Error(`Parent room for equipment "${e.slug}" could not be resolved.`)
+      }
+      return EquipmentService.convertToDisplayStorageEquipment(e, parentRoom)
+    })
   }
 }

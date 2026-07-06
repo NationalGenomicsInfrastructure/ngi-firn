@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { ROOM_EDIT_FORM_ID_PREFIX } from '~/utils/inventory/room'
 
 const props = defineProps<{
-  room: Room
+  room: DisplayRoom
 }>()
 
 const isDialogOpen = ref(false)
-const formId = computed(() => `${ROOM_EDIT_FORM_ID_PREFIX}${props.room._id}`)
+const formId = computed(() => `${ROOM_EDIT_FORM_ID_PREFIX}${props.room.slug}`)
 
 function onDialogOpenChange(open: boolean) {
   isDialogOpen.value = open

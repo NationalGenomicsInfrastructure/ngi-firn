@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import { deleteRoom as useDeleteRoomMutation } from '~/utils/mutations/inventory/rooms'
 
 const props = defineProps<{
-  room: Room
+  room: DisplayRoom
 }>()
 
 const { deleteRoom } = useDeleteRoomMutation()

@@ -1,5 +1,5 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 import type {
   CreateRoomInput,
   UpdateRoomInput,
@@ -24,7 +24,7 @@ export const createRoom = defineMutation(() => {
     },
     onMutate() {
       const queryCache = useQueryCache()
-      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
+      const rooms = queryCache.getQueryData<DisplayRoom[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
       return { rooms }
     },
     onError(error: Error, _input, context) {
@@ -32,7 +32,7 @@ export const createRoom = defineMutation(() => {
       queryCache.setQueryData(INVENTORY_ROOMS_QUERY_KEYS.list(), context.rooms ?? [])
       showError(error.message, 'Room could not be created')
     },
-    onSuccess(response: Room) {
+    onSuccess(response: DisplayRoom) {
       showSuccess(`Room "${response.name}" created successfully.`, 'Room created')
       navigateTo(`/inventory/rooms/${encodeURIComponent(response.slug)}`)
     },
@@ -53,8 +53,8 @@ export const updateRoom = defineMutation(() => {
     },
     onMutate(input) {
       const queryCache = useQueryCache()
-      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
-      const room = queryCache.getQueryData<Room>(INVENTORY_ROOMS_QUERY_KEYS.detailBySlug(input.slug))
+      const rooms = queryCache.getQueryData<DisplayRoom[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
+      const room = queryCache.getQueryData<DisplayRoom>(INVENTORY_ROOMS_QUERY_KEYS.detailBySlug(input.slug))
       return { rooms, room }
     },
     onError(error: Error, input, context) {
@@ -65,7 +65,7 @@ export const updateRoom = defineMutation(() => {
       }
       showError(error.message, 'Room could not be updated')
     },
-    onSuccess(response: Room) {
+    onSuccess(response: DisplayRoom) {
       showSuccess(`Room "${response.name}" updated successfully.`, 'Room updated')
       navigateTo(`/inventory/rooms/${encodeURIComponent(response.slug)}`)
     },
@@ -89,7 +89,7 @@ export const deleteRoom = defineMutation(() => {
     },
     onMutate(input) {
       const queryCache = useQueryCache()
-      const rooms = queryCache.getQueryData<Room[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
+      const rooms = queryCache.getQueryData<DisplayRoom[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
       queryCache.cancelQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.list(), exact: true })
       queryCache.setQueryData(
         INVENTORY_ROOMS_QUERY_KEYS.list(),

@@ -144,6 +144,54 @@ export interface StorageEquipment extends BaseDocument {
   updatedAt: string
 }
 
+/*
+ * Client-safe projection of a Room document.
+ * Strips CouchDB-internal fields (_id, _rev, document type discriminator, schema version)
+ * while preserving all business fields needed by the UI.
+ * NOTE: `type` here refers to the CouchDB discriminator `'room'`, not `roomType`
+ *       (the business-meaningful room category — that is intentionally preserved).
+ */
+export interface DisplayRoom {
+  slug: string
+  name: string
+  label: string | null
+  roomType: RoomType
+  building: SciLifeLabBuilding
+  floor: number
+  roomNumber: number
+  description: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/*
+ * Client-safe projection of a StorageEquipment document.
+ * Strips CouchDB-internal fields (_id, _rev, document type discriminator, schema version).
+ * Replaces `parent: TypedDocumentReference<Room>` (which embeds a CouchDB _id) with a
+ * human-readable `parentRoom` object containing only the room's public slug and name.
+ */
+export interface DisplayStorageEquipment {
+  slug: string
+  equipmentType: EquipmentType
+  name: string
+  label: string | null
+  description: string | null
+  capacity: EquipmentCapacityCount[] | null
+  temperatureCelsius: number | null
+  /* Optional IDs for remote temperature sensor integration (SensorPush). */
+  temperatureSensorId: string[] | null
+  /* Hardware identification for maintenance and tracking. */
+  manufacturer: string | null
+  model: string | null
+  serialNumber: string | null
+  isActive: boolean
+  /* Human-readable parent room reference — replaces the TypedDocumentReference that held a CouchDB _id. */
+  parentRoom: { slug: string, name: string }
+  createdAt: string
+  updatedAt: string
+}
+
 /* Nested storage unit with constraints/capacity; can live in equipment or another container. */
 export interface Container extends BaseDocument {
   type: 'container'

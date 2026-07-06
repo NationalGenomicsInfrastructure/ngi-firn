@@ -2,7 +2,7 @@ import type {
   SciLifeLabBuilding,
   RoomType
 } from '~~/schemas/inventory/rooms'
-import type { Room } from '~~/types/inventory'
+import type { DisplayRoom } from '~~/types/inventory'
 
 export interface SelectOption<T extends string> {
   value: T
@@ -48,7 +48,7 @@ export function getRoomDetailPath(slug: string): string {
   return `/inventory/rooms/${encodeURIComponent(slug)}`
 }
 
-export function getRoomInfoFields(room: Room): RoomInfoField[] {
+export function getRoomInfoFields(room: DisplayRoom): RoomInfoField[] {
   return [
     { icon: 'i-lucide-key-round', label: 'Room identifier', value: room.slug },
     { icon: 'i-lucide-building-2', label: 'Building', value: room.building },
