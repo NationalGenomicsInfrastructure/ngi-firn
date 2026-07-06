@@ -6,7 +6,7 @@ export const INVENTORY_EQUIPMENT_QUERY_KEYS = {
   root: ['inventory', 'equipment'] as const,
   list: () => [...INVENTORY_EQUIPMENT_QUERY_KEYS.root, 'list'] as const,
   byRoom: (roomSlug: string) => [...INVENTORY_EQUIPMENT_QUERY_KEYS.root, 'by-room', roomSlug] as const,
-  detailBySlug: (slug: string) => [...INVENTORY_EQUIPMENT_QUERY_KEYS.root, 'detail', 'slug', slug] as const,
+  detailBySlug: (slug: string) => [...INVENTORY_EQUIPMENT_QUERY_KEYS.root, 'detail', 'slug', slug] as const
 } as const
 
 // Query for a single storage equipment by slug

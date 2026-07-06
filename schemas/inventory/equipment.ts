@@ -1,7 +1,7 @@
 import { z } from 'zod'
 // Storage equipment schemas
 
-import { containerTypeSchema } from './commons'
+import { containerTypeSchema } from './container'
 
 export const equipmentType = z.enum([
   'Cabinet',

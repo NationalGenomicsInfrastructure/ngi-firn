@@ -27,14 +27,11 @@
 
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
 import {
-  getDescendantsByAncestor,
   toParentRef
 } from './relations.server'
 import { RoomService } from './rooms.server'
 import type {
-  Container,
   DisplayStorageEquipment,
-  InventoryItem,
   Room,
   StorageEquipment
 } from '../../../types/inventory'
@@ -141,11 +138,6 @@ export const EquipmentService = {
     return equipment.sort((a, b) => a.name.localeCompare(b.name))
   },
 
-  /* Return all descendant containers/items beneath one equipment, flat. */
-  async getEquipmentDescendants(equipmentDocumentId: string): Promise<Array<Container | InventoryItem>> {
-    return getDescendantsByAncestor('storageEquipment', equipmentDocumentId)
-  },
-
   /* Create storage equipment in a room and derive its initial locationPath. */
   async createEquipment(input: CreateEquipmentInput): Promise<StorageEquipment> {
     // retrieve the room document to ensure it exists and to get its reference
@@ -213,7 +205,7 @@ export const EquipmentService = {
     const updatedEquipment = {
       ...existing,
       ...updates,
-      slug: updates.name ? generateSlug(updates.name) : existing.slug,
+      slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
       capacity: mergedCapacity, // Always use the merged capacity, even if it's null (to clear previous restrictions)
       updatedAt: new Date().toISOString()
     } as StorageEquipment

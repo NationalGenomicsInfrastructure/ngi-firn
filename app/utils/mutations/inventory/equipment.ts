@@ -11,8 +11,6 @@ import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
 
 const { showSuccess, showError } = useFirnToast()
 
-
-
 // Equipment mutations
 
 export const createEquipment = defineMutation(() => {
@@ -36,8 +34,9 @@ export const createEquipment = defineMutation(() => {
       )
       showError(error.message, 'Equipment could not be created')
     },
-    onSuccess(_data, input) {
-      showSuccess(`Equipment "${input.name}" created successfully.`, 'Equipment created')
+    onSuccess(response: DisplayStorageEquipment, _input) {
+      showSuccess(`Equipment "${response.name}" created successfully.`, 'Equipment created')
+      navigateTo(`/inventory/equipment/${encodeURIComponent(response.slug)}`)
     },
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
@@ -69,8 +68,9 @@ export const updateEquipment = defineMutation(() => {
       }
       showError(error.message, 'Equipment could not be updated')
     },
-    onSuccess() {
-      showSuccess('Equipment updated successfully.', 'Equipment updated')
+    onSuccess(response: DisplayStorageEquipment, _input) {
+      showSuccess(`Equipment "${response.name}" updated successfully.`, 'Equipment updated')
+      navigateTo(`/inventory/equipment/${encodeURIComponent(response.slug)}`)
     },
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
@@ -147,6 +147,7 @@ export const deleteEquipment = defineMutation(() => {
         `Equipment${input.equipmentName ? ` "${input.equipmentName}"` : ''} deleted successfully.`,
         'Equipment deleted'
       )
+      navigateTo('/inventory/equipment')
     },
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
