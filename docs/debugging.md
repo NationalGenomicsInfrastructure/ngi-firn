@@ -16,10 +16,37 @@ One can also temporarily add `console.log(useNuxtApp())` to the `<script></scrip
 
 If you used a non-existing component, you will get two warnings when the respective components needs to be rendered:
 
-> :warning:  WARN  [Vue warn]: Failed to resolve component: LoginForm
+```console
+WARN  [Vue warn]: Failed to resolve component: LoginForm
+```
 
 This warning is followed by a second warning:
 
-> :warning: WARN  [Vue warn]: Component <Anonymous> is missing template or render function.
+```console
+WARN  [Vue warn]: Component <Anonymous> is missing template or render function.
+```
 
 Because both print the whole app context as JSON to stderr, it is easy to overlook the actual cause.
+
+### Some Lucide icons are missing even though the names are valid
+
+If icons are passed indirectly (for example from utility functions, computed maps, or constants), UnoCSS can miss some `i-lucide-*` classes during extraction. The result is often inconsistent rendering where one icon in a component appears but others do not.
+
+Typical symptom patterns:
+
+- In one list/card, only a subset of icons render
+- Badge labels render correctly, but some badge icons are missing
+- The same icon name works in one component and fails in another
+
+To verify an icon name exists in the installed Lucide set, search the local icon dataset:
+
+```bash
+rg '"(align-left|layers|door-open|arrow-down-to-line|briefcase|package|shapes)"' node_modules/.pnpm/@iconify-json+lucide@*/node_modules/@iconify-json/lucide/icons.json
+```
+
+If names are valid, add the exact missing `i-lucide-*` classes to the `safelist` in `uno.config.ts`.
+
+This is especially important for icons coming from:
+
+- utility field builders (for example room/project info field arrays)
+- badge style maps used via dynamic `:icon` bindings

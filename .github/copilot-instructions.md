@@ -368,6 +368,16 @@ function roundNum(val: unknown, decimals = 2): string {
 | Status flags | `i-lucide-lock-open`, `i-lucide-lock`, `i-lucide-play`, `i-lucide-clock`, `i-lucide-ban` |
 | Links | `i-lucide-link`, `i-lucide-external-link` |
 
+**Dynamic icon names and UnoCSS safelist**
+
+If icon names are provided indirectly (for example from utility functions, computed maps, or TypeScript constants), UnoCSS may not always pick them up during class extraction. This can cause some `i-lucide-*` icons to render while others are missing even though the icon names are valid.
+
+When adding or changing dynamic icon names, also add those exact `i-lucide-*` classes to `uno.config.ts` `safelist`.
+
+Example sources that require this care:
+- `app/utils/inventory/room.ts` (`getRoomInfoFields`, `ROOM_TYPE_BADGE_STYLES`)
+- badge/card components that bind `:icon="field.icon"` or `:name="item.icon"`
+
 **Lazy hydration** for below-the-fold components:
 
 ```vue
