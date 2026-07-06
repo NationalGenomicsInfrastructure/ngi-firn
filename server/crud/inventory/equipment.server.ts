@@ -17,6 +17,9 @@
  * deleteEquipment(equipment) - Delete equipment when empty
  * moveEquipmentToRoom(input) - Re-home equipment to another room
  *
+ * CAPACITY MANAGEMENT:
+ * adjustStoredCount(equipmentDocumentId, category, delta) - Increment/decrement stored count for a category
+ *
  * TYPE CONVERSION:
  * convertToDisplayStorageEquipment(equipment, room) - Strip CouchDB-internal fields (room pre-fetched)
  * convertMultipleToDisplayStorageEquipment(equipment[]) - Batch-convert, resolving parent rooms efficiently
@@ -266,6 +269,65 @@ export const EquipmentService = {
     movedEquipment._rev = result.rev
 
     return movedEquipment
+  },
+
+  /*
+   * Increment or decrement the stored count for a given container category in the equipment's
+   * capacity map. Returns the updated equipment document and whether the category is now at
+   * its defined maximum.
+   *
+   * - If the category has no entry in the capacity map (no cap defined), the document is not
+   *   written and atCapacity is always false.
+   * - Throws when delta would push stored below 0 or above the defined capacity.
+   */
+  async adjustStoredCount(
+    equipmentDocumentId: string,
+    category: keyof EquipmentCapacityCount,
+    delta: number
+  ): Promise<{ equipment: StorageEquipment, atCapacity: boolean }> {
+    const equipment = await EquipmentService.getEquipment(equipmentDocumentId)
+
+    if (!equipment) {
+      throw new Error(`Equipment with ID "${equipmentDocumentId}" not found.`)
+    }
+
+    const capacityMap: EquipmentCapacityCount = equipment.capacity?.[0] ?? {}
+    const entry = capacityMap[category]
+
+    // No capacity entry for this category — nothing to track, no cap to enforce.
+    if (!entry) {
+      return { equipment, atCapacity: false }
+    }
+
+    const newStored = entry.stored + delta
+
+    if (newStored < 0) {
+      throw new Error(
+        `Cannot decrement stored count for "${category}" below zero (current: ${entry.stored}).`
+      )
+    }
+
+    if (newStored > entry.capacity) {
+      throw new Error(
+        `Cannot store another "${category}" in equipment "${equipment.slug}": capacity of ${entry.capacity} is already reached.`
+      )
+    }
+
+    const updatedCapacityMap: EquipmentCapacityCount = {
+      ...capacityMap,
+      [category]: { stored: newStored, capacity: entry.capacity }
+    }
+
+    const updatedEquipment: StorageEquipment = {
+      ...equipment,
+      capacity: [updatedCapacityMap],
+      updatedAt: new Date().toISOString()
+    }
+
+    const result = await couchDB.updateDocument(equipment._id, updatedEquipment, equipment._rev)
+    updatedEquipment._rev = result.rev
+
+    return { equipment: updatedEquipment, atCapacity: newStored === entry.capacity }
   },
 
   /*
