@@ -72,6 +72,33 @@ By leveraging these lifecycle hooks, you can provide a responsive and robust use
 
 > :warning: Because `useQueryCache()` requires that the pinia instance is already injected into the app, it can only be used inside the callbacks, but not outside. Therefore, the `const queryCache = useQueryCache()` has to be declared separately for each callback, if it needs to be accessed.
 
+### Using mutations in components
+
+The function returned by `defineMutation()` is a **composable**: calling it creates the reactive mutation state (`isLoading`, `error`, …) inside an effect scope that is tied to the calling component's lifecycle. Like every composable, it must be called at `<script setup>` scope — not inside an event or submit handler.
+
+```ts
+// In a .vue component <script setup>
+import { updateEquipment } from '~/utils/mutations/inventory/equipment'
+
+// ✅ call the composable ONCE during setup ...
+const { mutateAsync: updateEquipmentAsync, isLoading } = updateEquipment()
+
+const onSubmit = handleSubmit(async (values) => {
+  // ... and only invoke the returned function in handlers
+  const result = await updateEquipmentAsync(values)
+})
+```
+
+Calling `updateEquipment()` itself inside the handler *appears* to work, but creates a fresh effect scope on every invocation that is never disposed. This leaks memory and Pinia Colada warns about it in the console:
+
+```console
+[@pinia/colada]: defineMutation() composable was called outside of a component
+or effect scope. The mutation effects will never be cleaned up, which may
+cause memory leaks.
+```
+
+Use `mutate` for fire-and-forget calls (the lifecycle callbacks handle cache updates and notifications either way) and `mutateAsync` when the handler needs to await the result — for example to close a dialog, reset a form, or advance a stepper only on success.
+
 ### Interacting with the queryCache
 
 Common functions you may often need to interact with the query cache are shown below:

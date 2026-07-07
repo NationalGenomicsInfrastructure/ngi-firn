@@ -141,6 +141,35 @@ const {
 
 ```
 
+#### Mutations in components
+
+Mutations that wrap tRPC procedures are defined once in `app/utils/mutations/` with Pinia Colada's `defineMutation()` (see [data.md](./data.md#optimistic-updates-with-pinia-colada) for the full lifecycle). What `defineMutation()` returns is a **composable**: calling it sets up reactive mutation state (`isLoading`, `error`, …) inside an effect scope, just like `useQuery()` does for queries.
+
+Composables must therefore be called at `<script setup>` scope, where a component instance and effect scope are active. Only the returned `mutate`/`mutateAsync` function is invoked inside event or submit handlers:
+
+```ts
+// ❌ BAD: calling the composable inside a handler creates a new,
+// never-disposed effect scope on every submit (memory leak) and logs
+// "[@pinia/colada]: defineMutation() composable was called outside of
+// a component or effect scope"
+const onSubmit = handleSubmit(async (values) => {
+  const { mutateAsync } = updateEquipment()
+  const result = await mutateAsync(values)
+})
+```
+
+```ts
+// ✅ GOOD: call the composable once during setup,
+// invoke mutateAsync in the handler
+const { mutateAsync: updateEquipmentAsync } = updateEquipment()
+
+const onSubmit = handleSubmit(async (values) => {
+  const result = await updateEquipmentAsync(values)
+})
+```
+
+Prefer `mutateAsync` over `mutate` when the handler needs to await the result (e.g. to close a dialog or reset a form only on success) or to `try/catch` the failure itself.
+
 ### In a separate utility function
 
 Outside a component, like for example in `app/utils/users/apiUsers.ts`, we cannot make use of hooks
