@@ -12,8 +12,12 @@ interface CouchDBConfig {
   enableGzipCompression?: boolean
 }
 
-// Base document interface extending CloudantV1.Document
-interface BaseDocument extends CloudantV1.Document {
+// Base document interface for all Firn documents.
+// Deliberately does NOT extend CloudantV1.Document: its `[propName: string]: any`
+// index signature would leak into every document type and make `Omit<...>` collapse
+// all properties to `any`, silently disabling typechecking of document literals.
+// Our documents remain structurally assignable to CloudantV1.Document for API calls.
+interface BaseDocument {
   _id: string
   _rev: string
 }
@@ -122,8 +126,8 @@ export class CouchDBConnector {
     })
   }
 
-  // Create a document
-  async createDocument<T extends Omit<BaseDocument, '_id'>>(document: T): Promise<{ id: string, rev: string }> {
+  // Create a document. New documents may set their `_id`, but never carry a `_rev`.
+  async createDocument<T extends { _id?: string, _rev?: never }>(document: T): Promise<{ id: string, rev: string }> {
     try {
       const response = await this.client.postDocument({
         db: this.database,

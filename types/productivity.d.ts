@@ -39,8 +39,6 @@ export interface TodoItem {
 export interface TodoDocument extends BaseDocument {
   type: 'todo_collection'
   schema: 1
-  // Unique identifier for the ToDo document.
-  id: string
   // Firn users that are owners of this ToDo document.
   owners: TypedDocumentReference<FirnUser>[]
   viewers: TypedDocumentReference<FirnUser>[]

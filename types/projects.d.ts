@@ -337,6 +337,13 @@ export interface ProjectsDbDocument extends BaseDocument {
   min_m_reads_per_sample_ordered?: unknown
   customer_reference?: string
   uppnex_id?: string
+
+  /**
+   * LIMS documents are externally owned and open-shaped, so unknown extra fields
+   * are expected. Typed `unknown` (not `any`) so every access still requires
+   * narrowing before use.
+   */
+  [key: string]: unknown
 }
 
 /** Alias for use in server/API (projects.server.ts imports Project). */

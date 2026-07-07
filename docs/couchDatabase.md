@@ -39,6 +39,8 @@ For example, a todo document may look like:
 
 We declare the different document schemas (object shapes) for our application's entities as Typescript interfaces in the `types` folder. The base document that provides the `_id` and `_rev` properties is extended by the specific properties and their types.
 
+> Note: `BaseDocument` deliberately does **not** extend `CloudantV1.Document`. That type carries a `[propName: string]: any` index signature which would leak into every document interface and disable typechecking of document literals (e.g. via `Omit<…>`). See `docs/inventory.md`, design decision 11.
+
 ```ts
 import type { BaseDocument } from '../server/database/couchdb'
 

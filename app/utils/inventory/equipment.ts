@@ -109,8 +109,9 @@ export function resolveContainerTypeFromSelect(value: unknown): ContainerType | 
   return null
 }
 
-// Flatten the stored EquipmentCapacityCount[] shape into the flat form rows
-// ({ type, capacity }[]) that the capacity editor works with.
+// Project the stored EquipmentCapacityEntry[] shape onto the flat form rows
+// ({ type, capacity }[]) that the capacity editor works with, dropping the
+// server-owned `stored` counter.
 export function displayCapacityToFormCapacity(
   capacity: DisplayStorageEquipment['capacity']
 ): CapacityRow[] {
@@ -118,16 +119,9 @@ export function displayCapacityToFormCapacity(
     return []
   }
 
-  const rows: CapacityRow[] = []
-  for (const entry of capacity) {
-    if (!entry) continue
-    for (const [type, counts] of Object.entries(entry)) {
-      // Skip keys that are not valid container types so that malformed
-      // documents degrade to "no restriction" instead of crashing the UI.
-      if (counts && type in CONTAINER_TYPE_LABELS) {
-        rows.push({ type: type as ContainerType, capacity: counts.capacity })
-      }
-    }
-  }
-  return rows
+  // Skip entries without a valid container type so that malformed
+  // documents degrade to "no restriction" instead of crashing the UI.
+  return capacity
+    .filter(entry => entry && entry.type in CONTAINER_TYPE_LABELS)
+    .map(entry => ({ type: entry.type, capacity: entry.capacity }))
 }

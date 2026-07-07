@@ -35,7 +35,8 @@ import type {
   Room,
   StorageEquipment
 } from '../../../types/inventory'
-import type { CreateEquipmentInput, DeleteEquipmentInput, UpdateEquipmentInput, MoveEquipmentInput, EquipmentCapacityCount } from '~~/schemas/inventory/equipment'
+import type { CreateEquipmentInput, DeleteEquipmentInput, UpdateEquipmentInput, MoveEquipmentInput, EquipmentCapacityEntry } from '~~/schemas/inventory/equipment'
+import type { ContainerType } from '~~/schemas/inventory/container'
 
 /* Check if a document is a StorageEquipment document. */
 function isStorageEquipment(doc: unknown): doc is StorageEquipment {
@@ -49,62 +50,33 @@ function isStorageEquipment(doc: unknown): doc is StorageEquipment {
 
 /*
 * Validate and merge capacity restrictions while preserving stored counts.
-* This function ensures that existing stored counts are not violated by new capacity updates.
-* It returns a merged capacity array that can be used to update the equipment document.
+* Returns one entry per container type provided in `updates`: types with an existing
+* entry keep their `stored` count (which the new limit must not violate), newly
+* restricted types start at `stored: 0`, and existing types missing from `updates`
+* are dropped (their restriction is lifted).
 */
 function validateAndJoinEquipmentCapacity(
   existing: StorageEquipment['capacity'],
   updates: NonNullable<UpdateEquipmentInput['capacity']>
-): EquipmentCapacityCount[] {
-  const existingByType: EquipmentCapacityCount = {}
+): EquipmentCapacityEntry[] {
+  const existingByType = new Map((existing ?? []).map(entry => [entry.type, entry]))
 
-  for (const capacityEntry of existing ?? []) {
-    if (!capacityEntry) {
-      continue
-    }
+  // Deduplicate updates by type (last one wins) while validating stored counts.
+  const mergedByType = new Map<ContainerType, EquipmentCapacityEntry>()
 
-    Object.assign(existingByType, capacityEntry)
-  }
+  for (const { type, capacity } of updates) {
+    const stored = existingByType.get(type)?.stored ?? 0
 
-  const updatesByType = new Map(updates.map(entry => [entry.type, entry.capacity]))
-  const mergedByType: EquipmentCapacityCount = {}
-
-  // Keep categories present in existing only when they are also provided in updates.
-  for (const [category, existingCount] of Object.entries(existingByType)) {
-    if (!existingCount) {
-      continue
-    }
-
-    const updatedCapacity = updatesByType.get(category as keyof EquipmentCapacityCount)
-    if (updatedCapacity == null) {
-      continue
-    }
-
-    if (updatedCapacity < existingCount.stored) {
+    if (capacity < stored) {
       throw new Error(
-        `Cannot set capacity for category "${category}" to ${updatedCapacity}: ${existingCount.stored} items are already stored.`
+        `Cannot set capacity for category "${type}" to ${capacity}: ${stored} items are already stored.`
       )
     }
 
-    mergedByType[category as keyof EquipmentCapacityCount] = {
-      stored: existingCount.stored,
-      capacity: updatedCapacity
-    }
+    mergedByType.set(type, { type, stored, capacity })
   }
 
-  // Add newly introduced categories that were not restricted before.
-  for (const [category, updatedCapacity] of updatesByType) {
-    if (mergedByType[category] || existingByType[category]) {
-      continue
-    }
-
-    mergedByType[category] = {
-      stored: 0,
-      capacity: updatedCapacity
-    }
-  }
-
-  return Object.keys(mergedByType).length > 0 ? [mergedByType] : []
+  return [...mergedByType.values()]
 }
 
 export const EquipmentService = {
@@ -151,8 +123,8 @@ export const EquipmentService = {
     const equipmentDocumentId = generateCouchDocId('equipment')
     const now = new Date().toISOString()
 
-    // Convert the flat { type, capacity }[] input rows into the stored
-    // EquipmentCapacityCount map shape, initializing stored counts to zero.
+    // Convert the wire-shape { type, capacity }[] input rows into the stored
+    // EquipmentCapacityEntry[] shape, initializing stored counts to zero.
     const initialCapacity = validateAndJoinEquipmentCapacity(null, input.capacity ?? [])
 
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
@@ -273,16 +245,16 @@ export const EquipmentService = {
 
   /*
    * Increment or decrement the stored count for a given container category in the equipment's
-   * capacity map. Returns the updated equipment document and whether the category is now at
-   * its defined maximum.
+   * capacity entries. Returns the updated equipment document and whether the category is now
+   * at its defined maximum.
    *
-   * - If the category has no entry in the capacity map (no cap defined), the document is not
+   * - If the category has no capacity entry (no cap defined), the document is not
    *   written and atCapacity is always false.
    * - Throws when delta would push stored below 0 or above the defined capacity.
    */
   async adjustStoredCount(
     equipmentDocumentId: string,
-    category: keyof EquipmentCapacityCount,
+    category: ContainerType,
     delta: number
   ): Promise<{ equipment: StorageEquipment, atCapacity: boolean }> {
     const equipment = await EquipmentService.getEquipment(equipmentDocumentId)
@@ -291,8 +263,7 @@ export const EquipmentService = {
       throw new Error(`Equipment with ID "${equipmentDocumentId}" not found.`)
     }
 
-    const capacityMap: EquipmentCapacityCount = equipment.capacity?.[0] ?? {}
-    const entry = capacityMap[category]
+    const entry = equipment.capacity?.find(capacityEntry => capacityEntry.type === category)
 
     // No capacity entry for this category — nothing to track, no cap to enforce.
     if (!entry) {
@@ -313,14 +284,11 @@ export const EquipmentService = {
       )
     }
 
-    const updatedCapacityMap: EquipmentCapacityCount = {
-      ...capacityMap,
-      [category]: { stored: newStored, capacity: entry.capacity }
-    }
-
     const updatedEquipment: StorageEquipment = {
       ...equipment,
-      capacity: [updatedCapacityMap],
+      capacity: (equipment.capacity ?? []).map(capacityEntry =>
+        capacityEntry.type === category ? { ...capacityEntry, stored: newStored } : capacityEntry
+      ),
       updatedAt: new Date().toISOString()
     }
 

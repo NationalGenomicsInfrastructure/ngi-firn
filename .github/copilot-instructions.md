@@ -103,7 +103,14 @@ This is mandatory to implement optimistic updates correctly. If you forget to `a
 
 Zod schemas in `schemas/` define the **wire/form shape** of data; the document interfaces in `types/inventory.d.ts` define the **stored CouchDB shape**. When the two differ, the conversion belongs in the `server/crud/*` service — never pass validated input straight into a document field of a different shape.
 
-Be especially careful with fields typed as `Partial<Record<…>>`: since every key is optional, **almost any object is structurally assignable to them, so TypeScript will not flag a wrong shape**. Example incident: `EquipmentService.createEquipment` once stored the flat form rows (`{ type, capacity }[]`) directly in the `capacity` field instead of converting them to the stored `EquipmentCapacityCount[]` map (`[{ box: { stored: 0, capacity: N } }]`). It compiled cleanly, the mutation returned 200, and the frontend then crashed while rendering the corrupt document (`Object.entries` yielded container types like `'0'`), which looked like a UI freeze. Follow the same convert-on-write / flatten-on-read pattern (see `validateAndJoinEquipmentCapacity` and `displayCapacityToFormCapacity`) when adding capacity-style fields to other entities such as Containers. Details: `docs/inventory.md`, design decision 11.
+Design stored shapes so the compiler enforces the conversion: give them **at least one required, server-owned field** that the wire shape lacks. Example: equipment capacity is `{ type, capacity }[]` on the wire but `EquipmentCapacityEntry[]` (`{ type, stored, capacity }[]`) in the document — the required `stored` counter means unconverted input fails typechecking (see `validateAndJoinEquipmentCapacity` for convert-on-write and `displayCapacityToFormCapacity` for flatten-on-read). Avoid all-optional shapes like `Partial<Record<…>>` for stored fields: almost any object is structurally assignable to them, and a bug that stored raw form rows this way compiled cleanly and crashed the frontend at render time.
+
+Two more rules that keep these checks alive:
+
+- **Never add a string index signature to document types** (and never make `BaseDocument` extend `CloudantV1.Document`, which has `[propName: string]: any`): `Omit<T, …>` over an index-signed type collapses every property to `any`, silently disabling typechecking of document literals in the CRUD services.
+- Where an external document genuinely is open-shaped (e.g. LIMS `ProjectsDbDocument`), declare `[key: string]: unknown` explicitly — `unknown` still forces narrowing at each access.
+
+Details: `docs/inventory.md`, design decision 11.
 
 ### State Management & Data Fetching
 

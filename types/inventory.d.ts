@@ -1,7 +1,7 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
-import type { EquipmentCapacityCount, EquipmentType } from '../schemas/inventory/equipment'
+import type { EquipmentCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
 /*
@@ -131,7 +131,8 @@ export interface StorageEquipment extends BaseDocument {
   name: string
   label: string | null
   description: string | null
-  capacity: EquipmentCapacityCount[] | null
+  /* One entry per container type; `stored` is the server-owned occupancy counter. */
+  capacity: EquipmentCapacityEntry[] | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null
@@ -177,7 +178,8 @@ export interface DisplayStorageEquipment {
   name: string
   label: string | null
   description: string | null
-  capacity: EquipmentCapacityCount[] | null
+  /* One entry per container type; `stored` is the server-owned occupancy counter. */
+  capacity: EquipmentCapacityEntry[] | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null

@@ -14,18 +14,23 @@ export const equipmentType = z.enum([
 
 export type EquipmentType = z.infer<typeof equipmentType>
 
-// Schema that defines how many containers of a given type can be stored within a parent container or storage equipment
+// Wire/form shape: how many containers of a given type can be stored within a parent container or storage equipment.
 export const equipmentCapacitySchema = z.object({
   type: containerTypeSchema,
   capacity: z.number().int().min(0)
 })
 
-type EquipmentCapacity = z.infer<typeof equipmentCapacitySchema>
-// Type to store current and maximum counts per container type within storage equipment.
-export type EquipmentCapacityCount = Partial<Record<EquipmentCapacity['type'], {
-  stored: number
-  capacity: EquipmentCapacity['capacity']
-}>>
+export type EquipmentCapacity = z.infer<typeof equipmentCapacitySchema>
+
+// Stored document shape: the wire shape plus the server-owned `stored` occupancy counter.
+// `stored` is deliberately REQUIRED so that raw client input ({ type, capacity }) is not
+// structurally assignable to the stored shape — the compiler rejects storing it unconverted.
+// `stored` is never accepted from the client; only the CRUD service writes it.
+export const equipmentCapacityEntrySchema = equipmentCapacitySchema.extend({
+  stored: z.number().int().min(0)
+})
+
+export type EquipmentCapacityEntry = z.infer<typeof equipmentCapacityEntrySchema>
 
 export const createEquipmentSchema = z.object({
   parentSlug: z.string().min(1, { message: 'Parent room identifier is required' }),
