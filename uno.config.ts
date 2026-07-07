@@ -95,9 +95,13 @@ export default defaultConfig({
     'i-lucide-arrow-down-to-line',
     'i-lucide-briefcase',
     'i-lucide-package',
+    'i-lucide-paper-bag',
     'i-lucide-pen-tool',
+    'i-lucide-proportions',
     'i-lucide-shapes',
     'i-lucide-shopping-cart',
+    'i-lucide-square-library',
+    'i-lucide-table',
     'i-lucide-triangle-alert',
     'i-lucide-truck',
     'i-lucide-user'

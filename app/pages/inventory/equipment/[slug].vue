@@ -153,6 +153,10 @@ const infoFields = computed(() => {
 
         <NSeparator />
 
+        <InventoryEquipmentCapacityIndicator :capacity="equipment.capacity" />
+
+        <NSeparator />
+
         <footer class="flex flex-wrap items-center justify-end gap-2">
           <DialogInventoryEquipmentUpdate
             :equipment="equipment"
@@ -176,6 +180,9 @@ const infoFields = computed(() => {
           label="Assigned to room"
           :value="`${equipment.parentRoom.name} (${equipment.parentRoom.slug})`"
         />
+
+        <NSeparator />
+
         <div class="flex flex-wrap items-center justify-end gap-4">
           <DialogMoveEquipment :equipment="equipment" />
           <NButton
