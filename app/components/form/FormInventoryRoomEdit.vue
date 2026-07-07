@@ -60,11 +60,12 @@ const { handleSubmit, errors, resetForm } = useForm({
   }
 })
 
+const { mutateAsync: updateRoomAsync } = updateRoom()
+
 const onSubmit = handleSubmit(
   async (values) => {
     try {
-      const { mutateAsync } = updateRoom()
-      const result = await mutateAsync(values)
+      const result = await updateRoomAsync(values)
       if (!result) {
         showError(`Room "${values.name}" could not be updated.`, 'Room update error', { actions: toastActions })
         return

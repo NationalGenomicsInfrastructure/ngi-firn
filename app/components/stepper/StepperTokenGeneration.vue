@@ -99,11 +99,12 @@ const onPeriodUpdate = (value: number[] | undefined) => {
 const token = ref('')
 const tokenID = ref('')
 
+// in this case, we use the async version of the mutation to act on the failure.
+const { mutateAsync: generateFirnUserTokenAsync } = generateFirnUserToken()
+
 const onSubmit = handleSubmit(async (values) => {
   try {
-    // in this case, we use the async version of the mutation to act on the failure.
-    const { mutateAsync } = generateFirnUserToken()
-    const result = await mutateAsync(values)
+    const result = await generateFirnUserTokenAsync(values)
     if (result) {
       token.value = result.jwt
       tokenID.value = result.tokenID

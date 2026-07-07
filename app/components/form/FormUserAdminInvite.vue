@@ -36,11 +36,12 @@ const { handleSubmit, validate, errors, resetForm } = useForm({
     isAdmin: false
   }
 })
+// in this case, we use the async version of the mutation to act on the failure.
+const { mutateAsync: createUserByAdminAsync } = createUserByAdmin()
+
 const onSubmit = handleSubmit(async (values) => {
   try {
-    // in this case, we use the async version of the mutation to act on the failure.
-    const { mutateAsync } = createUserByAdmin()
-    const result = await mutateAsync(values)
+    const result = await createUserByAdminAsync(values)
     if (result) {
       // Success message is handled by mutation
       resetForm()

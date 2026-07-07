@@ -99,6 +99,12 @@ This is mandatory to implement optimistic updates correctly. If you forget to `a
     }),
 ```
 
+#### API input shape ≠ stored document shape
+
+Zod schemas in `schemas/` define the **wire/form shape** of data; the document interfaces in `types/inventory.d.ts` define the **stored CouchDB shape**. When the two differ, the conversion belongs in the `server/crud/*` service — never pass validated input straight into a document field of a different shape.
+
+Be especially careful with fields typed as `Partial<Record<…>>`: since every key is optional, **almost any object is structurally assignable to them, so TypeScript will not flag a wrong shape**. Example incident: `EquipmentService.createEquipment` once stored the flat form rows (`{ type, capacity }[]`) directly in the `capacity` field instead of converting them to the stored `EquipmentCapacityCount[]` map (`[{ box: { stored: 0, capacity: N } }]`). It compiled cleanly, the mutation returned 200, and the frontend then crashed while rendering the corrupt document (`Object.entries` yielded container types like `'0'`), which looked like a UI freeze. Follow the same convert-on-write / flatten-on-read pattern (see `validateAndJoinEquipmentCapacity` and `displayCapacityToFormCapacity`) when adding capacity-style fields to other entities such as Containers. Details: `docs/inventory.md`, design decision 11.
+
 ### State Management & Data Fetching
 
 Firn uses **Pinia Colada** (`@pinia/colada`) as the data-fetching layer on top of tRPC. Think of it as a cache that sits between your Vue components and the server: components read from the cache, and mutations update both the server and the cache. This means that when one component changes data, every other component that reads the same data automatically sees the update — no manual event passing required.
@@ -217,6 +223,8 @@ const { deleteUser, isLoading } = deleteUserByAdmin()
 // Call it directly — Pinia Colada runs the full lifecycle automatically
 await deleteUser({ googleId: user.googleId, googleGivenName: user.googleGivenName, ... })
 ```
+
+> **Rule**: call the `defineMutation()` composable (e.g. `deleteUserByAdmin()`) at `<script setup>` scope and only invoke the returned `mutate`/`mutateAsync` inside event or submit handlers. Calling the composable itself inside a handler creates a new effect scope on every invocation that is never cleaned up (memory leak) and logs `[@pinia/colada]: defineMutation() composable was called outside of a component or effect scope`.
 
 #### The optimistic update pattern in detail
 

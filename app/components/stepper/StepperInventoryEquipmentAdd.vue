@@ -46,6 +46,7 @@ const items = [
 
 const stepper = useTemplateRef('equipmentStepper')
 const { showError } = useFirnToast()
+const { mutateAsync: createEquipmentAsync } = createEquipment()
 
 const equipmentFormSchema = toTypedSchema(
   createEquipmentSchema.omit({ parentSlug: true, temperatureSensorId: true })
@@ -120,8 +121,7 @@ async function nextFromStep1() {
 
 const onSubmit = handleSubmit(async (formValues) => {
   try {
-    const { mutateAsync } = createEquipment()
-    const result = await mutateAsync({ ...formValues, parentSlug: props.roomSlug })
+    const result = await createEquipmentAsync({ ...formValues, parentSlug: props.roomSlug })
     if (!result) {
       showError(`Equipment "${formValues.name}" could not be created.`, 'Equipment creation error')
       return

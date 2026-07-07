@@ -73,14 +73,15 @@ function onTargetRoomUpdate(value: unknown) {
   }
 }
 
+const { mutateAsync: moveEquipmentAsync } = useMoveEquipmentMutation()
+
 async function handleMove() {
   if (!selectedRoomSlug.value) {
     showError('Please select a destination room.', 'Move equipment')
     return
   }
 
-  const { mutateAsync } = useMoveEquipmentMutation()
-  const result = await mutateAsync({
+  const result = await moveEquipmentAsync({
     equipmentSlug: props.equipment.slug,
     newRoomSlug: selectedRoomSlug.value
   })

@@ -151,6 +151,10 @@ export const EquipmentService = {
     const equipmentDocumentId = generateCouchDocId('equipment')
     const now = new Date().toISOString()
 
+    // Convert the flat { type, capacity }[] input rows into the stored
+    // EquipmentCapacityCount map shape, initializing stored counts to zero.
+    const initialCapacity = validateAndJoinEquipmentCapacity(null, input.capacity ?? [])
+
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
       type: 'storageEquipment',
       schema: 1,
@@ -160,9 +164,9 @@ export const EquipmentService = {
       name: input.name,
       label: input.label?.trim() || null,
       description: input.description ?? null,
-      capacity: [input.capacity ?? null],
+      capacity: initialCapacity.length > 0 ? initialCapacity : null,
       temperatureCelsius: input.temperatureCelsius ?? null,
-      temperatureSensorId: [input.temperatureSensorId ?? null],
+      temperatureSensorId: input.temperatureSensorId ?? null,
       manufacturer: input.manufacturer ?? null,
       model: input.model ?? null,
       serialNumber: input.serialNumber ?? null,
@@ -193,20 +197,24 @@ export const EquipmentService = {
       throw new Error(`Equipment with identifier "${updates.equipmentSlug}" not found.`)
     }
 
-    let mergedCapacity: StorageEquipment['capacity'] | undefined
+    // Strip request-only identifiers so they are not persisted into the document.
+    const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, ...updatedFields } = updates
 
     // Re-validate and merge capacity restrictions while preserving stored counts.
-    if (updates.capacity) {
-      const merged = validateAndJoinEquipmentCapacity(existing.capacity, updates.capacity)
+    // When the caller did not touch capacity, keep the existing restrictions;
+    // an explicitly provided empty array clears them (merged result is null).
+    let mergedCapacity = existing.capacity
+    if (capacity) {
+      const merged = validateAndJoinEquipmentCapacity(existing.capacity, capacity)
       mergedCapacity = merged.length > 0 ? merged : null
     }
 
     // recreate the updated equipment document by merging existing and updates, and updating the timestamp
     const updatedEquipment = {
       ...existing,
-      ...updates,
+      ...updatedFields,
       slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
-      capacity: mergedCapacity, // Always use the merged capacity, even if it's null (to clear previous restrictions)
+      capacity: mergedCapacity,
       updatedAt: new Date().toISOString()
     } as StorageEquipment
 

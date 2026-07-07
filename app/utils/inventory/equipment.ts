@@ -122,7 +122,9 @@ export function displayCapacityToFormCapacity(
   for (const entry of capacity) {
     if (!entry) continue
     for (const [type, counts] of Object.entries(entry)) {
-      if (counts) {
+      // Skip keys that are not valid container types so that malformed
+      // documents degrade to "no restriction" instead of crashing the UI.
+      if (counts && type in CONTAINER_TYPE_LABELS) {
         rows.push({ type: type as ContainerType, capacity: counts.capacity })
       }
     }

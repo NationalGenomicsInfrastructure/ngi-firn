@@ -27,6 +27,7 @@ const emit = defineEmits<{
 const formElementId = computed(() => props.formId ?? `inventory-equipment-edit-${props.equipment.slug}`)
 
 const { showError } = useFirnToast()
+const { mutateAsync: updateEquipmentAsync } = updateEquipment()
 
 const equipmentFormSchema = toTypedSchema(
   updateEquipmentSchema.omit({ temperatureSensorId: true })
@@ -68,8 +69,7 @@ function onTemperatureUpdate(value: unknown) {
 
 const onSubmit = handleSubmit(async (values) => {
   try {
-    const { mutateAsync } = updateEquipment()
-    const result = await mutateAsync(values)
+    const result = await updateEquipmentAsync(values)
     if (!result) {
       showError(`Equipment "${values.name}" could not be updated.`, 'Equipment update error')
       return

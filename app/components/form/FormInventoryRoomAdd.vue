@@ -49,11 +49,12 @@ const toastActions = [
   }
 ]
 
+const { mutateAsync: createRoomAsync } = createRoom()
+
 const onSubmit = handleSubmit(
   async (values) => {
     try {
-      const { mutateAsync } = createRoom()
-      const result = await mutateAsync(values)
+      const result = await createRoomAsync(values)
       if (result) {
         resetForm({ values: { ...initialValues } })
       }

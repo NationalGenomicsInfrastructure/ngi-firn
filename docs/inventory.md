@@ -37,6 +37,8 @@ A physical location in a building — the root of every storage hierarchy. Rooms
 
 A piece of storage hardware inside a room: freezers (−20 °C, −80 °C), fridges (+4 °C), liquid nitrogen tanks (−196 °C), shelves, or cabinets. Equipment records its target temperature, optional grid dimensions (rows × columns × levels), and hardware details (manufacturer, model, serial number) for maintenance tracking.
 
+Equipment can optionally restrict how many containers of each type it holds via its `capacity` field. Note that the stored document shape differs from the form/API shape — see [decision 11](#11-equipment-capacity-wire-shape-vs-stored-shape).
+
 ### Container
 
 A nested storage unit: racks, boxes, bags, plates, bottles, jars. Containers can live inside equipment or inside other containers, enabling arbitrary nesting depth. Each container may define:
@@ -221,6 +223,17 @@ The `projectRefs` field is `null` when no project association exists. It is inte
 **Reverse lookup**: The `by_project` CouchDB view indexes all `projectRefs` entries, emitting `[db, projectId]` as the key. Querying `key=["projects", "proj:P12345"]` returns every container and item linked to that project. Note that CouchDB does not support cross-database views — this view lives in the firn database and indexes the `projectRefs` field of inventory documents.
 
 While the inventory hierarchy uses `parentId`/`parentType` for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse — most inventory entities will not be linked to a project.
+
+### 11. Equipment capacity: wire shape vs. stored shape
+
+Capacity restrictions on StorageEquipment exist in **two deliberately different representations**, and the conversion between them happens **exclusively server-side in the CRUD service**:
+
+- **Wire/form shape** (`schemas/inventory/equipment.ts`, `equipmentCapacitySchema`): a flat array of rows, `{ type: ContainerType, capacity: number }[]`. This is what the capacity editor UI produces and what `createEquipment`/`updateEquipment` tRPC procedures accept. It carries no occupancy state.
+- **Stored document shape** (`types/inventory.d.ts`, `EquipmentCapacityCount[]`): a one-element array holding a map keyed by container type, e.g. `[{ box: { stored: 3, capacity: 10 } }]`. The `stored` counter is server-owned bookkeeping (`adjustStoredCount`) and must never be settable by the client.
+
+`EquipmentService` converts on write (`validateAndJoinEquipmentCapacity` merges new limits with existing `stored` counts and initialises new categories with `stored: 0`); `displayCapacityToFormCapacity` in `app/utils/inventory/equipment.ts` flattens back on read.
+
+> ⚠️ **Caveat — TypeScript will not catch shape mix-ups here.** `EquipmentCapacityCount` is `Partial<Record<ContainerType, …>>`, i.e. *all* keys are optional, so almost any object — including the flat wire-shape array — is structurally assignable to it. A bug where `createEquipment` stored the raw form rows (`capacity: [input.capacity]`) compiled cleanly and crashed the frontend at render time (`Object.entries` over the wrong shape produced container types like `'0'`). When adding capacity-style fields to other entities (e.g. Containers), always convert explicitly in the CRUD service and never pass validated input straight into the document.
 
 ## CRUD Service Organisation
 

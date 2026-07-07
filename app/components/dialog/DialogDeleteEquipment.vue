@@ -7,8 +7,9 @@ const props = defineProps<{
   roomSlug: string
 }>()
 
+const { deleteEquipment } = useDeleteEquipmentMutation()
+
 function handleDelete() {
-  const { deleteEquipment } = useDeleteEquipmentMutation()
   deleteEquipment({
     equipmentSlug: props.equipment.slug,
     equipmentName: props.equipment.name,
