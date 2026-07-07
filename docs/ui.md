@@ -327,6 +327,27 @@ Named slots allow you to create multiple content areas within a single component
 
 The `#header` syntax is shorthand for `v-slot:header`.
 
+#### Pitfall: stale inputs inside `NFormGroup`/`NFormField` default slots in a `v-for`
+
+UnaUI's `NFormGroup` and `NFormField` internally pipe their **default slot** through a wrapper (`NFormGroupDefaultSlot`/`NFormFieldDefaultSlot`) that clones the slot vnodes inside a `computed`, to inject `id`/`status` into the wrapped input. Because `instance.slots` is not reactive, that computed only re-runs when a **reactive dependency read during slot execution** changes — replacing the slot function on a parent re-render does *not* invalidate it.
+
+This bites in a `v-for` combined with immutable updates (`rows.map(row => ({ ...row, … }))`): the slot closure captures the old `row` object, which is never mutated — so the cached clone keeps the old `model-value` forever. Symptom: the surrounding labels/messages (normal props) update, but the input inside the default slot is frozen — e.g. an `NSlider` whose value changes but whose thumb never moves, or an `NSelect` that keeps displaying the previous choice.
+
+**Rule:** inside the default slot of `NFormGroup`/`NFormField`, bind to the live reactive source, not the `v-for` variable:
+
+```html
+<div v-for="(row, index) in rows" :key="index">
+  <NFormGroup :message="`${row.capacity} boxes`">  <!-- props: `row` is fine -->
+    <NSlider
+      :model-value="[rows[index]?.capacity ?? 0]"  <!-- slot: use `rows[index]`, NOT `row` -->
+      @update:model-value="..."
+    />
+  </NFormGroup>
+</div>
+```
+
+Reading `rows[index]` tracks the array itself, so replacing it triggers a fresh slot render. See `app/components/form/FormFieldEquipmentCapacity.vue` for the real-world instance.
+
 #### Best Practices for Page-Specific Components
 
 ##### 1. Create Dedicated Components

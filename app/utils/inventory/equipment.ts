@@ -82,11 +82,6 @@ export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
   tray: 'Tray',
   other: 'Other'
 }
-
-export const CAPACITY_SLIDER_MIN = 0
-export const CAPACITY_SLIDER_MAX = 100
-export const CAPACITY_SLIDER_STEP = 1
-
 export interface CapacityRow {
   type: ContainerType
   capacity: number

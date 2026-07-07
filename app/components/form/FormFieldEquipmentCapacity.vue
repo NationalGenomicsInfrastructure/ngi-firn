@@ -2,9 +2,6 @@
 import {
   CONTAINER_TYPE_OPTIONS,
   CONTAINER_TYPE_LABELS,
-  CAPACITY_SLIDER_MIN,
-  CAPACITY_SLIDER_MAX,
-  CAPACITY_SLIDER_STEP,
   EQUIPMENT_FORM_LABEL_STYLE,
   resolveContainerTypeFromSelect,
   type CapacityRow
@@ -89,8 +86,16 @@ function onCapacityUpdate(index: number, value: number[] | undefined) {
         class="sm:w-40 shrink-0"
         :una="{ formGroupLabel: EQUIPMENT_FORM_LABEL_STYLE }"
       >
+        <!--
+          Inside NFormGroup's default slot, read via `rows[index]` instead of the
+          v-for variable `row`: NFormGroup caches its default-slot vnodes in a
+          computed (NFormGroupDefaultSlot), which only re-renders when a reactive
+          dependency read inside the slot changes. The captured `row` is replaced
+          (not mutated) on every update, so it never triggers — `rows[index]`
+          tracks props.modelValue and does.
+        -->
         <NSelect
-          :model-value="row.type"
+          :model-value="rows[index]?.type"
           :items="optionsForRow(index)"
           by="value"
           @update:model-value="(value: unknown) => onTypeUpdate(index, value)"
@@ -103,11 +108,12 @@ function onCapacityUpdate(index: number, value: number[] | undefined) {
         class="flex-1"
         :una="{ formGroupLabel: EQUIPMENT_FORM_LABEL_STYLE }"
       >
+        <!-- `rows[index]` instead of `row`: see comment on the NSelect above. -->
         <NSlider
-          :model-value="[row.capacity]"
-          :min="CAPACITY_SLIDER_MIN"
-          :max="CAPACITY_SLIDER_MAX"
-          :step="CAPACITY_SLIDER_STEP"
+          :model-value="[rows[index]?.capacity ?? 0]"
+          :min="0"
+          :max="100"
+          :step="1"
           @update:model-value="(value: number[] | undefined) => onCapacityUpdate(index, value)"
         />
       </NFormGroup>

@@ -322,6 +322,8 @@ For **toggle controls and sliders**, use `NFormGroup` instead of `NFormField`:
 </NFormGroup>
 ```
 
+> ⚠️ **Inside a `v-for`, never bind the default-slot input of `NFormGroup`/`NFormField` to the iteration variable.** Both components clone their default-slot vnodes inside a non-invalidating `computed`; with immutable updates (`rows.map(row => ({ ...row }))`) the captured `row` never mutates, so the input freezes at its old value while surrounding labels/messages keep updating. Bind to the live source instead: `:model-value="rows[index]?.capacity"`, not `row.capacity`. Props of `NFormGroup` itself (e.g. `:message`) may use `row`. Details: `docs/ui.md` → "Pitfall: stale inputs inside NFormGroup/NFormField default slots in a v-for".
+
 **Table headers** share a single constant:
 
 ```ts
