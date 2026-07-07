@@ -36,9 +36,43 @@ function isRoom(doc: unknown): doc is Room {
   return candidate.type === 'room'
 }
 
+/* Query room documents by [type, slug] using the inventory view index. */
+async function queryRoomsBySlug(roomSlug: string): Promise<Room[]> {
+  const result = await couchDB.queryView<[string, string], null, Room>(
+    'firn-inventory',
+    'by_slug',
+    {
+      key: ['room', roomSlug],
+      include_docs: true,
+      reduce: false
+    }
+  )
+
+  return result.rows
+    .map(row => row.doc)
+    .filter((doc): doc is Room => isRoom(doc))
+}
+
+/* Query all room documents by type using the inventory view index. */
+async function queryAllRoomsByType(): Promise<Room[]> {
+  const result = await couchDB.queryView<string, null, Room>(
+    'firn-inventory',
+    'by_type',
+    {
+      key: 'room',
+      include_docs: true,
+      reduce: false
+    }
+  )
+
+  return result.rows
+    .map(row => row.doc)
+    .filter((doc): doc is Room => isRoom(doc))
+}
+
 /* Enforce uniqueness for the human-readable room slug. */
 async function ensureUniqueRoomSlug(roomSlug: string, currentId?: string): Promise<void> {
-  const existing = await couchDB.queryDocuments<Room>({ type: 'room', slug: roomSlug })
+  const existing = await queryRoomsBySlug(roomSlug)
   const conflict = existing.find(room => room._id !== currentId)
   if (conflict) {
     throw new Error(`A room with the identifier "${roomSlug}" already exists. Please check if the room number is correct or if the room has already been registered.`)
@@ -64,14 +98,14 @@ export const RoomService = {
 
   /* Fetch room by slug. */
   async getRoomBySlug(roomSlug: string): Promise<Room | null> {
-    const rooms = await couchDB.queryDocuments<Room>({ type: 'room', slug: roomSlug })
+    const rooms = await queryRoomsBySlug(roomSlug)
     const room = rooms[0]
     return room && isRoom(room) ? room : null
   },
 
   /* Return all rooms in a stable, name-sorted order. */
   async getAllRooms(): Promise<Room[]> {
-    const rooms = await couchDB.queryDocuments<Room>({ type: 'room' })
+    const rooms = await queryAllRoomsByType()
     return rooms.sort((a, b) => a.name.localeCompare(b.name))
   },
 

@@ -49,6 +49,57 @@ function isStorageEquipment(doc: unknown): doc is StorageEquipment {
   return candidate.type === 'storageEquipment'
 }
 
+/* Query equipment documents by [type, slug] using the inventory view index. */
+async function queryEquipmentBySlug(slug: string): Promise<StorageEquipment[]> {
+  const result = await couchDB.queryView<[string, string], null, StorageEquipment>(
+    'firn-inventory',
+    'by_slug',
+    {
+      key: ['storageEquipment', slug],
+      include_docs: true,
+      reduce: false
+    }
+  )
+
+  return result.rows
+    .map(row => row.doc)
+    .filter((doc): doc is StorageEquipment => isStorageEquipment(doc))
+}
+
+/* Query all equipment documents by type using the inventory view index. */
+async function queryAllEquipmentByType(): Promise<StorageEquipment[]> {
+  const result = await couchDB.queryView<string, null, StorageEquipment>(
+    'firn-inventory',
+    'by_type',
+    {
+      key: 'storageEquipment',
+      include_docs: true,
+      reduce: false
+    }
+  )
+
+  return result.rows
+    .map(row => row.doc)
+    .filter((doc): doc is StorageEquipment => isStorageEquipment(doc))
+}
+
+/* Query direct equipment children for a room parent using the inventory view index. */
+async function queryEquipmentByRoomParent(roomDocumentId: string): Promise<StorageEquipment[]> {
+  const result = await couchDB.queryView<[string | null, string], null, StorageEquipment>(
+    'firn-inventory',
+    'by_parent',
+    {
+      key: ['room', roomDocumentId],
+      include_docs: true,
+      reduce: false
+    }
+  )
+
+  return result.rows
+    .map(row => row.doc)
+    .filter((doc): doc is StorageEquipment => isStorageEquipment(doc))
+}
+
 /*
 * Validate and merge capacity restrictions while preserving stored counts.
 * Returns one entry per container type provided in `updates`: types with an existing
@@ -90,24 +141,20 @@ export const EquipmentService = {
 
   /* Fetch one equipment document by slug. */
   async getEquipmentBySlug(slug: string): Promise<StorageEquipment | null> {
-    const results = await couchDB.queryDocuments<StorageEquipment>({ type: 'storageEquipment', slug })
+    const results = await queryEquipmentBySlug(slug)
     const equipment = results[0]
     return equipment && isStorageEquipment(equipment) ? equipment : null
   },
 
   /* List all storage equipment across all rooms, sorted by name. */
   async getAllEquipment(): Promise<StorageEquipment[]> {
-    const equipment = await couchDB.queryDocuments<StorageEquipment>({ type: 'storageEquipment' })
+    const equipment = await queryAllEquipmentByType()
     return equipment.sort((a, b) => a.name.localeCompare(b.name))
   },
 
   /* List all equipment that belongs to one room. */
   async getEquipmentByRoom(roomDocumentId: string): Promise<StorageEquipment[]> {
-    const equipment = await couchDB.queryDocuments<StorageEquipment>({
-      'type': 'storageEquipment',
-      'parent.id': roomDocumentId,
-      'parent.type': 'room'
-    })
+    const equipment = await queryEquipmentByRoomParent(roomDocumentId)
     return equipment.sort((a, b) => a.name.localeCompare(b.name))
   },
 
