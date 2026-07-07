@@ -6,8 +6,10 @@ import { updateEquipment } from '~/utils/mutations/inventory/equipment'
 import {
   EQUIPMENT_FORM_LABEL_STYLE,
   EQUIPMENT_TYPE_OPTIONS,
+  displayCapacityToFormCapacity,
   resolveEquipmentTypeFromSelect,
-  resolveNullableNumberFromInput
+  resolveNullableNumberFromInput,
+  type CapacityRow
 } from '~/utils/inventory/equipment'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
@@ -27,7 +29,7 @@ const formElementId = computed(() => props.formId ?? `inventory-equipment-edit-$
 const { showError } = useFirnToast()
 
 const equipmentFormSchema = toTypedSchema(
-  updateEquipmentSchema.omit({ capacity: true, temperatureSensorId: true })
+  updateEquipmentSchema.omit({ temperatureSensorId: true })
 )
 
 const { handleSubmit, validate, errors } = useForm({
@@ -38,6 +40,7 @@ const { handleSubmit, validate, errors } = useForm({
     name: props.equipment.name,
     label: props.equipment.label ?? '',
     description: props.equipment.description ?? '',
+    capacity: displayCapacityToFormCapacity(props.equipment.capacity),
     temperatureCelsius: props.equipment.temperatureCelsius ?? undefined,
     manufacturer: props.equipment.manufacturer ?? '',
     model: props.equipment.model ?? '',
@@ -48,6 +51,7 @@ const { handleSubmit, validate, errors } = useForm({
 
 const { value: equipmentTypeValue, setValue: setEquipmentTypeValue } = useField<string>('equipmentType')
 const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: capacityValue, setValue: setCapacityValue } = useField<CapacityRow[]>('capacity')
 
 const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
 
@@ -139,6 +143,24 @@ async function onValidating() {
         placeholder="Optional notes"
       />
     </NFormField>
+
+    <NSeparator class="my-4" />
+
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <NIcon
+          name="i-lucide-layers"
+          class="text-muted"
+        />
+        <h4 class="text-sm font-semibold">
+          Container capacity
+        </h4>
+      </div>
+      <FormFieldEquipmentCapacity
+        :model-value="capacityValue"
+        @update:model-value="setCapacityValue"
+      />
+    </div>
 
     <NSeparator class="my-4" />
 

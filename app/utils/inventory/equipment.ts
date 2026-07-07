@@ -1,4 +1,5 @@
 import type { EquipmentType } from '~~/schemas/inventory/equipment'
+import type { ContainerType } from '~~/schemas/inventory/container'
 import type { DisplayStorageEquipment } from '~~/types/inventory'
 
 export interface SelectOption<T extends string> {
@@ -60,4 +61,71 @@ export function getEquipmentCapacityLabel(equipment: DisplayStorageEquipment): s
     return '—'
   }
   return `${equipment.capacity.length} type${equipment.capacity.length === 1 ? '' : 's'} configured`
+}
+
+/*
+ * Container-type capacity editor helpers
+ */
+
+export const CONTAINER_TYPE_OPTIONS: SelectOption<ContainerType>[] = [
+  { value: 'rack', label: 'Rack' },
+  { value: 'box', label: 'Box' },
+  { value: 'bag', label: 'Bag' },
+  { value: 'tray', label: 'Tray' },
+  { value: 'other', label: 'Other' }
+]
+
+export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
+  rack: 'Rack',
+  box: 'Box',
+  bag: 'Bag',
+  tray: 'Tray',
+  other: 'Other'
+}
+
+export const CAPACITY_SLIDER_MIN = 0
+export const CAPACITY_SLIDER_MAX = 100
+export const CAPACITY_SLIDER_STEP = 1
+
+export interface CapacityRow {
+  type: ContainerType
+  capacity: number
+}
+
+export function resolveContainerTypeFromSelect(value: unknown): ContainerType | null {
+  const VALID: ContainerType[] = ['rack', 'box', 'bag', 'tray', 'other']
+
+  if (typeof value === 'string' && (VALID as string[]).includes(value)) {
+    return value as ContainerType
+  }
+
+  if (value && typeof value === 'object' && 'value' in value) {
+    const inner = (value as { value?: unknown }).value
+    if (typeof inner === 'string' && (VALID as string[]).includes(inner)) {
+      return inner as ContainerType
+    }
+  }
+
+  return null
+}
+
+// Flatten the stored EquipmentCapacityCount[] shape into the flat form rows
+// ({ type, capacity }[]) that the capacity editor works with.
+export function displayCapacityToFormCapacity(
+  capacity: DisplayStorageEquipment['capacity']
+): CapacityRow[] {
+  if (!capacity) {
+    return []
+  }
+
+  const rows: CapacityRow[] = []
+  for (const entry of capacity) {
+    if (!entry) continue
+    for (const [type, counts] of Object.entries(entry)) {
+      if (counts) {
+        rows.push({ type: type as ContainerType, capacity: counts.capacity })
+      }
+    }
+  }
+  return rows
 }

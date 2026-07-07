@@ -8,3 +8,5 @@ export const containerTypeSchema = z.enum([
   'tray',
   'other'
 ])
+
+export type ContainerType = z.infer<typeof containerTypeSchema>

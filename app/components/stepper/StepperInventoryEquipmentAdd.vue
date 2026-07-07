@@ -7,7 +7,8 @@ import {
   EQUIPMENT_TYPE_LABELS,
   EQUIPMENT_TYPE_OPTIONS,
   resolveEquipmentTypeFromSelect,
-  resolveNullableNumberFromInput
+  resolveNullableNumberFromInput,
+  type CapacityRow
 } from '~/utils/inventory/equipment'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
@@ -30,10 +31,16 @@ const items = [
     stage: 1
   },
   {
+    title: 'Capacity',
+    description: 'Set container capacities',
+    icon: 'i-lucide-layers',
+    stage: 2
+  },
+  {
     title: 'Hardware',
     description: 'Set optional hardware details',
     icon: 'i-lucide-cog',
-    stage: 2
+    stage: 3
   }
 ]
 
@@ -41,7 +48,7 @@ const stepper = useTemplateRef('equipmentStepper')
 const { showError } = useFirnToast()
 
 const equipmentFormSchema = toTypedSchema(
-  createEquipmentSchema.omit({ parentSlug: true, capacity: true, temperatureSensorId: true })
+  createEquipmentSchema.omit({ parentSlug: true, temperatureSensorId: true })
 )
 
 const { handleSubmit, validate, errors, resetForm, values } = useForm({
@@ -51,6 +58,7 @@ const { handleSubmit, validate, errors, resetForm, values } = useForm({
     name: '',
     label: '',
     description: '',
+    capacity: [] as CapacityRow[],
     temperatureCelsius: undefined,
     manufacturer: '',
     model: '',
@@ -62,6 +70,7 @@ const { handleSubmit, validate, errors, resetForm, values } = useForm({
 
 const { value: equipmentTypeValue, setValue: setEquipmentTypeValue } = useField<string>('equipmentType')
 const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: capacityValue, setValue: setCapacityValue } = useField<CapacityRow[]>('capacity')
 
 const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
 
@@ -230,6 +239,40 @@ async function onValidatingSubmit() {
         </form>
 
         <form
+          v-else-if="item.stage === 2"
+          class="mx-auto p-4 space-y-4 w-full"
+          @submit.prevent="stepper?.nextStep()"
+        >
+          <NCard
+            title="Container capacity"
+            description="Optionally set the maximum number of containers this equipment can hold, per type."
+            card="outline-gray"
+            :una="{ cardContent: 'space-y-4', cardDescription: 'text-muted' }"
+          >
+            <FormFieldEquipmentCapacity
+              :model-value="capacityValue"
+              @update:model-value="setCapacityValue"
+            />
+          </NCard>
+
+          <div class="flex justify-between">
+            <NButton
+              type="button"
+              label="Previous"
+              btn="soft-gray hover:outline-gray"
+              leading="i-lucide-arrow-left"
+              @click="stepper?.prevStep()"
+            />
+            <NButton
+              type="submit"
+              label="Next"
+              btn="soft-primary hover:outline-primary"
+              trailing="i-lucide-arrow-right"
+            />
+          </div>
+        </form>
+
+        <form
           v-else
           class="mx-auto p-4 space-y-4 w-full"
           @submit.prevent="onValidatingSubmit()"
@@ -304,6 +347,14 @@ async function onValidatingSubmit() {
                 </p>
                 <p class="font-medium">
                   {{ values.temperatureCelsius == null ? '—' : `${values.temperatureCelsius} °C` }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-0.5">
+                  Capacity
+                </p>
+                <p class="font-medium">
+                  {{ values.capacity && values.capacity.length ? `${values.capacity.length} type${values.capacity.length === 1 ? '' : 's'}` : '—' }}
                 </p>
               </div>
             </div>
