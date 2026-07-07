@@ -91,9 +91,11 @@ function onTemperatureUpdate(value: unknown) {
 }
 
 function resetToFirstStep() {
-  while (stepper?.value?.hasPrev()) {
-    stepper.value.prevStep()
-  }
+  // Jump directly instead of looping prevStep(): inside a synchronous loop the
+  // component cannot re-render, so reka-ui's StepperRoot keeps computing from a
+  // stale modelValue prop and re-emits the old index, making hasPrev() never
+  // turn false (infinite loop that freezes the tab on steppers with 3+ steps).
+  stepper?.value?.goToStep(0)
 }
 
 async function validateStep(requiredFields: readonly StepField[]): Promise<boolean> {
