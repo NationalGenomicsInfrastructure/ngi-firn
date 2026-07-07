@@ -1,14 +1,47 @@
 <script setup lang="ts">
+import { useQuery as useQueryColada } from '@pinia/colada'
 import type { DisplayRoom } from '~~/types/inventory'
 import { deleteRoom as useDeleteRoomMutation } from '~/utils/mutations/inventory/rooms'
+import { equipmentByRoomQuery } from '~/utils/queries/inventory/equipment'
 
 const props = defineProps<{
   room: DisplayRoom
 }>()
 
+// Check if the room has any storage equipment assigned to it
+
+const {
+  state: equipmentState,
+  asyncStatus: equipmentStatus
+} = useQueryColada(() => equipmentByRoomQuery(props.room.slug))
+
+const equipmentInRoom = computed(() =>
+  equipmentState.value.status === 'success' ? equipmentState.value.data : []
+)
+
+const hasEquipment = computed(() => equipmentInRoom.value.length > 0)
+const isCheckingEquipment = computed(() => equipmentStatus.value === 'loading')
+const isDeleteDisabled = computed(() => isCheckingEquipment.value || hasEquipment.value)
+
+const deleteButtonLabel = computed(() => {
+  if (isCheckingEquipment.value) {
+    return 'Checking…'
+  }
+  if (hasEquipment.value) {
+    return 'Contains stock'
+  }
+  return 'Delete room'
+})
+
+// Deletion logic
+
 const { deleteRoom } = useDeleteRoomMutation()
 
 const handleDelete = () => {
+  if (isDeleteDisabled.value) {
+    return
+  }
+
   deleteRoom({
     slug: [props.room.slug],
     roomName: props.room.name
@@ -23,11 +56,12 @@ const handleDelete = () => {
   >
     <template #trigger>
       <NButton
-        label="Delete room"
+        :label="deleteButtonLabel"
         size="sm"
         class="transition delay-300 ease-in-out"
         btn="soft-error hover:outline-error"
-        leading="i-lucide-trash-2"
+        :leading="isDeleteDisabled ? 'i-lucide-ban' : 'i-lucide-trash-2'"
+        :disabled="isDeleteDisabled"
       />
     </template>
 

@@ -27,6 +27,7 @@
 
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
 import {
+  hasDirectChildren,
   toParentRef
 } from './relations.server'
 import { RoomService } from './rooms.server'
@@ -204,12 +205,9 @@ export const EquipmentService = {
       throw new Error(`Equipment with identifier "${equipment.equipmentSlug}" not found.`)
     }
 
-    const children = await couchDB.queryDocuments<{ _id: string }>({
-      'parent.id': existing._id,
-      'type': { $in: ['container', 'inventoryItem'] }
-    })
+    const equipmentHasChildren = await hasDirectChildren(existing._id)
 
-    if (children.length > 0) {
+    if (equipmentHasChildren) {
       throw new Error(`Cannot delete equipment "${equipment.equipmentSlug}" because it still contains child inventory.`)
     }
 

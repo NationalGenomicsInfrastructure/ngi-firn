@@ -22,7 +22,8 @@
  */
 
 import { couchDB, generateCouchDocId } from '../../database/couchdb'
-import type { Room, StorageEquipment, DisplayRoom } from '../../../types/inventory'
+import { hasDirectChildren } from './relations.server'
+import type { Room, DisplayRoom } from '../../../types/inventory'
 import type { CreateRoomInput, UpdateRoomInput, DeleteRoomInput } from '../../../schemas/inventory/rooms'
 
 /* Check if a document is a Room document. */
@@ -154,11 +155,8 @@ export const RoomService = {
         continue // Skip deletion if the room does not exist
       }
 
-      const equipmentInRoom = await couchDB.queryDocuments<StorageEquipment>({
-        'type': 'storageEquipment',
-        'room.id': room._id
-      })
-      if (equipmentInRoom.length > 0) {
+      const roomHasChildren = await hasDirectChildren(room._id)
+      if (roomHasChildren) {
         throw new Error(`Cannot delete room "${roomSlug}" because it still contains storage equipment.`)
       }
 
