@@ -99,6 +99,7 @@ export default defaultConfig({
     'i-lucide-pen-tool',
     'i-lucide-proportions',
     'i-lucide-shapes',
+    'i-lucide-shelving-unit',
     'i-lucide-shopping-cart',
     'i-lucide-square-library',
     'i-lucide-table',

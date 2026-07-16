@@ -35,7 +35,7 @@ definePageMeta({
         <NButton
           label="Create room"
           btn="soft-primary hover:outline-primary"
-          leading="i-lucide-plus"
+          leading="i-lucide-house-plus"
           to="/inventory/rooms/add"
         />
       </NCard>
@@ -48,7 +48,7 @@ definePageMeta({
         <NButton
           label="Open equipment"
           btn="soft-primary hover:outline-primary"
-          leading="i-lucide-refrigerator"
+          leading="i-lucide-shelving-unit"
           to="/inventory/equipment"
         />
       </NCard>
@@ -61,7 +61,7 @@ definePageMeta({
         <NButton
           label="Create equipment"
           btn="soft-primary hover:outline-primary"
-          leading="i-lucide-plus"
+          leading="i-lucide-between-horizontal-end"
           to="/inventory/equipment/add"
         />
       </NCard>

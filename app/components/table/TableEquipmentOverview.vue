@@ -114,101 +114,95 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
       </template>
 
       <template #isActive-cell="{ cell }">
-        <NBadge
-          :label="cell.row.original.isActive ? 'Active' : 'Inactive'"
-          :badge="cell.row.original.isActive ? 'solid-success' : 'solid-gray'"
-        />
+        <div class="flex items-center gap-6">
+          <NBadge
+            :label="cell.row.original.isActive ? 'Active' : 'Inactive'"
+            :badge="cell.row.original.isActive ? 'solid-success' : 'solid-gray'"
+          />
+          <NTooltip
+            content="View equipment details"
+          >
+            <NButton
+              label="i-lucide-file-input"
+              icon
+              btn="ghost-gray"
+              size="xs"
+              :to="`/inventory/equipment/${encodeURIComponent(cell.row.original.slug)}`"
+            />
+          </NTooltip>
+        </div>
       </template>
 
       <template #expanded="{ row }">
+        <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800">
+          <h2 class="text-center text-xl font-semibold tracking-tight">
+            {{ row.original.name }} {{ row.original.label ? ` (${row.original.label})` : '' }}
+          </h2>
+        </div>
         <div class="p-4 text-sm bg-muted/30 rounded-md">
-          <!-- Header row in expanded section -->
-          <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-6 items-start">
             <div>
-              <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">
-                Storage equipment
-              </p>
-              <h3 class="text-base font-semibold">
-                {{ row.original.name }}
-              </h3>
-              <p
-                v-if="row.original.label"
-                class="text-sm text-muted"
-              >
-                {{ row.original.label }}
-              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                <IndicatorIconCard
+                  icon="i-lucide-key-round"
+                  label="Identifier"
+                  :value="row.original.slug"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-thermometer-snowflake"
+                  label="Type"
+                  :value="row.original.typeLabel"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-thermometer"
+                  label="Temperature"
+                  :value="row.original.temperatureLabel"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-cog"
+                  label="Manufacturer"
+                  :value="row.original.manufacturer ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-tag"
+                  label="Model"
+                  :value="row.original.model ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-hash"
+                  label="Serial number"
+                  :value="row.original.serialNumber ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-building-2"
+                  label="Room"
+                  :value="row.original.parentRoomName"
+                />
+              </div>
+
+              <template v-if="row.original.description">
+                <NSeparator class="my-4" />
+                <div class="flex items-center gap-1.5 mb-0.5">
+                  <NIcon
+                    name="i-lucide-file-text"
+                    class="text-primary-400 dark:text-primary-600 text-xs"
+                  />
+                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Description</span>
+                </div>
+                <p class="font-medium pl-5">
+                  {{ row.original.description }}
+                </p>
+              </template>
             </div>
-            <NBadge
-              :label="row.original.isActive ? 'Active' : 'Inactive'"
-              :badge="row.original.isActive ? 'solid-success' : 'solid-gray'"
-            />
-          </div>
 
-          <NSeparator class="my-4" />
-
-          <!-- Info fields grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-            <IndicatorIconCard
-              icon="i-lucide-key-round"
-              label="Identifier"
-              :value="row.original.slug"
-            />
-            <IndicatorIconCard
-              icon="i-lucide-thermometer-snowflake"
-              label="Type"
-              :value="row.original.typeLabel"
-            />
-            <IndicatorIconCard
-              icon="i-lucide-thermometer"
-              label="Temperature"
-              :value="row.original.temperatureLabel"
-            />
-            <IndicatorIconCard
-              icon="i-lucide-cog"
-              label="Manufacturer"
-              :value="row.original.manufacturer ?? '—'"
-            />
-            <IndicatorIconCard
-              icon="i-lucide-tag"
-              label="Model"
-              :value="row.original.model ?? '—'"
-            />
-            <IndicatorIconCard
-              icon="i-lucide-hash"
-              label="Serial number"
-              :value="row.original.serialNumber ?? '—'"
-            />
-            <IndicatorIconCard
-              icon="i-lucide-building-2"
-              label="Room"
-              :value="row.original.parentRoomName"
-            />
-          </div>
-
-          <template v-if="row.original.description">
-            <NSeparator class="my-4" />
-            <div class="flex items-center gap-1.5 mb-0.5">
-              <NIcon
-                name="i-lucide-file-text"
-                class="text-primary-400 dark:text-primary-600 text-xs"
+            <div class="flex items-end justify-end h-full">
+              <NButton
+                label="View contents"
+                btn="soft-primary hover:outline-primary"
+                leading="i-lucide-eye"
+                :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}`"
               />
-              <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Description</span>
             </div>
-            <p class="font-medium pl-5">
-              {{ row.original.description }}
-            </p>
-          </template>
-
-          <NSeparator class="my-4" />
-
-          <!-- Footer actions -->
-          <div class="flex flex-wrap items-center justify-end gap-2">
-            <NButton
-              label="View contents"
-              btn="soft-primary hover:outline-primary"
-              leading="i-lucide-eye"
-              :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}`"
-            />
           </div>
         </div>
       </template>

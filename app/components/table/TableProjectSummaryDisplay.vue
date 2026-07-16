@@ -181,112 +181,65 @@ watch(includeWeekday, (isRelative) => {
             {{ [row.original.projectNameFragments[0], ".", row.original.projectNameFragments[1], "(", row.original.project_id, ")"].filter(Boolean).join(' ') }}
           </h2>
         </div>
-        <div class="p-2 flex flex-row items-start gap-4">
-          <!-- Column 1: Avatars and badges -->
-          <div class="flex flex-col items-center gap-2 flex-shrink-0">
-            <NAvatarGroup :max="2">
-              <NAvatar
-                :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
-                :label="row.original.projectNameFragments[2] ?? '—'"
-                size="sm:md md:lg lg:xl"
+        <div class="p-4 text-sm bg-muted/30 rounded-md">
+          <div class="grid grid-cols-1 xl:grid-cols-[auto_1fr_auto] gap-6 items-start">
+            <div class="flex flex-col items-center gap-2 flex-shrink-0">
+              <NAvatarGroup :max="2">
+                <NAvatar
+                  :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+                  :label="row.original.projectNameFragments[2] ?? '—'"
+                  size="sm:md md:lg lg:xl"
+                />
+                <NAvatar
+                  :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+                  :label="row.original.projectNameFragments[3] ?? '—'"
+                  size="sm:lg md:xl lg:2xl"
+                />
+              </NAvatarGroup>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+              <IndicatorIconCard
+                icon="i-lucide-building-2"
+                label="Affiliation"
+                :value="row.original.affiliation ?? '—'"
               />
-              <NAvatar
-                :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
-                :label="row.original.projectNameFragments[3] ?? '—'"
-                size="sm:lg md:xl lg:2xl"
+              <IndicatorIconCard
+                icon="i-lucide-user"
+                label="Contact"
+                :value="row.original.contact ?? '—'"
               />
-            </NAvatarGroup>
-          </div>
+              <IndicatorIconCard
+                icon="i-lucide-signal"
+                label="Priority"
+                :value="row.original.priority ?? '—'"
+              />
+              <IndicatorIconCard
+                icon="i-lucide-calendar"
+                label="Open date"
+                :value="row.original.open_dateFormatted ?? '—'"
+              />
+              <IndicatorIconCard
+                icon="i-lucide-clock"
+                label="Modification time"
+                :value="row.original.modification_timeFormatted ?? '—'"
+              />
+              <IndicatorIconCard
+                icon="i-lucide-calendar-check"
+                label="Close date"
+                :value="row.original.close_dateFormatted ?? '—'"
+              />
+            </div>
 
-          <!-- Column 2: Textual information -->
-          <div class="flex flex-col gap-3 text-sm flex-1 ml-10">
-            <div>
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <NIcon
-                  name="i-lucide-building-2"
-                  class="text-primary-400 dark:text-primary-600 text-xs"
-                />
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Affiliation</span>
-              </div>
-              <p class="font-medium pl-5">
-                {{ row.original.affiliation ?? '—' }}
-              </p>
+            <div class="flex items-end justify-end h-full">
+              <NButton
+                label="View project details"
+                class="min-w-0 transition delay-300 ease-in-out"
+                btn="soft-primary hover:outline-primary"
+                leading="i-lucide-eye"
+                :to="`/projects/details/${row.original.project_id}`"
+              />
             </div>
-            <div>
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <NIcon
-                  name="i-lucide-user"
-                  class="text-primary-400 dark:text-primary-600 text-xs"
-                />
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Contact</span>
-              </div>
-              <p class="font-medium pl-5">
-                {{ row.original.contact ?? '—' }}
-              </p>
-            </div>
-            <div>
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <NIcon
-                  name="i-lucide-signal"
-                  class="text-primary-400 dark:text-primary-600 text-xs"
-                />
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Priority</span>
-              </div>
-              <p class="font-medium pl-5">
-                {{ row.original.priority ?? '—' }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Column 3: Dates -->
-          <div class="flex flex-col gap-3 text-sm flex-1">
-            <div>
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <NIcon
-                  name="i-lucide-calendar"
-                  class="text-primary-400 dark:text-primary-600 text-xs"
-                />
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Open date</span>
-              </div>
-              <p class="font-medium pl-5">
-                {{ row.original.open_dateFormatted ?? '—' }}
-              </p>
-            </div>
-            <div>
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <NIcon
-                  name="i-lucide-clock"
-                  class="text-primary-400 dark:text-primary-600 text-xs"
-                />
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Modification time</span>
-              </div>
-              <p class="font-medium pl-5">
-                {{ row.original.modification_timeFormatted ?? '—' }}
-              </p>
-            </div>
-            <div>
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <NIcon
-                  name="i-lucide-calendar-check"
-                  class="text-primary-400 dark:text-primary-600 text-xs"
-                />
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Close date</span>
-              </div>
-              <p class="font-medium pl-5">
-                {{ row.original.close_dateFormatted ?? '—' }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Column 4: Bookmark toggle and details button -->
-          <div class="flex flex-row items-end gap-2 flex-shrink-0">
-            <NButton
-              label="View project details"
-              class="flex-1 min-w-0 transition delay-300 ease-in-out"
-              btn="soft-primary hover:outline-primary"
-              leading="i-lucide-eye"
-              :to="`/projects/details/${row.original.project_id}`"
-            />
           </div>
         </div>
       </template>

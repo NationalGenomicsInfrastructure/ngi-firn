@@ -22,7 +22,7 @@ const counts = computed(() =>
         :value="isLoading ? '…' : (counts?.rooms ?? '—')"
       />
       <IndicatorIconLarge
-        icon="i-lucide-refrigerator"
+        icon="i-lucide-shelving-unit"
         label="Equipment"
         :value="isLoading ? '…' : (counts?.equipment ?? '—')"
       />
