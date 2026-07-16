@@ -148,6 +148,7 @@ const infoFields = computed(() => {
             :icon="field.icon"
             :label="field.label"
             :value="field.value"
+            :class="field.label === 'Description' ? 'sm:col-span-2' : undefined"
           />
         </div>
 

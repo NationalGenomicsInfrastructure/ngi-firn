@@ -108,6 +108,17 @@ async function onValidating() {
           @update:model-value="onEquipmentTypeUpdate"
         />
       </NFormField>
+
+      <NFormField
+        name="isActive"
+        label="Status"
+        :una="{
+          formLabel: EQUIPMENT_FORM_LABEL_STYLE,
+          formDescription: 'text-muted'
+        }"
+      >
+        <NCheckbox label="Active?" />
+      </NFormField>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,7 +133,6 @@ async function onValidating() {
       <NFormField
         name="label"
         label="Label"
-        description="Short visible label shown in lists (optional)."
         :una="{
           formLabel: EQUIPMENT_FORM_LABEL_STYLE,
           formDescription: 'text-muted'
@@ -205,17 +215,6 @@ async function onValidating() {
         <NInput placeholder="Optional" />
       </NFormField>
     </div>
-
-    <NFormField
-      name="isActive"
-      label="Status"
-      :una="{
-        formLabel: EQUIPMENT_FORM_LABEL_STYLE,
-        formDescription: 'text-muted'
-      }"
-    >
-      <NCheckbox label="Active?" />
-    </NFormField>
 
     <NButton
       v-if="!hideSubmit"
