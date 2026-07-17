@@ -1,8 +1,9 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
-import type { ContainerType } from '../schemas/inventory/container'
+import type { ContainerCapacityEntry, ContainerType } from '../schemas/inventory/container'
 import type { EquipmentCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
+import type { ItemType } from '../schemas/inventory/items'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
 /*
@@ -32,14 +33,13 @@ export interface GridPosition {
   row: number
   column: number
   level?: number
-  /* Human-readable slot label, e.g. "A3", "Slot 7". Derived from row/column if omitted. */
+  /*
+   * Human-readable slot label, e.g. "A3", "Slot 7". When the client omits it, the
+   * CRUD service derives it from row/column via deriveGridLabel() (lab convention:
+   * row-letter + column-number). The grid dimensions themselves live on the parent's
+   * capacity entry (a 'grid'-layout ContainerCapacityEntry), not on a standalone type.
+   */
   label?: string
-}
-
-export interface GridCapacity {
-  rows: number
-  columns: number
-  levels: number
 }
 
 /* Canonical action categories used for handling/audit workflows and embedded logs. */
@@ -68,13 +68,13 @@ export type InventoryStatusType
 
 /* Canonical classification categories used for inventory items. */
 export type InventoryClassification
-  = | 'sample'
-    | 'reagent'
-    | 'control'
-    | 'library'
-    | 'consumable'
-    | 'equipment'
-    | 'other'
+  = | 'Sample'
+    | 'Reagent'
+    | 'Control'
+    | 'Library'
+    | 'Consumable'
+    | 'Equipment'
+    | 'Other'
 
 /*
  * Compact audit log entry embedded directly in entity documents.
@@ -198,6 +198,8 @@ export interface Container extends BaseDocument {
   schema: 1
   /* Typed reference to the parent document (storage equipment or another container). */
   parent: TypedDocumentReference<StorageEquipment | Container> | null
+  /* Position of this container within its parent container (if applicable). */
+  positionParent: GridPosition | null
   /* Stable URL slug */
   slug: string
   containerType: ContainerType
@@ -205,14 +207,9 @@ export interface Container extends BaseDocument {
   name: string
   label: string | null
   description: string | null
-  position: GridPosition | null
-  gridCapacity: GridCapacity | null
-  plainCapacity: number | null
-  /* Constraint: which item categories this container can hold (null = any). */
-  acceptedItemCategories: string[] | null
-  /* Constraint: which container categories can be nested inside (null = any). */
-  acceptedContainerCategories: string[] | null
-  /* Template this container was created from (informational, not live-linked). */
+  /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
+  capacity: ContainerCapacityEntry[] | null
+
   templateId: string | null
   /* Optional cross-database references to projects (read-only projects DB). */
   projectRefs: DocumentReferenceMap | null
@@ -232,8 +229,7 @@ export interface InventoryItem extends BaseDocument {
   /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   /* Physical form factor of the item (what it IS). */
-  category: 'eppendorf' | 'falcon' | 'cryovial' | 'vial' | 'bottle' | 'jar' | 'plate12'
-    | 'plate96' | 'plate384' | 'microscopySlide' | 'other'
+  category: ItemType
   /* Purpose/domain classification (what it's FOR). */
   classification: InventoryClassification
   name: string
