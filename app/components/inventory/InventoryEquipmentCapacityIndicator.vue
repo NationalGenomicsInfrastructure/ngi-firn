@@ -20,11 +20,15 @@ interface CapacityDisplayRow {
 }
 
 const CONTAINER_TYPE_ICONS: Record<ContainerType, string> = {
-  rack: 'i-lucide-table',
-  box: 'i-lucide-package',
-  bag: 'i-lucide-paper-bag',
-  tray: 'i-lucide-square-library',
-  other: 'i-lucide-proportions'
+  Bag: 'i-lucide-paper-bag',
+  Bin: 'i-lucide-shopping-basket',
+  Block: 'i-lucide-cuboid',
+  Box: 'i-lucide-package',
+  Cane: 'i-lucide-pipette',
+  Goblet: 'i-lucide-cylinder',
+  Rack: 'i-lucide-table',
+  Tray: 'i-lucide-square-library',
+  Other: 'i-lucide-proportions'
 }
 
 const capacityRows = computed<CapacityDisplayRow[]>(() => {

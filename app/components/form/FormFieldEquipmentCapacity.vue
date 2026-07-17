@@ -104,7 +104,7 @@ function onCapacityUpdate(index: number, value: number[] | undefined) {
 
       <NFormGroup
         :label="'Maximum capacity'"
-        :message="`${row.capacity} ${CONTAINER_TYPE_LABELS[row.type].toLowerCase()}${row.type === 'box' ? 'e' : ''}${row.capacity === 1 ? '' : 's'}`"
+        :message="`${row.capacity} ${CONTAINER_TYPE_LABELS[row.type].toLowerCase()}${row.type === 'Box' ? 'e' : ''}${row.capacity === 1 ? '' : 's'}`"
         class="flex-1"
         :una="{ formGroupLabel: EQUIPMENT_FORM_LABEL_STYLE }"
       >

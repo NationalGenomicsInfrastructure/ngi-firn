@@ -68,19 +68,27 @@ export function getEquipmentCapacityLabel(equipment: DisplayStorageEquipment): s
  */
 
 export const CONTAINER_TYPE_OPTIONS: SelectOption<ContainerType>[] = [
-  { value: 'rack', label: 'Rack' },
-  { value: 'box', label: 'Box' },
-  { value: 'bag', label: 'Bag' },
-  { value: 'tray', label: 'Tray' },
-  { value: 'other', label: 'Other' }
+  { value: 'Bag', label: 'Bag' },
+  { value: 'Bin', label: 'Bin' },
+  { value: 'Block', label: 'Block' },
+  { value: 'Box', label: 'Box' },
+  { value: 'Cane', label: 'Cane' },
+  { value: 'Goblet', label: 'Goblet' },
+  { value: 'Rack', label: 'Rack' },
+  { value: 'Tray', label: 'Tray' },
+  { value: 'Other', label: 'Other' }
 ]
 
 export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
-  rack: 'Rack',
-  box: 'Box',
-  bag: 'Bag',
-  tray: 'Tray',
-  other: 'Other'
+  Bag: 'Bag',
+  Bin: 'Bin',
+  Block: 'Block',
+  Box: 'Box',
+  Cane: 'Cane',
+  Goblet: 'Goblet',
+  Rack: 'Rack',
+  Tray: 'Tray',
+  Other: 'Other'
 }
 export interface CapacityRow {
   type: ContainerType
@@ -88,7 +96,7 @@ export interface CapacityRow {
 }
 
 export function resolveContainerTypeFromSelect(value: unknown): ContainerType | null {
-  const VALID: ContainerType[] = ['rack', 'box', 'bag', 'tray', 'other']
+  const VALID: ContainerType[] = ['Bag', 'Bin', 'Block', 'Box', 'Cane', 'Goblet', 'Rack', 'Tray', 'Other']
 
   if (typeof value === 'string' && (VALID as string[]).includes(value)) {
     return value as ContainerType

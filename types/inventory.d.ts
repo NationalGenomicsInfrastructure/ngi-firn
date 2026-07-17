@@ -1,6 +1,7 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
+import type { ContainerType } from '../schemas/inventory/container'
 import type { EquipmentCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
@@ -22,15 +23,6 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
  * InventoryTask - Planned task document (checkout-return reminders, expiry disposal, etc.)
  * InventoryTemplate - Reusable defaults for containers, equipment, and items
- *
- * QUERY RESULT TYPES:
- * SuggestedLocation - Result from the free-capacity suggestion query
- *
- * SERVICE INPUT TYPES (CRUD contracts):
- * Create/Update interfaces - Input contracts for server/crud services.
- * These are intentionally separate from persisted document interfaces to
- * keep validation and mutation APIs explicit and stable over time.
- */
 
 /* Allowed hierarchy node types used by parent references and location paths. */
 export type LocationEntity = Room | StorageEquipment | Container
@@ -42,6 +34,12 @@ export interface GridPosition {
   level?: number
   /* Human-readable slot label, e.g. "A3", "Slot 7". Derived from row/column if omitted. */
   label?: string
+}
+
+export interface GridCapacity {
+  rows: number
+  columns: number
+  levels: number
 }
 
 /* Canonical action categories used for handling/audit workflows and embedded logs. */
@@ -85,7 +83,7 @@ export type InventoryClassification
  * Planned tasks live as separate InventoryTask documents; when a task is
  * completed, a log entry is appended here and the task is marked done.
  */
-export interface ActionLogEntry {
+export interface InventoryActionLogEntry {
   actionType: InventoryActionType
   /* Who performed this action */
   firnUser: TypedDocumentReference<FirnUser>
@@ -106,6 +104,27 @@ export interface Room extends BaseDocument {
   type: 'room'
   schema: 1
   /* Stable URL slug */
+  slug: string
+  name: string
+  label: string | null
+  roomType: RoomType
+  building: SciLifeLabBuilding
+  floor: number
+  roomNumber: number
+  description: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/*
+ * Client-safe projection of a Room document.
+ * Strips CouchDB-internal fields (_id, _rev, document type discriminator, schema version)
+ * while preserving all business fields needed by the UI.
+ * NOTE: `type` here refers to the CouchDB discriminator `'room'`, not `roomType`
+ *       (the business-meaningful room category — that is intentionally preserved).
+ */
+export interface DisplayRoom {
   slug: string
   name: string
   label: string | null
@@ -140,27 +159,6 @@ export interface StorageEquipment extends BaseDocument {
   manufacturer: string | null
   model: string | null
   serialNumber: string | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-/*
- * Client-safe projection of a Room document.
- * Strips CouchDB-internal fields (_id, _rev, document type discriminator, schema version)
- * while preserving all business fields needed by the UI.
- * NOTE: `type` here refers to the CouchDB discriminator `'room'`, not `roomType`
- *       (the business-meaningful room category — that is intentionally preserved).
- */
-export interface DisplayRoom {
-  slug: string
-  name: string
-  label: string | null
-  roomType: RoomType
-  building: SciLifeLabBuilding
-  floor: number
-  roomNumber: number
-  description: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -202,31 +200,27 @@ export interface Container extends BaseDocument {
   parent: TypedDocumentReference<StorageEquipment | Container> | null
   /* Stable URL slug */
   slug: string
-  containerType: 'rack' | 'box' | 'bag' | 'tray' | 'other'
+  containerType: ContainerType
   classification: InventoryClassification
   name: string
   label: string | null
   description: string | null
   position: GridPosition | null
-  rows: number | null
-  columns: number | null
-  levels: number | null
-  capacity: number | null
+  gridCapacity: GridCapacity | null
+  plainCapacity: number | null
   /* Constraint: which item categories this container can hold (null = any). */
   acceptedItemCategories: string[] | null
   /* Constraint: which container categories can be nested inside (null = any). */
   acceptedContainerCategories: string[] | null
   /* Template this container was created from (informational, not live-linked). */
   templateId: string | null
-  /* Physical color for visual identification in the lab. */
-  color: string | null
   /* Optional cross-database references to projects (read-only projects DB). */
   projectRefs: DocumentReferenceMap | null
-  status: InventoryStatusType
   /* Embedded audit trail — append-only log of handling events. */
-  actionLog: ActionLogEntry[]
   createdAt: string
   updatedAt: string
+  actionLog: InventoryActionLogEntry[]
+  status: InventoryStatusType
 }
 
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */

@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import { containerTypeSchema } from './container'
 
-export const equipmentType = z.enum([
+export const equipmentTypeSchema = z.enum([
   'Cabinet',
   'Freezer',
   'Fridge',
@@ -12,7 +12,7 @@ export const equipmentType = z.enum([
   'Other'
 ])
 
-export type EquipmentType = z.infer<typeof equipmentType>
+export type EquipmentType = z.infer<typeof equipmentTypeSchema>
 
 // Wire/form shape: how many containers of a given type can be stored within a parent container or storage equipment.
 export const equipmentCapacitySchema = z.object({
@@ -34,7 +34,7 @@ export type EquipmentCapacityEntry = z.infer<typeof equipmentCapacityEntrySchema
 
 export const createEquipmentSchema = z.object({
   parentSlug: z.string().min(1, { message: 'Parent room identifier is required' }),
-  equipmentType: equipmentType,
+  equipmentType: equipmentTypeSchema,
   name: z.string().min(1, { message: 'Equipment name is required' }),
   label: z.string().nullish(),
   description: z.string().nullish(),
@@ -50,7 +50,7 @@ export const createEquipmentSchema = z.object({
 export const updateEquipmentSchema = z.object({
   parentSlug: z.string().optional(),
   equipmentSlug: z.string().min(1, { message: 'Equipment identifier is required' }),
-  equipmentType: equipmentType.optional(),
+  equipmentType: equipmentTypeSchema.optional(),
   name: z.string().optional(),
   label: z.string().optional(),
   description: z.string().optional(),
