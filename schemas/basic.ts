@@ -8,3 +8,20 @@ import { DateTime } from 'luxon'
 export const DateStringOrUndefined = z.string().optional().transform(s => (s?.trim() === '' || s == null ? undefined : DateTime.fromISO(s).toISO() ?? undefined))
 export const NumberOrUndefined = z.union([z.number(), z.string().transform(Number)]).optional().transform(n => (n == null ? undefined : n))
 export const StringOrUndefined = z.string().optional().transform(s => (s?.trim() === '' ? undefined : s))
+
+// ---------------------------------------------------------------------------
+// Cross-database reference (zod counterpart of DocumentReference / DocumentReferenceMap
+// in types/references.d.ts). Authored locally — there is no shared inventory-common file.
+// ---------------------------------------------------------------------------
+
+export const documentReferenceSchema = z.object({
+  db: z.string().min(1),
+  id: z.string().min(1),
+  rev: z.string().optional(),
+  type: z.string().optional()
+})
+
+export const documentReferenceMapSchema = z.record(
+  z.string(),
+  z.union([documentReferenceSchema, z.array(documentReferenceSchema)])
+)

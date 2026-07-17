@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { itemTypeSchema } from './items'
+import { documentReferenceMapSchema } from '../basic'
 
 // ---------------------------------------------------------------------------
 // Container type & classification vocabularies
@@ -134,23 +135,6 @@ export const containerCapacityArraySchema = z
       }
     }
   })
-
-// ---------------------------------------------------------------------------
-// Cross-database reference (zod counterpart of DocumentReference / DocumentReferenceMap
-// in types/references.d.ts). Authored locally — there is no shared inventory-common file.
-// ---------------------------------------------------------------------------
-
-const documentReferenceSchema = z.object({
-  db: z.string().min(1),
-  id: z.string().min(1),
-  rev: z.string().optional(),
-  type: z.string().optional()
-})
-
-const documentReferenceMapSchema = z.record(
-  z.string(),
-  z.union([documentReferenceSchema, z.array(documentReferenceSchema)])
-)
 
 // ---------------------------------------------------------------------------
 // Container CRUD input schemas
