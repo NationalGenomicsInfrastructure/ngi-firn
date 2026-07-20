@@ -15,7 +15,7 @@ definePageMeta({
 
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
       <NCard
-        title="Rooms"
+        title="List rooms"
         description="Browse all registered rooms."
         card="outline-gray"
       >
@@ -41,7 +41,7 @@ definePageMeta({
       </NCard>
 
       <NCard
-        title="Equipment"
+        title="View equipment"
         description="Browse all registered equipment."
         card="outline-gray"
       >

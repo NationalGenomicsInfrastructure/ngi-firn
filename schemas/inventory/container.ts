@@ -157,8 +157,8 @@ export const createContainerSchema = z.object({
   position: gridPositionSchema.nullish(),
   // Wire shape — no server-owned `stored`. Acceptance is derived from the entries' `type`s.
   capacity: containerCapacityArraySchema.nullish(),
+  // Optional template ID (if the container was created from a template).
   templateId: z.string().nullish(),
-  color: z.string().nullish(),
   projectRefs: documentReferenceMapSchema.nullish(),
   isActive: z.boolean().optional()
 })
@@ -172,8 +172,6 @@ export const updateContainerSchema = z.object({
   description: z.string().nullish(),
   position: gridPositionSchema.nullish(),
   capacity: containerCapacityArraySchema.nullish(),
-  templateId: z.string().nullish(),
-  color: z.string().nullish(),
   projectRefs: documentReferenceMapSchema.nullish(),
   isActive: z.boolean().optional()
 })

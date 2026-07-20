@@ -6,6 +6,9 @@
  * GridPosition; these helpers derive the human-readable label and validate bounds.
  */
 
+import type { ContainerCapacity, ContainerCapacityEntry } from '~~/schemas/inventory/container'
+import { couchDB } from '~~/server/database/couchdb'
+
 export interface GridDimensions {
   rows: number
   columns: number
@@ -46,4 +49,33 @@ export function isWithinGrid(
     && position.column >= 1 && position.column <= dimensions.columns
     && level >= 1 && level <= dimensions.levels
   )
+}
+
+/* Total slots a capacity entry represents (grid: rows×columns×levels, count: capacity). */
+export function totalSlots(entry: ContainerCapacity | ContainerCapacityEntry): number {
+  return entry.layout === 'grid'
+    ? entry.rows * entry.columns * (entry.levels ?? 1)
+    : entry.capacity
+}
+
+/* Value emitted by the grid_occupancy view for one occupied slot. */
+export type GridSlotValue = { slug: string | null, type: string }
+
+/*
+ * Whether a specific slot in a parent grid is already occupied, per the
+ * grid_occupancy view (children are the authoritative source of positions).
+ */
+export async function isSlotOccupied(
+  parentDocumentId: string,
+  position: { row: number, column: number, level?: number }
+): Promise<boolean> {
+  const result = await couchDB.queryView<[string, number, number, number], GridSlotValue>(
+    'firn-inventory',
+    'grid_occupancy',
+    {
+      key: [parentDocumentId, position.level ?? 1, position.row, position.column],
+      reduce: false
+    }
+  )
+  return result.rows.length > 0
 }

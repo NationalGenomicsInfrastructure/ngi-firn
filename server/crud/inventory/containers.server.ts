@@ -2,39 +2,45 @@
  * ContainerService - Table of Contents
  * ************************************
  *
- * SCOPE NOTE
- * This module currently lands the *occupancy-maintenance core* — the novel part of
- * container CRUD, i.e. how the server-owned `stored` count is kept for both numeric
- * ('count') and positional ('grid') capacity layouts. The remaining lifecycle methods
- * (createContainer / updateContainer / deleteContainer / moveContainer / suggestLocations)
- * mirror EquipmentService in equipment.server.ts and are deferred to a follow-up.
- *
  * TYPE GUARDS AND RETRIEVAL:
  * isContainer(doc) - Check whether a fetched document is a Container
+ *
+ * CONTAINER LISTING AND RETRIEVAL:
  * getContainer(id) - Fetch one container document by ID
+ * getContainerBySlug(slug) - Fetch one container document by slug
+ * (planned) getAllContainers() / getContainersByEquipment(id) - not yet implemented
  *
- * CAPACITY VALIDATION:
- * validateAndJoinContainerCapacity(existing, updates) - Merge capacity-limit edits, preserving `stored`
+ * CREATE, UPDATE, DELETE CONTAINERS:
+ * createContainer(input) - Create a container inside a storage-equipment or container parent
+ * updateContainer(updates) - Update container metadata and capacity limits
+ * deleteContainer(input) - Delete a container when empty, freeing its slot on the parent
+ * (planned) moveContainer(input) - Re-home a container to another equipment/container parent
  *
- * OCCUPANCY MAINTENANCE (server-owned `stored`):
+ * CAPACITY AND OCCUPANCY MANAGEMENT:
  * adjustStoredCount(containerId, category, delta) - count-layout: increment/decrement a category's count
  * adjustOccupancy(containerId, position, delta) - grid-layout: occupy/free a slot with bounds + collision checks
+ * validateAndJoinContainerCapacity(existing, updates) - Merge capacity-limit edits, preserving `stored`
+ *
+ * TYPE CONVERSION:
+ * (planned) convertToDisplayContainer / convertMultipleToDisplayContainers - need a DisplayContainer type
  */
 
-import { couchDB } from '../../database/couchdb'
-import { isWithinGrid } from './grid.server'
-import type { Container } from '../../../types/inventory'
+import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
+import { deriveGridLabel, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
+import {
+  hasDirectChildren,
+  toParentRef
+} from './relations.server'
+import { EquipmentService } from './equipment.server'
+import type { Container, GridPosition, StorageEquipment } from '../../../types/inventory'
 import type {
   ContainerCapacity,
-  ContainerCapacityEntry
+  ContainerCapacityEntry,
+  ContainerType,
+  CreateContainerSchemaInput,
+  DeleteContainerSchemaInput,
+  UpdateContainerSchemaInput
 } from '~~/schemas/inventory/container'
-
-/* Total slots a capacity entry represents (grid: rows×columns×levels, count: capacity). */
-function totalSlots(entry: ContainerCapacity | ContainerCapacityEntry): number {
-  return entry.layout === 'grid'
-    ? entry.rows * entry.columns * (entry.levels ?? 1)
-    : entry.capacity
-}
 
 /* Check if a document is a Container document. */
 function isContainer(doc: unknown): doc is Container {
@@ -44,26 +50,72 @@ function isContainer(doc: unknown): doc is Container {
   return (doc as Partial<Container>).type === 'container'
 }
 
-/* Value emitted by the grid_occupancy view for one occupied slot. */
-type GridSlotValue = { slug: string | null, type: string }
-
-/*
- * Whether a specific slot in a parent grid is already occupied, per the
- * grid_occupancy view (children are the authoritative source of positions).
- */
-async function isSlotOccupied(
-  parentDocumentId: string,
-  position: { row: number, column: number, level?: number }
-): Promise<boolean> {
-  const result = await couchDB.queryView<[string, number, number, number], GridSlotValue>(
+/* Query container documents by [type, slug] using the inventory view index. */
+async function queryContainersBySlug(slug: string): Promise<Container[]> {
+  const result = await couchDB.queryView<[string, string], null, Container>(
     'firn-inventory',
-    'grid_occupancy',
+    'by_slug',
     {
-      key: [parentDocumentId, position.level ?? 1, position.row, position.column],
+      key: ['container', slug],
+      include_docs: true,
       reduce: false
     }
   )
-  return result.rows.length > 0
+
+  return result.rows
+    .map(row => row.doc)
+    .filter((doc): doc is Container => isContainer(doc))
+}
+
+/*
+ * A container's parent is either a piece of storage equipment or another container.
+ * Resolving a parent slug therefore yields a discriminated result so callers can
+ * branch their acceptance/occupancy bookkeeping on the parent's kind.
+ */
+type ResolvedParent
+  = | { kind: 'equipment', doc: StorageEquipment }
+    | { kind: 'container', doc: Container }
+
+/*
+ * Resolve a parent slug against BOTH container and storage-equipment types.
+ * Containers are checked first (the more common nesting case); a storage-equipment
+ * parent is the fallback. Throws when no parent with that slug exists.
+ */
+async function resolveParent(parentSlug: string): Promise<ResolvedParent> {
+  const container = (await queryContainersBySlug(parentSlug))[0]
+  if (container && isContainer(container)) {
+    return { kind: 'container', doc: container }
+  }
+
+  const equipment = await EquipmentService.getEquipmentBySlug(parentSlug)
+  if (equipment) {
+    return { kind: 'equipment', doc: equipment }
+  }
+
+  throw new Error(`Parent with identifier "${parentSlug}" not found. Create the parent equipment or container first.`)
+}
+
+/*
+ * Scan a grid entry row-major (level → row → column ascending) and return the first
+ * free slot per the grid_occupancy view, or null when the grid is fully occupied.
+ * Row-major means A1, A2, … across a row before moving to the next row.
+ */
+async function findFirstFreeGridSlot(
+  parentDocumentId: string,
+  entry: Extract<ContainerCapacityEntry, { layout: 'grid' }>
+): Promise<GridPosition | null> {
+  const levels = entry.levels ?? 1
+  for (let level = 1; level <= levels; level++) {
+    for (let row = 1; row <= entry.rows; row++) {
+      for (let column = 1; column <= entry.columns; column++) {
+        const position = { row, column, level }
+        if (!(await isSlotOccupied(parentDocumentId, position))) {
+          return { row, column, level, label: deriveGridLabel(row, column, level) }
+        }
+      }
+    }
+  }
+  return null
 }
 
 export const ContainerService = {
@@ -72,6 +124,12 @@ export const ContainerService = {
   async getContainer(containerDocumentId: string): Promise<Container | null> {
     const container = await couchDB.getDocument<Container>(containerDocumentId)
     return isContainer(container) ? container : null
+  },
+
+  /* Fetch one container document by slug. */
+  async getContainerBySlug(slug: string): Promise<Container | null> {
+    const container = (await queryContainersBySlug(slug))[0]
+    return container && isContainer(container) ? container : null
   },
 
   /*
@@ -219,6 +277,236 @@ export const ContainerService = {
       container: await writeCapacity(container, entry.type, newStored),
       atCapacity: newStored === total
     }
+  },
+
+  /*
+   * Create a container inside a storage-equipment or container parent.
+   *
+   * Flow: resolve the parent, verify it accepts this container type and (for grid
+   * parents) select a slot, then RESERVE capacity on the parent BEFORE writing the
+   * child. Reserving first means the parent document's `_rev` serialises concurrent
+   * placements and any cap/occupancy violation throws before an orphan child can be
+   * created. It is also required for grid parents: `adjustOccupancy` consults the
+   * grid_occupancy view (fed by child positions), so the counter must be bumped while
+   * the target slot is still empty — i.e. before this child exists.
+   */
+  async createContainer(input: CreateContainerSchemaInput): Promise<Container> {
+    const parent = await resolveParent(input.parentSlug)
+    const positionParent = await resolvePlacement(parent, input)
+
+    await adjustParentOccupancy(parent, input.containerType, positionParent, 1)
+
+    const containerSlug = generateSlug(input.name)
+    const containerDocumentId = generateCouchDocId('container')
+    const now = new Date().toISOString()
+
+    // Convert the wire-shape capacity rows into the stored ContainerCapacityEntry[]
+    // shape, initialising `stored`/occupancy to zero for the new container's own contents.
+    const initialCapacity = ContainerService.validateAndJoinContainerCapacity(null, input.capacity ?? [])
+
+    const containerDocument: Omit<Container, '_id' | '_rev'> = {
+      type: 'container',
+      schema: 1,
+      parent: toParentRef(parent.doc),
+      positionParent,
+      slug: containerSlug,
+      containerType: input.containerType,
+      classification: input.classification,
+      name: input.name,
+      label: input.label?.trim() || null,
+      description: input.description ?? null,
+      capacity: initialCapacity.length > 0 ? initialCapacity : null,
+      templateId: input.templateId ?? null,
+      projectRefs: input.projectRefs ?? null,
+      status: 'available',
+      actionLog: [],
+      createdAt: now,
+      updatedAt: now
+    }
+
+    try {
+      const created = await couchDB.createDocument({
+        ...containerDocument,
+        _id: containerDocumentId
+      })
+
+      const container = await couchDB.getDocument<Container>(created.id)
+      if (!isContainer(container)) {
+        throw new Error('Failed to load container after creation.')
+      }
+      return container
+    }
+    catch (error) {
+      // The parent was already reserved above; release it so the counter does not
+      // leak when the child write fails after the reservation succeeded.
+      try {
+        await adjustParentOccupancy(parent, input.containerType, positionParent, -1)
+      }
+      catch {
+        // Best-effort rollback — surface the original failure regardless.
+      }
+      throw error
+    }
+  },
+
+  /*
+   * Update container metadata and capacity limits. The parent is unchanged, so no
+   * parent occupancy bookkeeping happens here (the container neither enters nor leaves
+   * its parent). Re-homing to a different parent belongs to a dedicated move operation.
+   */
+  async updateContainer(updates: UpdateContainerSchemaInput): Promise<Container> {
+    const existing = await ContainerService.getContainerBySlug(updates.containerSlug)
+    if (!existing) {
+      throw new Error(`Container with identifier "${updates.containerSlug}" not found.`)
+    }
+
+    // Re-validate and merge capacity restrictions while preserving stored counts.
+    // An explicitly provided empty array clears them (merged result is null); a missing
+    // capacity leaves the existing restrictions untouched.
+    let mergedCapacity = existing.capacity
+    if (updates.capacity) {
+      const merged = ContainerService.validateAndJoinContainerCapacity(existing.capacity, updates.capacity)
+      mergedCapacity = merged.length > 0 ? merged : null
+    }
+
+    const updatedContainer: Container = {
+      ...existing,
+      containerType: updates.containerType ?? existing.containerType,
+      classification: updates.classification ?? existing.classification,
+      name: updates.name ?? existing.name,
+      label: updates.label === undefined ? existing.label : (updates.label?.trim() || null),
+      description: updates.description === undefined ? existing.description : (updates.description ?? null),
+      projectRefs: updates.projectRefs === undefined ? existing.projectRefs : (updates.projectRefs ?? null),
+      capacity: mergedCapacity,
+      slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
+      updatedAt: new Date().toISOString()
+    }
+
+    const result = await couchDB.updateDocument(updatedContainer._id, updatedContainer, existing._rev)
+    updatedContainer._rev = result.rev
+    return updatedContainer
+  },
+
+  /*
+   * Delete a container only when it is empty, then free its slot / decrement the count
+   * on the parent. The parent is decremented AFTER the child document is removed so the
+   * grid_occupancy view no longer reports this container as occupying its slot.
+   */
+  async deleteContainer(input: DeleteContainerSchemaInput): Promise<Container> {
+    const existing = await ContainerService.getContainerBySlug(input.containerSlug)
+    if (!existing) {
+      throw new Error(`Container with identifier "${input.containerSlug}" not found.`)
+    }
+
+    if (await hasDirectChildren(existing._id)) {
+      throw new Error(`Cannot delete container "${input.containerSlug}" because it still contains child inventory.`)
+    }
+
+    await couchDB.deleteDocument(existing._id, existing._rev)
+
+    const parentRef = existing.parent
+    if (parentRef) {
+      if (existing.positionParent) {
+        // A recorded slot means the parent is a grid container.
+        await ContainerService.adjustOccupancy(parentRef.id, existing.positionParent, -1)
+      }
+      else if (parentRef.type === 'storageEquipment') {
+        await EquipmentService.adjustStoredCount(parentRef.id, existing.containerType, -1)
+      }
+      else {
+        await ContainerService.adjustStoredCount(parentRef.id, existing.containerType, -1)
+      }
+    }
+
+    return existing
+  }
+}
+
+/*
+ * Verify the parent accepts a child container of `input.containerType` and, for grid
+ * parents, choose the target slot. Returns the child's `positionParent` (null for
+ * equipment and count-layout container parents; a GridPosition for grid parents).
+ *
+ * Storage equipment declares acceptance via a capacity entry whose `type` matches the
+ * container type; a container parent additionally requires `childKind === 'container'`.
+ * Throws when the parent does not accept this type or a grid parent is full.
+ */
+async function resolvePlacement(
+  parent: ResolvedParent,
+  input: CreateContainerSchemaInput
+): Promise<GridPosition | null> {
+  const childType = input.containerType
+
+  if (parent.kind === 'equipment') {
+    const entry = parent.doc.capacity?.find(capacityEntry => capacityEntry.type === childType)
+    if (!entry) {
+      throw new Error(`Storage equipment "${parent.doc.slug}" does not accept containers of type "${childType}".`)
+    }
+    return null
+  }
+
+  const entry = parent.doc.capacity?.find(
+    capacityEntry => capacityEntry.childKind === 'container' && capacityEntry.type === childType
+  )
+  if (!entry) {
+    throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${childType}".`)
+  }
+
+  if (entry.layout !== 'grid') {
+    return null
+  }
+
+  const dimensions = { rows: entry.rows, columns: entry.columns, levels: entry.levels ?? 1 }
+
+  if (input.position) {
+    if (!isWithinGrid(input.position, dimensions)) {
+      throw new Error(
+        `Position (row ${input.position.row}, column ${input.position.column}, level ${input.position.level ?? 1}) is outside the ${entry.rows}×${entry.columns}×${entry.levels ?? 1} grid of "${parent.doc.slug}".`
+      )
+    }
+    if (await isSlotOccupied(parent.doc._id, input.position)) {
+      throw new Error(
+        `Slot (row ${input.position.row}, column ${input.position.column}, level ${input.position.level ?? 1}) in "${parent.doc.slug}" is already occupied.`
+      )
+    }
+    return {
+      row: input.position.row,
+      column: input.position.column,
+      level: input.position.level,
+      label: input.position.label ?? deriveGridLabel(input.position.row, input.position.column, input.position.level)
+    }
+  }
+
+  // No slot requested: auto-pick the first free slot, row-major. This is a PLANNED
+  // placement — the reserved slot is intended to later drive an InventoryTask so lab
+  // staff can confirm the container was physically put there.
+  // TODO: emit that confirmation task once the task workflow exists.
+  const plannedPosition = await findFirstFreeGridSlot(parent.doc._id, entry)
+  if (!plannedPosition) {
+    throw new Error(`Grid container "${parent.doc.slug}" is full; no free slot for a "${childType}".`)
+  }
+  return plannedPosition
+}
+
+/*
+ * Apply a capacity delta on the parent for a child container placement.
+ *   - equipment / count-layout container → adjustStoredCount by category.
+ *   - grid-layout container (position given) → adjustOccupancy at the slot.
+ */
+async function adjustParentOccupancy(
+  parent: ResolvedParent,
+  childType: ContainerType,
+  position: GridPosition | null,
+  delta: number
+): Promise<void> {
+  if (parent.kind === 'equipment') {
+    await EquipmentService.adjustStoredCount(parent.doc._id, childType, delta)
+  }
+  else if (position) {
+    await ContainerService.adjustOccupancy(parent.doc._id, position, delta)
+  }
+  else {
+    await ContainerService.adjustStoredCount(parent.doc._id, childType, delta)
   }
 }
 
