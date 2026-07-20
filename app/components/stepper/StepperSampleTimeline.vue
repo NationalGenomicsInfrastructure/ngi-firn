@@ -38,7 +38,7 @@ const hasEntries = computed(() => timelineDates.value.length > 0)
 </script>
 
 <template>
-  <div class="mt-4">
+  <div class="mt-4 w-full min-w-0">
     <NCard
       v-if="!hasEntries"
       card="outline-gray"
@@ -56,7 +56,7 @@ const hasEntries = computed(() => timelineDates.value.length > 0)
       orientation="vertical"
       :disabled="true"
       stepper="solid-primary"
-      class="w-full"
+      class="w-full min-w-0"
     >
       <template #item="{ item, step }">
         <div class="flex text-start gap-2.5 w-full">
@@ -74,16 +74,16 @@ const hasEntries = computed(() => timelineDates.value.length > 0)
               <li
                 v-for="(entry, idx) in (item as StepperItemWithStepData).stepData.entries"
                 :key="idx"
-                class="flex items-center gap-2 text-sm"
+                class="flex items-center gap-2 text-sm min-w-0"
               >
                 <NIcon
                   :name="getTimelineEntryIcon(entry.source)"
                   class="text-primary-400 dark:text-primary-600 shrink-0"
                 />
-                <span class="font-medium">{{ entry.label }}</span>
+                <span class="font-medium min-w-0 break-words">{{ entry.label }}</span>
                 <span
                   v-if="entry.context"
-                  class="text-muted"
+                  class="text-muted min-w-0 break-words"
                 >({{ entry.context }})</span>
               </li>
             </ul>

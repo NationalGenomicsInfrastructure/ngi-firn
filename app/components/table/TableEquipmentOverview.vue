@@ -144,37 +144,37 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
             <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-6 items-start">
               <div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-key-round"
                     label="Identifier"
                     :value="row.original.slug"
                   />
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-thermometer-snowflake"
                     label="Type"
                     :value="row.original.typeLabel"
                   />
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-thermometer"
                     label="Temperature"
                     :value="row.original.temperatureLabel"
                   />
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-cog"
                     label="Manufacturer"
                     :value="row.original.manufacturer ?? '—'"
                   />
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-tag"
                     label="Model"
                     :value="row.original.model ?? '—'"
                   />
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-hash"
                     label="Serial number"
                     :value="row.original.serialNumber ?? '—'"
                   />
-                  <IndicatorIconCard
+                  <IndicatorIconText
                     icon="i-lucide-building-2"
                     label="Room"
                     :value="row.original.parentRoomName"

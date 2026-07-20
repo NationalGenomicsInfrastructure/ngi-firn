@@ -142,7 +142,7 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-          <IndicatorIconCard
+          <IndicatorIconText
             v-for="field in infoFields"
             :key="field.label"
             :icon="field.icon"

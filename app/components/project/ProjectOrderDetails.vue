@@ -61,17 +61,17 @@ const orderFields = computed(() => {
         </h4>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-sm">
-        <IndicatorIconCard
+        <IndicatorIconText
           icon="i-lucide-user"
           label="Name"
           :value="orderDetails.owner.name ?? '—'"
         />
-        <IndicatorIconCard
+        <IndicatorIconText
           icon="i-lucide-mail"
           label="Email"
           :value="orderDetails.owner.email ?? '—'"
         />
-        <IndicatorIconCard
+        <IndicatorIconText
           icon="i-lucide-building-2"
           label="Affiliation"
           :value="orderDetails.owner.affiliation ?? '—'"
@@ -82,12 +82,12 @@ const orderFields = computed(() => {
     <NSeparator class="my-4" />
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm mb-4">
-      <IndicatorIconCard
+      <IndicatorIconText
         icon="i-lucide-calendar-plus"
         label="Created"
         :value="formatDate(orderDetails.created)"
       />
-      <IndicatorIconCard
+      <IndicatorIconText
         icon="i-lucide-calendar-check"
         label="Modified"
         :value="formatDate(orderDetails.modified)"

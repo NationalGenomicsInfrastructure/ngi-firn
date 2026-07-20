@@ -200,32 +200,32 @@ watch(includeWeekday, (isRelative) => {
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                <IndicatorIconCard
+                <IndicatorIconText
                   icon="i-lucide-building-2"
                   label="Affiliation"
                   :value="row.original.affiliation ?? '—'"
                 />
-                <IndicatorIconCard
+                <IndicatorIconText
                   icon="i-lucide-user"
                   label="Contact"
                   :value="row.original.contact ?? '—'"
                 />
-                <IndicatorIconCard
+                <IndicatorIconText
                   icon="i-lucide-signal"
                   label="Priority"
                   :value="row.original.priority ?? '—'"
                 />
-                <IndicatorIconCard
+                <IndicatorIconText
                   icon="i-lucide-calendar"
                   label="Open date"
                   :value="row.original.open_dateFormatted ?? '—'"
                 />
-                <IndicatorIconCard
+                <IndicatorIconText
                   icon="i-lucide-clock"
                   label="Modification time"
                   :value="row.original.modification_timeFormatted ?? '—'"
                 />
-                <IndicatorIconCard
+                <IndicatorIconText
                   icon="i-lucide-calendar-check"
                   label="Close date"
                   :value="row.original.close_dateFormatted ?? '—'"

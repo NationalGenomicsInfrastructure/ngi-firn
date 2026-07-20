@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, Table } from '@tanstack/vue-table'
+import type { ColumnDef, Table, VisibilityState } from '@tanstack/vue-table'
 import type { ProjectSample } from '~~/types/projects'
 
 interface SampleRow {
@@ -100,6 +100,12 @@ const pagination = ref({
 const expanded = ref<Record<string, boolean>>({})
 const table = useTemplateRef<Table<SampleRow>>('table')
 
+const columnVisibility = ref<VisibilityState>({
+  sampleType: false,
+  progress: false,
+  statusAuto: false
+})
+
 function getSampleByRow(row: SampleRow): ProjectSample | undefined {
   return props.samples[row.sampleId]
 }
@@ -107,9 +113,22 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
 
 <template>
   <div class="w-full overflow-x-auto">
+    <NSeparator class="mt-4" />
+    <div class="flex flex-wrap gap-4">
+      <NCheckbox
+        v-for="tableColumn in (table?.getAllLeafColumns() ?? []).filter((col) => col.id !== 'expanded')"
+        :key="tableColumn.id"
+        :model-value="tableColumn.getIsVisible()"
+        :label="tableColumn.id"
+        @update:model-value="tableColumn.toggleVisibility()"
+      />
+    </div>
+    <NSeparator />
+    {{ columnVisibility.value }}
     <NTable
       ref="table"
       v-model:expanded="expanded"
+      v-model:column-visibility="columnVisibility"
       :loading="loading"
       :columns="columns"
       :data="tableData"
@@ -174,8 +193,13 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       </template>
 
       <template #expanded="{ row }">
-        <div class="p-4 text-sm bg-muted/30 rounded-md">
-          <template v-if="getSampleByRow(row.original)">
+        <div class="-m-4 p-4 border-l-18 border-primary-700 dark:border-primary-900">
+          <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800 w-full">
+            <h2 class="text-center text-xl font-semibold tracking-tight">
+              {{ row.original.sampleId }}
+            </h2>
+          </div>
+          <div class="p-4 text-sm bg-muted/30 rounded-md">
             <div class="flex items-center gap-2 mb-3">
               <NIcon
                 name="i-lucide-info"
@@ -186,55 +210,50 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
               </h5>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
-              <div>
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Plate ID</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.initial_plate_id ?? '—' }}
-                </p>
-              </div>
-              <div>
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Well location</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.well_location ?? '—' }}
-                </p>
-              </div>
-              <div>
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">First initial QC</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.first_initial_qc_start_date ?? '—' }}
-                </p>
-              </div>
-              <div>
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">First prep start</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.first_prep_start_date ?? '—' }}
-                </p>
-              </div>
-              <div>
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Finished library</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.isFinishedLib != null ? (getSampleByRow(row.original)!.isFinishedLib ? 'Yes' : 'No') : '—' }}
-                </p>
-              </div>
-              <div v-if="getSampleByRow(row.original)?.details?.species_name">
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Species</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.details?.species_name }}
-                </p>
-              </div>
-              <div v-if="getSampleByRow(row.original)?.details?.tissue_type">
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Tissue type</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.details?.tissue_type }}
-                </p>
-              </div>
-              <div v-if="getSampleByRow(row.original)?.details?.storage_type">
-                <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Storage</span>
-                <p class="font-medium mt-0.5">
-                  {{ getSampleByRow(row.original)?.details?.storage_type }}
-                </p>
-              </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+              <IndicatorIconText
+                icon="i-lucide-hash"
+                label="Plate ID"
+                :value="getSampleByRow(row.original)?.initial_plate_id"
+              />
+              <IndicatorIconText
+                icon="i-lucide-map-pin"
+                label="Well location"
+                :value="getSampleByRow(row.original)?.well_location"
+              />
+              <IndicatorIconText
+                icon="i-lucide-calendar-check"
+                label="First initial QC"
+                :value="getSampleByRow(row.original)?.first_initial_qc_start_date"
+              />
+              <IndicatorIconText
+                icon="i-lucide-calendar-plus"
+                label="First prep start"
+                :value="getSampleByRow(row.original)?.first_prep_start_date"
+              />
+              <IndicatorIconText
+                icon="i-lucide-flask-conical"
+                label="Finished library"
+                :value="getSampleByRow(row.original)?.isFinishedLib != null ? (getSampleByRow(row.original)!.isFinishedLib ? 'Yes' : 'No') : '—'"
+              />
+              <IndicatorIconText
+                v-if="getSampleByRow(row.original)?.details?.species_name"
+                icon="i-lucide-dna"
+                label="Species"
+                :value="getSampleByRow(row.original)?.details?.species_name"
+              />
+              <IndicatorIconText
+                v-if="getSampleByRow(row.original)?.details?.tissue_type"
+                icon="i-lucide-test-tubes"
+                label="Tissue type"
+                :value="getSampleByRow(row.original)?.details?.tissue_type"
+              />
+              <IndicatorIconText
+                v-if="getSampleByRow(row.original)?.details?.storage_type"
+                icon="i-lucide-package"
+                label="Storage"
+                :value="getSampleByRow(row.original)?.details?.storage_type"
+              />
             </div>
 
             <div
@@ -251,37 +270,38 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
                   Initial QC
                 </h5>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
-                <div v-if="getSampleByRow(row.original)?.initial_qc?.initial_qc_status">
-                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">QC status</span>
-                  <p class="font-medium mt-0.5">
-                    {{ getSampleByRow(row.original)?.initial_qc?.initial_qc_status }}
-                  </p>
-                </div>
-                <div v-if="getSampleByRow(row.original)?.initial_qc?.concentration != null">
-                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Concentration</span>
-                  <p class="font-medium mt-0.5">
-                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.concentration) }} {{ getSampleByRow(row.original)?.initial_qc?.conc_units ?? '' }}
-                  </p>
-                </div>
-                <div v-if="getSampleByRow(row.original)?.initial_qc?.['volume_(ul)'] != null">
-                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Volume (ul)</span>
-                  <p class="font-medium mt-0.5">
-                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['volume_(ul)']) }}
-                  </p>
-                </div>
-                <div v-if="getSampleByRow(row.original)?.initial_qc?.['size_(bp)'] != null">
-                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Size (bp)</span>
-                  <p class="font-medium mt-0.5">
-                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['size_(bp)'], 0) }}
-                  </p>
-                </div>
-                <div v-if="getSampleByRow(row.original)?.initial_qc?.['amount_(ng)'] != null">
-                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Amount (ng)</span>
-                  <p class="font-medium mt-0.5">
-                    {{ roundNum(getSampleByRow(row.original)?.initial_qc?.['amount_(ng)']) }}
-                  </p>
-                </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-x-8 gap-y-4">
+                <IndicatorIconText
+                  v-if="getSampleByRow(row.original)?.initial_qc?.initial_qc_status"
+                  icon="i-lucide-circle-check"
+                  label="QC status"
+                  :value="getSampleByRow(row.original)?.initial_qc?.initial_qc_status"
+                />
+                <IndicatorIconText
+                  v-if="getSampleByRow(row.original)?.initial_qc?.concentration != null"
+                  icon="i-lucide-flask-conical"
+                  label="Concentration"
+                >
+                  {{ roundNum(getSampleByRow(row.original)?.initial_qc?.concentration) }} {{ getSampleByRow(row.original)?.initial_qc?.conc_units ?? '' }}
+                </IndicatorIconText>
+                <IndicatorIconText
+                  v-if="getSampleByRow(row.original)?.initial_qc?.['volume_(ul)'] != null"
+                  icon="i-lucide-beaker"
+                  label="Volume (ul)"
+                  :value="roundNum(getSampleByRow(row.original)?.initial_qc?.['volume_(ul)'])"
+                />
+                <IndicatorIconText
+                  v-if="getSampleByRow(row.original)?.initial_qc?.['size_(bp)'] != null"
+                  icon="i-lucide-ruler"
+                  label="Size (bp)"
+                  :value="roundNum(getSampleByRow(row.original)?.initial_qc?.['size_(bp)'], 0)"
+                />
+                <IndicatorIconText
+                  v-if="getSampleByRow(row.original)?.initial_qc?.['amount_(ng)'] != null"
+                  icon="i-lucide-scale"
+                  label="Amount (ng)"
+                  :value="roundNum(getSampleByRow(row.original)?.initial_qc?.['amount_(ng)'])"
+                />
               </div>
             </div>
 
@@ -289,7 +309,7 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
               :sample="getSampleByRow(row.original)"
               :sample-id="row.original.sampleId"
             />
-          </template>
+          </div>
         </div>
       </template>
     </NTable>

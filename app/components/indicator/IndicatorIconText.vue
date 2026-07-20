@@ -1,8 +1,8 @@
 <script setup lang="ts">
 defineProps<{
-  icon: string
+  icon?: string
   label: string
-  value?: string | number
+  value?: string | number | null
   valueClass?: string
 }>()
 </script>
@@ -11,6 +11,7 @@ defineProps<{
   <div>
     <div class="flex items-center gap-1.5 mb-0.5">
       <NIcon
+        v-if="icon"
         :name="icon"
         class="text-primary-400 dark:text-primary-600 text-xs"
       />
@@ -19,10 +20,10 @@ defineProps<{
       </span>
     </div>
     <p
-      class="font-medium pl-5"
-      :class="valueClass"
+      class="font-medium"
+      :class="[icon ? 'pl-5' : '', valueClass]"
     >
-      <slot>{{ value }}</slot>
+      <slot>{{ value ?? '—' }}</slot>
     </p>
   </div>
 </template>

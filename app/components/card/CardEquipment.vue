@@ -80,7 +80,7 @@ const infoFields = computed(() => [
         <NSeparator class="shrink-0 my-4" />
 
         <div class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm content-start">
-          <IndicatorIconCard
+          <IndicatorIconText
             v-for="field in infoFields"
             :key="field.label"
             :icon="field.icon"
