@@ -138,7 +138,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
       </template>
 
       <template #expanded="{ row }">
-        <div class="p-3 flex flex-col sm:flex-row items-start gap-4">
+        <div class="-m-4 p-4 border-l-18 border-primary-700 dark:border-primary-900 flex flex-col sm:flex-row items-start gap-4">
           <div class="flex flex-col items-center gap-2 flex-shrink-0">
             <NAvatarGroup :max="2">
               <NAvatar

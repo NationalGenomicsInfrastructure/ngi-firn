@@ -134,74 +134,76 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
       </template>
 
       <template #expanded="{ row }">
-        <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800">
-          <h2 class="text-center text-xl font-semibold tracking-tight">
-            {{ row.original.name }} {{ row.original.label ? ` (${row.original.label})` : '' }}
-          </h2>
-        </div>
-        <div class="p-4 text-sm bg-muted/30 rounded-md">
-          <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-6 items-start">
-            <div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                <IndicatorIconCard
-                  icon="i-lucide-key-round"
-                  label="Identifier"
-                  :value="row.original.slug"
-                />
-                <IndicatorIconCard
-                  icon="i-lucide-thermometer-snowflake"
-                  label="Type"
-                  :value="row.original.typeLabel"
-                />
-                <IndicatorIconCard
-                  icon="i-lucide-thermometer"
-                  label="Temperature"
-                  :value="row.original.temperatureLabel"
-                />
-                <IndicatorIconCard
-                  icon="i-lucide-cog"
-                  label="Manufacturer"
-                  :value="row.original.manufacturer ?? '—'"
-                />
-                <IndicatorIconCard
-                  icon="i-lucide-tag"
-                  label="Model"
-                  :value="row.original.model ?? '—'"
-                />
-                <IndicatorIconCard
-                  icon="i-lucide-hash"
-                  label="Serial number"
-                  :value="row.original.serialNumber ?? '—'"
-                />
-                <IndicatorIconCard
-                  icon="i-lucide-building-2"
-                  label="Room"
-                  :value="row.original.parentRoomName"
-                />
+        <div class="-m-4 p-4 border-l-18 border-primary-700 dark:border-primary-900">
+          <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800">
+            <h2 class="text-center text-xl font-semibold tracking-tight">
+              {{ row.original.name }} {{ row.original.label ? ` (${row.original.label})` : '' }}
+            </h2>
+          </div>
+          <div class="p-4 text-sm bg-muted/30 rounded-md">
+            <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-6 items-start">
+              <div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                  <IndicatorIconCard
+                    icon="i-lucide-key-round"
+                    label="Identifier"
+                    :value="row.original.slug"
+                  />
+                  <IndicatorIconCard
+                    icon="i-lucide-thermometer-snowflake"
+                    label="Type"
+                    :value="row.original.typeLabel"
+                  />
+                  <IndicatorIconCard
+                    icon="i-lucide-thermometer"
+                    label="Temperature"
+                    :value="row.original.temperatureLabel"
+                  />
+                  <IndicatorIconCard
+                    icon="i-lucide-cog"
+                    label="Manufacturer"
+                    :value="row.original.manufacturer ?? '—'"
+                  />
+                  <IndicatorIconCard
+                    icon="i-lucide-tag"
+                    label="Model"
+                    :value="row.original.model ?? '—'"
+                  />
+                  <IndicatorIconCard
+                    icon="i-lucide-hash"
+                    label="Serial number"
+                    :value="row.original.serialNumber ?? '—'"
+                  />
+                  <IndicatorIconCard
+                    icon="i-lucide-building-2"
+                    label="Room"
+                    :value="row.original.parentRoomName"
+                  />
+                </div>
+
+                <template v-if="row.original.description">
+                  <NSeparator class="my-4" />
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <NIcon
+                      name="i-lucide-file-text"
+                      class="text-primary-400 dark:text-primary-600 text-xs"
+                    />
+                    <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Description</span>
+                  </div>
+                  <p class="font-medium pl-5">
+                    {{ row.original.description }}
+                  </p>
+                </template>
               </div>
 
-              <template v-if="row.original.description">
-                <NSeparator class="my-4" />
-                <div class="flex items-center gap-1.5 mb-0.5">
-                  <NIcon
-                    name="i-lucide-file-text"
-                    class="text-primary-400 dark:text-primary-600 text-xs"
-                  />
-                  <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Description</span>
-                </div>
-                <p class="font-medium pl-5">
-                  {{ row.original.description }}
-                </p>
-              </template>
-            </div>
-
-            <div class="flex items-end justify-end h-full">
-              <NButton
-                label="View contents"
-                btn="soft-primary hover:outline-primary"
-                leading="i-lucide-eye"
-                :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}`"
-              />
+              <div class="flex items-end justify-end h-full">
+                <NButton
+                  label="View contents"
+                  btn="soft-primary hover:outline-primary"
+                  leading="i-lucide-eye"
+                  :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}`"
+                />
+              </div>
             </div>
           </div>
         </div>

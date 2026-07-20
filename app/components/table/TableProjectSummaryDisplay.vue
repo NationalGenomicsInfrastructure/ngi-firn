@@ -176,69 +176,71 @@ watch(includeWeekday, (isRelative) => {
       </template>
 
       <template #expanded="{ row }">
-        <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800">
-          <h2 class="text-center text-xl font-semibold tracking-tight">
-            {{ [row.original.projectNameFragments[0], ".", row.original.projectNameFragments[1], "(", row.original.project_id, ")"].filter(Boolean).join(' ') }}
-          </h2>
-        </div>
-        <div class="p-4 text-sm bg-muted/30 rounded-md">
-          <div class="grid grid-cols-1 xl:grid-cols-[auto_1fr_auto] gap-6 items-start">
-            <div class="flex flex-col items-center gap-2 flex-shrink-0">
-              <NAvatarGroup :max="2">
-                <NAvatar
-                  :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
-                  :label="row.original.projectNameFragments[2] ?? '—'"
-                  size="sm:md md:lg lg:xl"
-                />
-                <NAvatar
-                  :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
-                  :label="row.original.projectNameFragments[3] ?? '—'"
-                  size="sm:lg md:xl lg:2xl"
-                />
-              </NAvatarGroup>
-            </div>
+        <div class="-m-4 p-4 border-l-18 border-primary-700 dark:border-primary-900">
+          <div class="flex justify-center my-3 p-2 bg-gray-100 dark:bg-gray-800">
+            <h2 class="text-center text-xl font-semibold tracking-tight">
+              {{ [row.original.projectNameFragments[0], ".", row.original.projectNameFragments[1], "(", row.original.project_id, ")"].filter(Boolean).join(' ') }}
+            </h2>
+          </div>
+          <div class="p-4 text-sm bg-muted/30 rounded-md">
+            <div class="grid grid-cols-1 xl:grid-cols-[auto_1fr_auto] gap-6 items-start">
+              <div class="flex flex-col items-center gap-2 flex-shrink-0">
+                <NAvatarGroup :max="2">
+                  <NAvatar
+                    :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+                    :label="row.original.projectNameFragments[2] ?? '—'"
+                    size="sm:md md:lg lg:xl"
+                  />
+                  <NAvatar
+                    :avatar="row.original.status === 'open' ? 'outline-primary' : 'outline-gray'"
+                    :label="row.original.projectNameFragments[3] ?? '—'"
+                    size="sm:lg md:xl lg:2xl"
+                  />
+                </NAvatarGroup>
+              </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-              <IndicatorIconCard
-                icon="i-lucide-building-2"
-                label="Affiliation"
-                :value="row.original.affiliation ?? '—'"
-              />
-              <IndicatorIconCard
-                icon="i-lucide-user"
-                label="Contact"
-                :value="row.original.contact ?? '—'"
-              />
-              <IndicatorIconCard
-                icon="i-lucide-signal"
-                label="Priority"
-                :value="row.original.priority ?? '—'"
-              />
-              <IndicatorIconCard
-                icon="i-lucide-calendar"
-                label="Open date"
-                :value="row.original.open_dateFormatted ?? '—'"
-              />
-              <IndicatorIconCard
-                icon="i-lucide-clock"
-                label="Modification time"
-                :value="row.original.modification_timeFormatted ?? '—'"
-              />
-              <IndicatorIconCard
-                icon="i-lucide-calendar-check"
-                label="Close date"
-                :value="row.original.close_dateFormatted ?? '—'"
-              />
-            </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                <IndicatorIconCard
+                  icon="i-lucide-building-2"
+                  label="Affiliation"
+                  :value="row.original.affiliation ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-user"
+                  label="Contact"
+                  :value="row.original.contact ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-signal"
+                  label="Priority"
+                  :value="row.original.priority ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-calendar"
+                  label="Open date"
+                  :value="row.original.open_dateFormatted ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-clock"
+                  label="Modification time"
+                  :value="row.original.modification_timeFormatted ?? '—'"
+                />
+                <IndicatorIconCard
+                  icon="i-lucide-calendar-check"
+                  label="Close date"
+                  :value="row.original.close_dateFormatted ?? '—'"
+                />
+              </div>
 
-            <div class="flex items-end justify-end h-full">
-              <NButton
-                label="View project details"
-                class="min-w-0 transition delay-300 ease-in-out"
-                btn="soft-primary hover:outline-primary"
-                leading="i-lucide-eye"
-                :to="`/projects/details/${row.original.project_id}`"
-              />
+              <div class="flex items-end justify-end h-full">
+                <NButton
+                  label="View project details"
+                  class="min-w-0 transition delay-300 ease-in-out"
+                  btn="soft-primary hover:outline-primary"
+                  leading="i-lucide-eye"
+                  :to="`/projects/details/${row.original.project_id}`"
+                />
+              </div>
             </div>
           </div>
         </div>
