@@ -37,6 +37,7 @@ import type {
   ContainerCapacity,
   ContainerCapacityEntry,
   ContainerType,
+  ContainerParentKindType,
   CreateContainerSchemaInput,
   DeleteContainerSchemaInput,
   UpdateContainerSchemaInput
@@ -81,15 +82,18 @@ type ResolvedParent
  * Containers are checked first (the more common nesting case); a storage-equipment
  * parent is the fallback. Throws when no parent with that slug exists.
  */
-async function resolveParent(parentSlug: string): Promise<ResolvedParent> {
-  const container = (await queryContainersBySlug(parentSlug))[0]
-  if (container && isContainer(container)) {
-    return { kind: 'container', doc: container }
+async function resolveParent(parentSlug: string, parentKind: ContainerParentKindType): Promise<ResolvedParent> {
+  if (parentKind === 'container') {
+    const container = (await queryContainersBySlug(parentSlug))[0]
+    if (container && isContainer(container)) {
+      return { kind: 'container', doc: container }
+    }
   }
-
-  const equipment = await EquipmentService.getEquipmentBySlug(parentSlug)
-  if (equipment) {
-    return { kind: 'equipment', doc: equipment }
+  else {
+    const equipment = await EquipmentService.getEquipmentBySlug(parentSlug)
+    if (equipment) {
+      return { kind: 'equipment', doc: equipment }
+    }
   }
 
   throw new Error(`Parent with identifier "${parentSlug}" not found. Create the parent equipment or container first.`)
@@ -291,7 +295,7 @@ export const ContainerService = {
    * the target slot is still empty — i.e. before this child exists.
    */
   async createContainer(input: CreateContainerSchemaInput): Promise<Container> {
-    const parent = await resolveParent(input.parentSlug)
+    const parent = await resolveParent(input.parentSlug, input.parentKind)
     const positionParent = await resolvePlacement(parent, input)
 
     await adjustParentOccupancy(parent, input.containerType, positionParent, 1)

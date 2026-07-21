@@ -39,6 +39,13 @@ export type ContainerClassification = z.infer<typeof containerClassificationSche
 // capacity entry's `type` ranges over both vocabularies.
 const childCategorySchema = z.union([containerTypeSchema, itemTypeSchema])
 
+// shortcuts for the parent/child type enums used in container CRUD input validation
+const parentKindSchema = z.enum(['equipment', 'container'])
+const childKindSchema = z.enum(['item', 'container'])
+
+export type ContainerParentKindType = z.infer<typeof parentKindSchema>
+export type ContainerChildKindType = z.infer<typeof childKindSchema>
+
 // ---------------------------------------------------------------------------
 // Grid position — zod counterpart of the GridPosition interface (types/inventory.d.ts)
 // ---------------------------------------------------------------------------
@@ -72,14 +79,14 @@ export type GridPositionInput = z.infer<typeof gridPositionSchema>
 
 const countCapacitySchema = z.object({
   layout: z.literal('count'),
-  childKind: z.enum(['item', 'container']),
+  childKind: childKindSchema,
   type: childCategorySchema,
   capacity: z.number().int().min(0)
 })
 
 const gridCapacitySchema = z.object({
   layout: z.literal('grid'),
-  childKind: z.enum(['item', 'container']),
+  childKind: childKindSchema,
   type: childCategorySchema,
   rows: z.number().int().min(1),
   columns: z.number().int().min(1),
@@ -153,6 +160,7 @@ export const createContainerSchema = z.object({
   label: z.string().nullish(),
   description: z.string().nullish(),
   parentSlug: z.string().min(1, { message: 'Parent identifier is required' }),
+  parentKind: parentKindSchema,
   // Placement of THIS container within its parent's grid (if the parent is a grid).
   position: gridPositionSchema.nullish(),
   // Wire shape — no server-owned `stored`. Acceptance is derived from the entries' `type`s.
@@ -183,6 +191,7 @@ export const deleteContainerSchema = z.object({
 export const moveContainerSchema = z.object({
   containerSlug: z.string().min(1, { message: 'Container identifier is required' }),
   newParentSlug: z.string().min(1, { message: 'Target parent identifier is required' }),
+  newParentKind: parentKindSchema,
   // New placement within the target parent's grid (if it is a grid).
   position: gridPositionSchema.nullish()
 })
@@ -190,7 +199,7 @@ export const moveContainerSchema = z.object({
 // Find candidate storage locations that can accept `count` children of `category`.
 export const suggestLocationsSchema = z.object({
   category: z.string().min(1, { message: 'Item/container category is required' }),
-  childType: z.enum(['item', 'container']),
+  childType: childKindSchema,
   count: z.number().int().positive({ message: 'Requested slot count must be positive' }),
   classification: z.string().nullish(),
   ancestorId: z.string().nullish(),
