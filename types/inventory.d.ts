@@ -76,6 +76,13 @@ export type InventoryClassification
     | 'Equipment'
     | 'Other'
 
+/* Structured per-field diff record for standardized audit logging. */
+export interface InventoryActionChangeRecord {
+  field: string
+  before: unknown
+  after: unknown
+}
+
 /*
  * Compact audit log entry embedded directly in entity documents.
  * Each entry records one handling event (checkout, return, move, etc.).
@@ -91,10 +98,8 @@ export interface InventoryActionLogEntry {
   timestamp: string
   /* Optional notes or reason for the action. */
   notes?: string
-  /* For move/checkout/return: source parent entity ID. */
-  fromParentId?: string
-  /* For move/checkout/return: destination parent entity ID. */
-  toParentId?: string
+  /* Structured change records (e.g. update before/after pairs), if applicable. */
+  changes?: InventoryActionChangeRecord[]
   /* Reference to the InventoryTask document that triggered this log entry, if any. */
   linkedTaskId?: string
 }

@@ -181,7 +181,8 @@ export const updateContainerSchema = z.object({
   position: gridPositionSchema.nullish(),
   capacity: containerCapacityArraySchema.nullish(),
   projectRefs: documentReferenceMapSchema.nullish(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  logComment: z.string().nullish() // Optional note to append to the container's action log
 })
 
 export const deleteContainerSchema = z.object({

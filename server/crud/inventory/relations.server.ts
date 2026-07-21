@@ -9,11 +9,17 @@ import type {
   Room,
   StorageEquipment
 } from '../../../types/inventory'
+import type { FirnUser } from '../../../types/auth'
 import type { TypedDocumentReference } from '../../../types/references'
 import { couchDB } from '../../database/couchdb'
 
 /* Build a TypedDocumentReference from a parent entity for the `parent` field. */
 export function toParentRef<T extends Room | StorageEquipment | Container>(entity: T): TypedDocumentReference<T> {
+  return { db: 'firn', id: entity._id, type: entity.type } as TypedDocumentReference<T>
+}
+
+/* Build a TypedDocumentReference from a FirnUser for the Action log entries. */
+export function toUserRef<T extends FirnUser>(entity: T): TypedDocumentReference<T> {
   return { db: 'firn', id: entity._id, type: entity.type } as TypedDocumentReference<T>
 }
 

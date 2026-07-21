@@ -29,10 +29,20 @@ import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchd
 import { deriveGridLabel, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
 import {
   hasDirectChildren,
-  toParentRef
+  toParentRef,
+  toUserRef
 } from './relations.server'
 import { EquipmentService } from './equipment.server'
-import type { Container, GridPosition, StorageEquipment } from '../../../types/inventory'
+import {
+  createModifyActionLogEntry,
+  type InventoryTrackedField
+} from './logging.server'
+import type {
+  Container,
+  GridPosition,
+  InventoryActionLogEntry,
+  StorageEquipment
+} from '../../../types/inventory'
 import type {
   ContainerCapacity,
   ContainerCapacityEntry,
@@ -42,6 +52,7 @@ import type {
   DeleteContainerSchemaInput,
   UpdateContainerSchemaInput
 } from '~~/schemas/inventory/container'
+import type { FirnUser } from '../../../types/auth'
 
 /* Check if a document is a Container document. */
 function isContainer(doc: unknown): doc is Container {
@@ -120,6 +131,31 @@ async function findFirstFreeGridSlot(
     }
   }
   return null
+}
+
+function createChangelogEntry(
+  existing: Container,
+  next: Container,
+  firnUser: FirnUser,
+  manualComment?: string
+): InventoryActionLogEntry | null {
+  const trackedFields: InventoryTrackedField[] = [
+    { field: 'containerType', before: existing.containerType, after: next.containerType },
+    { field: 'classification', before: existing.classification, after: next.classification },
+    { field: 'name', before: existing.name, after: next.name },
+    { field: 'slug', before: existing.slug, after: next.slug },
+    { field: 'label', before: existing.label, after: next.label },
+    { field: 'description', before: existing.description, after: next.description },
+    { field: 'projectRefs', before: existing.projectRefs, after: next.projectRefs },
+    { field: 'capacity', before: existing.capacity, after: next.capacity }
+  ]
+
+  return createModifyActionLogEntry({
+    firnUser,
+    trackedFields,
+    timestamp: next.updatedAt,
+    notes: manualComment ?? `Modified container "${next.name}".`
+  })
 }
 
 export const ContainerService = {
@@ -294,7 +330,7 @@ export const ContainerService = {
    * grid_occupancy view (fed by child positions), so the counter must be bumped while
    * the target slot is still empty — i.e. before this child exists.
    */
-  async createContainer(input: CreateContainerSchemaInput): Promise<Container> {
+  async createContainer(input: CreateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
     const parent = await resolveParent(input.parentSlug, input.parentKind)
     const positionParent = await resolvePlacement(parent, input)
 
@@ -307,6 +343,13 @@ export const ContainerService = {
     // Convert the wire-shape capacity rows into the stored ContainerCapacityEntry[]
     // shape, initialising `stored`/occupancy to zero for the new container's own contents.
     const initialCapacity = ContainerService.validateAndJoinContainerCapacity(null, input.capacity ?? [])
+
+    const registrationLogEntry: InventoryActionLogEntry = {
+      actionType: 'register',
+      firnUser: toUserRef(firnUser),
+      timestamp: now,
+      notes: `Created in parent "${parent.doc.name}".`
+    }
 
     const containerDocument: Omit<Container, '_id' | '_rev'> = {
       type: 'container',
@@ -323,7 +366,7 @@ export const ContainerService = {
       templateId: input.templateId ?? null,
       projectRefs: input.projectRefs ?? null,
       status: 'available',
-      actionLog: [],
+      actionLog: [registrationLogEntry],
       createdAt: now,
       updatedAt: now
     }
@@ -358,7 +401,7 @@ export const ContainerService = {
    * parent occupancy bookkeeping happens here (the container neither enters nor leaves
    * its parent). Re-homing to a different parent belongs to a dedicated move operation.
    */
-  async updateContainer(updates: UpdateContainerSchemaInput): Promise<Container> {
+  async updateContainer(updates: UpdateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
     const existing = await ContainerService.getContainerBySlug(updates.containerSlug)
     if (!existing) {
       throw new Error(`Container with identifier "${updates.containerSlug}" not found.`)
@@ -385,6 +428,11 @@ export const ContainerService = {
       slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
       updatedAt: new Date().toISOString()
     }
+
+    const changelogEntry = createChangelogEntry(existing, updatedContainer, firnUser, updates.logComment ?? undefined)
+    updatedContainer.actionLog = changelogEntry
+      ? [...existing.actionLog, changelogEntry]
+      : existing.actionLog
 
     const result = await couchDB.updateDocument(updatedContainer._id, updatedContainer, existing._rev)
     updatedContainer._rev = result.rev
