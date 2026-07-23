@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { itemTypeSchema } from './items'
+import { inventoryActionSchema, inventoryFlagSchema } from './metadata'
 import { documentReferenceMapSchema } from '../basic'
 
 // ---------------------------------------------------------------------------
@@ -167,10 +168,10 @@ export const createContainerSchema = z.object({
   capacity: containerCapacityArraySchema.nullish(),
   // Optional template ID (if the container was created from a template).
   templateId: z.string().nullish(),
-  projectRefs: documentReferenceMapSchema.nullish(),
-  isActive: z.boolean().optional()
+  projectRefs: documentReferenceMapSchema.nullish()
 })
 
+// update container metadata that is not captured by dedicated endpoints (e.g. move, alter status, etc.)
 export const updateContainerSchema = z.object({
   containerSlug: z.string().min(1, { message: 'Container identifier is required' }),
   containerType: containerTypeSchema.optional(),
@@ -181,7 +182,6 @@ export const updateContainerSchema = z.object({
   position: gridPositionSchema.nullish(),
   capacity: containerCapacityArraySchema.nullish(),
   projectRefs: documentReferenceMapSchema.nullish(),
-  isActive: z.boolean().optional(),
   logComment: z.string().nullish() // Optional note to append to the container's action log
 })
 
@@ -195,6 +195,14 @@ export const moveContainerSchema = z.object({
   newParentKind: parentKindSchema,
   // New placement within the target parent's grid (if it is a grid).
   position: gridPositionSchema.nullish(),
+  logComment: z.string().nullish() // Optional note to append to the container's action log
+})
+
+export const alterContainerSchema = z.object({
+  // Batch operation: multiple containers can be updated at once, so this is an array of slugs.
+  containerSlug: z.array(z.string().min(1, { message: 'Container identifier is required' })),
+  performedAction: inventoryActionSchema,
+  flagKind: inventoryFlagSchema.nullish(), // Optional flag category (if performedAction = 'flag')
   logComment: z.string().nullish() // Optional note to append to the container's action log
 })
 
@@ -213,4 +221,5 @@ export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
 export type DeleteContainerSchemaInput = z.infer<typeof deleteContainerSchema>
 export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema>
+export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema>
 export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>

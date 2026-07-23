@@ -4,6 +4,7 @@ import type { DocumentReferenceMap, TypedDocumentReference } from './references'
 import type { ContainerCapacityEntry, ContainerType } from '../schemas/inventory/container'
 import type { EquipmentCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
 import type { ItemType } from '../schemas/inventory/items'
+import type { InventoryActionType, InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '../schemas/inventory/metadata'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
 /*
@@ -42,40 +43,6 @@ export interface GridPosition {
   label?: string
 }
 
-/* Canonical action categories used for handling/audit workflows and embedded logs. */
-export type InventoryActionType
-  = | 'checkout' // Remove from storage for temporary use
-    | 'return' // Put back in storage
-    | 'move' // Relocate to a different parent/position
-    | 'dispose' // Discard permanently
-    | 'reserve' // Reserve for future use
-    | 'unreserve' // Release reservation
-    | 'register' // Initial registration in inventory
-    | 'modify' // Properties changed (label, description, etc.)
-    | 'flag' // Flag for attention (low quantity, issue)
-    | 'note' // Observation/comment (informational only)
-    | 'discard_expired' // Dispose due to expiry (system-suggested)
-
-/* Canonical action categories used for handling/audit workflows and embedded logs. */
-export type InventoryStatusType
-  = | 'available'
-    | 'checked_out'
-    | 'reserved'
-    | 'expired'
-    | 'disposed'
-    | 'lost'
-    | 'damaged'
-
-/* Canonical classification categories used for inventory items. */
-export type InventoryClassification
-  = | 'Sample'
-    | 'Reagent'
-    | 'Control'
-    | 'Library'
-    | 'Consumable'
-    | 'Equipment'
-    | 'Other'
-
 /* Structured per-field diff record for standardized audit logging. */
 export interface InventoryActionChangeRecord {
   field: string
@@ -98,10 +65,21 @@ export interface InventoryActionLogEntry {
   timestamp: string
   /* Optional notes or reason for the action. */
   notes?: string
+  /* Optional flag for the log entry (e.g. 'warning', 'error', 'info'). */
+  flag?: InventoryFlagType
   /* Structured change records (e.g. update before/after pairs), if applicable. */
   changes?: InventoryActionChangeRecord[]
   /* Reference to the InventoryTask document that triggered this log entry, if any. */
   linkedTaskId?: string
+}
+
+/*
+ * Compact log structure for field value changes.
+ */
+export interface InventoryTrackedField {
+  field: string
+  before: unknown
+  after: unknown
 }
 
 /* Top-level physical location. Rooms are hierarchy roots for storage equipment. */
@@ -207,14 +185,16 @@ export interface Container extends BaseDocument {
   positionParent: GridPosition | null
   /* Stable URL slug */
   slug: string
+  /* External barcode on physical item — integrates with barcode scanning infra. */
+  barcode: string | null
   containerType: ContainerType
-  classification: InventoryClassification
+  classification: InventoryClassificationType
   name: string
   label: string | null
   description: string | null
   /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
   capacity: ContainerCapacityEntry[] | null
-
+  /* Generated from this container template (if applicable). */
   templateId: string | null
   /* Optional cross-database references to projects (read-only projects DB). */
   projectRefs: DocumentReferenceMap | null
@@ -222,6 +202,7 @@ export interface Container extends BaseDocument {
   createdAt: string
   updatedAt: string
   actionLog: InventoryActionLogEntry[]
+  activeFlags: InventoryFlagType[] | null
   status: InventoryStatusType
 }
 
@@ -236,7 +217,7 @@ export interface InventoryItem extends BaseDocument {
   /* Physical form factor of the item (what it IS). */
   category: ItemType
   /* Purpose/domain classification (what it's FOR). */
-  classification: InventoryClassification
+  classification: InventoryClassificationType
   name: string
   label: string | null
   description: string | null
@@ -261,6 +242,8 @@ export interface InventoryItem extends BaseDocument {
   status: InventoryStatusType
   /* Embedded audit trail — append-only log of handling events. */
   actionLog: ActionLogEntry[]
+  /* Active flags: Colored highlights that allow marking important states or issues. */
+  activeFlags: InventoryFlagType[] | null
   createdAt: string
   updatedAt: string
 }

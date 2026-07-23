@@ -15,6 +15,7 @@
  * updateContainer(updates) - Update container metadata and capacity limits
  * deleteContainer(input) - Delete a container when empty, freeing its slot on the parent
  * moveContainer(input) - Re-home a container to another equipment/container parent
+ * alterContainter(input) - Perform actions on a container (check-out, return, reserve, discard, dispose, flag)
  *
  * CAPACITY AND OCCUPANCY MANAGEMENT:
  * adjustStoredCount(containerId, category, delta) - count-layout: increment/decrement a category's count
@@ -34,8 +35,10 @@ import {
 } from './relations.server'
 import { EquipmentService } from './equipment.server'
 import {
-  createModifyActionLogEntry,
-  type InventoryTrackedField
+  buildAlterActionNotes,
+  createChangelogEntry,
+  createInventoryChangeRecords,
+  statusFromAction
 } from './logging.server'
 import type {
   Container,
@@ -48,6 +51,7 @@ import type {
   ContainerCapacityEntry,
   ContainerType,
   ContainerParentKindType,
+  AlterContainerSchemaInput,
   CreateContainerSchemaInput,
   DeleteContainerSchemaInput,
   MoveContainerSchemaInput,
@@ -134,31 +138,6 @@ async function findFirstFreeGridSlot(
   return null
 }
 
-function createChangelogEntry(
-  existing: Container,
-  next: Container,
-  firnUser: FirnUser,
-  manualComment?: string
-): InventoryActionLogEntry | null {
-  const trackedFields: InventoryTrackedField[] = [
-    { field: 'containerType', before: existing.containerType, after: next.containerType },
-    { field: 'classification', before: existing.classification, after: next.classification },
-    { field: 'name', before: existing.name, after: next.name },
-    { field: 'slug', before: existing.slug, after: next.slug },
-    { field: 'label', before: existing.label, after: next.label },
-    { field: 'description', before: existing.description, after: next.description },
-    { field: 'projectRefs', before: existing.projectRefs, after: next.projectRefs },
-    { field: 'capacity', before: existing.capacity, after: next.capacity }
-  ]
-
-  return createModifyActionLogEntry({
-    firnUser,
-    trackedFields,
-    timestamp: next.updatedAt,
-    notes: manualComment ?? `modified container "${next.name}".`
-  })
-}
-
 export const ContainerService = {
 
   /* Fetch one container document by document ID. */
@@ -172,7 +151,6 @@ export const ContainerService = {
     const container = (await queryContainersBySlug(slug))[0]
     return container && isContainer(container) ? container : null
   },
-
   /*
    * Validate and merge capacity restrictions while preserving stored counts.
    * Analogous to EquipmentService.validateAndJoinContainerCapacity: types with an
@@ -358,6 +336,7 @@ export const ContainerService = {
       parent: toParentRef(parent.doc),
       positionParent,
       slug: containerSlug,
+      barcode: null,
       containerType: input.containerType,
       classification: input.classification,
       name: input.name,
@@ -368,6 +347,7 @@ export const ContainerService = {
       projectRefs: input.projectRefs ?? null,
       status: 'available',
       actionLog: [registrationLogEntry],
+      activeFlags: [],
       createdAt: now,
       updatedAt: now
     }
@@ -398,9 +378,8 @@ export const ContainerService = {
   },
 
   /*
-   * Update container metadata and capacity limits. The parent is unchanged, so no
-   * parent occupancy bookkeeping happens here (the container neither enters nor leaves
-   * its parent). Re-homing to a different parent belongs to a dedicated move operation.
+   * Update container metadata and capacity limits. The container's parent is unchanged, so no
+   * parent occupancy bookkeeping happens here. Re-homing to a different parent belongs to a dedicated move operation.
    */
   async updateContainer(updates: UpdateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
     const existing = await ContainerService.getContainerBySlug(updates.containerSlug)
@@ -538,6 +517,76 @@ export const ContainerService = {
       }
       throw error
     }
+  },
+
+  /*
+   * Move a container inside a storage-equipment or container parent.
+   */
+  async alterContainer(input: AlterContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
+    if (input.performedAction === 'register' || input.performedAction === 'move' || input.performedAction === 'modify') {
+    // These actions are not meant to be supported by alterContainer; they have dedicated functions.
+      // Providing them would pass the typecheck, though, since it was simpler for logging purposes to have supported and unsupported actions in one type.
+      // Strictly a developer and not a user error.
+      throw new Error(
+        `Action "${input.performedAction}" is not supported in alterContainer. Blame your developer — they should have used the dedicated register, move, or modify workflows instead.`
+      )
+    }
+
+    if ((input.performedAction === 'flag' || input.performedAction === 'unflag') && !input.flagKind) {
+      throw new Error(`Action "${input.performedAction}" requires a flag kind.`)
+    }
+
+    return Promise.all(input.containerSlug.map(async (slug) => {
+      const existing = await ContainerService.getContainerBySlug(slug)
+      if (!existing) {
+        throw new Error(`Container with identifier "${slug}" not found.`)
+      }
+
+      const currentFlags = existing.activeFlags ?? []
+      let nextFlags = currentFlags
+
+      if (input.performedAction === 'flag' && input.flagKind) {
+        nextFlags = currentFlags.includes(input.flagKind)
+          ? currentFlags
+          : [...currentFlags, input.flagKind]
+      }
+      else if (input.performedAction === 'unflag' && input.flagKind) {
+        nextFlags = currentFlags.filter(flag => flag !== input.flagKind)
+      }
+
+      const updatedContainer: Container = {
+        ...existing,
+        activeFlags: nextFlags,
+        updatedAt: new Date().toISOString()
+      }
+
+      const newStatus = statusFromAction(input.performedAction)
+      if (newStatus) {
+        updatedContainer.status = newStatus
+      }
+
+      const changes = createInventoryChangeRecords([
+        { field: 'status', before: existing.status, after: updatedContainer.status },
+        { field: 'activeFlags', before: existing.activeFlags ?? [], after: updatedContainer.activeFlags ?? [] }
+      ])
+
+      const changelogEntry: InventoryActionLogEntry = {
+        actionType: input.performedAction,
+        firnUser: toUserRef(firnUser),
+        timestamp: updatedContainer.updatedAt,
+        notes: buildAlterActionNotes('container', input.performedAction, existing.name, input.logComment, input.flagKind),
+        flag: input.performedAction === 'flag' || input.performedAction === 'unflag'
+          ? input.flagKind ?? undefined
+          : undefined,
+        changes: changes.length > 0 ? changes : undefined
+      }
+
+      updatedContainer.actionLog = [...existing.actionLog, changelogEntry]
+
+      const result = await couchDB.updateDocument(updatedContainer._id, updatedContainer, existing._rev)
+      updatedContainer._rev = result.rev
+      return updatedContainer
+    }))
   }
 }
 
