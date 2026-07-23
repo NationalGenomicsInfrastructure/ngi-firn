@@ -194,7 +194,8 @@ export const moveContainerSchema = z.object({
   newParentSlug: z.string().min(1, { message: 'Target parent identifier is required' }),
   newParentKind: parentKindSchema,
   // New placement within the target parent's grid (if it is a grid).
-  position: gridPositionSchema.nullish()
+  position: gridPositionSchema.nullish(),
+  logComment: z.string().nullish() // Optional note to append to the container's action log
 })
 
 // Find candidate storage locations that can accept `count` children of `category`.

@@ -14,7 +14,7 @@
  * createContainer(input) - Create a container inside a storage-equipment or container parent
  * updateContainer(updates) - Update container metadata and capacity limits
  * deleteContainer(input) - Delete a container when empty, freeing its slot on the parent
- * (planned) moveContainer(input) - Re-home a container to another equipment/container parent
+ * moveContainer(input) - Re-home a container to another equipment/container parent
  *
  * CAPACITY AND OCCUPANCY MANAGEMENT:
  * adjustStoredCount(containerId, category, delta) - count-layout: increment/decrement a category's count
@@ -50,6 +50,7 @@ import type {
   ContainerParentKindType,
   CreateContainerSchemaInput,
   DeleteContainerSchemaInput,
+  MoveContainerSchemaInput,
   UpdateContainerSchemaInput
 } from '~~/schemas/inventory/container'
 import type { FirnUser } from '../../../types/auth'
@@ -154,7 +155,7 @@ function createChangelogEntry(
     firnUser,
     trackedFields,
     timestamp: next.updatedAt,
-    notes: manualComment ?? `Modified container "${next.name}".`
+    notes: manualComment ?? `modified container "${next.name}".`
   })
 }
 
@@ -332,7 +333,7 @@ export const ContainerService = {
    */
   async createContainer(input: CreateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
     const parent = await resolveParent(input.parentSlug, input.parentKind)
-    const positionParent = await resolvePlacement(parent, input)
+    const positionParent = await resolvePlacement(parent, input.position ?? null, input.containerType)
 
     await adjustParentOccupancy(parent, input.containerType, positionParent, 1)
 
@@ -471,6 +472,72 @@ export const ContainerService = {
     }
 
     return existing
+  },
+
+  /*
+   * Move a container inside a storage-equipment or container parent.
+   *
+   * Flow: resolve the parent, verify it accepts this container type and (for grid
+   * parents) select a slot, then RESERVE capacity on the parent BEFORE writing the
+   * child. Reserving first means the parent document's `_rev` serialises concurrent
+   * placements and any cap/occupancy violation throws before an orphan child can be
+   * created. It is also required for grid parents: `adjustOccupancy` consults the
+   * grid_occupancy view (fed by child positions), so the counter must be bumped while
+   * the target slot is still empty — i.e. before this child exists.
+   */
+  async moveContainer(input: MoveContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
+    // Resolve the container to move to its document
+    const existing = await ContainerService.getContainerBySlug(input.containerSlug)
+    if (!existing) {
+      throw new Error(`Container with identifier "${input.containerSlug}" not found.`)
+    }
+
+    // Resolve the new parent's doc and verify it accepts this container type
+    // For grid parents: Verify the proposed slot is still free respectively propose a free slot.
+    const new_parent = await resolveParent(input.newParentSlug, input.newParentKind)
+    const positionParent = await resolvePlacement(new_parent, input.position, existing.containerType)
+
+    // Reserve the new parent BEFORE writing the child, so concurrent placements are serialised
+    await adjustParentOccupancy(new_parent, existing.containerType, positionParent, 1)
+    const now = new Date().toISOString()
+
+    try {
+      // build the new container document with the new parent and position, and update the action log
+      const movedContainer: Container = {
+        ...existing,
+        parent: toParentRef(new_parent.doc),
+        positionParent,
+        updatedAt: now
+      }
+
+      const changelogEntry: InventoryActionLogEntry = {
+        actionType: 'move',
+        firnUser: toUserRef(firnUser),
+        timestamp: now,
+        notes: input.logComment ?? `Moved to parent "${new_parent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}".`
+      }
+
+      movedContainer.actionLog = changelogEntry
+        ? [...existing.actionLog, changelogEntry]
+        : existing.actionLog
+
+      const result = await couchDB.updateDocument(movedContainer._id, movedContainer, existing._rev)
+
+      // move was successful, return the updated container with the new _rev
+      movedContainer._rev = result.rev
+      return movedContainer
+    }
+    catch (error) {
+      // The parent was already reserved above; release it so the counter does not
+      // leak when the child write fails after the reservation succeeded.
+      try {
+        await adjustParentOccupancy(new_parent, existing.containerType, positionParent, -1)
+      }
+      catch {
+        // Best-effort rollback — surface the original failure regardless.
+      }
+      throw error
+    }
   }
 }
 
@@ -485,23 +552,22 @@ export const ContainerService = {
  */
 async function resolvePlacement(
   parent: ResolvedParent,
-  input: CreateContainerSchemaInput
+  proposedPosition: GridPosition | null | undefined,
+  containerType: ContainerType
 ): Promise<GridPosition | null> {
-  const childType = input.containerType
-
   if (parent.kind === 'equipment') {
-    const entry = parent.doc.capacity?.find(capacityEntry => capacityEntry.type === childType)
+    const entry = parent.doc.capacity?.find(capacityEntry => capacityEntry.type === containerType)
     if (!entry) {
-      throw new Error(`Storage equipment "${parent.doc.slug}" does not accept containers of type "${childType}".`)
+      throw new Error(`Storage equipment "${parent.doc.slug}" does not accept containers of type "${containerType}".`)
     }
     return null
   }
 
   const entry = parent.doc.capacity?.find(
-    capacityEntry => capacityEntry.childKind === 'container' && capacityEntry.type === childType
+    capacityEntry => capacityEntry.childKind === 'container' && capacityEntry.type === containerType
   )
   if (!entry) {
-    throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${childType}".`)
+    throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${containerType}".`)
   }
 
   if (entry.layout !== 'grid') {
@@ -510,22 +576,22 @@ async function resolvePlacement(
 
   const dimensions = { rows: entry.rows, columns: entry.columns, levels: entry.levels ?? 1 }
 
-  if (input.position) {
-    if (!isWithinGrid(input.position, dimensions)) {
+  if (proposedPosition) {
+    if (!isWithinGrid(proposedPosition, dimensions)) {
       throw new Error(
-        `Position (row ${input.position.row}, column ${input.position.column}, level ${input.position.level ?? 1}) is outside the ${entry.rows}×${entry.columns}×${entry.levels ?? 1} grid of "${parent.doc.slug}".`
+        `Position (row ${proposedPosition.row}, column ${proposedPosition.column}, level ${proposedPosition.level ?? 1}) is outside the ${entry.rows}x${entry.columns}x${entry.levels ?? 1} grid of "${parent.doc.slug}".`
       )
     }
-    if (await isSlotOccupied(parent.doc._id, input.position)) {
+    if (await isSlotOccupied(parent.doc._id, proposedPosition)) {
       throw new Error(
-        `Slot (row ${input.position.row}, column ${input.position.column}, level ${input.position.level ?? 1}) in "${parent.doc.slug}" is already occupied.`
+        `Slot (row ${proposedPosition.row}, column ${proposedPosition.column}, level ${proposedPosition.level ?? 1}) in "${parent.doc.slug}" is already occupied.`
       )
     }
     return {
-      row: input.position.row,
-      column: input.position.column,
-      level: input.position.level,
-      label: input.position.label ?? deriveGridLabel(input.position.row, input.position.column, input.position.level)
+      row: proposedPosition.row,
+      column: proposedPosition.column,
+      level: proposedPosition.level,
+      label: proposedPosition.label ?? deriveGridLabel(proposedPosition.row, proposedPosition.column, proposedPosition.level)
     }
   }
 
@@ -535,7 +601,7 @@ async function resolvePlacement(
   // TODO: emit that confirmation task once the task workflow exists.
   const plannedPosition = await findFirstFreeGridSlot(parent.doc._id, entry)
   if (!plannedPosition) {
-    throw new Error(`Grid container "${parent.doc.slug}" is full; no free slot for a "${childType}".`)
+    throw new Error(`Grid container "${parent.doc.slug}" is full; no free slot for a "${containerType}".`)
   }
   return plannedPosition
 }
