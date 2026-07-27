@@ -13,10 +13,13 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  *
  * CORE LOCATION MODEL:
  * LocationEntity - Allowed node types in the physical storage hierarchy
- * GridPosition - Optional slot position within grid-like containers (with optional label)
+ * GridDimensions - rows / columns / levels dimensions for a grid container
+ * GridPosition - Optional slot position within grid-layout containers (with optional label)
  *
- * EMBEDDED AUDIT LOG:
- * ActionLogEntry - Compact log entry embedded in entity documents (immutable after creation)
+ * AUDIT LOG TYPES:
+ * InventoryActionChangeRecord - Structured per-field diff record for audit log entries
+ * InventoryActionLogEntry - Compact audit log entry embedded in entity documents (immutable after creation)
+ * InventoryTrackedField - Field-level before/after snapshot for computing change records
  *
  * DOCUMENT TYPES (persisted in CouchDB):
  * Room - Top-level physical room/building location
@@ -24,10 +27,25 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  * Container - Nested storage units with acceptance constraints and capacity
  * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
  * InventoryTask - Planned task document (checkout-return reminders, expiry disposal, etc.)
- * InventoryTemplate - Reusable defaults for containers, equipment, and items
+ *
+ * CLIENT-SAFE PROJECTIONS:
+ * DisplayRoom - Strips CouchDB-internal fields from a Room before sending to the client
+ * DisplayStorageEquipment - Strips CouchDB-internal fields from StorageEquipment; replaces parent ref with human-readable room stub
+ * DisplayContainer - Strips CouchDB-internal fields from a Container; replaces parent ref with human-readable stub
+ *
+ * UTILITY TYPES:
+ * InventoryTaskStatus - Allowed task lifecycle states ('planned' | 'completed' | 'skipped' | 'cancelled')
+ */
 
 /* Allowed hierarchy node types used by parent references and location paths. */
 export type LocationEntity = Room | StorageEquipment | Container
+
+/* Defines a capacity with grid-based layouts */
+export interface GridDimensions {
+  rows: number
+  columns: number
+  levels: number
+}
 
 /* Position inside grid-based storage layouts (e.g. box slots, rack coordinates). */
 export interface GridPosition {

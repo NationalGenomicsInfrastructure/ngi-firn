@@ -1,5 +1,21 @@
 /*
- * Grid helpers — pure functions for positional (grid-layout) containers.
+ * Grid Helpers - Table of Contents
+ * ************************************
+ *
+ *
+ * LABEL AND BOUNDS:
+ * deriveGridLabel(row, column, level?) - Convert a 1-based position to a spreadsheet-style label (e.g. "A3", "L2-B5")
+ * isWithinGrid(position, dimensions) - Validate that a position falls inside the declared grid bounds
+ *
+ * CAPACITY:
+ * totalSlots(entry) - Total slots a capacity entry represents (grid: rows×columns×levels; count: capacity)
+ *
+ * OCCUPANCY QUERIES:
+ * isSlotOccupied(parentDocumentId, position) - Check whether a specific grid slot is already occupied via the grid_occupancy view
+ */
+
+/*
+ * Pure functions for positional (grid-layout) containers.
  *
  * A grid container declares its dimensions on its single 'grid'-layout capacity
  * entry (see schemas/inventory/container.ts). Children record their slot in a
@@ -8,12 +24,10 @@
 
 import type { ContainerCapacity, ContainerCapacityEntry } from '~~/schemas/inventory/container'
 import { couchDB } from '~~/server/database/couchdb'
-
-export interface GridDimensions {
-  rows: number
-  columns: number
-  levels: number
-}
+import type {
+  GridPosition,
+  GridDimensions
+} from '../../../types/inventory'
 
 /* Convert a 1-based row index to spreadsheet-style letters: 1→A, 26→Z, 27→AA. */
 function rowToLetters(row: number): string {
@@ -78,4 +92,27 @@ export async function isSlotOccupied(
     }
   )
   return result.rows.length > 0
+}
+
+/*
+ * Scan a grid entry row-major (level → row → column ascending) and return the first
+ * free slot per the grid_occupancy view, or null when the grid is fully occupied.
+ * Row-major means A1, A2, … across a row before moving to the next row.
+ */
+export async function findFirstFreeGridSlot(
+  parentDocumentId: string,
+  entry: Extract<ContainerCapacityEntry, { layout: 'grid' }>
+): Promise<GridPosition | null> {
+  const levels = entry.levels ?? 1
+  for (let level = 1; level <= levels; level++) {
+    for (let row = 1; row <= entry.rows; row++) {
+      for (let column = 1; column <= entry.columns; column++) {
+        const position = { row, column, level }
+        if (!(await isSlotOccupied(parentDocumentId, position))) {
+          return { row, column, level, label: deriveGridLabel(row, column, level) }
+        }
+      }
+    }
+  }
+  return null
 }

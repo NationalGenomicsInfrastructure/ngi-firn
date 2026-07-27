@@ -2,6 +2,13 @@
  * Inventory Helpers - Table of Contents
  * ************************************
  *
+ * REFERENCE BUILDERS:
+ * toParentRef(entity) - Build a TypedDocumentReference for the `parent` field of inventory documents
+ * toUserRef(entity) - Build a TypedDocumentReference from a FirnUser for action log entries
+ *
+ * CHILD COUNT QUERIES:
+ * countDirectChildren(parentDocumentId) - Count direct children via the inventory reduce view
+ * hasDirectChildren(parentDocumentId) - Check whether a document has at least one direct child
  */
 
 import type {

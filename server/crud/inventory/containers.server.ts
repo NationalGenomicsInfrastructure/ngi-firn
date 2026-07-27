@@ -15,7 +15,7 @@
  * updateContainer(updates) - Update container metadata and capacity limits
  * deleteContainer(input) - Delete a container when empty, freeing its slot on the parent
  * moveContainer(input) - Re-home a container to another equipment/container parent
- * alterContainter(input) - Perform actions on a container (check-out, return, reserve, discard, dispose, flag)
+ * alterContainer(input) - Perform actions on a container (check-out, return, reserve, discard, dispose, flag)
  *
  * CAPACITY AND OCCUPANCY MANAGEMENT:
  * adjustStoredCount(containerId, category, delta) - count-layout: increment/decrement a category's count
@@ -27,7 +27,7 @@
  */
 
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
-import { deriveGridLabel, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
+import { deriveGridLabel, findFirstFreeGridSlot, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
 import {
   hasDirectChildren,
   toParentRef,
@@ -113,29 +113,6 @@ async function resolveParent(parentSlug: string, parentKind: ContainerParentKind
   }
 
   throw new Error(`Parent with identifier "${parentSlug}" not found. Create the parent equipment or container first.`)
-}
-
-/*
- * Scan a grid entry row-major (level → row → column ascending) and return the first
- * free slot per the grid_occupancy view, or null when the grid is fully occupied.
- * Row-major means A1, A2, … across a row before moving to the next row.
- */
-async function findFirstFreeGridSlot(
-  parentDocumentId: string,
-  entry: Extract<ContainerCapacityEntry, { layout: 'grid' }>
-): Promise<GridPosition | null> {
-  const levels = entry.levels ?? 1
-  for (let level = 1; level <= levels; level++) {
-    for (let row = 1; row <= entry.rows; row++) {
-      for (let column = 1; column <= entry.columns; column++) {
-        const position = { row, column, level }
-        if (!(await isSlotOccupied(parentDocumentId, position))) {
-          return { row, column, level, label: deriveGridLabel(row, column, level) }
-        }
-      }
-    }
-  }
-  return null
 }
 
 export const ContainerService = {

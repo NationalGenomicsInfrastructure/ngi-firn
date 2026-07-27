@@ -2,6 +2,16 @@
  * Logging Service - Table of Contents
  * ************************************
  *
+ * CHANGE RECORD HELPERS:
+ * createInventoryChangeRecords(trackedFields) - Diff tracked before/after field pairs into change records
+ * createModifyActionLogEntry(params) - Build a "modify" log entry from tracked field changes
+ *
+ * ACTION LOG HELPERS:
+ * statusFromAction(action) - Determine the resulting inventory status after a given action type
+ * buildAlterActionNotes(target, action, name, logComment, flagKind) - Generate a default log message when no comment is provided
+ *
+ * CONTAINER LOGGING:
+ * createChangelogEntry(existing, next, firnUser, manualComment?) - Create a "modify" log entry by diffing two container snapshots
  */
 
 import type { FirnUser } from '../../../types/auth'

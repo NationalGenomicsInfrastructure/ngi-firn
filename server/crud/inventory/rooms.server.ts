@@ -14,8 +14,8 @@
  *
  * CREATE, UPDATE, DELETE ROOMS:
  * createRoom(input) - Create a room document
- * updateRoom(roomDocumentId, rev, updates) - Update room fields and cascade path updates
- * deleteRoom(slug) - Delete an empty room
+ * updateRoom(updates) - Update room fields and regenerate slug when location attributes change
+ * deleteRoom(roomsToDelete) - Delete empty rooms (accepts multiple slugs)
  *
  * TYPE CONVERSION:
  * convertToDisplayRoom(room) - Strip CouchDB-internal fields before sending to the client

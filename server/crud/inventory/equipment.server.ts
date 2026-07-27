@@ -1,17 +1,18 @@
 /*
- * LocationService - Table of Contents
+ * Inventory Equipment Service - Table of Contents
  * **********************************
  *
  * TYPE GUARDS AND VALIDATION:
  * isStorageEquipment(doc) - Check whether a fetched document is StorageEquipment
+ * validateAndJoinEquipmentCapacity(existing, updates) - Merge capacity-limit edits, preserving `stored`
  *
  * EQUIPMENT LISTING AND RETRIEVAL:
  * getEquipment(equipmentDocumentId) - Fetch one equipment document by ID
+ * getEquipmentBySlug(slug) - Fetch one equipment document by slug
  * getAllEquipment() - List all storage equipment across all rooms
  * getEquipmentByRoom(roomDocumentId) - List equipment in a room
  *
  * CREATE, UPDATE, DELETE EQUIPMENT:
- *
  * createEquipment(input) - Create storage equipment within a room
  * updateEquipment(updates) - Update equipment metadata
  * deleteEquipment(equipment) - Delete equipment when empty
