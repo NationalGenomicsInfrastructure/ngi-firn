@@ -64,8 +64,10 @@ export interface GridPosition {
 /* Structured per-field diff record for standardized audit logging. */
 export interface InventoryActionChangeRecord {
   field: string
-  before: unknown
-  after: unknown
+  /** Value before the change. Typed as `unknown` but must be JSON-serializable (never `undefined`). */
+  before: NonNullable<unknown> | null
+  /** Value after the change. Typed as `unknown` but must be JSON-serializable (never `undefined`). */
+  after: NonNullable<unknown> | null
 }
 
 /*
@@ -96,8 +98,8 @@ export interface InventoryActionLogEntry {
  */
 export interface InventoryTrackedField {
   field: string
-  before: unknown
-  after: unknown
+  before: NonNullable<unknown> | null
+  after: NonNullable<unknown> | null
 }
 
 /*
