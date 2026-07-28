@@ -8,6 +8,9 @@ import type {
 import { INVENTORY_ROOMS_QUERY_KEYS } from '~/utils/queries/inventory/rooms'
 import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
 
+type RoomListContext = { rooms: DisplayRoom[] }
+type RoomDetailContext = { rooms: DisplayRoom[], room: DisplayRoom | undefined }
+
 const { showSuccess, showError } = useFirnToast()
 
 // Extend the schema-valid delete payload ({ slug: string[] }) with optional UI-only
@@ -22,7 +25,7 @@ export const createRoom = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.rooms.createRoom.mutate(input)
     },
-    onMutate() {
+    onMutate(): RoomListContext {
       const queryCache = useQueryCache()
       const rooms = queryCache.getQueryData<DisplayRoom[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
       return { rooms }
@@ -51,7 +54,7 @@ export const updateRoom = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.rooms.updateRoom.mutate(input)
     },
-    onMutate(input) {
+    onMutate(input): RoomDetailContext {
       const queryCache = useQueryCache()
       const rooms = queryCache.getQueryData<DisplayRoom[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
       const room = queryCache.getQueryData<DisplayRoom>(INVENTORY_ROOMS_QUERY_KEYS.detailBySlug(input.slug))
@@ -87,7 +90,7 @@ export const deleteRoom = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.rooms.deleteRoom.mutate({ slug: input.slug })
     },
-    onMutate(input) {
+    onMutate(input): RoomListContext {
       const queryCache = useQueryCache()
       const rooms = queryCache.getQueryData<DisplayRoom[]>(INVENTORY_ROOMS_QUERY_KEYS.list()) || []
       queryCache.cancelQueries({ key: INVENTORY_ROOMS_QUERY_KEYS.list(), exact: true })

@@ -3,6 +3,8 @@ import type { AddProjectBookmarkInputSchema, RemoveProjectBookmarkInputSchema } 
 import type { FirnProjectBookmark } from '~~/types/projects-firn'
 import { PROJECTS_QUERY_KEYS } from '~/utils/queries/projects'
 
+type BookmarksContext = { bookmarks: FirnProjectBookmark[] }
+
 // Notifications
 const { showSuccess, showError } = useFirnToast()
 
@@ -32,12 +34,12 @@ export const addProjectBookmark = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.projects.addProjectBookmark.mutate(input)
     },
-    onMutate() {
+    onMutate(): BookmarksContext {
       const queryCache = useQueryCache()
       const bookmarks = queryCache.getQueryData<FirnProjectBookmark[]>(PROJECTS_QUERY_KEYS.bookmarks()) ?? []
       return { bookmarks }
     },
-    onError(error: Error, _input: AddProjectBookmarkInputSchema, context: { bookmarks?: FirnProjectBookmark[] }) {
+    onError(error: Error, _input: AddProjectBookmarkInputSchema, context) {
       const queryCache = useQueryCache()
       if (context.bookmarks) {
         queryCache.setQueryData(PROJECTS_QUERY_KEYS.bookmarks(), context.bookmarks)
@@ -63,7 +65,7 @@ export const removeProjectBookmark = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.projects.removeProjectBookmark.mutate(input)
     },
-    onMutate(input: RemoveProjectBookmarkInputSchema) {
+    onMutate(input: RemoveProjectBookmarkInputSchema): BookmarksContext {
       const queryCache = useQueryCache()
       const bookmarks = queryCache.getQueryData<FirnProjectBookmark[]>(PROJECTS_QUERY_KEYS.bookmarks()) ?? []
       const optimistic = filterBookmark(bookmarks, input.projectId, input.projectName)
@@ -71,7 +73,7 @@ export const removeProjectBookmark = defineMutation(() => {
       queryCache.setQueryData(PROJECTS_QUERY_KEYS.bookmarks(), optimistic)
       return { bookmarks }
     },
-    onError(error: Error, _input: RemoveProjectBookmarkInputSchema, context: { bookmarks?: FirnProjectBookmark[] }) {
+    onError(error: Error, _input: RemoveProjectBookmarkInputSchema, context) {
       const queryCache = useQueryCache()
       if (context.bookmarks) {
         queryCache.setQueryData(PROJECTS_QUERY_KEYS.bookmarks(), context.bookmarks)

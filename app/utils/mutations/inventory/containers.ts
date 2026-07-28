@@ -431,7 +431,7 @@ export const deleteContainer = defineMutation(() => {
     },
     onMutate(input): ContainerListContext {
       const queryCache = useQueryCache()
-      let parentListCacheKey: readonly string[] | null = null
+      let parentListCacheKey: readonly string[] | null
       if (input.parentSlug && input.parentKind) {
         parentListCacheKey = input.parentKind === 'equipment'
           ? INVENTORY_CONTAINERS_QUERY_KEYS.byEquipment(input.parentSlug)

@@ -3,6 +3,25 @@ import type { DisplayUserToAdmin } from '~~/types/auth'
 import type { CreateUserByAdminInput, DeleteUserByAdminInput, SetUserAccessByAdminInput } from '~~/schemas/users'
 import { USERS_QUERY_KEYS } from '~/utils/queries/users'
 
+type ApprovedListContext = { approved: DisplayUserToAdmin[] }
+
+type DeleteUserContext = {
+  approved: DisplayUserToAdmin[]
+  retired: DisplayUserToAdmin[]
+  pending: DisplayUserToAdmin[]
+  updatedApproved: DisplayUserToAdmin[] | undefined
+  updatedRetired: DisplayUserToAdmin[] | undefined
+  updatedPending: DisplayUserToAdmin[] | undefined
+}
+
+type SetAccessContext = {
+  approved: DisplayUserToAdmin[]
+  retired: DisplayUserToAdmin[]
+  pending: DisplayUserToAdmin[]
+  updatedApproved: DisplayUserToAdmin[] | undefined
+  updatedRetired: DisplayUserToAdmin[] | undefined
+}
+
 // Notifications
 const { showSuccess, showError } = useFirnToast()
 
@@ -90,12 +109,12 @@ export const createUserByAdmin = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.users.createUserByAdmin.mutate(input)
     },
-    onMutate() {
+    onMutate(): ApprovedListContext {
       const queryCache = useQueryCache()
       const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || []
       return { approved }
     },
-    onError(error: Error, input: CreateUserByAdminInput, context: { approved?: DisplayUserToAdmin[] }) {
+    onError(error: Error, input: CreateUserByAdminInput, context) {
       const queryCache = useQueryCache()
       if (context.approved) {
         queryCache.setQueryData(USERS_QUERY_KEYS.approved(), context.approved)
@@ -125,7 +144,7 @@ export const deleteUserByAdmin = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.users.deleteUserByAdmin.mutate(input)
     },
-    onMutate(input: DeleteUserByAdminInput) {
+    onMutate(input: DeleteUserByAdminInput): DeleteUserContext {
       const queryCache = useQueryCache()
       const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || []
       const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired()) || []
@@ -156,7 +175,7 @@ export const deleteUserByAdmin = defineMutation(() => {
       queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.retired(), exact: true })
       queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.pending(), exact: true })
     },
-    onError(error: Error, input: DeleteUserByAdminInput, context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], pending?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[], updatedPending?: DisplayUserToAdmin[] }) {
+    onError(error: Error, input: DeleteUserByAdminInput, context) {
       const queryCache = useQueryCache()
       // rollback the optimistic updates if possible
       if (context.approved) {
@@ -185,7 +204,7 @@ export const setUserAccessByAdmin = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.users.setUserAccessByAdmin.mutate(input)
     },
-    onMutate(input: SetUserAccessByAdminInput) {
+    onMutate(input: SetUserAccessByAdminInput): SetAccessContext {
       const queryCache = useQueryCache()
       const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || []
       const pending = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.pending()) || []
@@ -269,7 +288,7 @@ export const setUserAccessByAdmin = defineMutation(() => {
       queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.approved(), exact: true })
       queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.retired(), exact: true })
     },
-    onError(error: Error, input, context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], pending?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[], updatedPending?: DisplayUserToAdmin[] }) {
+    onError(error: Error, input, context) {
       const queryCache = useQueryCache()
       // Rollback the optimistic updates
       if (context.approved) {

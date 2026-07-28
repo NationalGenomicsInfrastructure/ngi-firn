@@ -5,6 +5,14 @@ import { formatDate } from '~/utils/dates/formatting'
 import { USERS_QUERY_KEYS } from '~/utils/queries/users'
 import type { FirnUserToken } from '~~/types/tokens'
 
+type SelfUserContext = { self_user: DisplayUserToAdmin | undefined }
+type DeleteTokenByAdminContext = {
+  approved: DisplayUserToAdmin[]
+  retired: DisplayUserToAdmin[]
+  updatedApproved: DisplayUserToAdmin[] | undefined
+  updatedRetired: DisplayUserToAdmin[] | undefined
+}
+
 // Notifications
 const { showSuccess, showError } = useFirnToast()
 
@@ -43,12 +51,12 @@ export const generateFirnUserToken = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.generateFirnUserToken.mutate(input)
     },
-    onMutate() {
+    onMutate(): SelfUserContext {
       const queryCache = useQueryCache()
       const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
       return { self_user }
     },
-    onError(error: Error, input: GenerateFirnUserTokenInput, context: { self_user?: DisplayUserToAdmin | undefined }) {
+    onError(error: Error, input: GenerateFirnUserTokenInput, context) {
       const queryCache = useQueryCache()
       if (context.self_user) {
         queryCache.setQueryData(USERS_QUERY_KEYS.self(), context.self_user)
@@ -77,12 +85,12 @@ export const deleteFirnUserToken = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.deleteFirnUserToken.mutate(input)
     },
-    onMutate() {
+    onMutate(): SelfUserContext {
       const queryCache = useQueryCache()
       const self_user = queryCache.getQueryData<DisplayUserToAdmin>(USERS_QUERY_KEYS.self()) || undefined
       return { self_user }
     },
-    onError(error: Error, input: DeleteFirnUserTokenInput, context: { self_user?: DisplayUserToAdmin | undefined }) {
+    onError(error: Error, input: DeleteFirnUserTokenInput, context) {
       const queryCache = useQueryCache()
       if (context.self_user) {
         queryCache.setQueryData(USERS_QUERY_KEYS.self(), context.self_user)
@@ -131,7 +139,7 @@ export const deleteUserTokenByAdmin = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.tokens.deleteUserTokenByAdmin.mutate(input)
     },
-    onMutate(input: DeleteUserTokenByAdminInput) {
+    onMutate(input: DeleteUserTokenByAdminInput): DeleteTokenByAdminContext {
       const queryCache = useQueryCache()
       const approved = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.approved()) || []
       const retired = queryCache.getQueryData<DisplayUserToAdmin[]>(USERS_QUERY_KEYS.retired()) || []
@@ -156,7 +164,7 @@ export const deleteUserTokenByAdmin = defineMutation(() => {
       queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.retired(), exact: true })
       queryCache.invalidateQueries({ key: USERS_QUERY_KEYS.self(), exact: true })
     },
-    onError(error: Error, input: DeleteUserTokenByAdminInput, context: { approved?: DisplayUserToAdmin[], retired?: DisplayUserToAdmin[], updatedApproved?: DisplayUserToAdmin[], updatedRetired?: DisplayUserToAdmin[] }) {
+    onError(error: Error, input: DeleteUserTokenByAdminInput, context) {
       const queryCache = useQueryCache()
       // rollback the optimistic updates if possible
       if (context.approved) {

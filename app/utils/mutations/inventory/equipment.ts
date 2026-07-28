@@ -9,6 +9,10 @@ import type {
 import { INVENTORY_EQUIPMENT_QUERY_KEYS } from '~/utils/queries/inventory/equipment'
 import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
 
+type EquipmentListContext = { equipment: DisplayStorageEquipment[] }
+type EquipmentDetailContext = { equipment: DisplayStorageEquipment | undefined }
+type EquipmentDeleteContext = { equipment: DisplayStorageEquipment[] | undefined, roomSlug: string | undefined }
+
 const { showSuccess, showError } = useFirnToast()
 
 // Equipment mutations
@@ -19,7 +23,7 @@ export const createEquipment = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.equipment.createEquipment.mutate(input)
     },
-    onMutate(input) {
+    onMutate(input): EquipmentListContext {
       const queryCache = useQueryCache()
       const equipment = queryCache.getQueryData<DisplayStorageEquipment[]>(
         INVENTORY_EQUIPMENT_QUERY_KEYS.byRoom(input.parentSlug)
@@ -54,7 +58,7 @@ export const updateEquipment = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.equipment.updateEquipment.mutate(input)
     },
-    onMutate(input) {
+    onMutate(input): EquipmentDetailContext {
       const queryCache = useQueryCache()
       const equipment = queryCache.getQueryData<DisplayStorageEquipment>(
         INVENTORY_EQUIPMENT_QUERY_KEYS.detailBySlug(input.equipmentSlug)
@@ -114,7 +118,7 @@ export const deleteEquipment = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.equipment.deleteEquipment.mutate({ equipmentSlug: input.equipmentSlug })
     },
-    onMutate(input) {
+    onMutate(input): EquipmentDeleteContext {
       const queryCache = useQueryCache()
       if (input.roomSlug) {
         const equipment = queryCache.getQueryData<DisplayStorageEquipment[]>(
