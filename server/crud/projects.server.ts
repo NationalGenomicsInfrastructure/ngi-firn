@@ -9,6 +9,10 @@
  * getProjectByProjectId(projectId) - Fetch a single project by project_id (uses project_id view)
  * listProjectsSummary(options) - List/search via summary view, top-level fields only (lean)
  * listProjectsSummaryWithDetails(options) - Same as above with full view value (details, order_details, etc.)
+ *
+ * INVENTORY CROSS-REFERENCES:
+ * buildProjectDocumentRef(projectId) - Build a DocumentReference (with slug/name hints) for a project, keyed by its LIMS project_id
+ * resolveInventoryProjectRefs(projectRefs) - Resolve a DocumentReferenceMap to InventoryProjectRef stubs
  */
 
 import 'dotenv/config'
@@ -19,6 +23,8 @@ import type {
   SummaryViewKey,
   SummaryViewValue
 } from '../../types/projects'
+import type { InventoryProjectRef } from '../../types/inventory'
+import type { DocumentReference, DocumentReferenceMap } from '../../types/references'
 
 export const PROJECTS_DB_NAME = process.env.CLOUDANT_PROJECTS_DATABASE || 'projects'
 const MAX_PAGE_SIZE = 200
@@ -388,6 +394,67 @@ export const ProjectService = {
     }
     catch {
       return { items: [], total_rows: undefined, offset: undefined }
+    }
+  },
+
+  /**
+   * Build a DocumentReference for a project, looked up by its LIMS project_id.
+   * The reference carries `slug` and `name` hints so inventory documents can display the
+   * project association in list views without a separate fetch.
+   *
+   * Returns `{ key, ref }` where `key` is the LIMS project_id (used as the DocumentReferenceMap
+   * key for natural deduplication), or `null` when the project cannot be found.
+   */
+  async buildProjectDocumentRef(projectId: string): Promise<{ key: string, ref: DocumentReference } | null> {
+    const project = await ProjectService.getProjectByProjectId(projectId)
+    if (!project) return null
+    return {
+      key: projectId,
+      ref: {
+        db: 'projects',
+        id: project._id,
+        slug: project.project_id,
+        name: project.project_name
+      }
+    }
+  },
+
+  /**
+   * Resolve a DocumentReferenceMap to InventoryProjectRef stubs by fetching the referenced
+   * project documents from the projects DB in a single batch call.
+   *
+   * This is a generic helper used by any inventory document type that carries projectRefs
+   * (Container, InventoryItem, …). All project-DB-aware logic lives here so it is not
+   * duplicated per document type.
+   *
+   * Returns an empty array (never throws) if the projects DB is unavailable, so callers
+   * can degrade gracefully and render the document without project stubs.
+   */
+  async resolveInventoryProjectRefs(projectRefs: DocumentReferenceMap | null | undefined): Promise<InventoryProjectRef[]> {
+    if (!projectRefs) return []
+    const projectDocIds = [...new Set(
+      Object.values(projectRefs)
+        .flatMap(ref => Array.isArray(ref) ? ref : [ref])
+        .filter(ref => ref.db === 'projects')
+        .map(ref => ref.id)
+    )]
+
+    if (projectDocIds.length === 0) return []
+
+    try {
+      const projectDocs = await projectsDB.getDocumentsByIds<ProjectsDbDocument>(projectDocIds)
+      return projectDocs
+        .filter((doc): doc is ProjectsDbDocument => doc !== null && typeof doc.project_id === 'string')
+        .map(doc => ({
+          projectId: doc.project_id,
+          projectName: doc.project_name,
+          application: doc.application ?? null,
+          affiliation: doc.affiliation ?? null,
+          status: doc.status_fields?.status ?? null
+        }))
+    }
+    catch {
+      return []
     }
   }
 }

@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { itemTypeSchema } from './items'
 import { inventoryActionSchema, inventoryFlagSchema } from './metadata'
-import { documentReferenceMapSchema } from '../basic'
 
 // ---------------------------------------------------------------------------
 // Container type & classification vocabularies
@@ -168,7 +167,9 @@ export const createContainerSchema = z.object({
   capacity: containerCapacityArraySchema.nullish(),
   // Optional template ID (if the container was created from a template).
   templateId: z.string().nullish(),
-  projectRefs: documentReferenceMapSchema.nullish()
+  // LIMS project IDs (e.g. "A.Doe_23_01") to associate at creation time.
+  // The server resolves each to a DocumentReference; CouchDB _ids never cross the wire.
+  projectIds: z.array(z.string()).nullish()
 })
 
 // update container metadata that is not captured by dedicated endpoints (e.g. move, alter status, etc.)
@@ -181,7 +182,6 @@ export const updateContainerSchema = z.object({
   description: z.string().nullish(),
   position: gridPositionSchema.nullish(),
   capacity: containerCapacityArraySchema.nullish(),
-  projectRefs: documentReferenceMapSchema.nullish(),
   logComment: z.string().nullish() // Optional note to append to the container's action log
 })
 

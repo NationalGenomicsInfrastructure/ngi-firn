@@ -363,7 +363,7 @@ export const EquipmentService = {
       model: equipment.model,
       serialNumber: equipment.serialNumber,
       isActive: equipment.isActive,
-      parentRoom: { slug: parentRoom.slug, name: parentRoom.name },
+      parentRoom: { slug: parentRoom.slug, name: parentRoom.name, kind: 'room' },
       createdAt: equipment.createdAt,
       updatedAt: equipment.updatedAt
     }

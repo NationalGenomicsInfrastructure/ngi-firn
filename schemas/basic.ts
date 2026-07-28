@@ -11,14 +11,16 @@ export const StringOrUndefined = z.string().optional().transform(s => (s?.trim()
 
 // ---------------------------------------------------------------------------
 // Cross-database reference (zod counterpart of DocumentReference / DocumentReferenceMap
-// in types/references.d.ts). Authored locally — there is no shared inventory-common file.
+// in types/references.d.ts).
 // ---------------------------------------------------------------------------
 
 export const documentReferenceSchema = z.object({
   db: z.string().min(1),
   id: z.string().min(1),
   rev: z.string().optional(),
-  type: z.string().optional()
+  type: z.string().optional(),
+  slug: z.string().optional(),
+  name: z.string().optional()
 })
 
 export const documentReferenceMapSchema = z.record(

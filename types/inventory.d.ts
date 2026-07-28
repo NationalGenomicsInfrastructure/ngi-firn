@@ -100,6 +100,11 @@ export interface InventoryTrackedField {
   after: unknown
 }
 
+/*
+ *  Human-readable parent reference — replaces the TypedDocumentReference that held a CouchDB _id.
+ */
+export type SerializedEntityRef = { slug: string, name: string, kind: 'container' | 'equipment' | 'item' | 'project' | 'room' | 'task' | 'template' }
+
 /* Top-level physical location. Rooms are hierarchy roots for storage equipment. */
 export interface Room extends BaseDocument {
   type: 'room'
@@ -188,7 +193,7 @@ export interface DisplayStorageEquipment {
   serialNumber: string | null
   isActive: boolean
   /* Human-readable parent room reference — replaces the TypedDocumentReference that held a CouchDB _id. */
-  parentRoom: { slug: string, name: string }
+  parentRoom: SerializedEntityRef
   createdAt: string
   updatedAt: string
 }
@@ -224,6 +229,68 @@ export interface Container extends BaseDocument {
   status: InventoryStatusType
 }
 
+/*
+ * Compact, client-safe projection of a project referenced by an inventory document (Container, Item, …).
+ * Resolved server-side from the read-only projects DB; replaces the raw DocumentReferenceMap
+ * (which only carried CouchDB _ids) with fields the UI can display directly.
+ * Modelled after FirnProjectBookmark but omits the user-specific note field and the
+ * internal projectDocId reference since inventory documents only need the human-readable context.
+ */
+export interface InventoryProjectRef {
+  /* LIMS / StatusDB project identifier (e.g. "A.Doe_23_01"). */
+  projectId: string
+  projectName: string
+  /* NGI sequencing application (e.g. "Chromatin", "RNA-seq"). */
+  application: string | null
+  affiliation: string | null
+  /* Current project lifecycle status (e.g. "Ongoing", "Closed"). */
+  status: string | null
+}
+
+/*
+ * Client-safe projection of a Container document.
+ * Strips CouchDB-internal fields (_id, _rev, document type discriminator, schema version).
+ * Replaces `parent: TypedDocumentReference<StorageEquipment | Container>` with a human-readable
+ * `parentRef` stub that exposes only the parent's public slug, name, and hierarchy kind.
+ * Replaces `projectRefs: DocumentReferenceMap` with SerializedEntityRef stubs extracted from the
+ * stored slug/name hints — no projects DB fetch required. Use getContainerProjectRefs() for the
+ * full InventoryProjectRef detail (application, affiliation, status).
+ * The actionLog is truncated to the N most recent entries; the full audit trail is available
+ * via a dedicated tRPC procedure (getContainerActionLog).
+ */
+export interface DisplayContainer {
+  slug: string
+  barcode: string | null
+  containerType: ContainerType
+  classification: InventoryClassificationType
+  name: string
+  label: string | null
+  description: string | null
+  /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
+  capacity: ContainerCapacityEntry[] | null
+  /* Position of this container within its parent container (null when parent is equipment). */
+  positionParent: GridPosition | null
+  templateId: string | null
+  /*
+   * Project associations as slug/name stubs, extracted from stored DocumentReferenceMap hints.
+   * No projects DB fetch; use getContainerProjectRefs() for full detail.
+   * null when the container has no project associations.
+   */
+  projectRefs: SerializedEntityRef[] | null
+  activeFlags: InventoryFlagType[] | null
+  status: InventoryStatusType
+  /*
+   * Human-readable parent reference — replaces the TypedDocumentReference that held a CouchDB _id.
+   * null only for root-level containers that have no parent in the hierarchy.
+   * `kind` tells the client whether to navigate to an equipment or container detail page.
+   */
+  parentRef: SerializedEntityRef | null
+  /* The N most recent audit log entries. Use getContainerActionLog() to retrieve the full history. */
+  recentActionLog: InventoryActionLogEntry[]
+  createdAt: string
+  updatedAt: string
+}
+
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
@@ -256,7 +323,7 @@ export interface InventoryItem extends BaseDocument {
   /* Escape hatch for truly ad-hoc data not covered by typed fields. */
   metadata: Record<string, unknown> | null
   /* Optional cross-database references to projects (read-only projects DB). */
-  projectRefs: DocumentReferenceMap | null
+  projectRefs: SerializedEntityRef[] | null
   status: InventoryStatusType
   /* Embedded audit trail — append-only log of handling events. */
   actionLog: ActionLogEntry[]

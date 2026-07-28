@@ -24,6 +24,18 @@ export interface DocumentReference {
   rev?: string
   // Optional type discriminator for the target document (e.g. 'firnUser', 'project').
   type?: string
+  /**
+   * Optional stable human-readable identifier for the target document (e.g. LIMS project_id
+   * "A.Doe_23_01" for a project reference). Stored as a display hint so list views can render
+   * the association without fetching the referenced document. Treat as best-effort: it may be
+   * absent on older references and is not guaranteed to be current after the target is renamed.
+   */
+  slug?: string
+  /**
+   * Optional display name for the target document (e.g. a project's full title).
+   * Same caveats as `slug`: a hint, not a live value.
+   */
+  name?: string
 }
 
 /**

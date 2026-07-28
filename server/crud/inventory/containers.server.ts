@@ -8,7 +8,11 @@
  * CONTAINER LISTING AND RETRIEVAL:
  * getContainer(id) - Fetch one container document by ID
  * getContainerBySlug(slug) - Fetch one container document by slug
- * (planned) getAllContainers() / getContainersByEquipment(id) - not yet implemented
+ * getContainersByParent(parentDocumentId, parentKind) - List direct children of an equipment or container parent
+ *
+ * PARENT RESOLUTION:
+ * resolveParent(slug, kind) - Resolve a parent slug to its document (used during create/move when the slug is known from input)
+ * resolveParentRef(ref) - Resolve a stored TypedDocumentReference to its document (used post-mutation when only _id is available)
  *
  * CREATE, UPDATE, DELETE CONTAINERS:
  * createContainer(input) - Create a container inside a storage-equipment or container parent
@@ -22,8 +26,19 @@
  * adjustOccupancy(containerId, position, delta) - grid-layout: occupy/free a slot with bounds + collision checks
  * validateAndJoinContainerCapacity(existing, updates) - Merge capacity-limit edits, preserving `stored`
  *
+ * PROJECT REFERENCES:
+ * addProjectRef(slug, projectId) - Link a project to this container by LIMS projectId; stores a DocumentReference with slug/name hints
+ * removeProjectRef(slug, projectId) - Remove a project link by LIMS projectId
+ *
  * TYPE CONVERSION:
- * (planned) convertToDisplayContainer / convertMultipleToDisplayContainers - need a DisplayContainer type
+ * convertToDisplayContainer(container, parent) - Strip CouchDB-internal fields, extract project hints from stored refs, truncate actionLog
+ * convertMultipleToDisplayContainers(containers[]) - Batch-convert with one getDocumentsByIds call for all parents
+ * FULL DETAIL RETRIEVAL (on demand):
+ * getContainerActionLog(slug) - Fetch the complete action log for a container by slug
+ * getContainerProjectRefs(slug) - Fetch fully resolved InventoryProjectRef[] for a container by slug (fetches from projects DB)
+ *
+ * Project ref resolution is handled by ProjectService.resolveInventoryProjectRefs — it is generic
+ * across all inventory document types and lives in server/crud/projects.server.ts.
  */
 
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
@@ -42,10 +57,14 @@ import {
 } from './logging.server'
 import type {
   Container,
+  InventoryProjectRef,
+  DisplayContainer,
   GridPosition,
   InventoryActionLogEntry,
+  SerializedEntityRef,
   StorageEquipment
 } from '../../../types/inventory'
+import { ProjectService } from '../projects.server'
 import type {
   ContainerCapacity,
   ContainerCapacityEntry,
@@ -86,34 +105,15 @@ async function queryContainersBySlug(slug: string): Promise<Container[]> {
 
 /*
  * A container's parent is either a piece of storage equipment or another container.
- * Resolving a parent slug therefore yields a discriminated result so callers can
- * branch their acceptance/occupancy bookkeeping on the parent's kind.
+ * Resolving a parent yields a discriminated result so callers can branch their
+ * acceptance/occupancy bookkeeping on the parent's kind.
  */
-type ResolvedParent
+export type ResolvedParent
   = | { kind: 'equipment', doc: StorageEquipment }
     | { kind: 'container', doc: Container }
 
-/*
- * Resolve a parent slug against BOTH container and storage-equipment types.
- * Containers are checked first (the more common nesting case); a storage-equipment
- * parent is the fallback. Throws when no parent with that slug exists.
- */
-async function resolveParent(parentSlug: string, parentKind: ContainerParentKindType): Promise<ResolvedParent> {
-  if (parentKind === 'container') {
-    const container = (await queryContainersBySlug(parentSlug))[0]
-    if (container && isContainer(container)) {
-      return { kind: 'container', doc: container }
-    }
-  }
-  else {
-    const equipment = await EquipmentService.getEquipmentBySlug(parentSlug)
-    if (equipment) {
-      return { kind: 'equipment', doc: equipment }
-    }
-  }
-
-  throw new Error(`Parent with identifier "${parentSlug}" not found. Create the parent equipment or container first.`)
-}
+/* Number of action log entries included in DisplayContainer.recentActionLog. */
+const RECENT_LOG_ENTRIES = 10
 
 export const ContainerService = {
 
@@ -128,6 +128,59 @@ export const ContainerService = {
     const container = (await queryContainersBySlug(slug))[0]
     return container && isContainer(container) ? container : null
   },
+
+  /* List all direct container children of a given parent using the by_parent view index. */
+  async getContainersByParent(parentDocumentId: string, parentKind: 'equipment' | 'container'): Promise<Container[]> {
+    const parentType = parentKind === 'equipment' ? 'storageEquipment' : 'container'
+    const result = await couchDB.queryView<[string, string], null, Container>(
+      'firn-inventory',
+      'by_parent',
+      {
+        key: [parentType, parentDocumentId],
+        include_docs: true,
+        reduce: false
+      }
+    )
+    return result.rows
+      .map(row => row.doc)
+      .filter((doc): doc is Container => isContainer(doc))
+  },
+
+  /*
+   * Resolve a parent slug to its document.
+   * Used during create/move operations when the parent slug is known from user input.
+   * Throws when no parent with that slug exists.
+   */
+  async resolveParent(parentSlug: string, parentKind: ContainerParentKindType): Promise<ResolvedParent> {
+    if (parentKind === 'container') {
+      const container = (await queryContainersBySlug(parentSlug))[0]
+      if (container && isContainer(container)) {
+        return { kind: 'container', doc: container }
+      }
+    }
+    else {
+      const equipment = await EquipmentService.getEquipmentBySlug(parentSlug)
+      if (equipment) {
+        return { kind: 'equipment', doc: equipment }
+      }
+    }
+    throw new Error(`Parent with identifier "${parentSlug}" not found. Create the parent equipment or container first.`)
+  },
+
+  /*
+   * Resolve a stored TypedDocumentReference to its parent document.
+   * Used post-mutation (and in the router) when only the stored CouchDB _id is available.
+   * Returns null when the container has no parent or the parent document cannot be found.
+   */
+  async resolveParentRef(
+    parentRef: Container['parent']
+  ): Promise<StorageEquipment | Container | null> {
+    if (!parentRef) return null
+    const doc = await couchDB.getDocument<StorageEquipment | Container>(parentRef.id)
+    if (!doc) return null
+    return doc.type === 'storageEquipment' || doc.type === 'container' ? doc : null
+  },
+
   /*
    * Validate and merge capacity restrictions while preserving stored counts.
    * Analogous to EquipmentService.validateAndJoinContainerCapacity: types with an
@@ -287,7 +340,7 @@ export const ContainerService = {
    * the target slot is still empty — i.e. before this child exists.
    */
   async createContainer(input: CreateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
-    const parent = await resolveParent(input.parentSlug, input.parentKind)
+    const parent = await ContainerService.resolveParent(input.parentSlug, input.parentKind)
     const positionParent = await resolvePlacement(parent, input.position ?? null, input.containerType)
 
     await adjustParentOccupancy(parent, input.containerType, positionParent, 1)
@@ -307,6 +360,17 @@ export const ContainerService = {
       notes: `Created in parent "${parent.doc.name}".`
     }
 
+    // Resolve LIMS project IDs to DocumentReferences server-side.
+    // buildProjectDocumentRef fetches each project document and builds a reference with
+    // slug/name hints; IDs that cannot be found are silently skipped.
+    const projectRefsEntries = input.projectIds && input.projectIds.length > 0
+      ? (await Promise.all(input.projectIds.map(id => ProjectService.buildProjectDocumentRef(id))))
+          .filter((r): r is NonNullable<Awaited<ReturnType<typeof ProjectService.buildProjectDocumentRef>>> => r !== null)
+      : []
+    const projectRefs = projectRefsEntries.length > 0
+      ? Object.fromEntries(projectRefsEntries.map(({ key, ref }) => [key, ref]))
+      : null
+
     const containerDocument: Omit<Container, '_id' | '_rev'> = {
       type: 'container',
       schema: 1,
@@ -321,7 +385,7 @@ export const ContainerService = {
       description: input.description ?? null,
       capacity: initialCapacity.length > 0 ? initialCapacity : null,
       templateId: input.templateId ?? null,
-      projectRefs: input.projectRefs ?? null,
+      projectRefs,
       status: 'available',
       actionLog: [registrationLogEntry],
       activeFlags: [],
@@ -380,7 +444,6 @@ export const ContainerService = {
       name: updates.name ?? existing.name,
       label: updates.label === undefined ? existing.label : (updates.label?.trim() || null),
       description: updates.description === undefined ? existing.description : (updates.description ?? null),
-      projectRefs: updates.projectRefs === undefined ? existing.projectRefs : (updates.projectRefs ?? null),
       capacity: mergedCapacity,
       slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
       updatedAt: new Date().toISOString()
@@ -450,7 +513,7 @@ export const ContainerService = {
 
     // Resolve the new parent's doc and verify it accepts this container type
     // For grid parents: Verify the proposed slot is still free respectively propose a free slot.
-    const new_parent = await resolveParent(input.newParentSlug, input.newParentKind)
+    const new_parent = await ContainerService.resolveParent(input.newParentSlug, input.newParentKind)
     const positionParent = await resolvePlacement(new_parent, input.position, existing.containerType)
 
     // Reserve the new parent BEFORE writing the child, so concurrent placements are serialised
@@ -564,6 +627,161 @@ export const ContainerService = {
       updatedContainer._rev = result.rev
       return updatedContainer
     }))
+  },
+
+  /*
+   * Link a project to this container by LIMS projectId.
+   * Fetches the project document to build a DocumentReference with slug/name hints (so list
+   * views can display the association without a separate fetch), then merges it into the
+   * container's projectRefs map keyed by projectId. No-op if the project is already linked.
+   * Returns the updated Container, or null when the container or project cannot be found.
+   */
+  async addProjectRef(slug: string, projectId: string): Promise<Container | null> {
+    const container = await ContainerService.getContainerBySlug(slug)
+    if (!container) return null
+
+    const built = await ProjectService.buildProjectDocumentRef(projectId)
+    if (!built) return null
+
+    const existing = container.projectRefs ?? {}
+    if (existing[built.key]) return container // already linked
+
+    const updated: Container = {
+      ...container,
+      projectRefs: { ...existing, [built.key]: built.ref },
+      updatedAt: new Date().toISOString()
+    }
+
+    const result = await couchDB.updateDocument(updated._id, updated, container._rev!)
+    updated._rev = result.rev
+    return updated
+  },
+
+  /*
+   * Remove a project link from this container by LIMS projectId.
+   * No-op when the container has no projectRefs or the project was not linked.
+   * Returns the updated Container, or null when the container cannot be found.
+   */
+  async removeProjectRef(slug: string, projectId: string): Promise<Container | null> {
+    const container = await ContainerService.getContainerBySlug(slug)
+    if (!container) return null
+
+    if (!container.projectRefs || !(projectId in container.projectRefs)) return container
+
+    const { [projectId]: _removed, ...remaining } = container.projectRefs
+    const updated: Container = {
+      ...container,
+      projectRefs: Object.keys(remaining).length > 0 ? remaining : null,
+      updatedAt: new Date().toISOString()
+    }
+
+    const result = await couchDB.updateDocument(updated._id, updated, container._rev!)
+    updated._rev = result.rev
+    return updated
+  },
+
+  /*
+   * Strip CouchDB-internal fields before sending a single Container to the client.
+   * Project associations are represented as SerializedEntityRef stubs extracted directly
+   * from the stored DocumentReferenceMap slug/name hints — no projects DB fetch needed.
+   * Use getContainerProjectRefs() when the full InventoryProjectRef detail is required.
+   * actionLog is truncated to the most recent RECENT_LOG_ENTRIES entries.
+   */
+  convertToDisplayContainer(
+    container: Container,
+    parent: StorageEquipment | Container | null
+  ): DisplayContainer {
+    const parentRef = parent === null
+      ? null
+      : {
+          slug: parent.slug,
+          name: parent.name,
+          kind: (parent.type === 'storageEquipment' ? 'equipment' : 'container') as 'equipment' | 'container'
+        }
+
+    const projectRefs: SerializedEntityRef[] = container.projectRefs
+      ? Object.values(container.projectRefs)
+          .flatMap(ref => Array.isArray(ref) ? ref : [ref])
+          .filter((ref): ref is typeof ref & { slug: string } => ref.db === 'projects' && typeof ref.slug === 'string')
+          .map(ref => ({ slug: ref.slug, name: ref.name ?? ref.slug, kind: 'project' as const }))
+      : []
+
+    return {
+      slug: container.slug,
+      barcode: container.barcode,
+      containerType: container.containerType,
+      classification: container.classification,
+      name: container.name,
+      label: container.label,
+      description: container.description,
+      capacity: container.capacity,
+      positionParent: container.positionParent,
+      templateId: container.templateId,
+      projectRefs: projectRefs.length > 0 ? projectRefs : null,
+      activeFlags: container.activeFlags,
+      status: container.status,
+      parentRef,
+      recentActionLog: container.actionLog.slice(-RECENT_LOG_ENTRIES),
+      createdAt: container.createdAt,
+      updatedAt: container.updatedAt
+    }
+  },
+
+  /*
+   * Convert a list of Container documents to their display projections.
+   * One batch fetch resolves all distinct parent documents; project associations
+   * are extracted from the stored DocumentReferenceMap hints (no projects DB fetch).
+   * Use getContainerProjectRefs() when full InventoryProjectRef detail is needed.
+   */
+  async convertMultipleToDisplayContainers(containers: Container[]): Promise<DisplayContainer[]> {
+    if (containers.length === 0) return []
+
+    // Batch-fetch distinct parent documents.
+    const parentIds = [...new Set(
+      containers.map(c => c.parent?.id).filter((id): id is string => id !== undefined)
+    )]
+    const parentDocs = await couchDB.getDocumentsByIds<StorageEquipment | Container>(parentIds)
+    const parentMap = new Map<string, StorageEquipment | Container>()
+    for (const doc of parentDocs) {
+      if (doc && (doc.type === 'storageEquipment' || doc.type === 'container')) {
+        parentMap.set(doc._id, doc)
+      }
+    }
+
+    return containers.map((c) => {
+      const parent = c.parent ? (parentMap.get(c.parent.id) ?? null) : null
+      if (c.parent && !parent) {
+        throw new Error(`Parent for container "${c.slug}" (ID: ${c.parent.id}) could not be resolved.`)
+      }
+      return ContainerService.convertToDisplayContainer(c, parent)
+    })
+  },
+
+  /*
+   * Fetch the full embedded action log for a container by slug.
+   * Re-fetches the document from CouchDB so callers that only hold a DisplayContainer
+   * (which carries only the recent slice) can request the complete audit trail on demand.
+   */
+  async getContainerActionLog(slug: string): Promise<InventoryActionLogEntry[]> {
+    const container = await ContainerService.getContainerBySlug(slug)
+    if (!container) {
+      throw new Error(`Container with identifier "${slug}" not found.`)
+    }
+    return container.actionLog
+  },
+
+  /*
+   * Fetch fully resolved InventoryProjectRef stubs for a container by slug.
+   * Fetches from the projects DB on demand — use only when the client needs the full
+   * project detail (application, affiliation, status) beyond the slug/name hints already
+   * present in DisplayContainer.projectRefs.
+   */
+  async getContainerProjectRefs(slug: string): Promise<InventoryProjectRef[]> {
+    const container = await ContainerService.getContainerBySlug(slug)
+    if (!container) {
+      throw new Error(`Container with identifier "${slug}" not found.`)
+    }
+    return ProjectService.resolveInventoryProjectRefs(container.projectRefs)
   }
 }
 

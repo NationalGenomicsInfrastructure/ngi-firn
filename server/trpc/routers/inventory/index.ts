@@ -12,7 +12,7 @@
 import { createTRPCRouter, authedProcedure } from '../../init'
 import { roomsRouter } from './rooms'
 import { equipmentRouter } from './equipment'
-// import { containersRouter } from './containers'
+import { containersRouter } from './containers'
 // import { itemsRouter } from './items'
 // import { tasksRouter } from './tasks'
 // import { templatesRouter } from './templates'
@@ -22,7 +22,7 @@ import { ensureViews } from '../../../crud/views'
 export const inventoryRouter = createTRPCRouter({
   rooms: roomsRouter,
   equipment: equipmentRouter,
-  // containers: containersRouter,
+  containers: containersRouter,
   // items: itemsRouter,
   // tasks: tasksRouter,
   // templates: templatesRouter,
