@@ -81,7 +81,7 @@ async function onValidating() {
 <template>
   <form
     :id="formElementId"
-    class="mx-auto max-w-2xl p-4 space-y-4"
+    class="mx-auto max-w-4xl p-4 space-y-4"
     @submit.prevent="onValidating()"
   >
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

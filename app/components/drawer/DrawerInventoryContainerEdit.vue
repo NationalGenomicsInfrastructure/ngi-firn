@@ -28,7 +28,7 @@ function onSaved() {
       />
     </NDrawerTrigger>
 
-    <NDrawerContent>
+    <NDrawerContent class="!w-[80vw] !max-w-[80vw]">
       <NDrawerHeader>
         <NDrawerTitle>Edit container</NDrawerTitle>
         <NDrawerDescription>

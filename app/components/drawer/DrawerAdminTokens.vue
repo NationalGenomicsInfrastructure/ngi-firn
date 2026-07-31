@@ -110,7 +110,7 @@ const getExpirationStatus = (expiresAt: string) => {
 
 <template>
   <NDrawer
-    direction="bottom"
+    direction="right"
     scrollable
   >
     <NDrawerTrigger as-child>
@@ -122,7 +122,7 @@ const getExpirationStatus = (expiresAt: string) => {
         :disabled="!props.tokens || props.tokens.length === 0"
       />
     </NDrawerTrigger>
-    <NDrawerContent>
+    <NDrawerContent class="!w-[80vw] !max-w-[80vw]">
       <NDrawerHeader>
         <NDrawerTitle>Administer {{ props.googleGivenName }} {{ props.googleFamilyName }}'s tokens</NDrawerTitle>
 
