@@ -175,6 +175,20 @@ export function makeGridEntry(
   return { layout: 'grid', childKind, type, rows, columns, levels }
 }
 
+// Project the stored ContainerCapacityEntry[] (which carries the server-owned `stored`
+// occupancy) onto the wire/form shape ContainerCapacity[] the capacity editor works with,
+// dropping `stored`. Analogue of the equipment displayCapacityToFormCapacity helper.
+export function containerCapacityEntriesToForm(
+  capacity: ContainerCapacityEntry[] | null | undefined
+): ContainerCapacity[] {
+  if (!capacity || capacity.length === 0) return []
+  return capacity.map(entry =>
+    entry.layout === 'grid'
+      ? makeGridEntry(entry.childKind, entry.type, entry.rows, entry.columns, entry.levels)
+      : makeCountRow(entry.childKind, entry.type, entry.capacity)
+  )
+}
+
 // Transform the current capacity array to match a newly selected mode. Reuses the
 // first entry's childKind/type as a sensible seed so switching feels non-destructive.
 // Entries are always rebuilt through the factories, so the result is well-typed

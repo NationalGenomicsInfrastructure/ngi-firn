@@ -41,6 +41,10 @@ const data = {
         {
           title: 'Overview',
           url: '/inventory/containers'
+        },
+        {
+          title: 'Add container',
+          url: '/inventory/containers/add'
         }
       ]
     },

@@ -177,6 +177,12 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <InventoryContainerCapacityIndicator :capacity="container.capacity" />
+
+        <NSeparator />
+
+        <footer class="flex flex-wrap items-center justify-end gap-2">
+          <DrawerInventoryContainerEdit :container="container" />
+        </footer>
       </NCard>
 
       <NCard
