@@ -1,4 +1,4 @@
-import type { DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
 import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for the inventory containers domain.

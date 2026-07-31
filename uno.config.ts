@@ -109,7 +109,20 @@ export default defaultConfig({
     'i-lucide-table',
     'i-lucide-triangle-alert',
     'i-lucide-truck',
-    'i-lucide-user'
+    'i-lucide-user',
+    // Inventory action-log dynamic icons (ACTION_TYPE_META / FLAG_META in app/utils/inventory/actionLog.ts)
+    'i-lucide-activity',
+    'i-lucide-bookmark',
+    'i-lucide-bookmark-x',
+    'i-lucide-calendar-x',
+    'i-lucide-circle-plus',
+    'i-lucide-flag',
+    'i-lucide-flag-off',
+    'i-lucide-move',
+    'i-lucide-package-open',
+    'i-lucide-pencil',
+    'i-lucide-search-x',
+    'i-lucide-trash-2'
   ],
 
   /*
