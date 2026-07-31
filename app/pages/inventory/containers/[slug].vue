@@ -34,6 +34,9 @@ const container = computed(() =>
   containerState.value.status === 'success' ? containerState.value.data : null
 )
 
+const { user } = useUserSession()
+const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
+
 const containerTypeLabel = computed(() =>
   container.value ? CONTAINER_TYPE_LABELS[container.value.containerType] : '—'
 )
@@ -182,6 +185,11 @@ const infoFields = computed(() => {
 
         <footer class="flex flex-wrap items-center justify-end gap-2">
           <DrawerInventoryContainerEdit :container="container" />
+          <DialogMoveContainer :container="container" />
+          <DialogDeleteContainer
+            v-if="isAdmin"
+            :container="container"
+          />
         </footer>
       </NCard>
 
