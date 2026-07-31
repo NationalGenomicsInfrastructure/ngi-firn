@@ -216,6 +216,13 @@ export const suggestLocationsSchema = z.object({
   temperatureCelsius: z.number().nullish()
 })
 
+// Input for querying which child categories a specific parent accepts and how many
+// free slots remain for each. Resolves the parent doc's own capacity array — no view.
+export const acceptedChildrenSchema = z.object({
+  parentSlug: z.string().min(1, { message: 'Parent identifier is required' }),
+  parentKind: parentKindSchema
+})
+
 // Inferred types
 export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
@@ -223,3 +230,4 @@ export type DeleteContainerSchemaInput = z.infer<typeof deleteContainerSchema>
 export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema>
 export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema>
 export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>
+export type AcceptedChildrenSchemaInput = z.infer<typeof acceptedChildrenSchema>

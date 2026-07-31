@@ -1,7 +1,7 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
-import type { ContainerCapacityEntry, ContainerType } from '../schemas/inventory/container'
+import type { ContainerCapacityEntry, ContainerChildKindType, ContainerType } from '../schemas/inventory/container'
 import type { EquipmentCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
 import type { ItemType } from '../schemas/inventory/items'
 import type { InventoryActionType, InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '../schemas/inventory/metadata'
@@ -326,6 +326,25 @@ export interface DisplayContainer {
   recentActionLog: DisplayInventoryActionLogEntry[]
   createdAt: string
   updatedAt: string
+}
+
+/*
+ * One accepted child category of a specific parent (equipment or container), with the
+ * remaining free slot count. Projected directly from the parent document's authoritative
+ * `capacity[]` array (each entry's server-owned `stored` counter) — no CouchDB view.
+ * Equipment parents only accept containers, so their entries have childKind 'container'
+ * and layout 'count'. Consumers (e.g. the add-container stepper) filter by childKind.
+ */
+export interface AcceptedChildCapacity {
+  childKind: ContainerChildKindType
+  type: ContainerType | ItemType
+  layout: 'count' | 'grid'
+  /* Total slot count (grid: rows*columns*levels; count: the declared capacity). */
+  total: number
+  /* Occupied slots. */
+  stored: number
+  /* Remaining slots, clamped to >= 0. */
+  free: number
 }
 
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */

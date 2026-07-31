@@ -1,4 +1,5 @@
-import type { DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { AcceptedChildCapacity, DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { ContainerParentKindType } from '~~/schemas/inventory/container'
 import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for the inventory containers domain.
@@ -11,7 +12,8 @@ export const INVENTORY_CONTAINERS_QUERY_KEYS = {
   byParent: (parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'by-parent', parentSlug] as const,
   detailBySlug: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'detail', 'slug', slug] as const,
   actionLog: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'action-log'] as const,
-  projectRefs: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const
+  projectRefs: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const,
+  acceptedChildren: (parentKind: ContainerParentKindType, parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'accepted-children', parentKind, parentSlug] as const
 } as const
 
 // Query for all containers across the whole inventory (index page; parent column shown)
@@ -68,7 +70,18 @@ export const containerActionLogQuery = defineQueryOptions(
   })
 )
 
-// On-demand query for fully resolved project stubs (includes application, affiliation, status).
+// Query for the child categories a specific parent (equipment or container) accepts,
+// with remaining free-slot counts. Used by the add-container stepper to gate/annotate
+// the container-type select before creation (the authoritative check runs on create).
+export const acceptedChildrenQuery = defineQueryOptions(
+  (args: { parentSlug: string, parentKind: ContainerParentKindType }) => ({
+    key: INVENTORY_CONTAINERS_QUERY_KEYS.acceptedChildren(args.parentKind, args.parentSlug),
+    query: (): Promise<AcceptedChildCapacity[]> => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.getAcceptedChildren.query(args)
+    }
+  })
+)
 // The DisplayContainer carries lightweight slug/name hints; use this when the full
 // InventoryProjectRef detail is needed (e.g. a dedicated project-links panel).
 export const containerProjectRefsQuery = defineQueryOptions(

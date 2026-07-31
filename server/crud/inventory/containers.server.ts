@@ -64,7 +64,8 @@ import type {
   GridPosition,
   InventoryActionLogEntry,
   SerializedEntityRef,
-  StorageEquipment
+  StorageEquipment,
+  AcceptedChildCapacity
 } from '../../../types/inventory'
 import { ProjectService } from '../projects.server'
 import type {
@@ -163,6 +164,47 @@ export const ContainerService = {
       .map(row => row.doc)
       .filter((doc): doc is Container => isContainer(doc))
       .sort((a, b) => a.name.localeCompare(b.name))
+  },
+
+  /*
+   * Project a parent's own capacity array into the child categories it accepts, with the
+   * remaining free slot count for each. Authoritative and view-free: each stored capacity
+   * entry carries a server-owned `stored` counter (maintained by adjustStoredCount /
+   * adjustOccupancy), so free = max(0, total - stored). Equipment parents only accept
+   * containers (childKind 'container', count layout). Consumers filter by childKind.
+   */
+  async getAcceptedChildCapacity(
+    parentSlug: string,
+    parentKind: ContainerParentKindType
+  ): Promise<AcceptedChildCapacity[]> {
+    const parent = await this.resolveParent(parentSlug, parentKind)
+
+    if (parent.kind === 'equipment') {
+      const capacity = parent.doc.capacity ?? []
+      return capacity.map(entry => ({
+        childKind: 'container' as const,
+        type: entry.type,
+        layout: 'count' as const,
+        total: entry.capacity,
+        stored: entry.stored,
+        free: Math.max(0, entry.capacity - entry.stored)
+      }))
+    }
+
+    const capacity = parent.doc.capacity ?? []
+    return capacity.map((entry) => {
+      const total = entry.layout === 'grid'
+        ? entry.rows * entry.columns * (entry.levels ?? 1)
+        : entry.capacity
+      return {
+        childKind: entry.childKind,
+        type: entry.type,
+        layout: entry.layout,
+        total,
+        stored: entry.stored,
+        free: Math.max(0, total - entry.stored)
+      }
+    })
   },
 
   /*
