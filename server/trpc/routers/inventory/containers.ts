@@ -77,6 +77,13 @@ export const containersRouter = createTRPCRouter({
       return await ContainerService.convertMultipleToDisplayContainers(containers)
     }),
 
+  getAllContainers: authedProcedure
+    .query(async (): Promise<DisplayContainer[]> => {
+      const { ContainerService } = await import('../../../crud/inventory/containers.server')
+      const containers = await ContainerService.getAllContainers()
+      return await ContainerService.convertMultipleToDisplayContainers(containers)
+    }),
+
   getContainerActionLog: authedProcedure
     .input(z.object({ slug: z.string().min(1) }))
     .query(async ({ input }): Promise<DisplayInventoryActionLogEntry[]> => {

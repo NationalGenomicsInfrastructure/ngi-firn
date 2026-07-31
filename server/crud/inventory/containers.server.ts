@@ -148,6 +148,23 @@ export const ContainerService = {
       .filter((doc): doc is Container => isContainer(doc))
   },
 
+  /* List every container across the whole inventory, sorted by name. */
+  async getAllContainers(): Promise<Container[]> {
+    const result = await couchDB.queryView<string, null, Container>(
+      'firn-inventory',
+      'by_type',
+      {
+        key: 'container',
+        include_docs: true,
+        reduce: false
+      }
+    )
+    return result.rows
+      .map(row => row.doc)
+      .filter((doc): doc is Container => isContainer(doc))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  },
+
   /*
    * Resolve a parent slug to its document.
    * Used during create/move operations when the parent slug is known from user input.
