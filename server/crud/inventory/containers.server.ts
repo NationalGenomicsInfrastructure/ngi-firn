@@ -45,6 +45,7 @@ import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchd
 import { deriveGridLabel, findFirstFreeGridSlot, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
 import {
   hasDirectChildren,
+  resolveActionLogUsers,
   toParentRef,
   toUserRef
 } from './relations.server'
@@ -59,6 +60,7 @@ import type {
   Container,
   InventoryProjectRef,
   DisplayContainer,
+  DisplayInventoryActionLogEntry,
   GridPosition,
   InventoryActionLogEntry,
   SerializedEntityRef,
@@ -689,7 +691,8 @@ export const ContainerService = {
    */
   convertToDisplayContainer(
     container: Container,
-    parent: StorageEquipment | Container | null
+    parent: StorageEquipment | Container | null,
+    recentActionLog: DisplayInventoryActionLogEntry[]
   ): DisplayContainer {
     const parentRef = parent === null
       ? null
@@ -721,10 +724,18 @@ export const ContainerService = {
       activeFlags: container.activeFlags,
       status: container.status,
       parentRef,
-      recentActionLog: container.actionLog.slice(-RECENT_LOG_ENTRIES),
+      recentActionLog,
       createdAt: container.createdAt,
       updatedAt: container.updatedAt
     }
+  },
+
+  /*
+   * Enrich the most recent RECENT_LOG_ENTRIES action log entries of a container,
+   * resolving each entry's user reference into a client-safe SerializedUserRef.
+   */
+  async enrichRecentActionLog(container: Container): Promise<DisplayInventoryActionLogEntry[]> {
+    return resolveActionLogUsers(container.actionLog.slice(-RECENT_LOG_ENTRIES))
   },
 
   /*
@@ -748,26 +759,28 @@ export const ContainerService = {
       }
     }
 
-    return containers.map((c) => {
+    return Promise.all(containers.map(async (c) => {
       const parent = c.parent ? (parentMap.get(c.parent.id) ?? null) : null
       if (c.parent && !parent) {
         throw new Error(`Parent for container "${c.slug}" (ID: ${c.parent.id}) could not be resolved.`)
       }
-      return ContainerService.convertToDisplayContainer(c, parent)
-    })
+      const recentActionLog = await ContainerService.enrichRecentActionLog(c)
+      return ContainerService.convertToDisplayContainer(c, parent, recentActionLog)
+    }))
   },
 
   /*
    * Fetch the full embedded action log for a container by slug.
    * Re-fetches the document from CouchDB so callers that only hold a DisplayContainer
    * (which carries only the recent slice) can request the complete audit trail on demand.
+   * User references are enriched into client-safe SerializedUserRef stubs (no _id leakage).
    */
-  async getContainerActionLog(slug: string): Promise<InventoryActionLogEntry[]> {
+  async getContainerActionLog(slug: string): Promise<DisplayInventoryActionLogEntry[]> {
     const container = await ContainerService.getContainerBySlug(slug)
     if (!container) {
       throw new Error(`Container with identifier "${slug}" not found.`)
     }
-    return container.actionLog
+    return resolveActionLogUsers(container.actionLog)
   },
 
   /*

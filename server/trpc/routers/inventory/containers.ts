@@ -30,7 +30,7 @@ import {
   moveContainerSchema,
   alterContainerSchema
 } from '~~/schemas/inventory/container'
-import type { DisplayContainer, InventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
 
 /*
  * Resolve the parent document for a single container, then convert to display type.
@@ -40,7 +40,8 @@ import type { DisplayContainer, InventoryActionLogEntry, InventoryProjectRef } f
 async function toDisplay(container: import('~~/types/inventory').Container): Promise<DisplayContainer> {
   const { ContainerService } = await import('../../../crud/inventory/containers.server')
   const parent = await ContainerService.resolveParentRef(container.parent)
-  return ContainerService.convertToDisplayContainer(container, parent)
+  const recentActionLog = await ContainerService.enrichRecentActionLog(container)
+  return ContainerService.convertToDisplayContainer(container, parent, recentActionLog)
 }
 
 export const containersRouter = createTRPCRouter({
@@ -78,7 +79,7 @@ export const containersRouter = createTRPCRouter({
 
   getContainerActionLog: authedProcedure
     .input(z.object({ slug: z.string().min(1) }))
-    .query(async ({ input }): Promise<InventoryActionLogEntry[]> => {
+    .query(async ({ input }): Promise<DisplayInventoryActionLogEntry[]> => {
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
       return await ContainerService.getContainerActionLog(input.slug)
     }),

@@ -1,4 +1,4 @@
-import type { DisplayContainer, InventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
 import { defineQueryOptions } from '@pinia/colada'
 
 // Key factory for the inventory containers domain.
@@ -51,7 +51,7 @@ export const containersByParentQuery = defineQueryOptions(
 export const containerActionLogQuery = defineQueryOptions(
   (slug: string) => ({
     key: INVENTORY_CONTAINERS_QUERY_KEYS.actionLog(slug),
-    query: () => {
+    query: (): Promise<DisplayInventoryActionLogEntry[]> => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.getContainerActionLog.query({ slug })
     }

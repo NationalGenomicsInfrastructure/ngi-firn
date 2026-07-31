@@ -94,6 +94,41 @@ export interface InventoryActionLogEntry {
 }
 
 /*
+ * Client-safe user stub for audit log entries. Replaces the stored
+ * TypedDocumentReference<FirnUser> (which holds a CouchDB _id) with an enriched,
+ * display-only projection — resolved server-side, analogous to SerializedEntityRef.
+ * Never exposes the CouchDB _id to the client.
+ */
+export interface SerializedUserRef {
+  /* Stable public user identifier (never the CouchDB _id). */
+  firnId: string
+  /* Display name (Google name, or given + family name). */
+  name: string
+  /* Avatar image URL, or null when unavailable (client falls back to initials). */
+  avatar: string | null
+}
+
+/*
+ * Client-safe projection of InventoryActionLogEntry. Identical to the stored entry
+ * except firnUser is enriched into a SerializedUserRef instead of a raw document reference.
+ */
+export interface DisplayInventoryActionLogEntry {
+  actionType: InventoryActionType
+  /* Who performed this action (enriched, no CouchDB _id). */
+  firnUser: SerializedUserRef
+  /* ISO 8601 timestamp of when the action occurred. */
+  timestamp: string
+  /* Optional notes or reason for the action. */
+  notes?: string
+  /* Optional flag for the log entry (e.g. 'warning', 'error', 'info'). */
+  flag?: InventoryFlagType
+  /* Structured change records (e.g. update before/after pairs), if applicable. */
+  changes?: InventoryActionChangeRecord[]
+  /* Reference to the InventoryTask document that triggered this log entry, if any. */
+  linkedTaskId?: string
+}
+
+/*
  * Compact log structure for field value changes.
  */
 export interface InventoryTrackedField {
@@ -287,8 +322,8 @@ export interface DisplayContainer {
    * `kind` tells the client whether to navigate to an equipment or container detail page.
    */
   parentRef: SerializedEntityRef | null
-  /* The N most recent audit log entries. Use getContainerActionLog() to retrieve the full history. */
-  recentActionLog: InventoryActionLogEntry[]
+  /* The N most recent audit log entries (enriched). Use getContainerActionLog() to retrieve the full history. */
+  recentActionLog: DisplayInventoryActionLogEntry[]
   createdAt: string
   updatedAt: string
 }
