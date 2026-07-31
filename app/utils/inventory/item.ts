@@ -1,6 +1,6 @@
 import type { ItemType } from '~~/schemas/inventory/items'
 import type { ContainerType, ContainerChildKindType } from '~~/schemas/inventory/container'
-import { CONTAINER_TYPE_ICONS, CONTAINER_TYPE_LABELS } from './equipment'
+import { CONTAINER_TYPE_ICONS, CONTAINER_TYPE_LABELS, type SelectOption } from './equipment'
 
 // Human-readable labels for each item form factor.
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -43,6 +43,24 @@ export const ITEM_TYPE_ICONS: Record<ItemType, string> = {
   spinColumn: 'i-lucide-filter',
   vial: 'i-lucide-test-tubes',
   other: 'i-lucide-shapes'
+}
+
+// Select options for item form factors, derived from the label map.
+export const ITEM_TYPE_OPTIONS: SelectOption<ItemType>[] = (
+  Object.keys(ITEM_TYPE_LABELS) as ItemType[]
+).map(value => ({ value, label: ITEM_TYPE_LABELS[value] }))
+
+export function resolveItemTypeFromSelect(value: unknown): ItemType | null {
+  if (typeof value === 'string' && value in ITEM_TYPE_LABELS) {
+    return value as ItemType
+  }
+  if (value && typeof value === 'object' && 'value' in value) {
+    const inner = (value as { value?: unknown }).value
+    if (typeof inner === 'string' && inner in ITEM_TYPE_LABELS) {
+      return inner as ItemType
+    }
+  }
+  return null
 }
 
 export interface ChildTypeMeta {

@@ -1,5 +1,16 @@
 import type { InventoryClassificationType, InventoryStatusType } from '~~/schemas/inventory/metadata'
-import type { ContainerCapacityEntry } from '~~/schemas/inventory/container'
+import type {
+  ContainerCapacity,
+  ContainerCapacityEntry,
+  ContainerChildKindType,
+  ContainerClassification,
+  ContainerType
+} from '~~/schemas/inventory/container'
+import type { ItemType } from '~~/schemas/inventory/items'
+import type { SelectOption } from './equipment'
+
+// A container's capacity entry references either a container or an item vocabulary.
+export type ChildCategory = ContainerType | ItemType
 
 export interface StatusMeta {
   label: string
@@ -59,4 +70,132 @@ export function summarizeCapacity(capacity: ContainerCapacityEntry[] | null): Ca
       : entry.capacity
   }
   return { stored, total }
+}
+
+// ---------------------------------------------------------------------------
+// Container-add form helpers: select options + capacity-editor mode logic
+// ---------------------------------------------------------------------------
+
+// Purpose/domain classification options for the create form (labels are the enum values).
+export const CONTAINER_CLASSIFICATION_OPTIONS: SelectOption<ContainerClassification>[] = [
+  { value: 'Sample', label: 'Sample' },
+  { value: 'Reagent', label: 'Reagent' },
+  { value: 'Control', label: 'Control' },
+  { value: 'Library', label: 'Library' },
+  { value: 'Consumable', label: 'Consumable' },
+  { value: 'Equipment', label: 'Equipment' },
+  { value: 'Other', label: 'Other' }
+]
+
+const CLASSIFICATION_VALUES = new Set<string>(CONTAINER_CLASSIFICATION_OPTIONS.map(o => o.value))
+
+export function resolveClassificationFromSelect(value: unknown): ContainerClassification | null {
+  if (typeof value === 'string' && CLASSIFICATION_VALUES.has(value)) {
+    return value as ContainerClassification
+  }
+  if (value && typeof value === 'object' && 'value' in value) {
+    const inner = (value as { value?: unknown }).value
+    if (typeof inner === 'string' && CLASSIFICATION_VALUES.has(inner)) {
+      return inner as ContainerClassification
+    }
+  }
+  return null
+}
+
+// A child stored in a container is itself either a container or an item.
+export const CONTAINER_CHILD_KIND_OPTIONS: SelectOption<ContainerChildKindType>[] = [
+  { value: 'container', label: 'Container' },
+  { value: 'item', label: 'Item' }
+]
+
+export function resolveChildKindFromSelect(value: unknown): ContainerChildKindType | null {
+  if (value === 'container' || value === 'item') {
+    return value
+  }
+  if (value && typeof value === 'object' && 'value' in value) {
+    const inner = (value as { value?: unknown }).value
+    if (inner === 'container' || inner === 'item') {
+      return inner
+    }
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Capacity editor: mode + entry factories
+// ---------------------------------------------------------------------------
+// The wire capacity is a discriminated union that is either empty ('none'),
+// several numeric caps ('count'), or exactly one positional grid ('grid').
+// The editor works in one of these three modes; switching mode transforms the
+// current array, preserving childKind/type where it makes sense.
+
+export type CapacityMode = 'none' | 'count' | 'grid'
+
+const DEFAULT_CHILD_KIND: ContainerChildKindType = 'container'
+const DEFAULT_CONTAINER_TYPE: ContainerType = 'Box'
+const DEFAULT_ITEM_TYPE: ItemType = 'cryovial'
+const DEFAULT_COUNT_CAPACITY = 10
+
+function defaultTypeFor(childKind: ContainerChildKindType): ChildCategory {
+  return childKind === 'item' ? DEFAULT_ITEM_TYPE : DEFAULT_CONTAINER_TYPE
+}
+
+// Structural seed of a capacity entry: accepts either the form/input shape (grid
+// `levels` optional) or the parsed/output shape, so callers can pass either.
+interface CapacitySeed {
+  layout: 'count' | 'grid'
+  childKind: ContainerChildKindType
+  type: ChildCategory
+  capacity?: number
+  rows?: number
+  columns?: number
+  levels?: number
+}
+
+export function capacityMode(capacity: ReadonlyArray<{ layout: 'count' | 'grid' }> | null | undefined): CapacityMode {
+  if (!capacity || capacity.length === 0) return 'none'
+  return capacity[0]?.layout === 'grid' ? 'grid' : 'count'
+}
+
+export function makeCountRow(
+  childKind: ContainerChildKindType = DEFAULT_CHILD_KIND,
+  type: ChildCategory = defaultTypeFor(childKind),
+  capacity: number = DEFAULT_COUNT_CAPACITY
+): Extract<ContainerCapacity, { layout: 'count' }> {
+  return { layout: 'count', childKind, type, capacity }
+}
+
+export function makeGridEntry(
+  childKind: ContainerChildKindType = DEFAULT_CHILD_KIND,
+  type: ChildCategory = defaultTypeFor(childKind),
+  rows = 9,
+  columns = 9,
+  levels = 1
+): Extract<ContainerCapacity, { layout: 'grid' }> {
+  return { layout: 'grid', childKind, type, rows, columns, levels }
+}
+
+// Transform the current capacity array to match a newly selected mode. Reuses the
+// first entry's childKind/type as a sensible seed so switching feels non-destructive.
+// Entries are always rebuilt through the factories, so the result is well-typed
+// regardless of whether the input used the form (input) or parsed (output) shape.
+export function convertCapacityMode(current: ReadonlyArray<CapacitySeed> | null | undefined, mode: CapacityMode): ContainerCapacity[] {
+  const entries = current ?? []
+  const seed = entries[0]
+
+  if (mode === 'none') return []
+
+  if (mode === 'grid') {
+    if (seed?.layout === 'grid') {
+      return [makeGridEntry(seed.childKind, seed.type, seed.rows ?? 9, seed.columns ?? 9, seed.levels ?? 1)]
+    }
+    return [makeGridEntry(seed?.childKind, seed?.type)]
+  }
+
+  // mode === 'count'
+  const countEntries = entries.filter(entry => entry.layout === 'count')
+  if (countEntries.length > 0) {
+    return countEntries.map(entry => makeCountRow(entry.childKind, entry.type, entry.capacity ?? DEFAULT_COUNT_CAPACITY))
+  }
+  return [makeCountRow(seed?.childKind, seed?.type)]
 }
