@@ -347,6 +347,19 @@ export interface AcceptedChildCapacity {
   free: number
 }
 
+/*
+ * A candidate destination for moving a container: a parent (equipment or container) that
+ * accepts this container's type and still has at least one free slot. Sourced from the
+ * `capacity_by_accepted_category` view; the container itself, its descendants, and its
+ * current parent are excluded upstream. `free` is the remaining slot count for this type.
+ */
+export interface ContainerMoveTarget {
+  slug: string
+  name: string
+  kind: 'container' | 'equipment'
+  free: number
+}
+
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'

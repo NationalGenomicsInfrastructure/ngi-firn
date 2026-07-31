@@ -65,7 +65,8 @@ import type {
   InventoryActionLogEntry,
   SerializedEntityRef,
   StorageEquipment,
-  AcceptedChildCapacity
+  AcceptedChildCapacity,
+  ContainerMoveTarget
 } from '../../../types/inventory'
 import { ProjectService } from '../projects.server'
 import type {
@@ -205,6 +206,83 @@ export const ContainerService = {
         free: Math.max(0, total - entry.stored)
       }
     })
+  },
+
+  /*
+   * Collect the CouchDB _ids of every descendant container of the given container
+   * (children, grandchildren, ...). Used to keep move operations acyclic: a container
+   * may never be re-homed into itself or into one of its own descendants. BFS over the
+   * by_parent view; visited-tracking guards against pathological pre-existing cycles.
+   */
+  async collectDescendantIds(containerDocumentId: string): Promise<Set<string>> {
+    const descendants = new Set<string>()
+    const queue: string[] = [containerDocumentId]
+    while (queue.length > 0) {
+      const currentId = queue.shift() as string
+      const children = await this.getContainersByParent(currentId, 'container')
+      for (const child of children) {
+        if (!descendants.has(child._id)) {
+          descendants.add(child._id)
+          queue.push(child._id)
+        }
+      }
+    }
+    return descendants
+  },
+
+  /*
+   * Find every parent (equipment or container) that can accept a move of this container:
+   * it must declare capacity for the container's type and still have a free slot. Sourced
+   * from the `capacity_by_accepted_category` view (key [childKind, type]); the container
+   * itself, its descendants and its current parent are excluded so the resulting list only
+   * contains valid, non-cyclic destinations. Deduped by slug, sorted by name.
+   */
+  async getMoveTargetsForContainer(containerSlug: string): Promise<ContainerMoveTarget[]> {
+    const existing = await this.getContainerBySlug(containerSlug)
+    if (!existing) {
+      throw new Error(`Container with identifier "${containerSlug}" not found.`)
+    }
+
+    const descendantIds = await this.collectDescendantIds(existing._id)
+    const currentParentId = existing.parent?.id ?? null
+
+    const result = await couchDB.queryView<
+      [string, string],
+      { free: number },
+      StorageEquipment | Container
+    >(
+      'firn-inventory',
+      'capacity_by_accepted_category',
+      {
+        key: ['container', existing.containerType],
+        include_docs: true,
+        reduce: false
+      }
+    )
+
+    const targets = new Map<string, ContainerMoveTarget>()
+    for (const row of result.rows) {
+      const doc = row.doc
+      if (!doc) continue
+      if (doc._id === existing._id) continue
+      if (currentParentId && doc._id === currentParentId) continue
+      if (descendantIds.has(doc._id)) continue
+
+      const free = row.value?.free ?? 0
+      if (free <= 0) continue
+
+      const slug = doc.slug
+      if (!slug || targets.has(slug)) continue
+
+      targets.set(slug, {
+        slug,
+        name: doc.name,
+        kind: doc.type === 'storageEquipment' ? 'equipment' : 'container',
+        free
+      })
+    }
+
+    return [...targets.values()].sort((a, b) => a.name.localeCompare(b.name))
   },
 
   /*
@@ -575,6 +653,20 @@ export const ContainerService = {
     // Resolve the new parent's doc and verify it accepts this container type
     // For grid parents: Verify the proposed slot is still free respectively propose a free slot.
     const new_parent = await ContainerService.resolveParent(input.newParentSlug, input.newParentKind)
+
+    // Cycle guard: a container may never be moved into itself or into one of its own
+    // descendants — that would detach the whole subtree from the hierarchy root and
+    // corrupt occupancy bookkeeping. Only container parents can introduce a cycle.
+    if (new_parent.kind === 'container') {
+      if (new_parent.doc._id === existing._id) {
+        throw new Error('A container cannot be moved into itself.')
+      }
+      const descendantIds = await ContainerService.collectDescendantIds(existing._id)
+      if (descendantIds.has(new_parent.doc._id)) {
+        throw new Error('A container cannot be moved into one of its own descendants.')
+      }
+    }
+
     const positionParent = await resolvePlacement(new_parent, input.position, existing.containerType)
 
     // Reserve the new parent BEFORE writing the child, so concurrent placements are serialised

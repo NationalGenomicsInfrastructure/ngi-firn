@@ -223,6 +223,13 @@ export const acceptedChildrenSchema = z.object({
   parentKind: parentKindSchema
 })
 
+// Input for querying which parents (equipment or container) can accept a given container:
+// they must accept its type and still have a free slot. The container itself, its
+// descendants and its current parent are excluded server-side.
+export const containerMoveTargetsSchema = z.object({
+  containerSlug: z.string().min(1, { message: 'Container identifier is required' })
+})
+
 // Inferred types
 export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
@@ -231,3 +238,4 @@ export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema>
 export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema>
 export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>
 export type AcceptedChildrenSchemaInput = z.infer<typeof acceptedChildrenSchema>
+export type ContainerMoveTargetsSchemaInput = z.infer<typeof containerMoveTargetsSchema>

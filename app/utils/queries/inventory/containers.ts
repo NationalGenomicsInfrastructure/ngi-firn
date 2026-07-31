@@ -1,4 +1,4 @@
-import type { AcceptedChildCapacity, DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { AcceptedChildCapacity, ContainerMoveTarget, DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
 import type { ContainerParentKindType } from '~~/schemas/inventory/container'
 import { defineQueryOptions } from '@pinia/colada'
 
@@ -13,7 +13,8 @@ export const INVENTORY_CONTAINERS_QUERY_KEYS = {
   detailBySlug: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'detail', 'slug', slug] as const,
   actionLog: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'action-log'] as const,
   projectRefs: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const,
-  acceptedChildren: (parentKind: ContainerParentKindType, parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'accepted-children', parentKind, parentSlug] as const
+  acceptedChildren: (parentKind: ContainerParentKindType, parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'accepted-children', parentKind, parentSlug] as const,
+  moveTargets: (containerSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'move-targets', containerSlug] as const
 } as const
 
 // Query for all containers across the whole inventory (index page; parent column shown)
@@ -79,6 +80,18 @@ export const acceptedChildrenQuery = defineQueryOptions(
     query: (): Promise<AcceptedChildCapacity[]> => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.getAcceptedChildren.query(args)
+    }
+  })
+)
+// Candidate destinations for moving a container: parents (equipment or container) that
+// accept its type and have a free slot, excluding itself, its descendants and its current
+// parent. Powers the move dialog's destination select.
+export const containerMoveTargetsQuery = defineQueryOptions(
+  (containerSlug: string) => ({
+    key: INVENTORY_CONTAINERS_QUERY_KEYS.moveTargets(containerSlug),
+    query: (): Promise<ContainerMoveTarget[]> => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.getMoveTargets.query({ containerSlug })
     }
   })
 )
