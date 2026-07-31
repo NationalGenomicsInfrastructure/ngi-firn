@@ -138,7 +138,10 @@ export default defaultConfig({
     'i-lucide-scan-line',
     'i-lucide-test-tube',
     'i-lucide-test-tube-diagonal',
-    'i-lucide-test-tubes'
+    'i-lucide-test-tubes',
+    // Inventory container status icons (CONTAINER_STATUS_META in app/utils/inventory/container.ts)
+    'i-lucide-circle-help',
+    'i-lucide-play'
   ],
 
   /*
