@@ -90,6 +90,20 @@ export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
   Tray: 'Tray',
   Other: 'Other'
 }
+
+// Icon per container type. Dynamic (bound from this map), so every i-lucide-* here
+// must also live in uno.config.ts `safelist`.
+export const CONTAINER_TYPE_ICONS: Record<ContainerType, string> = {
+  Bag: 'i-lucide-paper-bag',
+  Bin: 'i-lucide-shopping-basket',
+  Block: 'i-lucide-cuboid',
+  Box: 'i-lucide-package',
+  Cane: 'i-lucide-pipette',
+  Goblet: 'i-lucide-cylinder',
+  Rack: 'i-lucide-table',
+  Tray: 'i-lucide-square-library',
+  Other: 'i-lucide-proportions'
+}
 export interface CapacityRow {
   type: ContainerType
   capacity: number

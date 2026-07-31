@@ -122,7 +122,23 @@ export default defaultConfig({
     'i-lucide-package-open',
     'i-lucide-pencil',
     'i-lucide-search-x',
-    'i-lucide-trash-2'
+    'i-lucide-trash-2',
+    // Inventory item-type dynamic icons (ITEM_TYPE_ICONS in app/utils/inventory/item.ts)
+    'i-lucide-align-justify',
+    'i-lucide-cassette-tape',
+    'i-lucide-cone',
+    'i-lucide-cooking-pot',
+    'i-lucide-disc',
+    'i-lucide-filter',
+    'i-lucide-flask-round',
+    'i-lucide-grid-3x3',
+    'i-lucide-milk',
+    'i-lucide-pen-line',
+    'i-lucide-rectangle-vertical',
+    'i-lucide-scan-line',
+    'i-lucide-test-tube',
+    'i-lucide-test-tube-diagonal',
+    'i-lucide-test-tubes'
   ],
 
   /*
