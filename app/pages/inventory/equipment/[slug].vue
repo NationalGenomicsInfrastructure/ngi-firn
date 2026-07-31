@@ -195,6 +195,8 @@ const infoFields = computed(() => {
         </div>
       </NCard>
 
+      <InventoryEquipmentContainerSection :equipment="equipment" />
+
       <div class="flex justify-end mt-4">
         <NButton
           btn="ghost-gray"
