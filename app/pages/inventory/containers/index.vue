@@ -24,10 +24,10 @@ const isLoading = computed(() => containersStatus.value === 'loading')
 
     <div class="mt-6 flex justify-end">
       <NButton
-        leading="i-lucide-plus"
+        leading="i-lucide-package-plus"
         btn="soft-primary hover:outline-primary"
         size="sm"
-        label="Add container"
+        label="Register new container"
         to="/inventory/containers/add"
       />
     </div>

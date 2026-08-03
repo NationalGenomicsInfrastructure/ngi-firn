@@ -152,6 +152,7 @@ export const updateContainer = defineMutation(() => {
     },
     onSuccess(response) {
       showSuccess(`Container "${response.name}" updated successfully.`, 'Container updated')
+      navigateTo(`/inventory/containers/${encodeURIComponent(response.slug)}`)
     },
     onSettled(data, _error, input) {
       const queryCache = useQueryCache()

@@ -22,6 +22,16 @@ const isLoading = computed(() => equipmentStatus.value === 'loading')
       description="All storage equipment across all rooms."
     />
 
+    <div class="mt-6 flex justify-end">
+      <NButton
+        leading="i-lucide-between-horizontal-end"
+        btn="soft-primary hover:outline-primary"
+        size="sm"
+        label="Add storage equipment"
+        to="/inventory/equipment/add"
+      />
+    </div>
+
     <div class="mt-6">
       <TableEquipmentOverview
         :equipment="equipment"

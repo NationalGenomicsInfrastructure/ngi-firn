@@ -93,18 +93,24 @@ const parentNotFound = computed(() => hasSlug.value && !isLoading.value && !isEr
           <NButton
             size="sm"
             leading="i-lucide-refrigerator"
-            :btn="parentKind === 'equipment' ? 'solid-primary' : 'soft-gray hover:outline-gray'"
+            :btn="parentKind === 'equipment' ? 'soft-primary' : 'ghost-gray hover:outline-gray'"
             label="Storage equipment"
             @click="setParentKind('equipment')"
           />
           <NButton
             size="sm"
             leading="i-lucide-package"
-            :btn="parentKind === 'container' ? 'solid-primary' : 'soft-gray hover:outline-gray'"
+            :btn="parentKind === 'container' ? 'soft-primary' : 'ghost-gray hover:outline-gray'"
             label="Another container"
             @click="setParentKind('container')"
           />
         </div>
+
+        <NSeparator
+          orientation="vertical"
+          icon
+          class="mx-0 mr-2 h-4"
+        />
 
         <SelectEquipment
           v-if="parentKind === 'equipment'"
