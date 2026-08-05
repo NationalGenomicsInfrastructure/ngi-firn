@@ -66,8 +66,8 @@ const columns = computed<ColumnDef<ContainerRow>[]>(() => {
   return cols
 })
 
-function containerUrl(slug: string): string {
-  return `/inventory/containers/${encodeURIComponent(slug)}`
+function containerUrl(slug: string, section: string): string {
+  return `/inventory/containers/${encodeURIComponent(slug)}/${section}`
 }
 
 function parentUrl(row: ContainerRow): string | null {
@@ -126,7 +126,7 @@ const table = useTemplateRef<Table<ContainerRow>>('table')
     >
       <template #name-cell="{ cell }">
         <NuxtLink
-          :to="containerUrl(cell.row.original.slug)"
+          :to="containerUrl(cell.row.original.slug, 'contents')"
           class="text-primary-400 dark:text-primary-600 hover:underline font-semibold"
         >
           {{ cell.row.original.name }}
@@ -175,7 +175,7 @@ const table = useTemplateRef<Table<ContainerRow>>('table')
               icon
               btn="ghost-gray"
               size="xs"
-              :to="containerUrl(cell.row.original.slug)"
+              :to="containerUrl(cell.row.original.slug, 'details')"
             />
           </NTooltip>
         </div>
@@ -324,12 +324,27 @@ const table = useTemplateRef<Table<ContainerRow>>('table')
                 </div>
               </div>
 
-              <div class="flex items-end justify-end h-full">
+              <div class="flex flex-col items-end flex-shrink-0 gap-2 w-full">
                 <NButton
                   label="View contents"
                   btn="soft-primary hover:outline-primary"
-                  leading="i-lucide-eye"
-                  :to="containerUrl(row.original.slug)"
+                  leading="i-lucide-package-open"
+                  :to="containerUrl(row.original.slug, 'contents')"
+                  class="w-full"
+                />
+                <NButton
+                  label="View details"
+                  btn="soft-primary hover:outline-primary"
+                  leading="i-lucide-book-open-text"
+                  :to="containerUrl(row.original.slug, 'details')"
+                  class="w-full"
+                />
+                <NButton
+                  label="View action log"
+                  btn="soft-primary hover:outline-primary"
+                  leading="i-lucide-clipboard-clock"
+                  :to="containerUrl(row.original.slug, 'log')"
+                  class="w-full"
                 />
               </div>
             </div>

@@ -76,15 +76,8 @@ const infoFields = computed(() => {
 
 <template>
   <main class="mx-auto max-w-6xl px-4 py-8 lg:px-8 sm:px-6">
-    <NButton
-      btn="ghost-gray"
-      leading="i-lucide-arrow-left"
-      size="sm"
-      label="Back to containers"
-      to="/inventory/containers"
-    />
     <PageTitle
-      :title="container ? container.name : 'Container details'"
+      :title="container ? `${container.name} — Details` : 'Container details'"
       :description="containerTypeLabel"
     />
 
@@ -119,6 +112,8 @@ const infoFields = computed(() => {
       v-else
       class="mt-6 space-y-6"
     >
+      <InventoryTabs />
+
       <NCard
         card="outline-gray"
         :_card-content="{ class: 'space-y-4 py-4' }"
@@ -216,19 +211,6 @@ const infoFields = computed(() => {
           />
         </div>
       </NCard>
-
-      <NCard
-        title="Action log"
-        description="The most recent audit entries for this container."
-        card="outline-gray"
-      >
-        <TableContainerActionLog
-          :entries="container.recentActionLog"
-          :slug="container.slug"
-        />
-      </NCard>
-
-      <InventoryContainerChildrenSection :container="container" />
 
       <div class="flex justify-end mt-4">
         <NButton
