@@ -496,13 +496,17 @@ export class CouchDBConnector {
     }
   }
 
-  // Test database connectivity
+  // Test database connectivity (5 s timeout to fail fast on startup)
   async testConnection(): Promise<boolean> {
+    const CONNECTION_TIMEOUT_MS = 2000
     try {
-      // Try to get database info - this will fail if the database server is not reachable
-      await this.client.getDatabaseInformation({
-        db: this.database
-      })
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('connection timeout')), CONNECTION_TIMEOUT_MS)
+      )
+      await Promise.race([
+        this.client.getDatabaseInformation({ db: this.database }),
+        timeout
+      ])
       return true
     }
     catch (error: unknown) {
