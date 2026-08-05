@@ -129,7 +129,10 @@ function rowHasDetails(row: ActionLogRow): boolean {
       </template>
 
       <template #userName-cell="{ cell }">
-        <IndicatorUserAvatar :user="cell.row.original.user" />
+        <IndicatorUserAvatar
+          :user="cell.row.original.user"
+          size="2"
+        />
       </template>
 
       <template #timestamp-cell="{ cell }">

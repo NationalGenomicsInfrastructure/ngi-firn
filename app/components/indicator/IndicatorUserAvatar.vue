@@ -5,11 +5,8 @@ const props = withDefaults(defineProps<{
   user: SerializedUserRef
   /* Show the user's name next to the avatar. */
   showName?: boolean
-  /* NAvatar square size token. */
-  size?: string
 }>(), {
-  showName: true,
-  size: '7'
+  showName: true
 })
 
 const initials = computed(() => {
@@ -25,7 +22,7 @@ const initials = computed(() => {
     <NAvatar
       :src="user.avatar ?? undefined"
       :alt="user.name"
-      :square="size"
+      square="4"
       avatar="solid-primary"
     >
       <template #fallback>
