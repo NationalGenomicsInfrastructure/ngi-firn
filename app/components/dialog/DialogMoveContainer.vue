@@ -91,14 +91,14 @@ async function handleMove() {
   }
 
   const result = await moveContainerAsync({
-    containerSlug: props.container.slug,
-    containerName: props.container.name,
+    containerSlug: [props.container.slug],
+    containerNames: [props.container.name],
     newParentSlug,
     newParentKind
     // position omitted: grid parents auto-place the container into the first free slot.
   })
 
-  if (result) {
+  if (result && result.length > 0) {
     isDialogOpen.value = false
   }
 }

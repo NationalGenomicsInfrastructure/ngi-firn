@@ -31,14 +31,14 @@ const STATUS_FROM_ACTION: Partial<Record<InventoryActionType, InventoryStatusTyp
 // ---------------------------------------------------------------------------
 
 type DeleteContainerMutationInput = DeleteContainerSchemaInput & {
-  containerName?: string
-  // Parent context needed to locate the relevant list cache for optimistic removal.
-  parentSlug?: string
-  parentKind?: 'equipment' | 'container'
+  // UI-only labels for toasts; never sent to the API.
+  containerNames?: string[]
+  // Per-container parent context, used to locate the relevant list caches for optimistic removal.
+  parents?: { slug: string, kind: 'equipment' | 'container' }[]
 }
 
 type MoveContainerMutationInput = MoveContainerSchemaInput & {
-  containerName?: string
+  containerNames?: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +65,13 @@ type ContainerListContext = { parentList: DisplayContainer[], parentListCacheKey
 type ContainerDetailContext = { container: DisplayContainer | undefined }
 type ContainerDetailAndListContext = ContainerDetailContext & { parentList: DisplayContainer[], parentListCacheKey: readonly string[] | null }
 type ContainerAlterContext = { snapshots: { slug: string, container: DisplayContainer | undefined }[] }
+// Batch delete: snapshots of every parent list cache touched, for rollback on error.
+type ContainerListSnapshotContext = { snapshots: { key: readonly string[], list: DisplayContainer[] }[] }
+// Batch move: per-container detail snapshots plus the old parent lists they belonged to.
+type ContainerMoveContext = {
+  details: { slug: string, container: DisplayContainer | undefined }[]
+  listSnapshots: { key: readonly string[], list: DisplayContainer[] }[]
+}
 
 // ---------------------------------------------------------------------------
 // createContainer
@@ -193,45 +200,62 @@ export const moveContainer = defineMutation(() => {
         logComment: input.logComment
       })
     },
-    onMutate(input): ContainerDetailAndListContext {
+    onMutate(input): ContainerMoveContext {
       const queryCache = useQueryCache()
-      const container = queryCache.getQueryData<DisplayContainer>(
-        INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(input.containerSlug)
-      )
-      const oldParentListKey = container ? parentListKey(container.parentRef) : null
-      const parentList = oldParentListKey
-        ? queryCache.getQueryData<DisplayContainer[]>(oldParentListKey) ?? []
-        : []
-      return { container, parentList, parentListCacheKey: oldParentListKey }
-    },
-    onError(error: Error, input, context) {
-      const queryCache = useQueryCache()
-      if (context.container) {
-        queryCache.setQueryData(
-          INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(input.containerSlug),
-          context.container
+      const details: { slug: string, container: DisplayContainer | undefined }[] = []
+      const listKeys = new Map<string, readonly string[]>()
+
+      for (const slug of input.containerSlug) {
+        const container = queryCache.getQueryData<DisplayContainer>(
+          INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug)
         )
+        details.push({ slug, container })
+        const key = container ? parentListKey(container.parentRef) : null
+        if (key) listKeys.set(key.join('\u0000'), key)
       }
-      if (context.parentListCacheKey) {
-        queryCache.setQueryData(context.parentListCacheKey, context.parentList)
+
+      const listSnapshots = [...listKeys.values()].map(key => ({
+        key,
+        list: queryCache.getQueryData<DisplayContainer[]>(key) ?? []
+      }))
+
+      return { details, listSnapshots }
+    },
+    onError(error: Error, _input, context) {
+      const queryCache = useQueryCache()
+      for (const { slug, container } of context.details ?? []) {
+        if (container) {
+          queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), container)
+        }
+      }
+      for (const { key, list } of context.listSnapshots ?? []) {
+        queryCache.setQueryData(key, list)
       }
       showError(error.message, 'Container could not be moved')
     },
     onSuccess(response, input) {
-      const containerLabel = input.containerName ?? response.name
-      showSuccess(`Container "${containerLabel}" moved successfully.`, 'Container moved')
+      const count = response.length
+      const containerLabel = input.containerNames?.[0] ?? response[0]?.name ?? ''
+      showSuccess(
+        count === 1
+          ? `Container "${containerLabel}" moved successfully.`
+          : `${count} containers moved successfully.`,
+        'Container moved'
+      )
     },
     onSettled(data, _error, input) {
       const queryCache = useQueryCache()
-      queryCache.invalidateQueries({
-        key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(input.containerSlug),
-        exact: true
-      })
+      for (const slug of input.containerSlug) {
+        queryCache.invalidateQueries({
+          key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug),
+          exact: true
+        })
+      }
       const newParentListKey: readonly string[] = input.newParentKind === 'equipment'
         ? INVENTORY_CONTAINERS_QUERY_KEYS.byEquipment(input.newParentSlug)
         : INVENTORY_CONTAINERS_QUERY_KEYS.byParent(input.newParentSlug)
       queryCache.invalidateQueries({ key: newParentListKey, exact: true })
-      // Invalidate the whole containers root to cover the old parent list whose key
+      // Invalidate the whole containers root to cover the old parent lists whose keys
       // we captured in onMutate context (not accessible in onSettled without context).
       if (data) {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.root })
@@ -430,58 +454,80 @@ export const deleteContainer = defineMutation(() => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.deleteContainer.mutate({ containerSlug: input.containerSlug })
     },
-    onMutate(input): ContainerListContext {
+    onMutate(input): ContainerListSnapshotContext {
       const queryCache = useQueryCache()
-      let parentListCacheKey: readonly string[] | null
-      if (input.parentSlug && input.parentKind) {
-        parentListCacheKey = input.parentKind === 'equipment'
-          ? INVENTORY_CONTAINERS_QUERY_KEYS.byEquipment(input.parentSlug)
-          : INVENTORY_CONTAINERS_QUERY_KEYS.byParent(input.parentSlug)
+      const slugs = new Set(input.containerSlug)
+
+      // Resolve every parent list cache touched by the batch: prefer explicit per-container
+      // parent context, and fall back to each container's cached detail when absent.
+      const listKeys = new Map<string, readonly string[]>()
+      const addKey = (key: readonly string[] | null) => {
+        if (key) listKeys.set(key.join('\u0000'), key)
       }
-      else {
+      for (const parent of input.parents ?? []) {
+        addKey(parent.kind === 'equipment'
+          ? INVENTORY_CONTAINERS_QUERY_KEYS.byEquipment(parent.slug)
+          : INVENTORY_CONTAINERS_QUERY_KEYS.byParent(parent.slug))
+      }
+      for (const slug of input.containerSlug) {
         const detail = queryCache.getQueryData<DisplayContainer>(
-          INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(input.containerSlug)
+          INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug)
         )
-        parentListCacheKey = detail ? parentListKey(detail.parentRef) : null
+        if (detail) addKey(parentListKey(detail.parentRef))
       }
 
-      const parentList = parentListCacheKey
-        ? queryCache.getQueryData<DisplayContainer[]>(parentListCacheKey) ?? []
-        : []
-
-      if (parentListCacheKey) {
-        queryCache.cancelQueries({ key: parentListCacheKey, exact: true })
-        queryCache.setQueryData(
-          parentListCacheKey,
-          parentList.filter(c => c.slug !== input.containerSlug)
-        )
+      const snapshots: { key: readonly string[], list: DisplayContainer[] }[] = []
+      for (const key of listKeys.values()) {
+        const list = queryCache.getQueryData<DisplayContainer[]>(key) ?? []
+        snapshots.push({ key, list })
+        queryCache.cancelQueries({ key, exact: true })
+        queryCache.setQueryData(key, list.filter(c => !slugs.has(c.slug)))
       }
 
-      return { parentList, parentListCacheKey }
+      return { snapshots }
     },
     onError(error: Error, _input, context) {
       const queryCache = useQueryCache()
-      if (context.parentListCacheKey) {
-        queryCache.setQueryData(context.parentListCacheKey, context.parentList)
+      for (const { key, list } of context.snapshots ?? []) {
+        queryCache.setQueryData(key, list)
       }
       showError(error.message, 'Container could not be deleted')
     },
-    onSuccess(_data, input) {
-      showSuccess(
-        `Container${input.containerName ? ` "${input.containerName}"` : ''} deleted successfully.`,
-        'Container deleted'
-      )
-      navigateTo('/inventory/containers')
+    onSuccess(data, input) {
+      const deletedCount = data.deleted.length
+      const failedCount = data.failures.length
+
+      if (deletedCount > 0) {
+        showSuccess(
+          deletedCount === 1
+            ? `Container${input.containerNames?.[0] ? ` "${input.containerNames[0]}"` : ''} deleted successfully.`
+            : `${deletedCount} containers deleted successfully.`,
+          'Container deleted'
+        )
+      }
+      if (failedCount > 0) {
+        showError(
+          data.failures.map(f => `${f.slug}: ${f.error}`).join('\n'),
+          failedCount === 1 ? 'A container could not be deleted' : `${failedCount} containers could not be deleted`
+        )
+      }
+      // Only navigate away when a single-container request (e.g. the detail-page button)
+      // actually deleted that container.
+      if (input.containerSlug.length === 1 && deletedCount === 1) {
+        navigateTo('/inventory/containers')
+      }
     },
     onSettled(_data, _error, input, context) {
       const queryCache = useQueryCache()
-      if (context?.parentListCacheKey) {
-        queryCache.invalidateQueries({ key: context.parentListCacheKey, exact: true })
+      for (const { key } of context?.snapshots ?? []) {
+        queryCache.invalidateQueries({ key, exact: true })
       }
-      queryCache.invalidateQueries({
-        key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(input.containerSlug),
-        exact: true
-      })
+      for (const slug of input.containerSlug) {
+        queryCache.invalidateQueries({
+          key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug),
+          exact: true
+        })
+      }
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
     }
   })

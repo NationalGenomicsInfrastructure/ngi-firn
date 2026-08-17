@@ -17,9 +17,9 @@
  * CREATE, UPDATE, DELETE CONTAINERS:
  * createContainer(input) - Create a container inside a storage-equipment or container parent
  * updateContainer(updates) - Update container metadata and capacity limits
- * deleteContainer(input) - Delete a container when empty, freeing its slot on the parent
- * moveContainer(input) - Re-home a container to another equipment/container parent
- * alterContainer(input) - Perform actions on a container (check-out, return, reserve, discard, dispose, flag)
+ * deleteContainer(input) - Delete one or more containers when empty, freeing each one's slot on its parent (best-effort batch)
+ * moveContainer(input) - Re-home one or more containers to a single shared equipment/container parent (strict-atomic batch)
+ * alterContainer(input) - Perform actions on one or more containers (check-out, return, reserve, discard, dispose, flag) — strict-atomic batch
  *
  * CAPACITY AND OCCUPANCY MANAGEMENT:
  * adjustStoredCount(containerId, category, delta) - count-layout: increment/decrement a category's count
@@ -115,6 +115,17 @@ async function queryContainersBySlug(slug: string): Promise<Container[]> {
 export type ResolvedParent
   = | { kind: 'equipment', doc: StorageEquipment }
     | { kind: 'container', doc: Container }
+
+/*
+ * Outcome of a (possibly batched) deleteContainer call. Deletion is best-effort:
+ * every requested slug is attempted independently, so `deleted` holds the containers
+ * that were removed and `failures` records the slugs that could not be (e.g. a
+ * container that still holds children) together with the reason.
+ */
+export type DeleteContainerResult = {
+  deleted: Container[]
+  failures: { slug: string, error: string }[]
+}
 
 /* Number of action log entries included in DisplayContainer.recentActionLog. */
 const RECENT_LOG_ENTRIES = 10
@@ -603,117 +614,129 @@ export const ContainerService = {
    * on the parent. The parent is decremented AFTER the child document is removed so the
    * grid_occupancy view no longer reports this container as occupying its slot.
    */
-  async deleteContainer(input: DeleteContainerSchemaInput): Promise<Container> {
-    const existing = await ContainerService.getContainerBySlug(input.containerSlug)
-    if (!existing) {
-      throw new Error(`Container with identifier "${input.containerSlug}" not found.`)
+  /*
+   * Delete one or more containers, freeing each one's slot on its parent.
+   *
+   * Best-effort batch: every slug is attempted independently and a failure (e.g. a
+   * container that still holds children) does NOT abort the rest — the caller is
+   * expected to move that container's children out first and retry. No parent capacity
+   * is corrupted by a failure because the parent occupancy/stored count is only
+   * decremented after the document was successfully deleted.
+   */
+  async deleteContainer(input: DeleteContainerSchemaInput): Promise<DeleteContainerResult> {
+    const deleted: Container[] = []
+    const failures: { slug: string, error: string }[] = []
+
+    for (const slug of input.containerSlug) {
+      try {
+        const existing = await ContainerService.getContainerBySlug(slug)
+        if (!existing) {
+          throw new Error(`Container with identifier "${slug}" not found.`)
+        }
+
+        if (await hasDirectChildren(existing._id)) {
+          throw new Error(`Cannot delete container "${slug}" because it still contains child inventory.`)
+        }
+
+        await couchDB.deleteDocument(existing._id, existing._rev)
+
+        // Free the slot/count this container held on its parent.
+        await adjustParentRefOccupancy(existing.parent, existing.positionParent, existing.containerType, -1)
+
+        deleted.push(existing)
+      }
+      catch (error) {
+        failures.push({ slug, error: error instanceof Error ? error.message : String(error) })
+      }
     }
 
-    if (await hasDirectChildren(existing._id)) {
-      throw new Error(`Cannot delete container "${input.containerSlug}" because it still contains child inventory.`)
-    }
-
-    await couchDB.deleteDocument(existing._id, existing._rev)
-
-    const parentRef = existing.parent
-    if (parentRef) {
-      if (existing.positionParent) {
-        // A recorded slot means the parent is a grid container.
-        await ContainerService.adjustOccupancy(parentRef.id, existing.positionParent, -1)
-      }
-      else if (parentRef.type === 'storageEquipment') {
-        await EquipmentService.adjustStoredCount(parentRef.id, existing.containerType, -1)
-      }
-      else {
-        await ContainerService.adjustStoredCount(parentRef.id, existing.containerType, -1)
-      }
-    }
-
-    return existing
+    return { deleted, failures }
   },
 
   /*
-   * Move a container inside a storage-equipment or container parent.
+   * Move one or more containers to a SINGLE shared destination parent.
    *
-   * Flow: resolve the parent, verify it accepts this container type and (for grid
-   * parents) select a slot, then RESERVE capacity on the parent BEFORE writing the
-   * child. Reserving first means the parent document's `_rev` serialises concurrent
-   * placements and any cap/occupancy violation throws before an orphan child can be
-   * created. It is also required for grid parents: `adjustOccupancy` consults the
-   * grid_occupancy view (fed by child positions), so the counter must be bumped while
-   * the target slot is still empty — i.e. before this child exists.
+   * Strict-atomic intent: all deterministic preconditions (container existence, cycle
+   * guards, and aggregate capacity on the target parent) are validated BEFORE any
+   * write. Only then are the children re-homed one by one, each reserving the parent
+   * before it is written (see moveContainerOne). If an execution step still fails
+   * (e.g. a rare concurrent `_rev` conflict), every already-moved container is rolled
+   * back to its original placement on a best-effort basis.
+   *
+   * CouchDB has no multi-document transactions, so a residual partial-write window
+   * remains if a rollback itself fails; that is reconcilable by the parent occupancy
+   * views and a future admin "recalculate capacities" tool.
+   *
+   * An explicit `position` is only honoured for a single-container request; batches are
+   * auto-placed into the first free slots (enforced by moveContainerSchema).
    */
-  async moveContainer(input: MoveContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
-    // Resolve the container to move to its document
-    const existing = await ContainerService.getContainerBySlug(input.containerSlug)
-    if (!existing) {
-      throw new Error(`Container with identifier "${input.containerSlug}" not found.`)
+  async moveContainer(input: MoveContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
+    const newParent = await ContainerService.resolveParent(input.newParentSlug, input.newParentKind)
+
+    // ---- Phase 1: validate every container before touching anything ----
+    const containers: Container[] = []
+    for (const slug of input.containerSlug) {
+      const existing = await ContainerService.getContainerBySlug(slug)
+      if (!existing) {
+        throw new Error(`Container with identifier "${slug}" not found.`)
+      }
+
+      // Cycle guard: a container may never be moved into itself or into one of its own
+      // descendants — that would detach the whole subtree from the hierarchy root and
+      // corrupt occupancy bookkeeping. Only container parents can introduce a cycle.
+      if (newParent.kind === 'container') {
+        if (newParent.doc._id === existing._id) {
+          throw new Error('A container cannot be moved into itself.')
+        }
+        const descendantIds = await ContainerService.collectDescendantIds(existing._id)
+        if (descendantIds.has(newParent.doc._id)) {
+          throw new Error('A container cannot be moved into one of its own descendants.')
+        }
+      }
+
+      containers.push(existing)
     }
 
-    // Resolve the new parent's doc and verify it accepts this container type
-    // For grid parents: Verify the proposed slot is still free respectively propose a free slot.
-    const new_parent = await ContainerService.resolveParent(input.newParentSlug, input.newParentKind)
+    // Aggregate capacity check against the parent's currently committed occupancy, so a
+    // batch that cannot fit is rejected before any single move is written.
+    assertBatchCapacityAvailable(newParent, containers)
 
-    // Cycle guard: a container may never be moved into itself or into one of its own
-    // descendants — that would detach the whole subtree from the hierarchy root and
-    // corrupt occupancy bookkeeping. Only container parents can introduce a cycle.
-    if (new_parent.kind === 'container') {
-      if (new_parent.doc._id === existing._id) {
-        throw new Error('A container cannot be moved into itself.')
-      }
-      const descendantIds = await ContainerService.collectDescendantIds(existing._id)
-      if (descendantIds.has(new_parent.doc._id)) {
-        throw new Error('A container cannot be moved into one of its own descendants.')
-      }
-    }
-
-    const positionParent = await resolvePlacement(new_parent, input.position, existing.containerType)
-
-    // Reserve the new parent BEFORE writing the child, so concurrent placements are serialised
-    await adjustParentOccupancy(new_parent, existing.containerType, positionParent, 1)
-    const now = new Date().toISOString()
+    // ---- Phase 2: execute, rolling back committed moves if a later step fails ----
+    const requestedPosition = containers.length === 1 ? input.position ?? null : null
+    const moved: { before: Container, after: Container }[] = []
 
     try {
-      // build the new container document with the new parent and position, and update the action log
-      const movedContainer: Container = {
-        ...existing,
-        parent: toParentRef(new_parent.doc),
-        positionParent,
-        updatedAt: now
+      for (const existing of containers) {
+        const after = await moveContainerOne(existing, newParent, requestedPosition, firnUser, input.logComment)
+        moved.push({ before: existing, after })
       }
-
-      const changelogEntry: InventoryActionLogEntry = {
-        actionType: 'move',
-        firnUser: toUserRef(firnUser),
-        timestamp: now,
-        notes: input.logComment ?? `Moved to parent "${new_parent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}".`
-      }
-
-      movedContainer.actionLog = changelogEntry
-        ? [...existing.actionLog, changelogEntry]
-        : existing.actionLog
-
-      const result = await couchDB.updateDocument(movedContainer._id, movedContainer, existing._rev)
-
-      // move was successful, return the updated container with the new _rev
-      movedContainer._rev = result.rev
-      return movedContainer
     }
     catch (error) {
-      // The parent was already reserved above; release it so the counter does not
-      // leak when the child write fails after the reservation succeeded.
-      try {
-        await adjustParentOccupancy(new_parent, existing.containerType, positionParent, -1)
-      }
-      catch {
-        // Best-effort rollback — surface the original failure regardless.
+      // Best-effort rollback of the containers already re-homed in this batch.
+      for (const { before, after } of [...moved].reverse()) {
+        try {
+          await rollbackContainerMove(before, after, newParent)
+        }
+        catch {
+          // Surface the original failure regardless; the recalc tool can reconcile.
+        }
       }
       throw error
     }
+
+    return moved.map(entry => entry.after)
   },
 
   /*
-   * Move a container inside a storage-equipment or container parent.
+   * Perform a lifecycle action (check-out, return, reserve, discard, dispose, flag, …)
+   * on one or more containers at once.
+   *
+   * Strict-atomic intent: every requested slug is resolved and validated BEFORE any
+   * document is written, so a bad slug (or an unsupported action / missing flag kind)
+   * aborts the whole batch before it makes partial changes. The subsequent writes only
+   * touch each container's own document — no parent capacity is involved — so the
+   * residual risk is limited to a rare concurrent `_rev` conflict mid-batch, which is
+   * reconcilable and acceptable per the documented CouchDB constraints.
    */
   async alterContainer(input: AlterContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
     if (input.performedAction === 'register' || input.performedAction === 'move' || input.performedAction === 'modify') {
@@ -729,12 +752,18 @@ export const ContainerService = {
       throw new Error(`Action "${input.performedAction}" requires a flag kind.`)
     }
 
-    return Promise.all(input.containerSlug.map(async (slug) => {
+    // Phase 1: resolve and validate every container before any write.
+    const existingContainers: Container[] = []
+    for (const slug of input.containerSlug) {
       const existing = await ContainerService.getContainerBySlug(slug)
       if (!existing) {
         throw new Error(`Container with identifier "${slug}" not found.`)
       }
+      existingContainers.push(existing)
+    }
 
+    // Phase 2: apply the action to each validated container.
+    return Promise.all(existingContainers.map(async (existing) => {
       const currentFlags = existing.activeFlags ?? []
       let nextFlags = currentFlags
 
@@ -1034,6 +1063,211 @@ async function adjustParentOccupancy(
   else {
     await ContainerService.adjustStoredCount(parent.doc._id, childType, delta)
   }
+}
+
+/*
+ * Apply a capacity delta on a container's stored parent reference (a
+ * TypedDocumentReference), used to free (or re-occupy) the SOURCE parent's slot/count
+ * during a move or delete — where only the stored ref and old position are known:
+ *   - a recorded slot means the parent is a grid container → adjustOccupancy at the slot.
+ *   - storageEquipment parent → adjustStoredCount by category.
+ *   - count-layout container parent → adjustStoredCount by category.
+ */
+async function adjustParentRefOccupancy(
+  parentRef: Container['parent'],
+  position: GridPosition | null | undefined,
+  childType: ContainerType,
+  delta: number
+): Promise<void> {
+  if (!parentRef) return
+  if (position) {
+    await ContainerService.adjustOccupancy(parentRef.id, position, delta)
+  }
+  else if (parentRef.type === 'storageEquipment') {
+    await EquipmentService.adjustStoredCount(parentRef.id, childType, delta)
+  }
+  else {
+    await ContainerService.adjustStoredCount(parentRef.id, childType, delta)
+  }
+}
+
+/*
+ * Verify a resolved parent can accept a whole batch of containers against its currently
+ * committed occupancy, before any move is written. Groups the batch by container type
+ * and checks that every type is accepted and has enough free capacity/slots.
+ */
+function assertBatchCapacityAvailable(parent: ResolvedParent, containers: Container[]): void {
+  const neededByType = new Map<string, number>()
+  for (const container of containers) {
+    neededByType.set(container.containerType, (neededByType.get(container.containerType) ?? 0) + 1)
+  }
+
+  if (parent.kind === 'container') {
+    const capacity = parent.doc.capacity ?? []
+    const gridEntry = capacity.find(entry => entry.layout === 'grid')
+
+    if (gridEntry && gridEntry.layout === 'grid') {
+      const available = totalSlots(gridEntry) - gridEntry.stored
+      let totalNeeded = 0
+      for (const [type, count] of neededByType) {
+        if (gridEntry.childKind !== 'container' || gridEntry.type !== type) {
+          throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${type}".`)
+        }
+        totalNeeded += count
+      }
+      if (available < totalNeeded) {
+        throw new Error(`Grid container "${parent.doc.slug}" has only ${available} free slot(s); ${totalNeeded} requested.`)
+      }
+      return
+    }
+
+    for (const [type, count] of neededByType) {
+      const entry = capacity.find(
+        capacityEntry => capacityEntry.layout === 'count' && capacityEntry.childKind === 'container' && capacityEntry.type === type
+      )
+      if (!entry || entry.layout !== 'count') {
+        throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${type}".`)
+      }
+      const available = entry.capacity - entry.stored
+      if (available < count) {
+        throw new Error(`Container "${parent.doc.slug}" has room for ${available} more "${type}"; ${count} requested.`)
+      }
+    }
+    return
+  }
+
+  // Equipment parents are count-only (no grid layout).
+  const capacity = parent.doc.capacity ?? []
+  for (const [type, count] of neededByType) {
+    const entry = capacity.find(capacityEntry => capacityEntry.type === type)
+    if (!entry) {
+      throw new Error(`Storage equipment "${parent.doc.slug}" does not accept containers of type "${type}".`)
+    }
+    const available = entry.capacity - entry.stored
+    if (available < count) {
+      throw new Error(`Storage equipment "${parent.doc.slug}" has room for ${available} more "${type}"; ${count} requested.`)
+    }
+  }
+}
+
+/*
+ * Re-home a single container into an already-resolved parent.
+ *
+ * Ordering (CouchDB has no multi-document transactions, so this minimises the blast
+ * radius of any single failure):
+ *   1. RESERVE the destination parent BEFORE writing the child — concurrent placements
+ *      are serialised on the parent `_rev` and any cap/occupancy violation throws before
+ *      an orphan child is created. For grid parents `adjustOccupancy` consults the
+ *      grid_occupancy view (fed by child positions), so the counter must be bumped while
+ *      the target slot is still empty.
+ *   2. WRITE the child to the destination.
+ *   3. RELEASE the source parent's slot/count now that the child no longer lives there.
+ *
+ * If step 2 fails the destination reservation is released and the source is untouched.
+ * If step 3 fails the child is reverted to the source and the destination reservation is
+ * released, so the container is left exactly as it started. Returns the moved container
+ * with its new `_rev`.
+ */
+async function moveContainerOne(
+  existing: Container,
+  newParent: ResolvedParent,
+  requestedPosition: GridPosition | null,
+  firnUser: FirnUser,
+  logComment: string | null | undefined
+): Promise<Container> {
+  const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType)
+
+  await adjustParentOccupancy(newParent, existing.containerType, positionParent, 1)
+  const now = new Date().toISOString()
+
+  const movedContainer: Container = {
+    ...existing,
+    parent: toParentRef(newParent.doc),
+    positionParent,
+    updatedAt: now
+  }
+
+  const changelogEntry: InventoryActionLogEntry = {
+    actionType: 'move',
+    firnUser: toUserRef(firnUser),
+    timestamp: now,
+    notes: logComment ?? `Moved to parent "${newParent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}".`
+  }
+
+  movedContainer.actionLog = [...existing.actionLog, changelogEntry]
+
+  try {
+    const result = await couchDB.updateDocument(movedContainer._id, movedContainer, existing._rev)
+    movedContainer._rev = result.rev
+  }
+  catch (error) {
+    // Child write failed: release the destination reservation so the counter does not
+    // leak. The source parent was not touched yet, so it needs no reversal.
+    try {
+      await adjustParentOccupancy(newParent, existing.containerType, positionParent, -1)
+    }
+    catch {
+      // Best-effort — surface the original failure regardless.
+    }
+    throw error
+  }
+
+  // Child re-homed: free the slot/count it previously held on the SOURCE parent.
+  try {
+    await adjustParentRefOccupancy(existing.parent, existing.positionParent, existing.containerType, -1)
+  }
+  catch (error) {
+    // Could not free the source after the child moved. Revert this container to its
+    // original placement (restore the doc, release the destination reservation) so the
+    // batch is left consistent, then surface the failure.
+    try {
+      await couchDB.updateDocument(
+        existing._id,
+        { ...existing, updatedAt: new Date().toISOString() },
+        movedContainer._rev
+      )
+    }
+    catch {
+      // Best-effort revert.
+    }
+    try {
+      await adjustParentOccupancy(newParent, existing.containerType, positionParent, -1)
+    }
+    catch {
+      // Best-effort revert.
+    }
+    throw error
+  }
+
+  return movedContainer
+}
+
+/*
+ * Best-effort reversal of a fully-committed move within a failed batch. moveContainerOne
+ * reserves the destination and frees the source, so the reversal must, in order:
+ *   1. re-occupy the source slot/count (done first, while the source slot is still free —
+ *      grid re-occupancy checks the slot is empty);
+ *   2. restore the child document to its original parent, position and action log;
+ *   3. release the destination reservation.
+ */
+async function rollbackContainerMove(
+  before: Container,
+  after: Container,
+  newParent: ResolvedParent
+): Promise<void> {
+  await adjustParentRefOccupancy(before.parent, before.positionParent, before.containerType, 1)
+
+  const restored: Container = {
+    ...after,
+    parent: before.parent,
+    positionParent: before.positionParent,
+    actionLog: before.actionLog,
+    updatedAt: new Date().toISOString()
+  }
+  const result = await couchDB.updateDocument(restored._id, restored, after._rev)
+  restored._rev = result.rev
+
+  await adjustParentOccupancy(newParent, before.containerType, after.positionParent ?? null, -1)
 }
 
 /* Write back the container with `stored` updated for the entry matching `type`. */

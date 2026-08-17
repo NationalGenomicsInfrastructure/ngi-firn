@@ -12,13 +12,13 @@
  * CONTAINER MUTATIONS (firnUserProcedure):
  * createContainer - Create a new container inside a storage-equipment or container parent
  * updateContainer - Update container metadata
- * moveContainer - Re-home a container to another equipment/container parent
- * alterContainer - Perform lifecycle actions (check-out, return, reserve, discard, dispose, flag)
+ * moveContainer - Re-home one or more containers to a single shared equipment/container parent (batch)
+ * alterContainer - Perform lifecycle actions on one or more containers (check-out, return, reserve, discard, dispose, flag) (batch)
  * addProjectRef - Link a LIMS project to this container
  * removeProjectRef - Remove a LIMS project link from this container
  *
  * CONTAINER MUTATIONS (adminProcedure):
- * deleteContainer - Delete an empty container, freeing its slot on the parent
+ * deleteContainer - Delete one or more empty containers, freeing each one's slot on its parent (best-effort batch)
  */
 
 import { createTRPCRouter, authedProcedure, adminProcedure, firnUserProcedure } from '../../init'
@@ -136,11 +136,11 @@ export const containersRouter = createTRPCRouter({
 
   moveContainer: firnUserProcedure
     .input(moveContainerSchema)
-    .mutation(async ({ input, ctx }): Promise<DisplayContainer> => {
+    .mutation(async ({ input, ctx }): Promise<DisplayContainer[]> => {
       if (!ctx.firnUser) throw new Error('User context is required to move a container.')
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
-      const container = await ContainerService.moveContainer(input, ctx.firnUser)
-      return await toDisplay(container)
+      const containers = await ContainerService.moveContainer(input, ctx.firnUser)
+      return await ContainerService.convertMultipleToDisplayContainers(containers)
     }),
 
   alterContainer: firnUserProcedure
@@ -178,10 +178,13 @@ export const containersRouter = createTRPCRouter({
 
   deleteContainer: adminProcedure
     .input(deleteContainerSchema)
-    .mutation(async ({ input }): Promise<DisplayContainer> => {
+    .mutation(async ({ input }): Promise<{ deleted: DisplayContainer[], failures: { slug: string, error: string }[] }> => {
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
-      const container = await ContainerService.deleteContainer(input)
-      return await toDisplay(container)
+      const { deleted, failures } = await ContainerService.deleteContainer(input)
+      return {
+        deleted: await ContainerService.convertMultipleToDisplayContainers(deleted),
+        failures
+      }
     })
 
 })

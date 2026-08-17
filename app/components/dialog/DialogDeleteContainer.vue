@@ -19,10 +19,11 @@ const parentKind = computed<'equipment' | 'container' | undefined>(() => {
 
 function handleDelete() {
   deleteContainer({
-    containerSlug: props.container.slug,
-    containerName: props.container.name,
-    parentSlug: props.container.parentRef?.slug,
-    parentKind: parentKind.value
+    containerSlug: [props.container.slug],
+    containerNames: [props.container.name],
+    parents: parentKind.value && props.container.parentRef?.slug
+      ? [{ slug: props.container.parentRef.slug, kind: parentKind.value }]
+      : []
   })
 }
 </script>

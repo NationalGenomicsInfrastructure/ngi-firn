@@ -186,17 +186,34 @@ export const updateContainerSchema = z.object({
 })
 
 export const deleteContainerSchema = z.object({
-  containerSlug: z.string().min(1, { message: 'Container identifier is required' })
+  // Batch operation: one or more containers can be deleted at once, so this is an array of slugs.
+  containerSlug: z
+    .array(z.string().min(1, { message: 'Container identifier is required' }))
+    .min(1, { message: 'At least one container identifier is required' })
 })
 
-export const moveContainerSchema = z.object({
-  containerSlug: z.string().min(1, { message: 'Container identifier is required' }),
-  newParentSlug: z.string().min(1, { message: 'Target parent identifier is required' }),
-  newParentKind: parentKindSchema,
-  // New placement within the target parent's grid (if it is a grid).
-  position: gridPositionSchema.nullish(),
-  logComment: z.string().nullish() // Optional note to append to the container's action log
-})
+export const moveContainerSchema = z
+  .object({
+    // Batch operation: one or more containers can be moved to a single shared destination at once.
+    containerSlug: z
+      .array(z.string().min(1, { message: 'Container identifier is required' }))
+      .min(1, { message: 'At least one container identifier is required' }),
+    newParentSlug: z.string().min(1, { message: 'Target parent identifier is required' }),
+    newParentKind: parentKindSchema,
+    // New placement within the target parent's grid (if it is a grid). An explicit position is only
+    // meaningful for a single container; batches (>1) are auto-placed into the first free slots.
+    position: gridPositionSchema.nullish(),
+    logComment: z.string().nullish() // Optional note to append to the container's action log
+  })
+  .superRefine((input, ctx) => {
+    if (input.position && input.containerSlug.length > 1) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['position'],
+        message: 'An explicit position can only be supplied when moving a single container.'
+      })
+    }
+  })
 
 export const alterContainerSchema = z.object({
   // Batch operation: multiple containers can be updated at once, so this is an array of slugs.
