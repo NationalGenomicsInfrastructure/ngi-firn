@@ -30,7 +30,8 @@ import {
   moveContainerSchema,
   alterContainerSchema,
   acceptedChildrenSchema,
-  containerMoveTargetsSchema
+  containerMoveTargetsSchema,
+  containerMoveTargetsBatchSchema
 } from '~~/schemas/inventory/container'
 import type { AcceptedChildCapacity, ContainerMoveTarget, DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
 
@@ -98,6 +99,13 @@ export const containersRouter = createTRPCRouter({
     .query(async ({ input }): Promise<ContainerMoveTarget[]> => {
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
       return await ContainerService.getMoveTargetsForContainer(input.containerSlug)
+    }),
+
+  getMoveTargetsForContainers: authedProcedure
+    .input(containerMoveTargetsBatchSchema)
+    .query(async ({ input }): Promise<ContainerMoveTarget[]> => {
+      const { ContainerService } = await import('../../../crud/inventory/containers.server')
+      return await ContainerService.getMoveTargetsForContainers(input.containerSlug)
     }),
 
   getContainerActionLog: authedProcedure

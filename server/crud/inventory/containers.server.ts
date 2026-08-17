@@ -297,10 +297,106 @@ export const ContainerService = {
   },
 
   /*
-   * Resolve a parent slug to its document.
-   * Used during create/move operations when the parent slug is known from user input.
-   * Throws when no parent with that slug exists.
+   * Candidate parents that can accept a WHOLE batch of containers at a single shared
+   * destination. A candidate must accept every container type present in the batch and
+   * still have enough free capacity for the number of containers of each type. Any selected
+   * container, its descendants and its current parent(s) are excluded so the result only
+   * contains valid, non-cyclic destinations for all of them. Deduped by slug, sorted by name.
+   *
+   * `free` on each returned target is the minimum free capacity across the needed types — a
+   * conservative "how many more still fit" hint for the UI.
    */
+  async getMoveTargetsForContainers(containerSlugs: string[]): Promise<ContainerMoveTarget[]> {
+    const containers: Container[] = []
+    for (const slug of containerSlugs) {
+      const existing = await this.getContainerBySlug(slug)
+      if (!existing) {
+        throw new Error(`Container with identifier "${slug}" not found.`)
+      }
+      containers.push(existing)
+    }
+
+    // Collect exclusions and per-type demand.
+    const selectedIds = new Set(containers.map(container => container._id))
+    const currentParentIds = new Set(
+      containers.map(container => container.parent?.id).filter((id): id is string => !!id)
+    )
+    const excludedIds = new Set<string>([...selectedIds, ...currentParentIds])
+    for (const container of containers) {
+      const descendantIds = await this.collectDescendantIds(container._id)
+      for (const id of descendantIds) excludedIds.add(id)
+    }
+
+    const neededByType = new Map<string, number>()
+    for (const container of containers) {
+      neededByType.set(container.containerType, (neededByType.get(container.containerType) ?? 0) + 1)
+    }
+
+    // For each distinct type, gather candidate parents keyed by slug together with their
+    // free capacity for that type and their document.
+    const perType = new Map<string, Map<string, { doc: StorageEquipment | Container, free: number }>>()
+    for (const type of neededByType.keys()) {
+      const result = await couchDB.queryView<
+        [string, string],
+        { free: number },
+        StorageEquipment | Container
+      >(
+        'firn-inventory',
+        'capacity_by_accepted_category',
+        {
+          key: ['container', type],
+          include_docs: true,
+          reduce: false
+        }
+      )
+
+      const bySlug = new Map<string, { doc: StorageEquipment | Container, free: number }>()
+      for (const row of result.rows) {
+        const doc = row.doc
+        if (!doc || !doc.slug) continue
+        if (excludedIds.has(doc._id)) continue
+        const free = row.value?.free ?? 0
+        // Keep the first row per slug (a candidate emits at most one entry per type).
+        if (!bySlug.has(doc.slug)) {
+          bySlug.set(doc.slug, { doc, free })
+        }
+      }
+      perType.set(type, bySlug)
+    }
+
+    // A valid destination must appear for EVERY needed type with enough free slots for the
+    // number of containers of that type. Intersect across types starting from the first.
+    const types = [...neededByType.keys()]
+    const firstType = types[0]
+    if (!firstType) return []
+    const firstMap = perType.get(firstType)
+    if (!firstMap) return []
+
+    const targets: ContainerMoveTarget[] = []
+    for (const [slug, entry] of firstMap) {
+      let fits = true
+      let minFree = Number.POSITIVE_INFINITY
+      for (const type of types) {
+        const candidate = perType.get(type)?.get(slug)
+        const needed = neededByType.get(type) ?? 0
+        if (!candidate || candidate.free < needed) {
+          fits = false
+          break
+        }
+        minFree = Math.min(minFree, candidate.free)
+      }
+      if (!fits) continue
+
+      targets.push({
+        slug,
+        name: entry.doc.name,
+        kind: entry.doc.type === 'storageEquipment' ? 'equipment' : 'container',
+        free: Number.isFinite(minFree) ? minFree : 0
+      })
+    }
+
+    return targets.sort((a, b) => a.name.localeCompare(b.name))
+  },
   async resolveParent(parentSlug: string, parentKind: ContainerParentKindType): Promise<ResolvedParent> {
     if (parentKind === 'container') {
       const container = (await queryContainersBySlug(parentSlug))[0]

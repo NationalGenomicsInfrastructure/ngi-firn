@@ -247,6 +247,15 @@ export const containerMoveTargetsSchema = z.object({
   containerSlug: z.string().min(1, { message: 'Container identifier is required' })
 })
 
+// Batch variant: candidate parents that can accept EVERY selected container at once — they
+// must accept all present types with enough aggregate free capacity, excluding any selected
+// container, its descendants and its current parent(s). Powers the batch-move dialog.
+export const containerMoveTargetsBatchSchema = z.object({
+  containerSlug: z
+    .array(z.string().min(1, { message: 'Container identifier is required' }))
+    .min(1, { message: 'At least one container identifier is required' })
+})
+
 // Inferred types
 export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
@@ -256,3 +265,4 @@ export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema>
 export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>
 export type AcceptedChildrenSchemaInput = z.infer<typeof acceptedChildrenSchema>
 export type ContainerMoveTargetsSchemaInput = z.infer<typeof containerMoveTargetsSchema>
+export type ContainerMoveTargetsBatchSchemaInput = z.infer<typeof containerMoveTargetsBatchSchema>

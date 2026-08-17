@@ -493,9 +493,20 @@ export const deleteContainer = defineMutation(() => {
       }
       showError(error.message, 'Container could not be deleted')
     },
-    onSuccess(data, input) {
+    onSuccess(data, input, context: ContainerListSnapshotContext) {
+      const queryCache = useQueryCache()
       const deletedCount = data.deleted.length
       const failedCount = data.failures.length
+
+      // Best-effort delete resolves normally even on partial failure, so reconcile the
+      // optimistic cache authoritatively: keep the containers the server actually deleted
+      // removed, but restore the ones that failed (onMutate optimistically removed ALL).
+      if (failedCount > 0) {
+        const deletedSlugs = new Set(data.deleted.map(c => c.slug))
+        for (const { key, list } of context.snapshots ?? []) {
+          queryCache.setQueryData(key, list.filter(c => !deletedSlugs.has(c.slug)))
+        }
+      }
 
       if (deletedCount > 0) {
         showSuccess(

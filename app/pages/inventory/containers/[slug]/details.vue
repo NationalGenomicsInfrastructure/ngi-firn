@@ -179,8 +179,9 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <footer class="flex flex-wrap items-center justify-end gap-2">
-          <DrawerInventoryContainerEdit :container="container" />
+          <DialogAlterContainers :containers="[container]" />
           <DialogMoveContainer :container="container" />
+          <DrawerInventoryContainerEdit :container="container" />
           <DialogDeleteContainer
             v-if="isAdmin"
             :container="container"

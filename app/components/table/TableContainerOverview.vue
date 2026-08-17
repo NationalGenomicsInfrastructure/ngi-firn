@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, Table } from '@tanstack/vue-table'
+import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayContainer, SerializedEntityRef } from '~~/types/inventory'
 import type { ContainerType } from '~~/schemas/inventory/container'
 import type { InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '~~/schemas/inventory/metadata'
@@ -106,7 +106,31 @@ const tableData = computed((): ContainerRow[] => {
 
 const pagination = ref({ pageSize: 20, pageIndex: 0 })
 const expanded = ref<Record<string, boolean>>({})
+const select = ref<RowSelectionState>()
 const table = useTemplateRef<Table<ContainerRow>>('table')
+
+const { user } = useUserSession()
+const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
+
+// Map slugs back to the full DisplayContainer objects the batch dialogs consume.
+const containerBySlug = computed(() => {
+  const map = new Map<string, DisplayContainer>()
+  for (const c of props.containers) map.set(c.slug, c)
+  return map
+})
+
+// Referencing select.value keeps this reactive to selection changes.
+const selectedContainers = computed<DisplayContainer[]>(() => {
+  void select.value
+  const rows = table.value?.getFilteredSelectedRowModel().rows ?? []
+  return rows
+    .map(row => containerBySlug.value.get(row.original.slug))
+    .filter((c): c is DisplayContainer => c != null)
+})
+
+function clearSelection() {
+  select.value = undefined
+}
 </script>
 
 <template>
@@ -114,11 +138,13 @@ const table = useTemplateRef<Table<ContainerRow>>('table')
     <NTable
       ref="table"
       v-model:expanded="expanded"
+      v-model:row-selection="select"
       :loading="loading"
       :columns="columns"
       :data="tableData"
       :una="{ tableHead: TABLE_HEAD_STYLE }"
       :pagination="pagination"
+      enable-row-selection
       enable-sorting
       enable-multi-sort
       empty-text="No containers found"
@@ -369,6 +395,31 @@ const table = useTemplateRef<Table<ContainerRow>>('table')
         :items-per-page="table?.getState().pagination.pageSize ?? 20"
         @update:page="table?.setPageIndex($event - 1)"
       />
+    </div>
+
+    <div
+      v-if="selectedContainers.length > 0"
+      class="flex flex-wrap items-center justify-between gap-4 px-2 mt-4"
+    >
+      <div class="flex-1 text-sm text-muted">
+        {{ selectedContainers.length }} of
+        {{ table?.getFilteredRowModel().rows.length }} container(s) selected.
+      </div>
+      <div class="flex flex-wrap gap-3 justify-end">
+        <DialogAlterContainers
+          :containers="selectedContainers"
+          @done="clearSelection"
+        />
+        <DialogMoveContainers
+          :containers="selectedContainers"
+          @done="clearSelection"
+        />
+        <DialogDeleteContainers
+          v-if="isAdmin"
+          :containers="selectedContainers"
+          @done="clearSelection"
+        />
+      </div>
     </div>
   </div>
 </template>

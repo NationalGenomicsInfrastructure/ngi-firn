@@ -14,7 +14,8 @@ export const INVENTORY_CONTAINERS_QUERY_KEYS = {
   actionLog: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'action-log'] as const,
   projectRefs: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const,
   acceptedChildren: (parentKind: ContainerParentKindType, parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'accepted-children', parentKind, parentSlug] as const,
-  moveTargets: (containerSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'move-targets', containerSlug] as const
+  moveTargets: (containerSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'move-targets', containerSlug] as const,
+  moveTargetsBatch: (containerSlugs: string[]) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'move-targets-batch', ...[...containerSlugs].sort()] as const
 } as const
 
 // Query for all containers across the whole inventory (index page; parent column shown)
@@ -92,6 +93,17 @@ export const containerMoveTargetsQuery = defineQueryOptions(
     query: (): Promise<ContainerMoveTarget[]> => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.getMoveTargets.query({ containerSlug })
+    }
+  })
+)
+// Batch variant: candidate destinations that can accept EVERY selected container at once.
+// Powers the multi-select move dialog. The key sorts slugs so selection order is irrelevant.
+export const containerMoveTargetsBatchQuery = defineQueryOptions(
+  (containerSlug: string[]) => ({
+    key: INVENTORY_CONTAINERS_QUERY_KEYS.moveTargetsBatch(containerSlug),
+    query: (): Promise<ContainerMoveTarget[]> => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.getMoveTargetsForContainers.query({ containerSlug })
     }
   })
 )
