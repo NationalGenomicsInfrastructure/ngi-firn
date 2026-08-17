@@ -19,7 +19,8 @@
  * updateContainer(updates) - Update container metadata and capacity limits
  * deleteContainer(input) - Delete one or more containers when empty, freeing each one's slot on its parent (best-effort batch)
  * moveContainer(input) - Re-home one or more containers to a single shared equipment/container parent (strict-atomic batch)
- * alterContainer(input) - Perform actions on one or more containers (check-out, return, reserve, discard, dispose, flag) — strict-atomic batch
+ * locateContainer(input) - Re-place one or more LOST containers into a parent (lost -> available); explicit or auto-selected destination (strict-atomic batch)
+ * alterContainer(input) - Perform actions on one or more containers (check-out, return, reserve, dispose, mark-missing, flag) — strict-atomic batch; dispose/post_missing free the parent slot and unplace the container
  *
  * CAPACITY AND OCCUPANCY MANAGEMENT:
  * adjustStoredCount(containerId, category, delta) - count-layout: increment/decrement a category's count
@@ -79,8 +80,11 @@ import type {
   CreateContainerSchemaInput,
   DeleteContainerSchemaInput,
   MoveContainerSchemaInput,
+  LocateContainerSchemaInput,
   UpdateContainerSchemaInput
 } from '~~/schemas/inventory/container'
+import { allowedActionsForStatus, isAlterAction, isVacatingAction } from '~~/schemas/inventory/metadata'
+import type { InventoryActionType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import type { FirnUser } from '../../../types/auth'
 
 /* Check if a document is a Container document. */
@@ -825,23 +829,118 @@ export const ContainerService = {
   },
 
   /*
-   * Perform a lifecycle action (check-out, return, reserve, discard, dispose, flag, …)
+   * Locate one or more LOST containers and re-place them into a single shared parent
+   * (lost -> available). This is the sanctioned counterpart to marking a container missing:
+   * the container was unplaced when it was lost (freeing its old slot), so locating it simply
+   * reserves a new destination and flips the status back to available.
+   *
+   * Destination resolution:
+   *   - explicit: `newParentSlug` + `newParentKind` (optionally `position` for a single container).
+   *   - auto-select: when no parent is given, the first candidate parent that can accept the whole
+   *     batch (per getMoveTargetsForContainers) is chosen; containers are auto-placed there.
+   *
+   * Strict-atomic like moveContainer: every container is validated (exists, is `lost`, no cycle)
+   * and the target's aggregate capacity is checked BEFORE any write; committed placements are
+   * rolled back best-effort if a later step fails.
+   */
+  async locateContainer(input: LocateContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
+    // ---- Phase 1: validate every container before touching anything ----
+    const containers: Container[] = []
+    for (const slug of input.containerSlug) {
+      const existing = await ContainerService.getContainerBySlug(slug)
+      if (!existing) {
+        throw new Error(`Container with identifier "${slug}" not found.`)
+      }
+      if (existing.status !== 'lost') {
+        throw new Error(`Container "${slug}" cannot be located because it is "${existing.status}", not "lost".`)
+      }
+      containers.push(existing)
+    }
+
+    // Resolve the destination parent: explicit when provided, otherwise auto-select the first
+    // candidate that can accept the whole batch.
+    let newParent: ResolvedParent
+    if (input.newParentSlug && input.newParentKind) {
+      newParent = await ContainerService.resolveParent(input.newParentSlug, input.newParentKind)
+    }
+    else {
+      const candidates = await ContainerService.getMoveTargetsForContainers(input.containerSlug)
+      const target = candidates[0]
+      if (!target) {
+        throw new Error('No storage location with enough free capacity is available to locate the selected container(s).')
+      }
+      newParent = await ContainerService.resolveParent(target.slug, target.kind === 'equipment' ? 'equipment' : 'container')
+    }
+
+    // Cycle guard: a container may never be located into itself or one of its own descendants.
+    if (newParent.kind === 'container') {
+      for (const existing of containers) {
+        if (newParent.doc._id === existing._id) {
+          throw new Error('A container cannot be located into itself.')
+        }
+        const descendantIds = await ContainerService.collectDescendantIds(existing._id)
+        if (descendantIds.has(newParent.doc._id)) {
+          throw new Error('A container cannot be located into one of its own descendants.')
+        }
+      }
+    }
+
+    assertBatchCapacityAvailable(newParent, containers)
+
+    // ---- Phase 2: execute, rolling back committed placements if a later step fails ----
+    const requestedPosition = containers.length === 1 ? input.position ?? null : null
+    const placed: { before: Container, after: Container }[] = []
+
+    try {
+      for (const existing of containers) {
+        const after = await moveContainerOne(existing, newParent, requestedPosition, firnUser, input.logComment, {
+          actionType: 'locate',
+          newStatus: 'available'
+        })
+        placed.push({ before: existing, after })
+      }
+    }
+    catch (error) {
+      for (const { before, after } of [...placed].reverse()) {
+        try {
+          await rollbackContainerMove(before, after, newParent)
+        }
+        catch {
+          // Surface the original failure regardless; the recalc tool can reconcile.
+        }
+      }
+      throw error
+    }
+
+    return placed.map(entry => entry.after)
+  },
+
+  /*
+   * Perform a lifecycle action (check-out, return, reserve, dispose, mark-missing, flag, …)
    * on one or more containers at once.
    *
-   * Strict-atomic intent: every requested slug is resolved and validated BEFORE any
-   * document is written, so a bad slug (or an unsupported action / missing flag kind)
-   * aborts the whole batch before it makes partial changes. The subsequent writes only
-   * touch each container's own document — no parent capacity is involved — so the
-   * residual risk is limited to a rare concurrent `_rev` conflict mid-batch, which is
-   * reconcilable and acceptable per the documented CouchDB constraints.
+   * Strict-atomic intent: every requested slug is resolved and its action validated against
+   * the container's current status BEFORE any document is written, so a bad slug, an
+   * unsupported/dedicated action, a missing flag kind, or a status-illegal transition aborts
+   * the whole batch before it makes partial changes.
+   *
+   * Most actions only touch each container's own document. The exceptions are the "vacating"
+   * actions (dispose, post_missing): they unplace the container (parent -> null,
+   * positionParent -> null) and free the slot/count it held on its source parent. That parent
+   * decrement happens AFTER the container document is written with a null parent, mirroring
+   * deleteContainer, so the grid_occupancy view no longer counts the container the moment the
+   * counter is adjusted. Each container has an independent parent, so the residual risk stays
+   * limited to a rare concurrent `_rev` conflict mid-batch, reconcilable per the documented
+   * CouchDB constraints.
    */
   async alterContainer(input: AlterContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
-    if (input.performedAction === 'register' || input.performedAction === 'move' || input.performedAction === 'modify') {
-    // These actions are not meant to be supported by alterContainer; they have dedicated functions.
-      // Providing them would pass the typecheck, though, since it was simpler for logging purposes to have supported and unsupported actions in one type.
+    if (!isAlterAction(input.performedAction)) {
+    // These actions are not meant to be supported by alterContainer; they have dedicated functions
+      // (register, modify, move, locate). Providing them would pass the typecheck, though, since it
+      // was simpler for logging purposes to have supported and unsupported actions in one type.
       // Strictly a developer and not a user error.
       throw new Error(
-        `Action "${input.performedAction}" is not supported in alterContainer. Blame your developer — they should have used the dedicated register, move, or modify workflows instead.`
+        `Action "${input.performedAction}" is not supported in alterContainer. Blame your developer — they should have used the dedicated register, modify, move, or locate workflows instead.`
       )
     }
 
@@ -849,15 +948,23 @@ export const ContainerService = {
       throw new Error(`Action "${input.performedAction}" requires a flag kind.`)
     }
 
-    // Phase 1: resolve and validate every container before any write.
+    // Phase 1: resolve every container and validate the action against its current status
+    // (state machine) before any write, so an illegal transition aborts the whole batch.
     const existingContainers: Container[] = []
     for (const slug of input.containerSlug) {
       const existing = await ContainerService.getContainerBySlug(slug)
       if (!existing) {
         throw new Error(`Container with identifier "${slug}" not found.`)
       }
+      if (!allowedActionsForStatus(existing.status).includes(input.performedAction)) {
+        throw new Error(
+          `Action "${input.performedAction}" is not allowed on container "${slug}" while it is "${existing.status}".`
+        )
+      }
       existingContainers.push(existing)
     }
+
+    const vacating = isVacatingAction(input.performedAction)
 
     // Phase 2: apply the action to each validated container.
     return Promise.all(existingContainers.map(async (existing) => {
@@ -876,10 +983,16 @@ export const ContainerService = {
         nextFlags = currentFlags.filter(flag => flag.kind !== input.flagKind)
       }
 
+      // Vacating actions unplace the container: remember its former placement so the source
+      // parent's slot/count can be freed once the null-parent document has been written.
+      const formerParent = existing.parent
+      const formerPosition = existing.positionParent
+
       const updatedContainer: Container = {
         ...existing,
         schema: 2,
         activeFlags: nextFlags,
+        ...(vacating && { parent: null, positionParent: null }),
         updatedAt: new Date().toISOString()
       }
 
@@ -908,6 +1021,20 @@ export const ContainerService = {
 
       const result = await couchDB.updateDocument(updatedContainer._id, updatedContainer, existing._rev)
       updatedContainer._rev = result.rev
+
+      // Free the slot/count the container held on its former parent, now that the document no
+      // longer references that parent (so grid_occupancy stops counting it). Best-effort: a
+      // failed decrement is reconcilable by the parent occupancy views / recalc tool and must
+      // not undo the already-committed unplacement.
+      if (vacating && formerParent) {
+        try {
+          await adjustParentRefOccupancy(formerParent, formerPosition, existing.containerType, -1)
+        }
+        catch {
+          // Surface nothing — the unplacement stands; occupancy is reconcilable.
+        }
+      }
+
       return updatedContainer
     }))
   },
@@ -1268,14 +1395,19 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, containers: Contai
  * If step 3 fails the child is reverted to the source and the destination reservation is
  * released, so the container is left exactly as it started. Returns the moved container
  * with its new `_rev`.
+ *
+ * `options` lets the caller reuse this for the `locate` workflow (re-placing a lost
+ * container): it swaps the logged action type and sets a new status (lost -> available).
  */
 async function moveContainerOne(
   existing: Container,
   newParent: ResolvedParent,
   requestedPosition: GridPosition | null,
   firnUser: FirnUser,
-  logComment: string | null | undefined
+  logComment: string | null | undefined,
+  options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<Container> {
+  const actionType = options.actionType ?? 'move'
   const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType)
 
   await adjustParentOccupancy(newParent, existing.containerType, positionParent, 1)
@@ -1285,14 +1417,19 @@ async function moveContainerOne(
     ...existing,
     parent: toParentRef(newParent.doc),
     positionParent,
+    ...(options.newStatus && { status: options.newStatus }),
     updatedAt: now
   }
 
+  const placementNote = actionType === 'locate'
+    ? `Located and returned to storage in parent "${newParent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}.`
+    : `Moved to parent "${newParent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}".`
+
   const changelogEntry: InventoryActionLogEntry = {
-    actionType: 'move',
+    actionType,
     firnUser: toUserRef(firnUser),
     timestamp: now,
-    notes: logComment ?? `Moved to parent "${newParent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}".`
+    notes: logComment ?? placementNote
   }
 
   movedContainer.actionLog = [...existing.actionLog, changelogEntry]
@@ -1362,6 +1499,7 @@ async function rollbackContainerMove(
     ...after,
     parent: before.parent,
     positionParent: before.positionParent,
+    status: before.status,
     actionLog: before.actionLog,
     updatedAt: new Date().toISOString()
   }

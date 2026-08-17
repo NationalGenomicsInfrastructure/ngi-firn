@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DisplayContainer } from '~~/types/inventory'
 import type { InventoryActionType, InventoryFlagType } from '~~/schemas/inventory/metadata'
+import { allowedActionsForStatus, isAlterAction } from '~~/schemas/inventory/metadata'
 import { FLAG_META } from '~/utils/inventory/actionLog'
 import { alterContainer as useAlterContainersMutation } from '~/utils/mutations/inventory/containers'
 
@@ -12,9 +13,10 @@ const emit = defineEmits<{ done: [] }>()
 
 const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
 
-// Actions the batch alter endpoint accepts — register/move/modify are rejected server-side
-// because they have dedicated workflows.
-const SUPPORTED_ACTIONS: InventoryActionType[] = [
+// Preferred display order of the lifecycle actions this dialog can perform. The actual
+// availability is decided per-selection by the status state machine (see actionOptions);
+// `locate` is intentionally excluded here — it needs a destination and has its own dialog.
+const ACTION_ORDER: InventoryActionType[] = [
   'checkout',
   'return',
   'reserve',
@@ -35,12 +37,27 @@ function actionLabel(action: InventoryActionType): string {
 }
 
 const isOpen = ref(false)
-const selectedAction = ref<InventoryActionType>('checkout')
+const selectedAction = ref<InventoryActionType>('note')
 const selectedFlag = ref<InventoryFlagType>('info')
 const logComment = ref('')
 
 const count = computed(() => props.containers.length)
 const requiresFlag = computed(() => selectedAction.value === 'flag' || selectedAction.value === 'unflag')
+const isDispose = computed(() => selectedAction.value === 'dispose')
+
+// Actions permitted for the WHOLE selection: the intersection of each container's
+// status-allowed alter actions. A mixed-status selection only offers what they all share.
+const commonAllowedActions = computed<Set<InventoryActionType>>(() => {
+  if (props.containers.length === 0) return new Set<InventoryActionType>()
+  let common: InventoryActionType[] | null = null
+  for (const container of props.containers) {
+    const allowed = allowedActionsForStatus(container.status).filter(isAlterAction)
+    common = common === null
+      ? [...allowed]
+      : common.filter(action => allowed.includes(action))
+  }
+  return new Set<InventoryActionType>(common ?? [])
+})
 
 // Flags currently present across the selected containers — you can only remove a flag that exists.
 const availableFlags = computed<InventoryFlagType[]>(() => {
@@ -51,9 +68,10 @@ const availableFlags = computed<InventoryFlagType[]>(() => {
   return (Object.keys(FLAG_META) as InventoryFlagType[]).filter(flag => seen.has(flag))
 })
 
-// Hide "unflag" entirely when none of the selected containers carry a flag.
+// Show only actions allowed for every selected container; hide "unflag" when none carry a flag.
 const actionOptions = computed(() =>
-  SUPPORTED_ACTIONS
+  ACTION_ORDER
+    .filter(action => commonAllowedActions.value.has(action))
     .filter(action => action !== 'unflag' || availableFlags.value.length > 0)
     .map(action => ({ value: action, label: actionLabel(action) }))
 )
@@ -66,12 +84,12 @@ const flagOptions = computed(() => {
   return flags.map(flag => ({ value: flag, label: FLAG_META[flag].label }))
 })
 
-// Keep the selected action valid when the selection (and thus available flags) changes.
-watch(availableFlags, (flags) => {
-  if (selectedAction.value === 'unflag' && flags.length === 0) {
-    selectedAction.value = 'checkout'
+// Keep the selected action valid whenever the available options change (selection/status shifts).
+watch(actionOptions, (options) => {
+  if (!options.some(option => option.value === selectedAction.value)) {
+    selectedAction.value = options[0]?.value ?? 'note'
   }
-})
+}, { immediate: true })
 
 // Keep the selected flag valid whenever the action or the available options change.
 watch([selectedAction, flagOptions], () => {
@@ -87,7 +105,7 @@ function onActionUpdate(value: unknown) {
     : value && typeof value === 'object' && 'value' in value
       ? (value as { value?: unknown }).value
       : undefined
-  if (typeof resolved === 'string' && (SUPPORTED_ACTIONS as string[]).includes(resolved)) {
+  if (typeof resolved === 'string' && commonAllowedActions.value.has(resolved as InventoryActionType)) {
     selectedAction.value = resolved as InventoryActionType
   }
 }
@@ -150,7 +168,16 @@ function onDialogOpenChange(open: boolean) {
         Applying to <span class="font-semibold">{{ count }}</span> container{{ count === 1 ? '' : 's' }}.
       </p>
 
+      <NAlert
+        v-if="actionOptions.length === 0"
+        alert="soft-warning"
+        title="No shared action"
+        description="The selected containers have no lifecycle action in common for their current statuses."
+        icon
+      />
+
       <NFormField
+        v-else
         name="action"
         label="Action"
         :una="{ formLabel: FORM_LABEL_STYLE }"
@@ -162,6 +189,19 @@ function onDialogOpenChange(open: boolean) {
           @update:model-value="onActionUpdate"
         />
       </NFormField>
+
+      <NAlert
+        v-if="isDispose"
+        alert="soft-error"
+        title="Disposal is permanent"
+        icon="i-lucide-trash-2"
+      >
+        <p class="text-sm">
+          Disposing frees each container's slot in its parent and marks it
+          <span class="font-semibold">disposed</span> — a terminal state that cannot be undone or
+          reactivated. Only notes can be added afterwards.
+        </p>
+      </NAlert>
 
       <NFormField
         v-if="requiresFlag"
@@ -201,10 +241,13 @@ function onDialogOpenChange(open: boolean) {
           />
         </NDialogClose>
         <NButton
-          :label="`Apply to ${count} container${count === 1 ? '' : 's'}`"
-          btn="soft-success hover:outline-success"
-          trailing="i-lucide-check"
-          :disabled="count === 0"
+          :label="isDispose
+            ? `Dispose ${count} container${count === 1 ? '' : 's'}`
+            : `Apply to ${count} container${count === 1 ? '' : 's'}`"
+          :btn="isDispose ? 'soft-error hover:outline-error' : 'soft-success hover:outline-success'"
+          :leading="isDispose ? 'i-lucide-trash-2' : undefined"
+          :trailing="isDispose ? undefined : 'i-lucide-check'"
+          :disabled="count === 0 || actionOptions.length === 0"
           :loading="isLoading"
           @click="handleAlter"
         />

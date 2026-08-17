@@ -13,7 +13,8 @@
  * createContainer - Create a new container inside a storage-equipment or container parent
  * updateContainer - Update container metadata
  * moveContainer - Re-home one or more containers to a single shared equipment/container parent (batch)
- * alterContainer - Perform lifecycle actions on one or more containers (check-out, return, reserve, discard, dispose, flag) (batch)
+ * locateContainer - Re-place one or more LOST containers into a parent (lost -> available); explicit or auto-selected destination (batch)
+ * alterContainer - Perform lifecycle actions on one or more containers (check-out, return, reserve, dispose, mark-missing, flag); dispose/mark-missing free the parent slot (batch)
  * addProjectRef - Link a LIMS project to this container
  * removeProjectRef - Remove a LIMS project link from this container
  *
@@ -29,6 +30,7 @@ import {
   deleteContainerSchema,
   moveContainerSchema,
   alterContainerSchema,
+  locateContainerSchema,
   acceptedChildrenSchema,
   containerMoveTargetsSchema,
   containerMoveTargetsBatchSchema
@@ -157,6 +159,15 @@ export const containersRouter = createTRPCRouter({
       if (!ctx.firnUser) throw new Error('User context is required to alter containers.')
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
       const containers = await ContainerService.alterContainer(input, ctx.firnUser)
+      return await ContainerService.convertMultipleToDisplayContainers(containers)
+    }),
+
+  locateContainer: firnUserProcedure
+    .input(locateContainerSchema)
+    .mutation(async ({ input, ctx }): Promise<DisplayContainer[]> => {
+      if (!ctx.firnUser) throw new Error('User context is required to locate containers.')
+      const { ContainerService } = await import('../../../crud/inventory/containers.server')
+      const containers = await ContainerService.locateContainer(input, ctx.firnUser)
       return await ContainerService.convertMultipleToDisplayContainers(containers)
     }),
 

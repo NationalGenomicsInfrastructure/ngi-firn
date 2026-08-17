@@ -1,11 +1,13 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
 import type { DisplayContainer, InventoryActiveFlag } from '~~/types/inventory'
 import type { InventoryActionType, InventoryFlagType, InventoryStatusType } from '~~/schemas/inventory/metadata'
+import { isVacatingAction } from '~~/schemas/inventory/metadata'
 import type {
   CreateContainerSchemaInput,
   UpdateContainerSchemaInput,
   DeleteContainerSchemaInput,
   MoveContainerSchemaInput,
+  LocateContainerSchemaInput,
   AlterContainerSchemaInput
 } from '~~/schemas/inventory/container'
 import { INVENTORY_CONTAINERS_QUERY_KEYS } from '~/utils/queries/inventory/containers'
@@ -38,6 +40,11 @@ type DeleteContainerMutationInput = DeleteContainerSchemaInput & {
 }
 
 type MoveContainerMutationInput = MoveContainerSchemaInput & {
+  containerNames?: string[]
+}
+
+type LocateContainerMutationInput = LocateContainerSchemaInput & {
+  // UI-only labels for toasts; never sent to the API.
   containerNames?: string[]
 }
 
@@ -79,7 +86,13 @@ function upsertActiveFlag(
 type ContainerListContext = { parentList: DisplayContainer[], parentListCacheKey: readonly string[] | null }
 type ContainerDetailContext = { container: DisplayContainer | undefined }
 type ContainerDetailAndListContext = ContainerDetailContext & { parentList: DisplayContainer[], parentListCacheKey: readonly string[] | null }
-type ContainerAlterContext = { snapshots: { slug: string, container: DisplayContainer | undefined }[] }
+type ContainerAlterContext = {
+  snapshots: { slug: string, container: DisplayContainer | undefined }[]
+  // For vacating actions (dispose/post_missing): snapshots of every parent/overview list
+  // touched, plus the former parent slugs, so the cache can be rolled back and reconciled.
+  listSnapshots: { key: readonly string[], list: DisplayContainer[] }[]
+  parentSlugs: string[]
+}
 // Batch delete: snapshots of every parent list cache touched, for rollback on error.
 type ContainerListSnapshotContext = { snapshots: { key: readonly string[], list: DisplayContainer[] }[] }
 // Batch move: per-container detail snapshots plus the old parent lists they belonged to.
@@ -281,6 +294,100 @@ export const moveContainer = defineMutation(() => {
 })
 
 // ---------------------------------------------------------------------------
+// locateContainer — re-place LOST containers (lost -> available)
+// ---------------------------------------------------------------------------
+
+export const locateContainer = defineMutation(() => {
+  const { mutate, ...mutation } = useMutation({
+    mutation: (input: LocateContainerMutationInput) => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.locateContainer.mutate({
+        containerSlug: input.containerSlug,
+        newParentSlug: input.newParentSlug,
+        newParentKind: input.newParentKind,
+        position: input.position,
+        logComment: input.logComment
+      })
+    },
+    onMutate(input): ContainerAlterContext {
+      const queryCache = useQueryCache()
+      const slugSet = new Set(input.containerSlug)
+
+      // Optimistically flip status to available in the detail caches. The destination parent
+      // may be auto-selected server-side, so placement (parentRef) is reconciled on settle.
+      const snapshots = input.containerSlug.map((slug) => {
+        const container = queryCache.getQueryData<DisplayContainer>(
+          INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug)
+        )
+        if (container) {
+          queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), {
+            ...container,
+            status: 'available' as InventoryStatusType
+          })
+        }
+        return { slug, container }
+      })
+
+      const listSnapshots: { key: readonly string[], list: DisplayContainer[] }[] = []
+      const allKey = INVENTORY_CONTAINERS_QUERY_KEYS.all()
+      const allList = queryCache.getQueryData<DisplayContainer[]>(allKey)
+      if (allList) {
+        listSnapshots.push({ key: allKey, list: allList })
+        queryCache.setQueryData(allKey, allList.map(c => slugSet.has(c.slug)
+          ? { ...c, status: 'available' as InventoryStatusType }
+          : c))
+      }
+
+      return { snapshots, listSnapshots, parentSlugs: [] }
+    },
+    onError(error: Error, _input, context) {
+      const queryCache = useQueryCache()
+      for (const { slug, container } of context.snapshots ?? []) {
+        if (container) {
+          queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), container)
+        }
+      }
+      for (const { key, list } of context.listSnapshots ?? []) {
+        queryCache.setQueryData(key, list)
+      }
+      showError(error.message, 'Container could not be located')
+    },
+    onSuccess(response, input) {
+      const count = response.length
+      const containerLabel = input.containerNames?.[0] ?? response[0]?.name ?? ''
+      showSuccess(
+        count === 1
+          ? `Container "${containerLabel}" located and returned to storage.`
+          : `${count} containers located and returned to storage.`,
+        'Container located'
+      )
+    },
+    onSettled(data, _error, input) {
+      const queryCache = useQueryCache()
+      for (const slug of input.containerSlug) {
+        queryCache.invalidateQueries({
+          key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug),
+          exact: true
+        })
+      }
+      if (input.newParentSlug && input.newParentKind) {
+        const newParentListKey: readonly string[] = input.newParentKind === 'equipment'
+          ? INVENTORY_CONTAINERS_QUERY_KEYS.byEquipment(input.newParentSlug)
+          : INVENTORY_CONTAINERS_QUERY_KEYS.byParent(input.newParentSlug)
+        queryCache.invalidateQueries({ key: newParentListKey, exact: true })
+      }
+      // The destination (possibly auto-selected) and overview lists all change — invalidate
+      // the whole containers root plus the dashboard counts.
+      if (data) {
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.root })
+      }
+      queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
+    }
+  })
+  return { locateContainer: mutate, ...mutation }
+})
+
+// ---------------------------------------------------------------------------
 // alterContainer
 // ---------------------------------------------------------------------------
 
@@ -293,12 +400,16 @@ export const alterContainer = defineMutation(() => {
     onMutate(input): ContainerAlterContext {
       const queryCache = useQueryCache()
       const optimisticStatus = STATUS_FROM_ACTION[input.performedAction]
+      const vacating = isVacatingAction(input.performedAction)
+      const slugSet = new Set(input.containerSlug)
+      const parentSlugs: string[] = []
 
       const snapshots = input.containerSlug.map((slug) => {
         const container = queryCache.getQueryData<DisplayContainer>(
           INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug)
         )
         if (container) {
+          if (container.parentRef) parentSlugs.push(container.parentRef.slug)
           const updatedFlags: InventoryActiveFlag[] | null
             = input.performedAction === 'flag' && input.flagKind
               ? upsertActiveFlag(container.activeFlags, input.flagKind as InventoryFlagType, input.logComment ?? null)
@@ -309,12 +420,42 @@ export const alterContainer = defineMutation(() => {
           queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), {
             ...container,
             ...(optimisticStatus !== undefined && { status: optimisticStatus }),
+            // Vacating actions unplace the container: drop its placement in the cache too.
+            ...(vacating && { parentRef: null, positionParent: null }),
             activeFlags: updatedFlags && updatedFlags.length > 0 ? updatedFlags : null
           })
         }
         return { slug, container }
       })
-      return { snapshots }
+
+      // For vacating actions also reconcile the list caches: remove the containers from their
+      // former parent lists (they no longer live there) and, in the flat overview, update the
+      // entries in place (they stay listed but become unplaced with the new status).
+      const listSnapshots: { key: readonly string[], list: DisplayContainer[] }[] = []
+      if (vacating) {
+        const listKeys = new Map<string, readonly string[]>()
+        for (const { container } of snapshots) {
+          const key = container ? parentListKey(container.parentRef) : null
+          if (key) listKeys.set(key.join('\u0000'), key)
+        }
+        for (const key of listKeys.values()) {
+          const list = queryCache.getQueryData<DisplayContainer[]>(key) ?? []
+          listSnapshots.push({ key, list })
+          queryCache.cancelQueries({ key, exact: true })
+          queryCache.setQueryData(key, list.filter(c => !slugSet.has(c.slug)))
+        }
+
+        const allKey = INVENTORY_CONTAINERS_QUERY_KEYS.all()
+        const allList = queryCache.getQueryData<DisplayContainer[]>(allKey)
+        if (allList) {
+          listSnapshots.push({ key: allKey, list: allList })
+          queryCache.setQueryData(allKey, allList.map(c => slugSet.has(c.slug)
+            ? { ...c, ...(optimisticStatus !== undefined && { status: optimisticStatus }), parentRef: null, positionParent: null }
+            : c))
+        }
+      }
+
+      return { snapshots, listSnapshots, parentSlugs }
     },
     onError(error: Error, _input, context) {
       const queryCache = useQueryCache()
@@ -322,6 +463,9 @@ export const alterContainer = defineMutation(() => {
         if (container) {
           queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), container)
         }
+      }
+      for (const { key, list } of context.listSnapshots ?? []) {
+        queryCache.setQueryData(key, list)
       }
       showError(error.message, 'Container action could not be performed')
     },
@@ -334,13 +478,28 @@ export const alterContainer = defineMutation(() => {
         'Action applied'
       )
     },
-    onSettled(_data, _error, input) {
+    onSettled(_data, _error, input, context) {
       const queryCache = useQueryCache()
       for (const slug of input.containerSlug) {
         queryCache.invalidateQueries({
           key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug),
           exact: true
         })
+      }
+      // Vacating actions changed parent occupancy and list membership — refresh the affected
+      // parent lists, the flat overview, the former-parent details (capacity) and the counts.
+      for (const { key } of context?.listSnapshots ?? []) {
+        queryCache.invalidateQueries({ key, exact: true })
+      }
+      for (const parentSlug of new Set(context?.parentSlugs ?? [])) {
+        queryCache.invalidateQueries({
+          key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(parentSlug),
+          exact: true
+        })
+      }
+      if (isVacatingAction(input.performedAction)) {
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.all(), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
       }
     }
   })

@@ -28,6 +28,7 @@ export const ACTION_TYPE_META: Record<InventoryActionType, ActionTypeMeta> = {
   unreserve: { label: 'Released reservation', icon: 'i-lucide-bookmark-x', badge: 'solid-gray' },
   register: { label: 'Registered', icon: 'i-lucide-circle-plus', badge: 'solid-success' },
   modify: { label: 'Modified', icon: 'i-lucide-pencil', badge: 'solid-primary' },
+  locate: { label: 'Located', icon: 'i-lucide-map-pin', badge: 'solid-success' },
   flag: { label: 'Flagged', icon: 'i-lucide-flag', badge: 'solid-yellow' },
   unflag: { label: 'Unflagged', icon: 'i-lucide-flag-off', badge: 'solid-gray' },
   note: { label: 'Note', icon: 'i-lucide-message-square', badge: 'solid-gray' }

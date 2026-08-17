@@ -118,6 +118,8 @@ export default defaultConfig({
     'i-lucide-circle-plus',
     'i-lucide-flag',
     'i-lucide-flag-off',
+    'i-lucide-map-pin',
+    'i-lucide-map-pin-off',
     'i-lucide-move',
     'i-lucide-package-open',
     'i-lucide-pencil',

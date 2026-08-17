@@ -223,6 +223,46 @@ export const alterContainerSchema = z.object({
   logComment: z.string().nullish() // Optional note to append to the container's action log
 })
 
+// Locate one or more LOST containers and re-place them into a single shared parent
+// (lost -> available). The destination is either given explicitly (newParentSlug + kind,
+// with an optional grid position for a single container) or, when omitted, auto-selected
+// server-side as the first parent with enough free capacity for the whole batch.
+export const locateContainerSchema = z
+  .object({
+    containerSlug: z
+      .array(z.string().min(1, { message: 'Container identifier is required' }))
+      .min(1, { message: 'At least one container identifier is required' }),
+    // Optional explicit destination. Both must be provided together; omit both to auto-select.
+    newParentSlug: z.string().min(1).nullish(),
+    newParentKind: parentKindSchema.nullish(),
+    // New placement within the target parent's grid — only meaningful for a single container.
+    position: gridPositionSchema.nullish(),
+    logComment: z.string().nullish() // Optional note to append to the container's action log
+  })
+  .superRefine((input, ctx) => {
+    if (input.position && input.containerSlug.length > 1) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['position'],
+        message: 'An explicit position can only be supplied when locating a single container.'
+      })
+    }
+    if ((input.newParentSlug && !input.newParentKind) || (!input.newParentSlug && input.newParentKind)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['newParentKind'],
+        message: 'Provide both the destination parent identifier and its kind, or neither to auto-select a location.'
+      })
+    }
+    if (input.position && !input.newParentSlug) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['position'],
+        message: 'A position can only be supplied together with an explicit destination parent.'
+      })
+    }
+  })
+
 // Find candidate storage locations that can accept `count` children of `category`.
 export const suggestLocationsSchema = z.object({
   category: z.string().min(1, { message: 'Item/container category is required' }),
@@ -261,6 +301,7 @@ export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
 export type DeleteContainerSchemaInput = z.infer<typeof deleteContainerSchema>
 export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema>
+export type LocateContainerSchemaInput = z.infer<typeof locateContainerSchema>
 export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema>
 export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>
 export type AcceptedChildrenSchemaInput = z.infer<typeof acceptedChildrenSchema>

@@ -130,6 +130,17 @@ const selectedContainers = computed<DisplayContainer[]>(() => {
 function clearSelection() {
   select.value = undefined
 }
+
+// Batch-action gating by status (mirrors the server-side state machine):
+//   - Locate: only when every selected container is lost.
+//   - Move: only for placed/active containers (never lost or disposed).
+const allSelectedLost = computed(() =>
+  selectedContainers.value.length > 0 && selectedContainers.value.every(c => c.status === 'lost')
+)
+const canMoveSelection = computed(() =>
+  selectedContainers.value.length > 0
+  && selectedContainers.value.every(c => c.status !== 'lost' && c.status !== 'disposed')
+)
 </script>
 
 <template>
@@ -408,7 +419,13 @@ function clearSelection() {
           :containers="selectedContainers"
           @done="clearSelection"
         />
+        <DialogLocateContainers
+          v-if="allSelectedLost"
+          :containers="selectedContainers"
+          @done="clearSelection"
+        />
         <DialogMoveContainers
+          v-if="canMoveSelection"
           :containers="selectedContainers"
           @done="clearSelection"
         />

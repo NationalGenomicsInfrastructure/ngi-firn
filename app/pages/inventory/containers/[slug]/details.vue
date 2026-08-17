@@ -56,6 +56,11 @@ const parentIcon = computed(() =>
   container.value?.parentRef?.kind === 'container' ? 'i-lucide-package' : 'i-lucide-refrigerator'
 )
 
+const isLost = computed(() => container.value?.status === 'lost')
+const isDisposed = computed(() => container.value?.status === 'disposed')
+// Unplaced: not held by any parent (e.g. after being disposed or marked missing).
+const isUnplaced = computed(() => container.value != null && !container.value.parentRef)
+
 const infoFields = computed(() => {
   if (!container.value) {
     return []
@@ -181,7 +186,14 @@ const infoFields = computed(() => {
 
         <footer class="flex flex-wrap items-center justify-end gap-2">
           <DialogAlterContainers :containers="[container]" />
-          <DialogMoveContainer :container="container" />
+          <DialogLocateContainers
+            v-if="isLost"
+            :containers="[container]"
+          />
+          <DialogMoveContainer
+            v-if="!isLost && !isDisposed"
+            :container="container"
+          />
           <DrawerInventoryContainerEdit :container="container" />
           <DialogDeleteContainer
             v-if="isAdmin"
@@ -212,6 +224,33 @@ const infoFields = computed(() => {
             :to="parentRoute ?? undefined"
           />
         </div>
+      </NCard>
+
+      <NCard
+        v-else-if="isUnplaced"
+        title="Container location"
+        description="This container is not currently stored in any parent."
+        card="outline-gray"
+      >
+        <NAlert
+          :alert="isDisposed ? 'soft-error' : 'soft-warning'"
+          :title="isDisposed ? 'Disposed — no longer stored' : isLost ? 'Lost — awaiting location' : 'Unplaced'"
+          :icon="isDisposed ? 'i-lucide-trash-2' : 'i-lucide-map-pin-off'"
+        >
+          <p class="text-sm">
+            <template v-if="isDisposed">
+              This container was disposed and has released its slot. Disposal is permanent — it
+              cannot be re-placed.
+            </template>
+            <template v-else-if="isLost">
+              This container was marked missing and has released its former slot. Use
+              <span class="font-semibold">Locate</span> to return it to storage once found.
+            </template>
+            <template v-else>
+              This container currently occupies no slot in the storage hierarchy.
+            </template>
+          </p>
+        </NAlert>
       </NCard>
 
       <div class="flex justify-end mt-4">

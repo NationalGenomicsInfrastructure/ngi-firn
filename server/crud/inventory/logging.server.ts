@@ -113,6 +113,8 @@ export function statusFromAction(action: InventoryActionType): InventoryStatusTy
       return 'lost'
     case 'mark_expired':
       return 'expired'
+    case 'locate':
+      return 'available'
     case 'flag':
     case 'unflag':
     case 'modify':
@@ -153,6 +155,8 @@ export function buildAlterActionNotes(
       return `Marked ${targetString} "${name}" as missing.`
     case 'mark_expired':
       return `Marked ${targetString} "${name}" as expired.`
+    case 'locate':
+      return `Located ${targetString} "${name}" and returned it to storage.`
     case 'note':
       return `Added note to ${targetString} "${name}".`
     case 'flag':
