@@ -119,7 +119,7 @@ async function handleMove() {
   >
     <template #trigger>
       <NButton
-        :label="`Move (${count})`"
+        :label="count === 1 ? 'Move' : `Move (${count})`"
         size="sm"
         btn="soft-primary hover:outline-primary"
         leading="i-lucide-combine"

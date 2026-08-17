@@ -414,7 +414,7 @@ function clearSelection() {
           :containers="selectedContainers"
           @done="clearSelection"
         />
-        <DialogDeleteContainers
+        <DialogDeleteContainer
           v-if="isAdmin"
           :containers="selectedContainers"
           @done="clearSelection"

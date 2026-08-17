@@ -184,7 +184,7 @@ const infoFields = computed(() => {
           <DrawerInventoryContainerEdit :container="container" />
           <DialogDeleteContainer
             v-if="isAdmin"
-            :container="container"
+            :containers="[container]"
           />
         </footer>
       </NCard>

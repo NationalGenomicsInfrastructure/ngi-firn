@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DisplayContainer } from '~~/types/inventory'
 import type { InventoryActionType, InventoryFlagType } from '~~/schemas/inventory/metadata'
-import { ACTION_TYPE_META, FLAG_META } from '~/utils/inventory/actionLog'
+import { FLAG_META } from '~/utils/inventory/actionLog'
 import { alterContainer as useAlterContainersMutation } from '~/utils/mutations/inventory/containers'
 
 const props = defineProps<{
@@ -27,15 +27,12 @@ const SUPPORTED_ACTIONS: InventoryActionType[] = [
   'note'
 ]
 
-const actionOptions = SUPPORTED_ACTIONS.map(action => ({
-  value: action,
-  label: ACTION_TYPE_META[action].label
-}))
-
-const flagOptions = (Object.keys(FLAG_META) as InventoryFlagType[]).map(flag => ({
-  value: flag,
-  label: FLAG_META[flag].label
-}))
+// ACTION_TYPE_META labels are past-tense (they describe log entries); when choosing an action
+// to perform, present-tense imperative reads better, so derive labels from the enum values.
+function actionLabel(action: InventoryActionType): string {
+  const words = action.replace(/_/g, ' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
 
 const isOpen = ref(false)
 const selectedAction = ref<InventoryActionType>('checkout')
@@ -44,6 +41,45 @@ const logComment = ref('')
 
 const count = computed(() => props.containers.length)
 const requiresFlag = computed(() => selectedAction.value === 'flag' || selectedAction.value === 'unflag')
+
+// Flags currently present across the selected containers — you can only remove a flag that exists.
+const availableFlags = computed<InventoryFlagType[]>(() => {
+  const seen = new Set<InventoryFlagType>()
+  for (const container of props.containers) {
+    for (const flag of container.activeFlags ?? []) seen.add(flag)
+  }
+  return (Object.keys(FLAG_META) as InventoryFlagType[]).filter(flag => seen.has(flag))
+})
+
+// Hide "unflag" entirely when none of the selected containers carry a flag.
+const actionOptions = computed(() =>
+  SUPPORTED_ACTIONS
+    .filter(action => action !== 'unflag' || availableFlags.value.length > 0)
+    .map(action => ({ value: action, label: actionLabel(action) }))
+)
+
+// Flagging offers every category; unflagging is restricted to flags that actually exist.
+const flagOptions = computed(() => {
+  const flags = selectedAction.value === 'unflag'
+    ? availableFlags.value
+    : (Object.keys(FLAG_META) as InventoryFlagType[])
+  return flags.map(flag => ({ value: flag, label: FLAG_META[flag].label }))
+})
+
+// Keep the selected action valid when the selection (and thus available flags) changes.
+watch(availableFlags, (flags) => {
+  if (selectedAction.value === 'unflag' && flags.length === 0) {
+    selectedAction.value = 'checkout'
+  }
+})
+
+// Keep the selected flag valid whenever the action or the available options change.
+watch([selectedAction, flagOptions], () => {
+  const valid = flagOptions.value.some(option => option.value === selectedFlag.value)
+  if (!valid && flagOptions.value.length > 0) {
+    selectedFlag.value = flagOptions.value[0]!.value
+  }
+})
 
 function onActionUpdate(value: unknown) {
   const resolved = typeof value === 'string'
