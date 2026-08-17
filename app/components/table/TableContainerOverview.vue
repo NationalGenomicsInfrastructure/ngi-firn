@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
-import type { DisplayContainer, SerializedEntityRef } from '~~/types/inventory'
+import type { DisplayContainer, InventoryActiveFlag, SerializedEntityRef } from '~~/types/inventory'
 import type { ContainerType } from '~~/schemas/inventory/container'
-import type { InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '~~/schemas/inventory/metadata'
+import type { InventoryClassificationType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import { CONTAINER_TYPE_LABELS, CONTAINER_TYPE_ICONS } from '~/utils/inventory/equipment'
 import { getContainerStatusMeta, getClassificationBadge, summarizeCapacity } from '~/utils/inventory/container'
-import { getFlagMeta } from '~/utils/inventory/actionLog'
 import { formatDate } from '~/utils/dates/formatting'
 
 const props = withDefaults(defineProps<{
@@ -35,7 +34,7 @@ interface ContainerRow {
   capacityLabel: string
   templateId: string | null
   projectRefs: SerializedEntityRef[]
-  activeFlags: InventoryFlagType[]
+  activeFlags: InventoryActiveFlag[]
   createdAt: string
   updatedAt: string
 }
@@ -292,12 +291,11 @@ function clearSelection() {
                     <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Flags</span>
                   </div>
                   <div class="flex flex-wrap gap-2 pl-5">
-                    <NBadge
+                    <BadgesInventoryFlag
                       v-for="flag in row.original.activeFlags"
-                      :key="flag"
-                      :label="getFlagMeta(flag).label"
-                      :icon="getFlagMeta(flag).icon"
-                      :badge="getFlagMeta(flag).badge"
+                      :key="flag.kind"
+                      :flag="flag.kind"
+                      :comment="flag.comment"
                     />
                   </div>
                 </template>

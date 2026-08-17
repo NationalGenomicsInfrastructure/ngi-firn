@@ -166,8 +166,9 @@ const infoFields = computed(() => {
             </span>
             <BadgesInventoryFlag
               v-for="flag in container.activeFlags"
-              :key="flag"
-              :flag="flag"
+              :key="flag.kind"
+              :flag="flag.kind"
+              :comment="flag.comment"
             />
           </div>
         </template>

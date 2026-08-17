@@ -77,6 +77,17 @@ export interface InventoryActionChangeRecord {
  * Planned tasks live as separate InventoryTask documents; when a task is
  * completed, a log entry is appended here and the task is marked done.
  */
+/*
+ * A single active flag on an inventory entity (container, and later items).
+ * `kind` is one of the four flag categories; `comment` is the optional reason supplied when the
+ * flag was raised (mirrored into the action log). Entries are keyed by `kind` — a container holds
+ * at most one flag per category, and re-flagging the same category overwrites its comment.
+ */
+export interface InventoryActiveFlag {
+  kind: InventoryFlagType
+  comment: string | null
+}
+
 export interface InventoryActionLogEntry {
   actionType: InventoryActionType
   /* Who performed this action */
@@ -238,7 +249,7 @@ export interface DisplayStorageEquipment {
 /* Nested storage unit with constraints/capacity; can live in equipment or another container. */
 export interface Container extends BaseDocument {
   type: 'container'
-  schema: 1
+  schema: 2
   /* Typed reference to the parent document (storage equipment or another container). */
   parent: TypedDocumentReference<StorageEquipment | Container> | null
   /* Position of this container within its parent container (if applicable). */
@@ -262,7 +273,7 @@ export interface Container extends BaseDocument {
   createdAt: string
   updatedAt: string
   actionLog: InventoryActionLogEntry[]
-  activeFlags: InventoryFlagType[] | null
+  activeFlags: InventoryActiveFlag[] | null
   status: InventoryStatusType
 }
 
@@ -314,7 +325,7 @@ export interface DisplayContainer {
    * null when the container has no project associations.
    */
   projectRefs: SerializedEntityRef[] | null
-  activeFlags: InventoryFlagType[] | null
+  activeFlags: InventoryActiveFlag[] | null
   status: InventoryStatusType
   /*
    * Human-readable parent reference — replaces the TypedDocumentReference that held a CouchDB _id.
@@ -397,7 +408,7 @@ export interface InventoryItem extends BaseDocument {
   /* Embedded audit trail — append-only log of handling events. */
   actionLog: ActionLogEntry[]
   /* Active flags: Colored highlights that allow marking important states or issues. */
-  activeFlags: InventoryFlagType[] | null
+  activeFlags: InventoryActiveFlag[] | null
   createdAt: string
   updatedAt: string
 }

@@ -1,5 +1,5 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
-import type { DisplayContainer } from '~~/types/inventory'
+import type { DisplayContainer, InventoryActiveFlag } from '~~/types/inventory'
 import type { InventoryActionType, InventoryFlagType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import type {
   CreateContainerSchemaInput,
@@ -54,6 +54,21 @@ function parentListKey(parentRef: DisplayContainer['parentRef']) {
   return parentRef.kind === 'equipment'
     ? INVENTORY_CONTAINERS_QUERY_KEYS.byEquipment(parentRef.slug)
     : INVENTORY_CONTAINERS_QUERY_KEYS.byParent(parentRef.slug)
+}
+
+/*
+ * Optimistically add or update an active flag, keyed by category — mirrors the server's
+ * alterContainer behaviour (re-flagging the same category overwrites its comment).
+ */
+function upsertActiveFlag(
+  current: InventoryActiveFlag[] | null,
+  kind: InventoryFlagType,
+  comment: string | null
+): InventoryActiveFlag[] {
+  const flags = current ?? []
+  return flags.some(flag => flag.kind === kind)
+    ? flags.map(flag => flag.kind === kind ? { kind, comment } : flag)
+    : [...flags, { kind, comment }]
 }
 
 // ---------------------------------------------------------------------------
@@ -284,11 +299,11 @@ export const alterContainer = defineMutation(() => {
           INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug)
         )
         if (container) {
-          const updatedFlags: InventoryFlagType[] | null
+          const updatedFlags: InventoryActiveFlag[] | null
             = input.performedAction === 'flag' && input.flagKind
-              ? [...(container.activeFlags ?? []), input.flagKind as InventoryFlagType]
+              ? upsertActiveFlag(container.activeFlags, input.flagKind as InventoryFlagType, input.logComment ?? null)
               : input.performedAction === 'unflag' && input.flagKind
-                ? (container.activeFlags ?? []).filter(f => f !== input.flagKind) || null
+                ? (container.activeFlags ?? []).filter(f => f.kind !== input.flagKind) || null
                 : container.activeFlags
 
           queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), {

@@ -46,7 +46,7 @@ const requiresFlag = computed(() => selectedAction.value === 'flag' || selectedA
 const availableFlags = computed<InventoryFlagType[]>(() => {
   const seen = new Set<InventoryFlagType>()
   for (const container of props.containers) {
-    for (const flag of container.activeFlags ?? []) seen.add(flag)
+    for (const flag of container.activeFlags ?? []) seen.add(flag.kind)
   }
   return (Object.keys(FLAG_META) as InventoryFlagType[]).filter(flag => seen.has(flag))
 })

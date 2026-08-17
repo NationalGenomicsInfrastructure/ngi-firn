@@ -63,6 +63,7 @@ import type {
   DisplayInventoryActionLogEntry,
   GridPosition,
   InventoryActionLogEntry,
+  InventoryActiveFlag,
   SerializedEntityRef,
   StorageEquipment,
   AcceptedChildCapacity,
@@ -619,7 +620,7 @@ export const ContainerService = {
 
     const containerDocument: Omit<Container, '_id' | '_rev'> = {
       type: 'container',
-      schema: 1,
+      schema: 2,
       parent: toParentRef(parent.doc),
       positionParent,
       slug: containerSlug,
@@ -864,16 +865,20 @@ export const ContainerService = {
       let nextFlags = currentFlags
 
       if (input.performedAction === 'flag' && input.flagKind) {
-        nextFlags = currentFlags.includes(input.flagKind)
-          ? currentFlags
-          : [...currentFlags, input.flagKind]
+        // Flags are keyed by category: raising an existing category overwrites its comment
+        // with the latest reason rather than adding a duplicate entry.
+        const flagEntry: InventoryActiveFlag = { kind: input.flagKind, comment: input.logComment ?? null }
+        nextFlags = currentFlags.some(flag => flag.kind === input.flagKind)
+          ? currentFlags.map(flag => flag.kind === input.flagKind ? flagEntry : flag)
+          : [...currentFlags, flagEntry]
       }
       else if (input.performedAction === 'unflag' && input.flagKind) {
-        nextFlags = currentFlags.filter(flag => flag !== input.flagKind)
+        nextFlags = currentFlags.filter(flag => flag.kind !== input.flagKind)
       }
 
       const updatedContainer: Container = {
         ...existing,
+        schema: 2,
         activeFlags: nextFlags,
         updatedAt: new Date().toISOString()
       }
