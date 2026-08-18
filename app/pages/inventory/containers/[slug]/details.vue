@@ -48,8 +48,10 @@ const statusMeta = computed(() =>
 const parentRoute = computed(() => {
   const parent = container.value?.parentRef
   if (!parent) return null
-  const base = parent.kind === 'equipment' ? '/inventory/equipment/' : '/inventory/containers/'
-  return `${base}${encodeURIComponent(parent.slug)}`
+  if (parent.kind === 'equipment') {
+    return `/inventory/equipment/${encodeURIComponent(parent.slug)}/details`
+  }
+  return `/inventory/containers/${encodeURIComponent(parent.slug)}`
 })
 
 const parentIcon = computed(() =>

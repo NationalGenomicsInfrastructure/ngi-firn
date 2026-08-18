@@ -77,7 +77,7 @@ function containerUrl(slug: string, section: string): string {
 function parentUrl(row: ContainerRow): string | null {
   if (!row.parentSlug || !row.parentKind) return null
   return row.parentKind === 'equipment'
-    ? `/inventory/equipment/${encodeURIComponent(row.parentSlug)}`
+    ? `/inventory/equipment/${encodeURIComponent(row.parentSlug)}/details`
     : `/inventory/containers/${encodeURIComponent(row.parentSlug)}`
 }
 

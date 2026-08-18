@@ -82,7 +82,7 @@ const infoFields = computed(() => {
       to="/inventory/equipment"
     />
     <PageTitle
-      :title="equipment ? equipment.name : 'Equipment details'"
+      :title="equipment ? `${equipment.name} — Details` : 'Equipment details'"
       :description="equipmentTypeLabel"
     />
 
@@ -117,6 +117,8 @@ const infoFields = computed(() => {
       v-else
       class="mt-6 space-y-6"
     >
+      <InventoryEquipmentTabs />
+
       <NCard
         card="outline-gray"
         :_card-content="{ class: 'space-y-4 py-4' }"
@@ -194,8 +196,6 @@ const infoFields = computed(() => {
           />
         </div>
       </NCard>
-
-      <InventoryEquipmentContainerSection :equipment="equipment" />
 
       <div class="flex justify-end mt-4">
         <NButton

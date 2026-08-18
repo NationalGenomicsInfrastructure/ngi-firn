@@ -40,7 +40,7 @@ export const createEquipment = defineMutation(() => {
     },
     onSuccess(response: DisplayStorageEquipment, _input) {
       showSuccess(`Equipment "${response.name}" created successfully.`, 'Equipment created')
-      navigateTo(`/inventory/equipment/${encodeURIComponent(response.slug)}`)
+      navigateTo(`/inventory/equipment/${encodeURIComponent(response.slug)}/details`)
     },
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
@@ -74,7 +74,7 @@ export const updateEquipment = defineMutation(() => {
     },
     onSuccess(response: DisplayStorageEquipment, _input) {
       showSuccess(`Equipment "${response.name}" updated successfully.`, 'Equipment updated')
-      navigateTo(`/inventory/equipment/${encodeURIComponent(response.slug)}`)
+      navigateTo(`/inventory/equipment/${encodeURIComponent(response.slug)}/details`)
     },
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()

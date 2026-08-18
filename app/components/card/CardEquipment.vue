@@ -8,7 +8,7 @@ const props = defineProps<{
   roomSlug: string
 }>()
 
-const equipmentDetailPath = computed(() => `/inventory/equipment/${encodeURIComponent(props.equipment.slug)}`)
+const equipmentDetailPath = computed(() => `/inventory/equipment/${encodeURIComponent(props.equipment.slug)}/details`)
 
 const cardBodyTag = computed(() => NLink)
 const cardBodyBind = computed(() => ({ to: equipmentDetailPath.value }))

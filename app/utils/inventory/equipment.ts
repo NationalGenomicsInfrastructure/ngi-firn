@@ -53,7 +53,7 @@ export function resolveNullableNumberFromInput(value: unknown): number | undefin
 }
 
 export function getEquipmentDetailPath(slug: string): string {
-  return `/inventory/equipment/${encodeURIComponent(slug)}`
+  return `/inventory/equipment/${encodeURIComponent(slug)}/details`
 }
 
 export function getEquipmentCapacityLabel(equipment: DisplayStorageEquipment): string {

@@ -90,7 +90,7 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
     >
       <template #name-cell="{ cell }">
         <NuxtLink
-          :to="`/inventory/equipment/${encodeURIComponent(cell.row.original.slug)}`"
+          :to="`/inventory/equipment/${encodeURIComponent(cell.row.original.slug)}/details`"
           class="text-primary-400 dark:text-primary-600"
           :class="TABLE_LINK_STYLE"
         >
@@ -136,7 +136,7 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
               icon
               btn="ghost-gray"
               size="xs"
-              :to="`/inventory/equipment/${encodeURIComponent(cell.row.original.slug)}`"
+              :to="`/inventory/equipment/${encodeURIComponent(cell.row.original.slug)}/details`"
             />
           </NTooltip>
         </div>
@@ -210,7 +210,7 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
                   label="View contents"
                   btn="soft-primary hover:outline-primary"
                   leading="i-lucide-eye"
-                  :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}`"
+                  :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}/details`"
                 />
               </div>
             </div>
