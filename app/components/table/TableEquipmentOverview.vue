@@ -27,13 +27,18 @@ interface EquipmentRow {
 
 const TABLE_HEAD_STYLE = 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
 
+// Keep every column visually uniform: links and badges share the table's `text-sm`
+// weight/size instead of the badge preset's smaller `text-xs`.
+const TABLE_LINK_STYLE = 'text-sm font-medium hover:underline'
+const TABLE_BADGE_UNA = { badge: '!text-sm !font-medium' }
+
 const columns: ColumnDef<EquipmentRow>[] = [
   {
     header: 'Name',
     accessorKey: 'name',
     meta: {
       una: {
-        tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
+        tableCell: 'text-primary-700 dark:text-primary-400 font-medium',
         tableHead: TABLE_HEAD_STYLE
       }
     }
@@ -86,7 +91,8 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
       <template #name-cell="{ cell }">
         <NuxtLink
           :to="`/inventory/equipment/${encodeURIComponent(cell.row.original.slug)}`"
-          class="text-primary-400 dark:text-primary-600 hover:underline font-semibold"
+          class="text-primary-400 dark:text-primary-600"
+          :class="TABLE_LINK_STYLE"
         >
           {{ cell.row.original.name }}
         </NuxtLink>
@@ -96,28 +102,31 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
         <NBadge
           :label="cell.row.original.typeLabel"
           badge="soft-primary"
+          :una="TABLE_BADGE_UNA"
         />
       </template>
 
-      <template #roomName-cell="{ cell }">
+      <template #parentRoomName-cell="{ cell }">
         <NuxtLink
           v-if="cell.row.original.parentRoomSlug"
           :to="`/inventory/rooms/${encodeURIComponent(cell.row.original.parentRoomSlug)}`"
-          class="text-muted hover:underline"
+          class="text-muted"
+          :class="TABLE_LINK_STYLE"
         >
           {{ cell.row.original.parentRoomName }}
         </NuxtLink>
         <span
           v-else
-          class="text-muted"
+          class="text-muted text-sm font-medium"
         >{{ cell.row.original.parentRoomName }}</span>
       </template>
 
       <template #isActive-cell="{ cell }">
-        <div class="flex items-center gap-6">
+        <div class="flex items-center justify-between gap-6 w-full">
           <NBadge
             :label="cell.row.original.isActive ? 'Active' : 'Inactive'"
             :badge="cell.row.original.isActive ? 'solid-success' : 'solid-gray'"
+            :una="TABLE_BADGE_UNA"
           />
           <NTooltip
             content="View equipment details"

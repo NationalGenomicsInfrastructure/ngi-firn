@@ -41,6 +41,11 @@ interface ContainerRow {
 
 const TABLE_HEAD_STYLE = 'text-left bg-primary-700 dark:bg-primary-900 border-b-2 border-primary-100 dark:border-primary-400 text-primary-100 dark:text-primary-400 [&_button]:bg-transparent [&_button]:text-primary-100 [&_button]:hover:bg-primary-600 [&_button]:hover:text-primary-50 dark:[&_button]:bg-transparent dark:[&_button]:text-primary-400 dark:[&_button]:hover:bg-primary-800 dark:[&_button]:hover:text-primary-300'
 
+// Keep every column visually uniform: links and badges share the table's `text-sm`
+// weight/size instead of the badge preset's smaller `text-xs`.
+const TABLE_LINK_STYLE = 'text-sm font-medium hover:underline'
+const TABLE_BADGE_UNA = { badge: '!text-sm !font-medium' }
+
 const columns = computed<ColumnDef<ContainerRow>[]>(() => {
   const cols: ColumnDef<ContainerRow>[] = [
     {
@@ -48,7 +53,7 @@ const columns = computed<ColumnDef<ContainerRow>[]>(() => {
       accessorKey: 'name',
       meta: {
         una: {
-          tableCell: 'text-primary-700 dark:text-primary-400 font-semibold',
+          tableCell: 'text-primary-700 dark:text-primary-400 font-medium',
           tableHead: TABLE_HEAD_STYLE
         }
       }
@@ -161,12 +166,27 @@ const canMoveSelection = computed(() =>
       empty-icon="i-lucide-package"
     >
       <template #name-cell="{ cell }">
-        <NuxtLink
-          :to="containerUrl(cell.row.original.slug, 'contents')"
-          class="text-primary-400 dark:text-primary-600 hover:underline font-semibold"
-        >
-          {{ cell.row.original.name }}
-        </NuxtLink>
+        <div class="flex flex-wrap items-center gap-2">
+          <NuxtLink
+            :to="containerUrl(cell.row.original.slug, 'contents')"
+            class="text-primary-400 dark:text-primary-600"
+            :class="TABLE_LINK_STYLE"
+          >
+            {{ cell.row.original.name }}
+          </NuxtLink>
+          <div
+            v-if="cell.row.original.activeFlags && cell.row.original.activeFlags.length"
+            class="flex flex-wrap items-center gap-1"
+          >
+            <BadgesInventoryFlag
+              v-for="flag in cell.row.original.activeFlags"
+              :key="flag.kind"
+              :flag="flag.kind"
+              :comment="flag.comment"
+              :icon-only="true"
+            />
+          </div>
+        </div>
       </template>
 
       <template #typeLabel-cell="{ cell }">
@@ -174,6 +194,7 @@ const canMoveSelection = computed(() =>
           :label="cell.row.original.typeLabel"
           :icon="cell.row.original.typeIcon"
           badge="soft-primary"
+          :una="TABLE_BADGE_UNA"
         />
       </template>
 
@@ -181,6 +202,7 @@ const canMoveSelection = computed(() =>
         <NBadge
           :label="cell.row.original.classification"
           :badge="getClassificationBadge(cell.row.original.classification)"
+          :una="TABLE_BADGE_UNA"
         />
       </template>
 
@@ -188,22 +210,24 @@ const canMoveSelection = computed(() =>
         <NuxtLink
           v-if="parentUrl(cell.row.original)"
           :to="parentUrl(cell.row.original)!"
-          class="text-muted hover:underline"
+          class="text-muted"
+          :class="TABLE_LINK_STYLE"
         >
           {{ cell.row.original.parentName }}
         </NuxtLink>
         <span
           v-else
-          class="text-muted"
+          class="text-muted text-sm font-medium"
         >{{ cell.row.original.parentName }}</span>
       </template>
 
       <template #status-cell="{ cell }">
-        <div class="flex items-center gap-6">
+        <div class="flex items-center justify-between gap-6 w-full">
           <NBadge
             :label="getContainerStatusMeta(cell.row.original.status).label"
             :icon="getContainerStatusMeta(cell.row.original.status).icon"
             :badge="getContainerStatusMeta(cell.row.original.status).badge"
+            :una="TABLE_BADGE_UNA"
           />
           <NTooltip content="View container details">
             <NButton

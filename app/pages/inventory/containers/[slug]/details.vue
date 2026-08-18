@@ -149,19 +149,6 @@ const infoFields = computed(() => {
           </div>
         </header>
 
-        <NSeparator />
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-          <IndicatorIconText
-            v-for="field in infoFields"
-            :key="field.label"
-            :icon="field.icon"
-            :label="field.label"
-            :value="field.value"
-            :class="field.label === 'Description' ? 'sm:col-span-2' : undefined"
-          />
-        </div>
-
         <template v-if="container.activeFlags && container.activeFlags.length">
           <NSeparator />
 
@@ -177,6 +164,19 @@ const infoFields = computed(() => {
             />
           </div>
         </template>
+
+        <NSeparator />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
+          <IndicatorIconText
+            v-for="field in infoFields"
+            :key="field.label"
+            :icon="field.icon"
+            :label="field.label"
+            :value="field.value"
+            :class="field.label === 'Description' ? 'sm:col-span-2' : undefined"
+          />
+        </div>
 
         <NSeparator />
 
