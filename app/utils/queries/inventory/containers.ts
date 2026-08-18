@@ -11,6 +11,7 @@ export const INVENTORY_CONTAINERS_QUERY_KEYS = {
   byEquipment: (equipmentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'by-equipment', equipmentSlug] as const,
   byParent: (parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'by-parent', parentSlug] as const,
   detailBySlug: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'detail', 'slug', slug] as const,
+  capacity: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'capacity'] as const,
   actionLog: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'action-log'] as const,
   projectRefs: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const,
   acceptedChildren: (parentKind: ContainerParentKindType, parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'accepted-children', parentKind, parentSlug] as const,
@@ -34,6 +35,20 @@ export const containerBySlugQuery = defineQueryOptions(
     query: () => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.getContainerBySlug.query({ slug })
+    }
+  })
+)
+
+// Summarized, per-category capacity for a single container: one entry per accepted child
+// category with normalized total/stored/free (grid layouts flattened to a single total).
+// Reuses the getAcceptedChildren endpoint; powers the per-category progress bars on the
+// container contents page. Keyed under detailBySlug so detail invalidations cascade.
+export const containerCapacitySummaryQuery = defineQueryOptions(
+  (slug: string) => ({
+    key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(slug),
+    query: (): Promise<AcceptedChildCapacity[]> => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.getAcceptedChildren.query({ parentSlug: slug, parentKind: 'container' })
     }
   })
 )

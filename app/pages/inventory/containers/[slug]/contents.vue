@@ -75,6 +75,13 @@ const containerTypeLabel = computed(() =>
     >
       <InventoryTabs />
 
+      <NCard
+        v-if="container.capacity && container.capacity.length > 0"
+        card="soft-gray"
+      >
+        <InventoryContainerCapacityBars :slug="slug" />
+      </NCard>
+
       <InventoryContainerChildrenSection :container="container" />
 
       <div class="flex justify-end mt-4">

@@ -143,7 +143,13 @@ export default defaultConfig({
     'i-lucide-test-tubes',
     // Inventory container status icons (CONTAINER_STATUS_META in app/utils/inventory/container.ts)
     'i-lucide-circle-help',
-    'i-lucide-play'
+    'i-lucide-play',
+    // NProgress colour variants bound dynamically in InventoryContainerCapacityBars.vue
+    // (the `progress` prop maps to a `progress-<color>` shortcut UnoCSS can't extract from a binding)
+    'progress-success',
+    'progress-error',
+    'progress-yellow',
+    'progress-gray'
   ],
 
   /*

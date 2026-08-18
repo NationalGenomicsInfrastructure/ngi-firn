@@ -137,6 +137,10 @@ export const createContainer = defineMutation(() => {
         : INVENTORY_CONTAINERS_QUERY_KEYS.byParent(input.parentSlug)
       queryCache.invalidateQueries({ key: parentListCacheKey, exact: true })
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
+      // The parent container's stored occupancy changed → refresh its capacity bars.
+      if (input.parentKind === 'container') {
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.parentSlug), exact: true })
+      }
     }
   })
   return { createContainer: mutate, ...mutation }
@@ -206,6 +210,11 @@ export const updateContainer = defineMutation(() => {
       const parentListCacheKey = data ? parentListKey(data.parentRef) : null
       if (parentListCacheKey) {
         queryCache.invalidateQueries({ key: parentListCacheKey, exact: true })
+      }
+      // The container's own capacity limits may have changed → refresh its capacity bars.
+      queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.containerSlug), exact: true })
+      if (data && data.slug !== input.containerSlug) {
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(data.slug), exact: true })
       }
     }
   })
@@ -496,6 +505,11 @@ export const alterContainer = defineMutation(() => {
           key: INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(parentSlug),
           exact: true
         })
+        // Vacating frees a slot on the former parent → refresh its capacity bars.
+        queryCache.invalidateQueries({
+          key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parentSlug),
+          exact: true
+        })
       }
       if (isVacatingAction(input.performedAction)) {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.all(), exact: true })
@@ -714,6 +728,12 @@ export const deleteContainer = defineMutation(() => {
         })
       }
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
+      // Deleting children frees slots on their container parents → refresh capacity bars.
+      for (const parent of input.parents ?? []) {
+        if (parent.kind === 'container') {
+          queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parent.slug), exact: true })
+        }
+      }
     }
   })
   return { deleteContainer: mutate, ...mutation }
