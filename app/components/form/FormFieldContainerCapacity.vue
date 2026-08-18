@@ -224,7 +224,6 @@ const gridTotalSlots = computed(() => {
 
         <NFormGroup
           label="Maximum capacity"
-          :message="`Up to ${row.layout === 'count' ? row.capacity : 0} × ${getChildTypeMeta(row.childKind, row.type).label}`"
           class="flex-1"
           :una="{ formGroupLabel: EQUIPMENT_FORM_LABEL_STYLE }"
         >

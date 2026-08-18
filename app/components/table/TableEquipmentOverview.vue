@@ -205,12 +205,20 @@ const table = useTemplateRef<Table<EquipmentRow>>('table')
                 </template>
               </div>
 
-              <div class="flex items-end justify-end h-full">
+              <div class="flex flex-col items-end flex-shrink-0 gap-2 w-full">
                 <NButton
                   label="View contents"
                   btn="soft-primary hover:outline-primary"
-                  leading="i-lucide-eye"
+                  leading="i-lucide-refrigerator"
+                  :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}/contents`"
+                  class="w-full"
+                />
+                <NButton
+                  label="View details"
+                  btn="soft-primary hover:outline-primary"
+                  leading="i-lucide-book-open-text"
                   :to="`/inventory/equipment/${encodeURIComponent(row.original.slug)}/details`"
+                  class="w-full"
                 />
               </div>
             </div>

@@ -87,6 +87,13 @@ const equipmentTypeLabel = computed(() =>
     >
       <InventoryEquipmentTabs />
 
+      <NCard
+        v-if="equipment.capacity && equipment.capacity.length > 0"
+        card="soft-gray"
+      >
+        <InventoryEquipmentCapacityBars :capacity="equipment.capacity" />
+      </NCard>
+
       <InventoryEquipmentContainerSection :equipment="equipment" />
 
       <div class="flex justify-end mt-4">
