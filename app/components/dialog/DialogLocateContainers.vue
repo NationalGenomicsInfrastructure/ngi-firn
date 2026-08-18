@@ -119,10 +119,10 @@ async function handleLocate() {
 
 <template>
   <NDialog
-    :model-value="isOpen"
+    :open="isOpen"
     title="Locate containers"
     description="Return lost containers to storage — pick a destination or let the system choose one."
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

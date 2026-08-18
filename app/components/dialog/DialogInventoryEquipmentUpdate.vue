@@ -20,11 +20,11 @@ function onSaved() {
 
 <template>
   <NDialog
-    :model-value="isDialogOpen"
+    :open="isDialogOpen"
     title="Edit equipment"
     description="Update storage equipment details"
     scrollable
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

@@ -94,10 +94,10 @@ async function handleMove() {
 
 <template>
   <NDialog
-    :model-value="isDialogOpen"
+    :open="isDialogOpen"
     title="Move equipment"
     description="Select a destination room for this equipment."
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

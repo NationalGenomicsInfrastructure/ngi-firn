@@ -41,10 +41,10 @@ function onDialogOpenChange(open: boolean) {
 
 <template>
   <NDialog
-    :model-value="isOpen"
+    :open="isOpen"
     title="Delete containers"
     description="Are you sure you want to delete the selected containers?"
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

@@ -16,11 +16,11 @@ function onDialogOpenChange(open: boolean) {
 
 <template>
   <NDialog
-    :model-value="isDialogOpen"
+    :open="isDialogOpen"
     title="Edit room"
     description="Update room information and status"
     scrollable
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

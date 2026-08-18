@@ -143,11 +143,12 @@ const onSubmit = handleSubmit(async (values) => {
 <template>
   <NDialog
     title="Scan your token's barcode or QR code"
+    :open="isDialogOpen"
     :_dialog-footer="{
       class: 'sm:justify-start'
     }"
     scrollable
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

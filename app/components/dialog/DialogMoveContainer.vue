@@ -106,10 +106,10 @@ async function handleMove() {
 
 <template>
   <NDialog
-    :model-value="isDialogOpen"
+    :open="isDialogOpen"
     title="Move container"
     description="Select a destination that accepts this container type."
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton

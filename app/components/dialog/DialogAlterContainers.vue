@@ -149,10 +149,10 @@ function onDialogOpenChange(open: boolean) {
 
 <template>
   <NDialog
-    :model-value="isOpen"
+    :open="isOpen"
     title="Apply action to containers"
     description="Perform a lifecycle action on every selected container at once."
-    @update:model-value="onDialogOpenChange"
+    @update:open="onDialogOpenChange"
   >
     <template #trigger>
       <NButton
