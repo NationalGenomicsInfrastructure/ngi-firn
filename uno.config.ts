@@ -64,6 +64,21 @@ export default defaultConfig({
     'alert-border-amber',
     'alert-border-red',
     'alert-border-indigo',
+    // Badge colour variants bound dynamically (e.g. FLAG_META / ACTION_TYPE_META in
+    // app/utils/inventory/actionLog.ts, ROOM_TYPE_BADGE_STYLES in app/utils/inventory/room.ts).
+    // NBadge (@una-ui) applies the variant as a `badge="solid-<color>"` ATTRIBUTE, not a class,
+    // so it is styled via attributify (`[badge~="solid-<color>"]`). Safelisting the class form
+    // `badge-solid-<color>` generates `.badge-solid-<color>`, which never matches the element —
+    // the attributify form below is required for colours that only appear in .ts maps.
+    '[badge~="solid-emerald"]',
+    '[badge~="solid-amber"]',
+    '[badge~="solid-red"]',
+    '[badge~="solid-indigo"]',
+    '[badge~="solid-success"]',
+    '[badge~="solid-error"]',
+    '[badge~="solid-primary"]',
+    '[badge~="solid-yellow"]',
+    '[badge~="solid-gray"]',
     'bg-base',
     // Toast icons - need to be available immediately for composables.
     // Keep dynamic i-lucide-* names from utility maps/functions in this safelist,

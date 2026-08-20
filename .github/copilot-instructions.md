@@ -397,6 +397,22 @@ Example sources that require this care:
 - `app/utils/inventory/room.ts` (`getRoomInfoFields`, `ROOM_TYPE_BADGE_STYLES`)
 - badge/card components that bind `:icon="field.icon"` or `:name="item.icon"`
 
+**Dynamic badge colours and UnoCSS safelist**
+
+> ⚠️ `NBadge` applies its colour variant as a `badge="solid-<color>"` **HTML attribute** (plus a static `class="badge"`), **not** a class. UnoCSS therefore styles it through **attributify** as `[badge~="solid-<color>"]`. This means safelisting the class form `badge-solid-<color>` is a **no-op** — it generates `.badge-solid-<color>`, a selector that never matches the rendered element. The correct safelist entry is the attributify form `'[badge~="solid-<color>"]'`.
+
+Symptom: a badge's **icon renders but the colour is missing**. A colour appears to "work" only where the exact `solid-<color>` string also appears as a literal in a `.vue` file (the attributify / `@una-ui` vue-script extractor then generates the real `[badge~="solid-<color>"]` rule). A colour that lives **only** in a `.ts` map — e.g. `solid-emerald` / `solid-amber` in `FLAG_META` / `ACTION_TYPE_META` (`app/utils/inventory/actionLog.ts`), or a variant in `ROOM_TYPE_BADGE_STYLES` (`app/utils/inventory/room.ts`) — never gets an attribute rule and stays uncoloured. That is why some colours (`red`, `success`, `gray`, `indigo`, `yellow`) can work while others (`emerald`, `amber`) silently fail.
+
+When a badge colour is bound dynamically (from a `.ts` map or a computed value) rather than written as a literal `badge="solid-<color>"` in a template, add its attributify form to the `safelist` in `uno.config.ts`:
+
+```ts
+'[badge~="solid-emerald"]',
+'[badge~="solid-amber"]',
+// ...one entry per dynamically-bound badge colour
+```
+
+Verify quickly with a UnoCSS generator over the real config: the generated CSS must contain `[badge~="solid-<color>"]{ … --una-brand … }` (the `--una-brand` var drives the badge text/icon colour via the base `badge` shortcut's `text-brand`). The details map (`badge-solid-<c>` → `bg-${c}-100 dark:bg-${c}-800 n-${c}-700 dark:n-${c}-200`) lives in the `@una-ui/preset` badge shortcuts. See `docs/debugging.md` → "A badge icon renders but its colour is missing".
+
 **Lazy hydration** for below-the-fold components:
 
 ```vue

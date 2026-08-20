@@ -38,10 +38,10 @@ export const ACTION_TYPE_META: Record<InventoryActionType, ActionTypeMeta> = {
  * Visual metadata for log-entry flags. Icons are dynamic — keep them in the uno.config safelist.
  */
 export const FLAG_META: Record<InventoryFlagType, FlagMeta> = {
-  success: { label: 'Success', icon: 'i-lucide-circle-check', badge: 'solid-success' },
-  warning: { label: 'Warning', icon: 'i-lucide-triangle-alert', badge: 'solid-yellow' },
-  error: { label: 'Error', icon: 'i-lucide-circle-x', badge: 'solid-error' },
-  info: { label: 'Info', icon: 'i-lucide-info', badge: 'solid-primary' }
+  success: { label: 'Success', icon: 'i-lucide-circle-check', badge: 'solid-emerald' },
+  warning: { label: 'Warning', icon: 'i-lucide-triangle-alert', badge: 'solid-amber' },
+  error: { label: 'Error', icon: 'i-lucide-circle-x', badge: 'solid-red' },
+  info: { label: 'Info', icon: 'i-lucide-info', badge: 'solid-indigo' }
 }
 
 export function getActionTypeMeta(actionType: InventoryActionType): ActionTypeMeta {

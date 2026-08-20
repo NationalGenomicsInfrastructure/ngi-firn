@@ -23,9 +23,8 @@ const after = computed(() => formatChangeValue(props.change.after))
     </div>
     <div class="flex flex-wrap items-center gap-2 pl-5">
       <NBadge
-        badge="soft-error"
+        badge="soft-info"
         :label="before"
-        class="line-through decoration-1"
       />
       <NIcon
         name="i-lucide-arrow-right"

@@ -50,3 +50,39 @@ This is especially important for icons coming from:
 
 - utility field builders (for example room/project info field arrays)
 - badge style maps used via dynamic `:icon` bindings
+
+### A badge icon renders but its colour is missing
+
+This is the colour analog of the missing-icon issue above, with a subtly different root cause. Symptom: an `NBadge` shows the correct **icon and label, but no colour** — while some other colours on the same page render fine. Frequently only a couple of colours "work" (for example `red`, `success`, `gray`) and the rest (for example `emerald`, `amber`, `indigo`, `yellow`) do not, which looks arbitrary.
+
+The cause is how `@una-ui`'s `NBadge` applies the variant. It sets a `badge="solid-<color>"` **HTML attribute** (plus a static `class="badge"`) — it does **not** add a `badge-solid-<color>` class. UnoCSS therefore styles the colour through **attributify**, generating `[badge~="solid-<color>"]`. Two consequences follow:
+
+1. Safelisting the class form `badge-solid-<color>` does nothing: it generates `.badge-solid-<color>`, a selector that never matches the element (which only has the attribute and the base `badge` class).
+2. A colour is only styled when the exact `solid-<color>` string appears somewhere UnoCSS extracts as an attributify value — typically a literal `badge="solid-<color>"` (or the string `'solid-<color>'`) inside a `.vue` file. A colour that exists **only** in a `.ts` map (for example `FLAG_META` / `ACTION_TYPE_META` in `app/utils/inventory/actionLog.ts`, or `ROOM_TYPE_BADGE_STYLES` in `app/utils/inventory/room.ts`) gets no attribute rule and renders uncoloured.
+
+Fix: add the **attributify form** of each dynamically-bound badge colour to the `safelist` in `uno.config.ts` — not the class form:
+
+```ts
+// ❌ no-op: generates `.badge-solid-emerald`, never matches the element
+'badge-solid-emerald',
+
+// ✅ correct: generates `[badge~="solid-emerald"]`, matches `badge="solid-emerald"`
+'[badge~="solid-emerald"]',
+```
+
+Verify the rule is emitted by running a UnoCSS generator over the real config and grepping the output:
+
+```bash
+node -e '
+import("jiti").then(async ({ createJiti }) => {
+  const jiti = createJiti(import.meta.url)
+  const config = (await jiti.import("./uno.config.ts")).default
+  const { createGenerator } = await import("unocss")
+  const gen = await createGenerator(config)
+  const { css } = await gen.generate("", { preflights: false })
+  for (const c of ["emerald", "amber", "red", "indigo", "success", "yellow", "gray"])
+    console.log((css.includes(`[badge~="solid-${c}"]`) ? "OK  " : "MISS") + ` [badge~="solid-${c}"]`)
+})'
+```
+
+Each present colour should print `OK` and, in the CSS, carry a `--una-brand` custom property — that variable drives the badge text/icon colour via the base `badge` shortcut's `text-brand`. The variant-to-utilities map (`badge-solid-<c>` → `bg-${c}-100 dark:bg-${c}-800 n-${c}-700 dark:n-${c}-200`) lives in the `@una-ui/preset` badge shortcuts.
