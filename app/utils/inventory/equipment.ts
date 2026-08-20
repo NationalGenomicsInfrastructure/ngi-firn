@@ -11,24 +11,30 @@ export const EQUIPMENT_FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-
 
 export const EQUIPMENT_TYPE_OPTIONS: SelectOption<EquipmentType>[] = [
   { value: 'Cabinet', label: 'Cabinet' },
+  { value: 'Dewar', label: 'Dewar' },
   { value: 'Freezer', label: 'Freezer' },
   { value: 'Fridge', label: 'Fridge' },
-  { value: 'Shelf', label: 'Shelf' },
+  { value: 'Incubator', label: 'Incubator' },
+  { value: 'LabBench', label: 'Lab bench' },
+  { value: 'ShelvingUnit', label: 'Shelving unit' },
   { value: 'NitrogenTank', label: 'Nitrogen tank' },
   { value: 'Other', label: 'Other' }
 ]
 
 export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
   Cabinet: 'Cabinet',
+  Dewar: 'Dewar',
   Freezer: 'Freezer',
   Fridge: 'Fridge',
-  Shelf: 'Shelf',
+  Incubator: 'Incubator',
+  LabBench: 'Lab bench',
+  ShelvingUnit: 'Shelving unit',
   NitrogenTank: 'Nitrogen tank',
   Other: 'Other'
 }
 
 export function resolveEquipmentTypeFromSelect(value: unknown): EquipmentType | null {
-  const VALID: EquipmentType[] = ['Cabinet', 'Freezer', 'Fridge', 'Shelf', 'NitrogenTank', 'Other']
+  const VALID: EquipmentType[] = ['Cabinet', 'Dewar', 'Freezer', 'Fridge', 'Incubator', 'LabBench', 'ShelvingUnit', 'NitrogenTank', 'Other']
 
   if (typeof value === 'string' && (VALID as string[]).includes(value)) {
     return value as EquipmentType
@@ -73,8 +79,12 @@ export const CONTAINER_TYPE_OPTIONS: SelectOption<ContainerType>[] = [
   { value: 'Block', label: 'Block' },
   { value: 'Box', label: 'Box' },
   { value: 'Cane', label: 'Cane' },
+  { value: 'Compartment', label: 'Compartment' },
+  { value: 'Crate', label: 'Crate' },
+  { value: 'Drawer', label: 'Drawer' },
   { value: 'Goblet', label: 'Goblet' },
   { value: 'Rack', label: 'Rack' },
+  { value: 'Shelf', label: 'Shelf' },
   { value: 'Tray', label: 'Tray' },
   { value: 'Other', label: 'Other' }
 ]
@@ -85,8 +95,12 @@ export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
   Block: 'Block',
   Box: 'Box',
   Cane: 'Cane',
+  Compartment: 'Compartment',
+  Crate: 'Crate',
+  Drawer: 'Drawer',
   Goblet: 'Goblet',
   Rack: 'Rack',
+  Shelf: 'Shelf',
   Tray: 'Tray',
   Other: 'Other'
 }
@@ -99,8 +113,12 @@ export const CONTAINER_TYPE_ICONS: Record<ContainerType, string> = {
   Block: 'i-lucide-cuboid',
   Box: 'i-lucide-package',
   Cane: 'i-lucide-pipette',
+  Compartment: 'i-lucide-layout-grid',
+  Crate: 'i-lucide-package-2',
+  Drawer: 'i-lucide-bed-single',
   Goblet: 'i-lucide-cylinder',
   Rack: 'i-lucide-table',
+  Shelf: 'i-lucide-shelving-unit',
   Tray: 'i-lucide-square-library',
   Other: 'i-lucide-proportions'
 }
@@ -110,7 +128,7 @@ export interface CapacityRow {
 }
 
 export function resolveContainerTypeFromSelect(value: unknown): ContainerType | null {
-  const VALID: ContainerType[] = ['Bag', 'Bin', 'Block', 'Box', 'Cane', 'Goblet', 'Rack', 'Tray', 'Other']
+  const VALID: ContainerType[] = ['Bag', 'Bin', 'Block', 'Box', 'Cane', 'Compartment', 'Crate', 'Drawer', 'Goblet', 'Rack', 'Shelf', 'Tray', 'Other']
 
   if (typeof value === 'string' && (VALID as string[]).includes(value)) {
     return value as ContainerType

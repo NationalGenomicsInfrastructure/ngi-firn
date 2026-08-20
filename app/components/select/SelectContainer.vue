@@ -37,6 +37,7 @@ function displayName(container: DisplayContainer): string {
       :_combobox-input="{
         placeholder: 'Select container...'
       }"
+      text-empty="No container found."
     >
       <template #trigger>
         <template v-if="selectedContainer">

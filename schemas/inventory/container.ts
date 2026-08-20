@@ -13,8 +13,12 @@ export const containerTypeSchema = z.enum([
   'Block',
   'Box',
   'Cane',
+  'Compartment',
+  'Crate',
+  'Drawer',
   'Goblet',
   'Rack',
+  'Shelf',
   'Tray',
   'Other'
 ])

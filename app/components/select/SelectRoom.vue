@@ -36,6 +36,7 @@ function displayName(room: DisplayRoom): string {
       :_combobox-input="{
         placeholder: 'Select room...'
       }"
+      text-empty="No room found."
     >
       <template #trigger>
         <template v-if="selectedRoom">

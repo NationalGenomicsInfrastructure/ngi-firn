@@ -5,10 +5,13 @@ import { containerTypeSchema } from './container'
 
 export const equipmentTypeSchema = z.enum([
   'Cabinet',
+  'Dewar',
   'Freezer',
   'Fridge',
-  'Shelf',
+  'Incubator',
+  'LabBench',
   'NitrogenTank',
+  'ShelvingUnit',
   'Other'
 ])
 

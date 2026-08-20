@@ -38,6 +38,7 @@ function displayName(user: DisplayUserToUsers): string {
       :_combobox-input="{
         placeholder: 'Select user...'
       }"
+      text-empty="No user found."
     >
       <template #trigger>
         <template v-if="selectedUser">

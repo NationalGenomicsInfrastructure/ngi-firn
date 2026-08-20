@@ -191,7 +191,7 @@ async function onValidatingSubmit() {
                 label="Name"
                 :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
               >
-                <NInput placeholder="e.g. Big freezer" />
+                <NInput placeholder="" />
               </NFormField>
 
               <NFormField
@@ -199,7 +199,7 @@ async function onValidatingSubmit() {
                 label="Additional label"
                 :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE, formDescription: 'text-muted' }"
               >
-                <NInput placeholder="Antarctica" />
+                <NInput placeholder="" />
               </NFormField>
             </div>
 

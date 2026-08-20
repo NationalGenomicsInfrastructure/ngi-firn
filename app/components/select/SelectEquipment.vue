@@ -37,6 +37,7 @@ function displayName(equipment: DisplayStorageEquipment): string {
       :_combobox-input="{
         placeholder: 'Select equipment...'
       }"
+      text-empty="No equipment found."
     >
       <template #trigger>
         <template v-if="selectedEquipment">
