@@ -249,7 +249,7 @@ export interface DisplayStorageEquipment {
 /* Nested storage unit with constraints/capacity; can live in equipment or another container. */
 export interface Container extends BaseDocument {
   type: 'container'
-  schema: 2
+  schema: 1
   /* Typed reference to the parent document (storage equipment or another container). */
   parent: TypedDocumentReference<StorageEquipment | Container> | null
   /* Position of this container within its parent container (if applicable). */

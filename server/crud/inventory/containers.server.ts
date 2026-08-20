@@ -624,7 +624,7 @@ export const ContainerService = {
 
     const containerDocument: Omit<Container, '_id' | '_rev'> = {
       type: 'container',
-      schema: 2,
+      schema: 1,
       parent: toParentRef(parent.doc),
       positionParent,
       slug: containerSlug,
@@ -990,7 +990,7 @@ export const ContainerService = {
 
       const updatedContainer: Container = {
         ...existing,
-        schema: 2,
+        schema: 1,
         activeFlags: nextFlags,
         ...(vacating && { parent: null, positionParent: null }),
         updatedAt: new Date().toISOString()
