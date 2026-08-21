@@ -54,9 +54,14 @@ const greeting = computed(() => {
 
         <!-- Role badge -->
         <NBadge
-          :una="{ badgeDefaultVariant: user.isAdmin ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"
-          class="absolute top-4 right-4 capitalize"
-          :label="user.isAdmin ? 'Administrator' : 'User'"
+          v-if="user.isAdmin"
+          class="absolute top-4 right-4 capitalize badge-soft dark:badge-solid"
+          label="Administrator"
+        />
+        <NBadge
+          v-else
+          class="absolute top-4 right-4 capitalize badge-soft-gray dark:badge-solid-gray"
+          label="User"
         />
 
         <!-- Avatar + name -->

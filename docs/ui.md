@@ -348,6 +348,33 @@ This bites in a `v-for` combined with immutable updates (`rows.map(row => ({ ...
 
 Reading `rows[index]` tracks the array itself, so replacing it triggers a fresh slot render. See `app/components/form/FormFieldEquipmentCapacity.vue` for the real-world instance.
 
+#### Pitfall: dynamic `NBadge` variants via `:una` can trigger UnoCSS false positives
+
+Avoid passing CSS variants through a dynamic `:una` object expression. A pattern like this:
+
+```vue
+<NBadge
+  :una="{ badgeDefaultVariant: isAdmin ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"
+/>
+```
+
+can cause UnoCSS to over-tokenize compiled template fragments and generate bogus `badge-solid-*` candidates (`badge-solid-},`, `badge-solid-absolute`, `badge-solid-User`, ...). In production builds this appears as noisy `[unocss] unmatched utility` warnings.
+
+Prefer explicit `v-if`/`v-else` branches with static class strings:
+
+```vue
+<NBadge
+  v-if="isAdmin"
+  class="badge-soft dark:badge-solid"
+/>
+<NBadge
+  v-else
+  class="badge-soft-gray dark:badge-solid-gray"
+/>
+```
+
+This keeps the same UI behavior while avoiding the extractor edge case.
+
 #### Best Practices for Page-Specific Components
 
 ##### 1. Create Dedicated Components

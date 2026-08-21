@@ -413,6 +413,8 @@ When a badge colour is bound dynamically (from a `.ts` map or a computed value) 
 
 Verify quickly with a UnoCSS generator over the real config: the generated CSS must contain `[badge~="solid-<color>"]{ … --una-brand … }` (the `--una-brand` var drives the badge text/icon colour via the base `badge` shortcut's `text-brand`). The details map (`badge-solid-<c>` → `bg-${c}-100 dark:bg-${c}-800 n-${c}-700 dark:n-${c}-200`) lives in the `@una-ui/preset` badge shortcuts. See `docs/debugging.md` → "A badge icon renders but its colour is missing".
 
+> ⚠️ **Avoid dynamic `:una` object bindings for badge variants that include `dark:badge-solid*`.** Patterns like `:una="{ badgeDefaultVariant: cond ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"` can make UnoCSS over-tokenize compiled template fragments and emit bogus candidates (`badge-solid-},`, `badge-solid-absolute`, `badge-solid-User`, ...), which flood `pnpm build` with `[unocss] unmatched utility` warnings. Prefer static class strings on explicit `v-if`/`v-else` branches for these badges.
+
 **Lazy hydration** for below-the-fold components:
 
 ```vue

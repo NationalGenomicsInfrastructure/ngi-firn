@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { updateContainerSchema } from '~~/schemas/inventory/container'
-import type { ContainerCapacity } from '~~/schemas/inventory/container'
-import type { ContainerClassification } from '~~/schemas/inventory/container'
+import type { ContainerCapacity, ContainerClassification } from '~~/schemas/inventory/container'
 import type { DisplayContainer } from '~~/types/inventory'
 import { updateContainer } from '~/utils/mutations/inventory/containers'
 import {

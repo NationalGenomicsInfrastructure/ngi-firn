@@ -53,10 +53,14 @@ const user = computed(() => {
         <template #header>
           <div class="relative">
             <NBadge
-              :una="{
-                badgeDefaultVariant: user.isAdminClientside ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"
-              class="absolute top-4 right-4 capitalize"
-              :label="user.isAdminClientside ? 'Administrator' : 'User'"
+              v-if="user.isAdminClientside"
+              class="absolute top-4 right-4 capitalize badge-soft dark:badge-solid"
+              label="Administrator"
+            />
+            <NBadge
+              v-else
+              class="absolute top-4 right-4 capitalize badge-soft-gray dark:badge-solid-gray"
+              label="User"
             />
             <img
               src="https://images.unsplash.com/photo-1457269449834-928af64c684d?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
