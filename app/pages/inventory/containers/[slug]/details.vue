@@ -71,7 +71,7 @@ const infoFields = computed(() => {
   return [
     { icon: 'i-lucide-key-round', label: 'Identifier', value: container.value.slug },
     { icon: 'i-lucide-package', label: 'Type', value: containerTypeLabel.value },
-    { icon: 'i-lucide-tag', label: 'Classification', value: container.value.classification },
+    { icon: 'i-lucide-tag', label: 'Classification', value: container.value.classification ?? 'Uncategorized' },
     { icon: 'i-lucide-activity', label: 'Status', value: statusMeta.value?.label ?? container.value.status },
     { icon: 'i-lucide-scan-barcode', label: 'Barcode', value: container.value.barcode ?? '—' },
     { icon: 'i-lucide-grid-3x3', label: 'Position', value: container.value.positionParent?.label ?? '—' },
@@ -139,8 +139,8 @@ const infoFields = computed(() => {
           </div>
           <div class="flex items-center gap-2">
             <NBadge
-              :label="container.classification"
-              :badge="getClassificationBadge(container.classification)"
+              :label="container.classification ?? 'Uncategorized'"
+              :badge="container.classification ? getClassificationBadge(container.classification) : 'soft-gray'"
             />
             <NBadge
               v-if="statusMeta"

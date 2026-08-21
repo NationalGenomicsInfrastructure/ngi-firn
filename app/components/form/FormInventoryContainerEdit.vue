@@ -2,6 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { updateContainerSchema } from '~~/schemas/inventory/container'
 import type { ContainerCapacity } from '~~/schemas/inventory/container'
+import type { ContainerClassification } from '~~/schemas/inventory/container'
 import type { DisplayContainer } from '~~/types/inventory'
 import { updateContainer } from '~/utils/mutations/inventory/containers'
 import {
@@ -43,7 +44,7 @@ const { handleSubmit, validate, errors } = useForm({
   validationSchema: containerFormSchema,
   initialValues: {
     containerSlug: props.container.slug,
-    classification: props.container.classification,
+    classification: props.container.classification ?? undefined,
     name: props.container.name,
     label: props.container.label ?? '',
     description: props.container.description ?? '',
@@ -52,14 +53,12 @@ const { handleSubmit, validate, errors } = useForm({
   }
 })
 
-const { value: classificationValue, setValue: setClassificationValue } = useField<string>('classification')
+const { value: classificationValue, setValue: setClassificationValue } = useField<ContainerClassification | undefined>('classification')
 const { value: capacityValue, setValue: setCapacityValue } = useField<ContainerCapacity[]>('capacity')
 
 function onClassificationUpdate(value: unknown) {
   const resolved = resolveClassificationFromSelect(value)
-  if (resolved) {
-    setClassificationValue(resolved)
-  }
+  setClassificationValue(resolved ?? undefined)
 }
 
 const onSubmit = handleSubmit(async (values) => {

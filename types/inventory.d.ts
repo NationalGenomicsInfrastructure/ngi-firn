@@ -259,7 +259,7 @@ export interface Container extends BaseDocument {
   /* External barcode on physical item — integrates with barcode scanning infra. */
   barcode: string | null
   containerType: ContainerType
-  classification: InventoryClassificationType
+  classification: InventoryClassificationType | null
   name: string
   label: string | null
   description: string | null
@@ -310,7 +310,7 @@ export interface DisplayContainer {
   slug: string
   barcode: string | null
   containerType: ContainerType
-  classification: InventoryClassificationType
+  classification: InventoryClassificationType | null
   name: string
   label: string | null
   description: string | null
@@ -382,7 +382,7 @@ export interface InventoryItem extends BaseDocument {
   /* Physical form factor of the item (what it IS). */
   category: ItemType
   /* Purpose/domain classification (what it's FOR). */
-  classification: InventoryClassificationType
+  classification: InventoryClassificationType | null
   name: string
   label: string | null
   description: string | null

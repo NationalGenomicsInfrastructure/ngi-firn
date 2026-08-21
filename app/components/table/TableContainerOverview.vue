@@ -24,7 +24,7 @@ interface ContainerRow {
   containerType: ContainerType
   typeLabel: string
   typeIcon: string
-  classification: InventoryClassificationType
+  classification: InventoryClassificationType | null
   status: InventoryStatusType
   barcode: string | null
   description: string | null
@@ -200,8 +200,8 @@ const canMoveSelection = computed(() =>
 
       <template #classification-cell="{ cell }">
         <NBadge
-          :label="cell.row.original.classification"
-          :badge="getClassificationBadge(cell.row.original.classification)"
+          :label="cell.row.original.classification ?? 'Uncategorized'"
+          :badge="cell.row.original.classification ? getClassificationBadge(cell.row.original.classification) : 'soft-gray'"
           :una="TABLE_BADGE_UNA"
         />
       </template>
@@ -265,7 +265,7 @@ const canMoveSelection = computed(() =>
                   <IndicatorIconText
                     icon="i-lucide-tags"
                     label="Classification"
-                    :value="row.original.classification"
+                    :value="row.original.classification ?? 'Uncategorized'"
                   />
                   <div>
                     <div class="flex items-center gap-1.5 mb-0.5">
