@@ -116,7 +116,7 @@ export const CONTAINER_TYPE_ICONS: Record<ContainerType, string> = {
   Compartment: 'i-lucide-layout-grid',
   Crate: 'i-lucide-package-2',
   Drawer: 'i-lucide-bed-single',
-  Goblet: 'i-lucide-cylinder',
+  Goblet: 'i-lucide-life-buoy',
   Rack: 'i-lucide-table',
   Shelf: 'i-lucide-shelving-unit',
   Tray: 'i-lucide-square-library',
