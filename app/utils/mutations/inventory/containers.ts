@@ -28,27 +28,6 @@ const STATUS_FROM_ACTION: Partial<Record<InventoryActionType, InventoryStatusTyp
 }
 
 // ---------------------------------------------------------------------------
-// Extended input types — augment schema inputs with optional UI-only fields
-// that are used for toasts and cache targeting but are never sent to the API.
-// ---------------------------------------------------------------------------
-
-type DeleteContainerMutationInput = DeleteContainerSchemaInput & {
-  // UI-only labels for toasts; never sent to the API.
-  containerNames?: string[]
-  // Per-container parent context, used to locate the relevant list caches for optimistic removal.
-  parents?: { slug: string, kind: 'equipment' | 'container' }[]
-}
-
-type MoveContainerMutationInput = MoveContainerSchemaInput & {
-  containerNames?: string[]
-}
-
-type LocateContainerMutationInput = LocateContainerSchemaInput & {
-  // UI-only labels for toasts; never sent to the API.
-  containerNames?: string[]
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -76,6 +55,20 @@ function upsertActiveFlag(
   return flags.some(flag => flag.kind === kind)
     ? flags.map(flag => flag.kind === kind ? { kind, comment } : flag)
     : [...flags, { kind, comment }]
+}
+
+function getOptimisticActiveFlags(
+  container: DisplayContainer,
+  input: AlterContainerSchemaInput
+): InventoryActiveFlag[] | null {
+  const updatedFlags: InventoryActiveFlag[] | null
+    = input.performedAction === 'flag' && input.flagKind
+      ? upsertActiveFlag(container.activeFlags, input.flagKind as InventoryFlagType, input.logComment ?? null)
+      : input.performedAction === 'unflag' && input.flagKind
+        ? (container.activeFlags ?? []).filter(f => f.kind !== input.flagKind) || null
+        : container.activeFlags
+
+  return updatedFlags && updatedFlags.length > 0 ? updatedFlags : null
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +220,7 @@ export const updateContainer = defineMutation(() => {
 
 export const moveContainer = defineMutation(() => {
   const { mutate, ...mutation } = useMutation({
-    mutation: (input: MoveContainerMutationInput) => {
+    mutation: (input: MoveContainerSchemaInput) => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.moveContainer.mutate({
         containerSlug: input.containerSlug,
@@ -308,7 +301,7 @@ export const moveContainer = defineMutation(() => {
 
 export const locateContainer = defineMutation(() => {
   const { mutate, ...mutation } = useMutation({
-    mutation: (input: LocateContainerMutationInput) => {
+    mutation: (input: LocateContainerSchemaInput) => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.locateContainer.mutate({
         containerSlug: input.containerSlug,
@@ -404,64 +397,84 @@ export const alterContainer = defineMutation(() => {
   const { mutate, ...mutation } = useMutation({
     mutation: (input: AlterContainerSchemaInput) => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.containers.alterContainer.mutate(input)
+      return $trpc.inventory.containers.alterContainer.mutate({
+        containerSlug: input.containerSlug,
+        performedAction: input.performedAction,
+        flagKind: input.flagKind,
+        logComment: input.logComment
+      })
     },
-    onMutate(input): ContainerAlterContext {
+    onMutate(input: AlterContainerSchemaInput): ContainerAlterContext {
       const queryCache = useQueryCache()
       const optimisticStatus = STATUS_FROM_ACTION[input.performedAction]
       const vacating = isVacatingAction(input.performedAction)
       const slugSet = new Set(input.containerSlug)
       const parentSlugs: string[] = []
+      const selectedBySlug = new Map((input.containers ?? []).map(container => [container.slug, container]))
 
       const snapshots = input.containerSlug.map((slug) => {
         const container = queryCache.getQueryData<DisplayContainer>(
           INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug)
-        )
+        ) ?? selectedBySlug.get(slug)
+
         if (container) {
           if (container.parentRef) parentSlugs.push(container.parentRef.slug)
-          const updatedFlags: InventoryActiveFlag[] | null
-            = input.performedAction === 'flag' && input.flagKind
-              ? upsertActiveFlag(container.activeFlags, input.flagKind as InventoryFlagType, input.logComment ?? null)
-              : input.performedAction === 'unflag' && input.flagKind
-                ? (container.activeFlags ?? []).filter(f => f.kind !== input.flagKind) || null
-                : container.activeFlags
+          const activeFlags = getOptimisticActiveFlags(container, input)
 
           queryCache.setQueryData(INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), {
             ...container,
             ...(optimisticStatus !== undefined && { status: optimisticStatus }),
             // Vacating actions unplace the container: drop its placement in the cache too.
             ...(vacating && { parentRef: null, positionParent: null }),
-            activeFlags: updatedFlags && updatedFlags.length > 0 ? updatedFlags : null
+            activeFlags
           })
         }
         return { slug, container }
       })
 
-      // For vacating actions also reconcile the list caches: remove the containers from their
-      // former parent lists (they no longer live there) and, in the flat overview, update the
-      // entries in place (they stay listed but become unplaced with the new status).
+      // Reconcile loaded list caches so overview tables update instantly.
       const listSnapshots: { key: readonly string[], list: DisplayContainer[] }[] = []
-      if (vacating) {
-        const listKeys = new Map<string, readonly string[]>()
-        for (const { container } of snapshots) {
-          const key = container ? parentListKey(container.parentRef) : null
-          if (key) listKeys.set(key.join('\u0000'), key)
-        }
-        for (const key of listKeys.values()) {
-          const list = queryCache.getQueryData<DisplayContainer[]>(key) ?? []
-          listSnapshots.push({ key, list })
-          queryCache.cancelQueries({ key, exact: true })
+      const listKeys = new Map<string, readonly string[]>()
+      for (const { container } of snapshots) {
+        const key = container ? parentListKey(container.parentRef) : null
+        if (key) listKeys.set(key.join('\u0000'), key)
+      }
+
+      for (const key of listKeys.values()) {
+        const list = queryCache.getQueryData<DisplayContainer[]>(key) ?? []
+        listSnapshots.push({ key, list })
+        queryCache.cancelQueries({ key, exact: true })
+        if (vacating) {
           queryCache.setQueryData(key, list.filter(c => !slugSet.has(c.slug)))
         }
-
-        const allKey = INVENTORY_CONTAINERS_QUERY_KEYS.all()
-        const allList = queryCache.getQueryData<DisplayContainer[]>(allKey)
-        if (allList) {
-          listSnapshots.push({ key: allKey, list: allList })
-          queryCache.setQueryData(allKey, allList.map(c => slugSet.has(c.slug)
-            ? { ...c, ...(optimisticStatus !== undefined && { status: optimisticStatus }), parentRef: null, positionParent: null }
-            : c))
+        else {
+          queryCache.setQueryData(key, list.map((c) => {
+            if (!slugSet.has(c.slug)) return c
+            const activeFlags = getOptimisticActiveFlags(c, input)
+            return {
+              ...c,
+              ...(optimisticStatus !== undefined && { status: optimisticStatus }),
+              activeFlags
+            }
+          }))
         }
+      }
+
+      const allKey = INVENTORY_CONTAINERS_QUERY_KEYS.all()
+      const allList = queryCache.getQueryData<DisplayContainer[]>(allKey)
+      if (allList) {
+        listSnapshots.push({ key: allKey, list: allList })
+        queryCache.cancelQueries({ key: allKey, exact: true })
+        queryCache.setQueryData(allKey, allList.map((c) => {
+          if (!slugSet.has(c.slug)) return c
+          const activeFlags = getOptimisticActiveFlags(c, input)
+          return {
+            ...c,
+            ...(optimisticStatus !== undefined && { status: optimisticStatus }),
+            ...(vacating && { parentRef: null, positionParent: null }),
+            activeFlags
+          }
+        }))
       }
 
       return { snapshots, listSnapshots, parentSlugs }
@@ -638,7 +651,7 @@ export const removeProjectRef = defineMutation(() => {
 
 export const deleteContainer = defineMutation(() => {
   const { mutate, ...mutation } = useMutation({
-    mutation: (input: DeleteContainerMutationInput) => {
+    mutation: (input: DeleteContainerSchemaInput) => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.deleteContainer.mutate({ containerSlug: input.containerSlug })
     },

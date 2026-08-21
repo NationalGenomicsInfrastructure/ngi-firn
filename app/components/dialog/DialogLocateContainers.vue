@@ -120,8 +120,8 @@ async function handleLocate() {
 <template>
   <NDialog
     :open="isOpen"
-    title="Locate containers"
-    description="Return lost containers to storage — pick a destination or let the system choose one."
+    :title="`Locate container${count === 1 ? '' : 's'}`"
+    :description="`Return the lost container${count === 1 ? '' : 's'} to storage — pick a destination or let the system choose one.`"
     @update:open="onDialogOpenChange"
   >
     <template #trigger>
@@ -141,7 +141,7 @@ async function handleLocate() {
 
       <NFormGroup
         label="Auto-select location"
-        description="Let the system place the container(s) in the first suitable free slot."
+        description="Let the system choose the first suitable free slot."
         :una="{ formGroupLabel: FORM_LABEL_STYLE, formGroupDescription: 'text-muted' }"
       >
         <NSwitch v-model="autoSelect" />
@@ -152,7 +152,7 @@ async function handleLocate() {
           v-if="!isLoadingTargets && targetOptions.length === 0"
           alert="border-warning"
           title="No destination available"
-          description="No single equipment or container can accept all selected containers with enough free slots."
+          description="No single equipment or container has enough free slots."
           icon="i-lucide-package-x"
         />
 
@@ -190,7 +190,7 @@ async function handleLocate() {
           />
         </NDialogClose>
         <NButton
-          :label="`Locate ${count} container${count === 1 ? '' : 's'}`"
+          :label="`Place ${count} container${count === 1 ? '' : 's'}`"
           btn="soft-success hover:outline-success"
           trailing="i-lucide-map-pin"
           :disabled="isLocateDisabled"

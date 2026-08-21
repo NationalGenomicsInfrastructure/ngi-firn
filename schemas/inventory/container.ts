@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { itemTypeSchema } from './items'
 import { inventoryActionSchema, inventoryFlagSchema } from './metadata'
+import type { DisplayContainer } from '~~/types/inventory'
 
 // ---------------------------------------------------------------------------
 // Container type & classification vocabularies
@@ -303,10 +304,23 @@ export const containerMoveTargetsBatchSchema = z.object({
 // Inferred types
 export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
-export type DeleteContainerSchemaInput = z.infer<typeof deleteContainerSchema>
-export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema>
-export type LocateContainerSchemaInput = z.infer<typeof locateContainerSchema>
-export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema>
+export type DeleteContainerSchemaInput = z.infer<typeof deleteContainerSchema> & {
+  // UI-only labels for toasts; never sent to the API.
+  containerNames?: string[]
+  // Per-container parent context, used to locate the relevant list caches for optimistic removal.
+  parents?: { slug: string, kind: 'equipment' | 'container' }[]
+}
+export type MoveContainerSchemaInput = z.infer<typeof moveContainerSchema> & {
+  containerNames?: string[]
+}
+export type LocateContainerSchemaInput = z.infer<typeof locateContainerSchema> & {
+  // UI-only labels for toasts; never sent to the API.
+  containerNames?: string[]
+}
+export type AlterContainerSchemaInput = z.infer<typeof alterContainerSchema> & {
+  // UI-only fallback context from the table selection; never sent to the API.
+  containers?: DisplayContainer[]
+}
 export type SuggestLocationsSchemaInput = z.infer<typeof suggestLocationsSchema>
 export type AcceptedChildrenSchemaInput = z.infer<typeof acceptedChildrenSchema>
 export type ContainerMoveTargetsSchemaInput = z.infer<typeof containerMoveTargetsSchema>

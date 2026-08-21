@@ -131,7 +131,8 @@ async function handleAlter() {
       containerSlug: props.containers.map(c => c.slug),
       performedAction: selectedAction.value,
       flagKind: requiresFlag.value ? selectedFlag.value : null,
-      logComment: logComment.value.trim() || null
+      logComment: logComment.value.trim() || null,
+      containers: props.containers
     })
     isOpen.value = false
     logComment.value = ''
