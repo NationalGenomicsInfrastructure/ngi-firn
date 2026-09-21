@@ -41,6 +41,10 @@ export type DeleteItemResult = {
 
 const RECENT_LOG_ENTRIES = 10
 
+function logRollbackFailure(operation: string, error: unknown): void {
+  console.error(`Failed to roll back item ${operation}:`, error)
+}
+
 function isInventoryItem(doc: unknown): doc is InventoryItem {
   return !!doc
     && typeof doc === 'object'
@@ -224,8 +228,8 @@ async function moveItemOne(
     try {
       await adjustParentOccupancy(newParent, existing.category, position, -1)
     }
-    catch {
-      // Surface the failed item write; the reservation rollback is best-effort.
+    catch (rollbackError) {
+      logRollbackFailure('destination reservation after a failed item write', rollbackError)
     }
     throw error
   }
@@ -237,14 +241,14 @@ async function moveItemOne(
     try {
       await couchDB.updateDocument(existing._id, existing, moved._rev)
     }
-    catch {
-      // Surface the failed source release; restoring the item is best-effort.
+    catch (rollbackError) {
+      logRollbackFailure('item document after a failed source release', rollbackError)
     }
     try {
       await adjustParentOccupancy(newParent, existing.category, position, -1)
     }
-    catch {
-      // Surface the failed source release.
+    catch (rollbackError) {
+      logRollbackFailure('destination reservation after a failed source release', rollbackError)
     }
     throw error
   }
@@ -365,8 +369,8 @@ export const ItemService = {
       try {
         await adjustParentOccupancy(parent, input.category, position, -1)
       }
-      catch {
-        // Surface the failed item creation; the reservation rollback is best-effort.
+      catch (rollbackError) {
+        logRollbackFailure('parent reservation after a failed item creation', rollbackError)
       }
       throw error
     }
@@ -475,8 +479,8 @@ export const ItemService = {
         try {
           await rollbackItemMove(before, after, newParent)
         }
-        catch {
-          // Surface the original move failure; the rollback is best-effort.
+        catch (rollbackError) {
+          logRollbackFailure('item move', rollbackError)
         }
       }
       throw error
@@ -518,8 +522,8 @@ export const ItemService = {
         try {
           await rollbackItemMove(before, after, newParent)
         }
-        catch {
-          // Surface the original locate failure; the rollback is best-effort.
+        catch (rollbackError) {
+          logRollbackFailure('item locate', rollbackError)
         }
       }
       throw error
