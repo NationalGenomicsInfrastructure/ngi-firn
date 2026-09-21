@@ -34,6 +34,41 @@ import type {
 import type { InventoryActionType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import { allowedActionsForStatus, isAlterAction, isVacatingAction } from '~~/schemas/inventory/metadata'
 
+/*
+ * ItemService - Table of Contents
+ * ********************************
+ *
+ * TYPE GUARDS AND RETRIEVAL:
+ * isInventoryItem(doc) - Check whether a fetched document is an InventoryItem
+ * getItem(id) - Fetch one item document by ID
+ * getItemBySlug(slug) - Fetch one item document by slug
+ * getItemsByParent(parentDocumentId, parentKind) - List direct item children of a parent
+ * getAllItems() - List all inventory items
+ *
+ * PARENT PLACEMENT AND CAPACITY:
+ * resolveItemParent(slug, kind) - Resolve an equipment/container parent
+ * resolveItemPlacement(parent, position, category) - Validate or allocate a parent grid slot
+ * adjustParentOccupancy(...) - Reserve or release a resolved parent's item capacity
+ * adjustParentRefOccupancy(...) - Reserve or release a stored parent reference's capacity
+ * assertBatchCapacityAvailable(parent, items) - Validate a shared destination for a batch
+ *
+ * CREATE, UPDATE, DELETE, AND MOVE:
+ * createItem(input, firnUser) - Register an item and reserve parent capacity
+ * updateItem(updates, firnUser) - Update item metadata and append field changes to its audit log
+ * deleteItem(input) - Delete items and release each parent's capacity
+ * moveItem(input, firnUser) - Re-home one or more items in a strict-atomic batch
+ * locateItem(input, firnUser) - Re-place lost items and restore available status
+ * alterItem(input, firnUser) - Apply lifecycle actions, flags, and audit entries
+ *
+ * PROJECT REFERENCES AND DISPLAY:
+ * addProjectRef(slug, projectId) - Link a LIMS project to an item
+ * removeProjectRef(slug, projectId) - Remove a LIMS project link
+ * convertToDisplayItem(item, parent, recentActionLog) - Build a client-safe projection
+ * convertMultipleToDisplayItems(items) - Batch-convert items with parents and audit users
+ * getItemActionLog(slug) - Retrieve the full enriched audit history
+ * getItemProjectRefs(slug) - Retrieve full referenced-project details
+ */
+
 export type DeleteItemResult = {
   deleted: InventoryItem[]
   failures: { slug: string, error: string }[]
@@ -41,16 +76,19 @@ export type DeleteItemResult = {
 
 const RECENT_LOG_ENTRIES = 10
 
+/* Log a failed compensating operation without hiding the original write failure. */
 function logRollbackFailure(operation: string, error: unknown): void {
   console.error(`Failed to roll back item ${operation}:`, error)
 }
 
+/* Check whether a fetched CouchDB document is an inventory item. */
 function isInventoryItem(doc: unknown): doc is InventoryItem {
   return !!doc
     && typeof doc === 'object'
     && (doc as Partial<InventoryItem>).type === 'inventoryItem'
 }
 
+/* Query item documents by [type, slug] using the inventory view index. */
 async function queryItemsBySlug(slug: string): Promise<InventoryItem[]> {
   const result = await couchDB.queryView<[string, string], null, InventoryItem>(
     'firn-inventory',
@@ -60,10 +98,15 @@ async function queryItemsBySlug(slug: string): Promise<InventoryItem[]> {
   return result.rows.map(row => row.doc).filter((doc): doc is InventoryItem => isInventoryItem(doc))
 }
 
+/* Resolve the direct equipment/container parent selected by public slug. */
 async function resolveItemParent(parentSlug: string, parentKind: ItemParentKind): Promise<ResolvedParent> {
   return ContainerService.resolveParent(parentSlug, parentKind)
 }
 
+/*
+ * Validate a container parent's item acceptance and determine the item's placement.
+ * Equipment currently has no item-capacity model, so direct equipment items are unpositioned.
+ */
 async function resolveItemPlacement(
   parent: ResolvedParent,
   proposedPosition: GridPosition | null | undefined,
@@ -110,6 +153,10 @@ async function resolveItemPlacement(
   return position
 }
 
+/*
+ * Change capacity on a resolved parent. Count containers track per category; grid
+ * containers track occupied positions. Equipment intentionally does not track items.
+ */
 async function adjustParentOccupancy(
   parent: ResolvedParent,
   category: ItemType,
@@ -126,6 +173,7 @@ async function adjustParentOccupancy(
   await ContainerService.adjustStoredCount(parent.doc._id, category, delta)
 }
 
+/* Apply capacity changes when only a stored item parent reference is available. */
 async function adjustParentRefOccupancy(
   parentRef: InventoryItem['parent'],
   position: GridPosition | null | undefined,
@@ -142,6 +190,7 @@ async function adjustParentRefOccupancy(
   await ContainerService.adjustStoredCount(parentRef.id, category, delta)
 }
 
+/* Ensure a shared container destination can accept every item before a batch move begins. */
 function assertBatchCapacityAvailable(parent: ResolvedParent, items: InventoryItem[]): void {
   if (parent.kind === 'equipment') {
     return
@@ -185,6 +234,10 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, items: InventoryIt
   }
 }
 
+/*
+ * Move one item using destination reservation → item write → source release ordering.
+ * Compensating writes preserve capacity consistency when a later step fails.
+ */
 async function moveItemOne(
   existing: InventoryItem,
   newParent: ResolvedParent,
@@ -256,6 +309,7 @@ async function moveItemOne(
   return moved
 }
 
+/* Reverse a fully committed item move while rolling back a failed batch. */
 async function rollbackItemMove(
   before: InventoryItem,
   after: InventoryItem,
@@ -276,15 +330,18 @@ async function rollbackItemMove(
 }
 
 export const ItemService = {
+  /* Fetch one item document by CouchDB ID. */
   async getItem(itemDocumentId: string): Promise<InventoryItem | null> {
     const item = await couchDB.getDocument<InventoryItem>(itemDocumentId)
     return isInventoryItem(item) ? item : null
   },
 
+  /* Fetch one item document by stable public slug. */
   async getItemBySlug(slug: string): Promise<InventoryItem | null> {
     return (await queryItemsBySlug(slug))[0] ?? null
   },
 
+  /* List direct item children of one equipment or container parent. */
   async getItemsByParent(parentDocumentId: string, parentKind: ItemParentKind): Promise<InventoryItem[]> {
     const parentType = parentKind === 'equipment' ? 'storageEquipment' : 'container'
     const result = await couchDB.queryView<[string, string], null, InventoryItem>(
@@ -298,6 +355,7 @@ export const ItemService = {
       .sort((a, b) => a.name.localeCompare(b.name))
   },
 
+  /* List every inventory item, sorted by name. */
   async getAllItems(): Promise<InventoryItem[]> {
     const result = await couchDB.queryView<string, null, InventoryItem>(
       'firn-inventory',
@@ -310,6 +368,7 @@ export const ItemService = {
       .sort((a, b) => a.name.localeCompare(b.name))
   },
 
+  /* Register an item after reserving its parent's capacity or grid slot. */
   async createItem(input: CreateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem> {
     const parent = await resolveItemParent(input.parentSlug, input.parentKind)
     const position = await resolveItemPlacement(parent, input.position ?? null, input.category)
@@ -338,6 +397,8 @@ export const ItemService = {
       concentration: input.concentration ?? null,
       concentrationUnit: input.concentrationUnit?.trim() || null,
       position,
+      arrivalDate: input.arrivalDate ?? null,
+      openingDate: input.openingDate ?? null,
       expiryDate: input.expiryDate ?? null,
       lotNumber: input.lotNumber?.trim() || null,
       barcode: input.barcode?.trim() || null,
@@ -376,6 +437,7 @@ export const ItemService = {
     }
   },
 
+  /* Update metadata only; moving an item belongs to the dedicated move workflow. */
   async updateItem(updates: UpdateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem> {
     const existing = await ItemService.getItemBySlug(updates.itemSlug)
     if (!existing) {
@@ -394,6 +456,8 @@ export const ItemService = {
       concentrationUnit: updates.concentrationUnit === undefined
         ? existing.concentrationUnit
         : updates.concentrationUnit?.trim() || null,
+      arrivalDate: updates.arrivalDate === undefined ? existing.arrivalDate : updates.arrivalDate ?? null,
+      openingDate: updates.openingDate === undefined ? existing.openingDate : updates.openingDate ?? null,
       expiryDate: updates.expiryDate === undefined ? existing.expiryDate : updates.expiryDate ?? null,
       lotNumber: updates.lotNumber === undefined ? existing.lotNumber : updates.lotNumber?.trim() || null,
       barcode: updates.barcode === undefined ? existing.barcode : updates.barcode?.trim() || null,
@@ -417,6 +481,8 @@ export const ItemService = {
         { field: 'unit', before: existing.unit, after: updated.unit },
         { field: 'concentration', before: existing.concentration, after: updated.concentration },
         { field: 'concentrationUnit', before: existing.concentrationUnit, after: updated.concentrationUnit },
+        { field: 'arrivalDate', before: existing.arrivalDate, after: updated.arrivalDate },
+        { field: 'openingDate', before: existing.openingDate, after: updated.openingDate },
         { field: 'expiryDate', before: existing.expiryDate, after: updated.expiryDate },
         { field: 'lotNumber', before: existing.lotNumber, after: updated.lotNumber },
         { field: 'barcode', before: existing.barcode, after: updated.barcode },
@@ -432,6 +498,7 @@ export const ItemService = {
     return updated
   },
 
+  /* Delete items independently and free their former parent capacity afterward. */
   async deleteItem(input: DeleteItemSchemaInput): Promise<DeleteItemResult> {
     const deleted: InventoryItem[] = []
     const failures: { slug: string, error: string }[] = []
@@ -452,6 +519,7 @@ export const ItemService = {
     return { deleted, failures }
   },
 
+  /* Move one or more items to one shared parent, rolling back completed moves on failure. */
   async moveItem(input: MoveItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem[]> {
     const newParent = await resolveItemParent(input.newParentSlug, input.newParentKind)
     const items: InventoryItem[] = []
@@ -488,6 +556,7 @@ export const ItemService = {
     return moved.map(entry => entry.after)
   },
 
+  /* Return lost items to storage and restore their available status. */
   async locateItem(input: LocateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem[]> {
     const newParent = await resolveItemParent(input.newParentSlug, input.newParentKind)
     const items: InventoryItem[] = []
@@ -531,6 +600,7 @@ export const ItemService = {
     return placed.map(entry => entry.after)
   },
 
+  /* Apply non-dedicated lifecycle actions and append an immutable audit entry. */
   async alterItem(input: AlterItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem[]> {
     if (!isAlterAction(input.performedAction)) {
       throw new Error(`Action "${input.performedAction}" must use its dedicated item workflow.`)
@@ -604,6 +674,7 @@ export const ItemService = {
     return altered
   },
 
+  /* Link one external LIMS project to an item. */
   async addProjectRef(slug: string, projectId: string): Promise<InventoryItem | null> {
     const item = await ItemService.getItemBySlug(slug)
     if (!item) return null
@@ -622,6 +693,7 @@ export const ItemService = {
     return updated
   },
 
+  /* Remove one external LIMS project link from an item. */
   async removeProjectRef(slug: string, projectId: string): Promise<InventoryItem | null> {
     const item = await ItemService.getItemBySlug(slug)
     if (!item || !item.projectRefs || !(projectId in item.projectRefs)) return item
@@ -637,6 +709,7 @@ export const ItemService = {
     return updated
   },
 
+  /* Convert one stored item into the client-safe display projection. */
   convertToDisplayItem(
     item: InventoryItem,
     parent: StorageEquipment | Container | null,
@@ -660,6 +733,8 @@ export const ItemService = {
       concentration: item.concentration,
       concentrationUnit: item.concentrationUnit,
       position: item.position,
+      arrivalDate: item.arrivalDate,
+      openingDate: item.openingDate,
       expiryDate: item.expiryDate,
       lotNumber: item.lotNumber,
       barcode: item.barcode,
@@ -682,6 +757,7 @@ export const ItemService = {
     }
   },
 
+  /* Batch-convert items while resolving distinct parents and recent action-log users. */
   async convertMultipleToDisplayItems(items: InventoryItem[]): Promise<DisplayInventoryItem[]> {
     if (items.length === 0) return []
     const parentIds = [...new Set(
@@ -707,6 +783,7 @@ export const ItemService = {
     }))
   },
 
+  /* Retrieve the full enriched action history for one item. */
   async getItemActionLog(slug: string): Promise<DisplayInventoryActionLogEntry[]> {
     const item = await ItemService.getItemBySlug(slug)
     if (!item) {
@@ -715,6 +792,7 @@ export const ItemService = {
     return resolveActionLogUsers(item.actionLog)
   },
 
+  /* Resolve an item's stored project references into detailed display data. */
   async getItemProjectRefs(slug: string): Promise<InventoryProjectRef[]> {
     const item = await ItemService.getItemBySlug(slug)
     if (!item) {

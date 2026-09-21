@@ -379,6 +379,8 @@ export interface InventoryItem extends BaseDocument {
   parent: TypedDocumentReference<StorageEquipment | Container> | null
   /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
+  /* External barcode on physical item — integrates with barcode scanning infra. */
+  barcode: string | null
   /* Physical form factor of the item (what it IS). */
   category: ItemType
   /* Purpose/domain classification (what it's FOR). */
@@ -392,11 +394,13 @@ export interface InventoryItem extends BaseDocument {
   concentration: number | null
   concentrationUnit: string | null
   position: GridPosition | null
+  /* ISO 8601 date the item arrived at the facility. */
+  arrivalDate: string | null
+  /* ISO 8601 date the item was first opened. */
+  openingDate: string | null
   /* ISO 8601 date; drives the expiry-reminder workflow. */
   expiryDate: string | null
   lotNumber: string | null
-  /* External barcode on physical item — integrates with barcode scanning infra. */
-  barcode: string | null
   /* Template this item was created from (informational, not live-linked). */
   templateId: string | null
   notes: string | null
@@ -426,6 +430,8 @@ export interface DisplayInventoryItem {
   concentration: number | null
   concentrationUnit: string | null
   position: GridPosition | null
+  arrivalDate: string | null
+  openingDate: string | null
   expiryDate: string | null
   lotNumber: string | null
   barcode: string | null

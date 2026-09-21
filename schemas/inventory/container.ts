@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { gridPositionSchema, itemTypeSchema } from './items'
+import { gridPositionSchema } from './grid'
+import { itemTypeSchema } from './items'
 import { inventoryActionSchema, inventoryFlagSchema } from './metadata'
 import type { DisplayContainer } from '~~/types/inventory'
 
@@ -59,7 +60,6 @@ export type ContainerChildKindType = z.infer<typeof childKindSchema>
 // human-readable slot name (e.g. "A3"); the server derives it from row/column
 // via deriveGridLabel() when the client omits it.
 export type GridPositionInput = z.infer<typeof gridPositionSchema>
-export { gridPositionSchema } from './items'
 
 // ---------------------------------------------------------------------------
 // Capacity model

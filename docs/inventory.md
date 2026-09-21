@@ -6,7 +6,7 @@ The inventory module tracks where physical items — sample plates, reagents, se
 
 Our genomics facility stores thousands of items across rooms, freezers, fridges, nitrogen tanks, shelves, boxes, racks, and bags. These form a **tree hierarchy**: rooms contain equipment, equipment contains containers, containers can nest inside other containers, and items sit at the leaves.
 
-The system models this tree as **separate CouchDB documents linked by parent references** rather than embedding children inside their parents. Each entity is its own document with a `parentId` pointing upward. This keeps documents small, avoids write conflicts when different items in the same container are modified concurrently, and allows the hierarchy to grow without bound.
+The system models this tree as **separate CouchDB documents linked by typed `parent` references** rather than embedding children inside their parents. Each non-root entity stores its direct parent document ID and type in a `TypedDocumentReference`. This keeps documents small, avoids write conflicts when different items in the same container are modified concurrently, and allows the hierarchy to grow without bound.
 
 On top of the hierarchy, an **action log** records every meaningful event — checking an item out, returning it, moving it, disposing it. The same action mechanism doubles as a **task planner**: actions can be created with status `planned` and a due date, then marked `completed` or `skipped` in the lab. This powers auto-reminders (e.g., "return this plate to the freezer") and expiry-based disposal workflows.
 
@@ -31,7 +31,7 @@ for its audit trail (`InventoryActionLogEntry` entries).
 
 ### Room
 
-A physical location in a building — the root of every storage hierarchy. Rooms have a human-readable `roomId` slug, a building, and an optional floor number. Every piece of equipment must belong to exactly one room by document `_id` in `parentId`.
+A physical location in a building — the root of every storage hierarchy. Rooms have a human-readable `slug`, a building, and an optional floor number. Every piece of equipment stores a typed `parent` reference to exactly one room.
 
 ### StorageEquipment
 
@@ -57,7 +57,7 @@ The trackable unit at the leaves of the tree. Items have two orthogonal categori
 
 This separation matters because the same physical container type (e.g., an eppendorf tube) can hold very different things (a DNA sample vs. a buffer reagent), and the system needs to reason about both dimensions independently.
 
-Items carry lab-specific fields: `quantity`, `unit`, `concentration`, `concentrationUnit`, `expiryDate`, `lotNumber`, and `barcode`. A `metadata` escape hatch (`Record<string, unknown>`) exists for truly ad-hoc data that doesn't warrant a typed field.
+Items carry lab-specific fields: `quantity`, `unit`, `concentration`, `concentrationUnit`, `arrivalDate`, `openingDate`, `expiryDate`, `lotNumber`, and `barcode`. A `metadata` escape hatch (`Record<string, unknown>`) exists for truly ad-hoc data that doesn't warrant a typed field.
 
 An item may be placed directly in storage equipment or in a container. Container parents enforce their declared item acceptance and count/grid capacity; storage equipment currently does not declare item capacity and therefore accepts direct items without occupancy bookkeeping. Items are leaves and cannot contain child inventory.
 
@@ -135,15 +135,13 @@ The first draft of the inventory system embedded children as arrays inside their
 - **Write conflicts** — CouchDB uses optimistic concurrency. If two users modify different items in the same freezer simultaneously, both would need to update the same parent document, causing revision conflicts.
 - **Independent updates** — Moving an item only requires updating the item document, not the source and destination parent documents.
 
-### 2. Materialized `locationPath` for fast ancestry queries
+### 2. Direct typed parent references
 
-Each entity below the room level stores a `locationPath` — an ordered array of `{id, type}` tuples from the root room down to the direct parent. This is a denormalized copy of the ancestry chain, trading write cost on moves for fast reads.
+Each entity below the room level stores only a typed reference to its immediate parent: `{ db: 'firn', id, type }`. The reference’s `id` drives the `by_parent` and `children_count` views, while `type` distinguishes room, equipment, and container parents without trusting client input.
 
-**Why this matters**: The primary use case is _"find everything stored in Freezer X"_ or _"show me the full path to this item."_ Without a materialized path, answering these questions in a document database requires recursive lookups — fetching the parent, then the grandparent, and so on. With `locationPath`, a single CouchDB MapReduce view (`by_ancestor`) can return all descendants of any entity in one query.
+**Why this matters**: Direct-child queries such as _"show this freezer’s contents"_ are answered with one indexed view request. A breadcrumb or complete ancestry chain is resolved by following parent references, avoiding denormalized paths that would need cascade updates whenever a container moves.
 
-**Why only IDs, not names**: The `locationPath` deliberately stores only `{id, type}` — not `name` or `label`. Names are mutable (a room can be renamed), and duplicating mutable data across hundreds of descendant documents creates a synchronisation burden. When a display breadcrumb is needed, `resolveLocationBreadcrumb()` batch-fetches all ancestor documents by ID in a single `_all_docs` call.
-
-**Trade-off**: When a container is moved, every descendant's `locationPath` must be updated. This is a cascade write via `bulkUpdateDocuments()`. Moves of large subtrees (e.g., moving a full rack with hundreds of items) are expensive, but they are rare compared to reads. The system is optimised for the common case.
+**Trade-off**: Descendant-wide queries are not currently materialized. They require traversal or a future, explicitly maintained ancestry index; inventory documents do not persist a `locationPath`.
 
 ### 3. CouchDB views, not Mango indexes
 
@@ -152,18 +150,15 @@ The project prefers MapReduce views over Mango indexes for inventory queries. Vi
 - **`_design/firn-inventory`** — Hierarchy queries: `by_type`, `by_parent`, `by_ancestor`, `by_status`, `by_expiry`, `by_barcode`, `by_category`, `templates_by_kind`, `children_count`, `capacity_by_accepted_category`, `by_project`.
 - **`_design/firn-inventory-actions`** — Action queries: `by_target`, `by_status`, `by_assignee`, `planned_for_target`.
 
-### 4. `parentId`/`parentType` over `DocumentReference`
+### 4. Typed `parent` references
 
-The codebase has a generic `DocumentReference` type (in `types/references.d.ts`) designed for sparse cross-database links — e.g., a user document pointing at a todo document, or a bookmark referencing a project in an external database. It carries a `db` field for cross-database targeting and an optional `type` discriminator.
+The codebase uses `TypedDocumentReference` (from `types/references.d.ts`) for inventory hierarchy edges. It stores the parent’s database, document ID, and document type in one compact shape:
 
-The inventory hierarchy intentionally does **not** use this mechanism:
+```ts
+parent: { db: 'firn', id: parent._id, type: parent.type }
+```
 
-- All inventory documents live in the same database — the `db` field would be constant noise.
-- The hierarchy relies on persisted `parentType` for view queries and acceptance checks, but it is canonicalized on the server from the fetched parent document (clients provide only `parentId`).
-- `locationPath` is a domain-specific concept (ordered ancestry array) that has no equivalent in the generic reference model.
-- CouchDB views emit `parentId` as a simple string key. Wrapping it in `{db, id, type?}` objects would complicate every view for zero benefit.
-
-The `parentId`/`parentType` pair remains the right pattern for a dense, single-database tree, with `parentType` owned by the server as a derived field rather than a client-controlled input.
+All inventory documents currently live in the `firn` database, but using the typed form keeps runtime parent validation explicit and lets CouchDB views index `parent.id` and `parent.type` directly. The server derives these references from fetched parent documents; clients supply a public slug and expected parent kind rather than CouchDB IDs.
 
 ### 5. Hybrid action model: embedded log + separate tasks
 
@@ -203,7 +198,7 @@ A common lab task is _"I need to store 5 × 96-well plates — where is there ro
 
 1. **`capacity_by_accepted_category` view** — Indexes every active container by the categories it accepts. A container with `acceptedItemCategories: ['plate96', 'plate384']` emits two entries. Containers and equipment with no acceptance restrictions emit under a `['any', 'any']` wildcard key. Each emitted value includes the container's declared `capacity`.
 
-2. **`children_count` view** — A map+reduce view (`_count`) that emits every child document's `parentId`. Queried with `group=true` and a list of candidate IDs, it returns the current occupancy of each candidate in a single round-trip.
+2. **`children_count` view** — A map+reduce view (`_count`) that emits every child document's `parent.id`. Queried with `group=true` and a list of candidate IDs, it returns the current occupancy of each candidate in a single round-trip.
 
 3. **Server-side join** — `ContainerService.suggestLocations()` runs both view queries in parallel, computes `available = capacity − occupied` per candidate, and filters for `available ≥ requested count`. Results can be further narrowed by classification, ancestor subtree (e.g. "only in Freezer X"), and sorted by temperature preference (closest match first) then by most available space.
 
@@ -226,7 +221,7 @@ The `projectRefs` field is `null` when no project association exists. It is inte
 
 **Reverse lookup**: The `by_project` CouchDB view indexes all `projectRefs` entries, emitting `[db, projectId]` as the key. Querying `key=["projects", "proj:P12345"]` returns every container and item linked to that project. Note that CouchDB does not support cross-database views — this view lives in the firn database and indexes the `projectRefs` field of inventory documents.
 
-While the inventory hierarchy uses `parentId`/`parentType` for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse — most inventory entities will not be linked to a project.
+While the inventory hierarchy uses typed `parent` references for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse — most inventory entities will not be linked to a project.
 
 ### 11. Equipment capacity: wire shape vs. stored shape
 

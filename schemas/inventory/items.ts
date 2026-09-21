@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { gridPositionSchema } from './grid'
 import { inventoryActionSchema, inventoryClassificationSchema, inventoryFlagSchema } from './metadata'
 
 // Physical item form-factor classifications.
@@ -22,22 +23,10 @@ export const itemTypeSchema = z.enum([
   'other'
 ])
 
-export type ItemType = z.infer<typeof itemTypeSchema>
-
-export const gridPositionSchema = z.object({
-  row: z.number().int().min(1),
-  column: z.number().int().min(1),
-  level: z.number().int().min(1).optional(),
-  label: z.string().optional()
-})
-
-export type GridPositionInput = z.infer<typeof gridPositionSchema>
-
 const itemParentKindSchema = z.enum(['equipment', 'container'])
 
-export type ItemParentKind = z.infer<typeof itemParentKindSchema>
-
-const itemFieldsSchema = {
+export const createItemSchema = z.object({
+  category: itemTypeSchema,
   classification: inventoryClassificationSchema.nullish(),
   name: z.string().min(1, { message: 'Item name is required' }),
   label: z.string().nullish(),
@@ -46,17 +35,14 @@ const itemFieldsSchema = {
   unit: z.string().nullish(),
   concentration: z.number().nonnegative().nullish(),
   concentrationUnit: z.string().nullish(),
-  expiryDate: z.string().date().nullish(),
+  arrivalDate: z.string().nullish(),
+  openingDate: z.string().nullish(),
+  expiryDate: z.string().nullish(),
   lotNumber: z.string().nullish(),
   barcode: z.string().nullish(),
   templateId: z.string().nullish(),
   notes: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish()
-}
-
-export const createItemSchema = z.object({
-  category: itemTypeSchema,
-  ...itemFieldsSchema,
+  metadata: z.record(z.string(), z.unknown()).nullish(),
   parentSlug: z.string().min(1, { message: 'Parent identifier is required' }),
   parentKind: itemParentKindSchema,
   position: gridPositionSchema.nullish(),
@@ -73,7 +59,9 @@ export const updateItemSchema = z.object({
   unit: z.string().nullish(),
   concentration: z.number().nonnegative().nullish(),
   concentrationUnit: z.string().nullish(),
-  expiryDate: z.string().date().nullish(),
+  arrivalDate: z.string().nullish(),
+  openingDate: z.string().nullish(),
+  expiryDate: z.string().nullish(),
   lotNumber: z.string().nullish(),
   barcode: z.string().nullish(),
   templateId: z.string().nullish(),
@@ -129,6 +117,8 @@ export const alterItemSchema = z.object({
   logComment: z.string().nullish()
 })
 
+export type ItemType = z.infer<typeof itemTypeSchema>
+export type ItemParentKind = z.infer<typeof itemParentKindSchema>
 export type CreateItemSchemaInput = z.infer<typeof createItemSchema>
 export type UpdateItemSchemaInput = z.infer<typeof updateItemSchema>
 export type DeleteItemSchemaInput = z.infer<typeof deleteItemSchema>
