@@ -25,8 +25,8 @@ Room                          (top-level; hierarchy root)
 InventoryTask                 (planned lab task; separate document for independent queries)
 InventoryTemplate             (preset defaults for creating entities)
 
-Each StorageEquipment, Container, and InventoryItem embeds an actionLog[]
-for its audit trail (ActionLogEntry entries).
+Each Container and InventoryItem embeds an actionLog[]
+for its audit trail (`InventoryActionLogEntry` entries).
 ```
 
 ### Room
@@ -59,32 +59,33 @@ This separation matters because the same physical container type (e.g., an eppen
 
 Items carry lab-specific fields: `quantity`, `unit`, `concentration`, `concentrationUnit`, `expiryDate`, `lotNumber`, and `barcode`. A `metadata` escape hatch (`Record<string, unknown>`) exists for truly ad-hoc data that doesn't warrant a typed field.
 
+An item may be placed directly in storage equipment or in a container. Container parents enforce their declared item acceptance and count/grid capacity; storage equipment currently does not declare item capacity and therefore accepts direct items without occupancy bookkeeping. Items are leaves and cannot contain child inventory.
+
 #### Item Status Lifecycle
 
 | Status | Meaning |
 | -------- | --------- |
 | `available` | In storage, ready for use |
-| `checked_out` | Temporarily removed from storage for handling |
+| `in_use` | Temporarily removed from storage for handling |
 | `reserved` | Claimed for upcoming work but still in storage |
 | `expired` | Past its expiry date |
 | `disposed` | Permanently discarded |
 | `lost` | Cannot be located |
-| `damaged` | Physically damaged, may need disposal |
 
-### ActionLogEntry (embedded audit log)
+### InventoryActionLogEntry (embedded audit log)
 
-Every `StorageEquipment`, `Container`, and `InventoryItem` document carries an `actionLog: ActionLogEntry[]` array — an append-only, embedded audit trail of handling events. Each entry records one action (checkout, return, move, dispose, etc.) with the user who performed it and a timestamp.
+Every `Container` and `InventoryItem` document carries an `actionLog: InventoryActionLogEntry[]` array — an append-only, embedded audit trail of handling events. Each entry records one action (checkout, return, move, dispose, etc.) with the user who performed it and a timestamp.
 
 Embedding the log directly in entity documents means that fetching an item automatically returns its full history — no secondary query needed. Entries are compact (`~100–150 bytes each`) and immutable once written.
 
 ```ts
-interface ActionLogEntry {
+interface InventoryActionLogEntry {
   actionType: InventoryActionType
-  userId: string        // who performed the action
+  firnUser: TypedDocumentReference<FirnUser>
   timestamp: string     // ISO 8601
   notes?: string
-  fromParentId?: string // for moves/checkout/return
-  toParentId?: string
+  flag?: InventoryFlagType
+  changes?: InventoryActionChangeRecord[]
   linkedTaskId?: string // if triggered by a planned task
 }
 ```
@@ -93,7 +94,7 @@ interface ActionLogEntry {
 
 Planned lab operations that need scheduling, assignment, and lifecycle management. Unlike embedded log entries, tasks are **separate CouchDB documents** so they can be independently queried — overdue tasks, tasks assigned to a specific user, pending disposal tasks, etc.
 
-When a task is completed, an `ActionLogEntry` is appended to the target entity's embedded log and the task document is marked `completed`. This ensures the audit trail lives with the entity while tasks remain independently queryable.
+When a task is completed, an `InventoryActionLogEntry` is appended to the target entity's embedded log and the task document is marked `completed`. This ensures the audit trail lives with the entity while tasks remain independently queryable.
 
 Tasks have a lifecycle: `planned` → `completed` | `skipped` | `cancelled`.
 
@@ -108,10 +109,13 @@ Tasks have a lifecycle: `planned` → `completed` | `skipped` | `cancelled`.
 | `reserve` | Reserve for future use |
 | `unreserve` | Release a reservation |
 | `dispose` | Discard permanently |
+| `mark_expired` | Mark an item as expired |
+| `post_missing` | Mark an item as lost and remove it from storage |
 | `modify` | Properties changed (label, quantity, etc.) |
+| `locate` | Re-place a lost item into storage |
 | `flag` | Flag for attention (low quantity, issue) |
+| `unflag` | Remove a flag category |
 | `note` | Observation or comment (informational only) |
-| `discard_expired` | Dispose due to expiry (system-suggested) |
 
 #### Linked Tasks
 
@@ -165,10 +169,10 @@ The `parentId`/`parentType` pair remains the right pattern for a dense, single-d
 
 Rather than using a single document type for both audit logging and task planning (which leads to document proliferation) or embedding everything (which makes cross-entity task queries impossible), the system uses a **hybrid approach**:
 
-- **Completed events** are stored as compact `ActionLogEntry` entries embedded in the entity's `actionLog` array. This means fetching an item returns its complete history — no secondary query needed.
+- **Completed events** are stored as compact `InventoryActionLogEntry` entries embedded in the entity's `actionLog` array. This means fetching an item returns its complete history — no secondary query needed.
 - **Planned tasks** are separate `InventoryTask` documents with their own lifecycle. This enables independent queries: "show me all overdue tasks", "tasks assigned to me", "pending disposal tasks for expiring reagents."
 
-When a planned task is completed, an `ActionLogEntry` is appended to the target entity and the task document is marked `completed`. This ensures the audit trail always lives with the entity while tasks remain independently queryable.
+When a planned task is completed, an `InventoryActionLogEntry` is appended to the target entity and the task document is marked `completed`. This ensures the audit trail always lives with the entity while tasks remain independently queryable.
 
 The `status` lifecycle for tasks is: `planned` → `completed` | `skipped` | `cancelled`. Completed tasks are effectively frozen.
 
@@ -254,7 +258,7 @@ All database operations are implemented as service objects in `server/crud/inven
 
 ### Checkout → Return Reminder
 
-1. User checks out an item → status becomes `checked_out`.
+1. User checks out an item → status becomes `in_use`.
 2. A `checkout` entry is appended to the item's embedded `actionLog`.
 3. System creates a planned `return` task (separate `InventoryTask` document) assigned to the user.
 4. If the user returns the item → the planned return task is completed, and a `return` log entry is appended.
@@ -263,8 +267,8 @@ All database operations are implemented as service objects in `server/crud/inven
 ### Expiry-Based Disposal
 
 1. `TaskService.createExpiryTasks(beforeDate)` scans for items where `expiryDate ≤ beforeDate` and `status = 'available'`.
-2. Items that already have a pending `discard_expired` task are skipped (no duplicates).
-3. For the rest, planned `discard_expired` tasks are created.
+2. Items that already have a pending disposal task are skipped (no duplicates).
+3. For the rest, planned `dispose` tasks are created.
 4. A user reviews the tasks and either completes them (disposing the item) or skips them (extending shelf life or ignoring).
 
 This method can be called on-demand from a tRPC procedure or scheduled via a Nitro server task.
