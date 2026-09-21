@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { itemTypeSchema } from './items'
+import { gridPositionSchema, itemTypeSchema } from './items'
 import { inventoryActionSchema, inventoryFlagSchema } from './metadata'
 import type { DisplayContainer } from '~~/types/inventory'
 
@@ -58,14 +58,8 @@ export type ContainerChildKindType = z.infer<typeof childKindSchema>
 // Slot position of a child within its parent's grid layout. `label` is a
 // human-readable slot name (e.g. "A3"); the server derives it from row/column
 // via deriveGridLabel() when the client omits it.
-export const gridPositionSchema = z.object({
-  row: z.number().int().min(1),
-  column: z.number().int().min(1),
-  level: z.number().int().min(1).optional(),
-  label: z.string().optional()
-})
-
 export type GridPositionInput = z.infer<typeof gridPositionSchema>
+export { gridPositionSchema } from './items'
 
 // ---------------------------------------------------------------------------
 // Capacity model

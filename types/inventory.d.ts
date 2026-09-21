@@ -375,8 +375,8 @@ export interface ContainerMoveTarget {
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'
   schema: 1
-  /* Typed reference to the parent document (room, equipment, or container). */
-  parent: TypedDocumentReference<Room | StorageEquipment | Container> | null
+  /* Typed reference to the parent document (storage equipment or container). */
+  parent: TypedDocumentReference<StorageEquipment | Container> | null
   /* Stable URL slug (e.g. "itm-m42x1c-abc123"), not the CouchDB _id. */
   slug: string
   /* Physical form factor of the item (what it IS). */
@@ -403,12 +403,40 @@ export interface InventoryItem extends BaseDocument {
   /* Escape hatch for truly ad-hoc data not covered by typed fields. */
   metadata: Record<string, unknown> | null
   /* Optional cross-database references to projects (read-only projects DB). */
-  projectRefs: SerializedEntityRef[] | null
+  projectRefs: DocumentReferenceMap | null
   status: InventoryStatusType
   /* Embedded audit trail — append-only log of handling events. */
-  actionLog: ActionLogEntry[]
+  actionLog: InventoryActionLogEntry[]
   /* Active flags: Colored highlights that allow marking important states or issues. */
   activeFlags: InventoryActiveFlag[] | null
+  createdAt: string
+  updatedAt: string
+}
+
+/* Client-safe projection of an inventory item. */
+export interface DisplayInventoryItem {
+  slug: string
+  category: ItemType
+  classification: InventoryClassificationType | null
+  name: string
+  label: string | null
+  description: string | null
+  quantity: number | null
+  unit: string | null
+  concentration: number | null
+  concentrationUnit: string | null
+  position: GridPosition | null
+  expiryDate: string | null
+  lotNumber: string | null
+  barcode: string | null
+  templateId: string | null
+  notes: string | null
+  metadata: Record<string, unknown> | null
+  projectRefs: SerializedEntityRef[] | null
+  status: InventoryStatusType
+  activeFlags: InventoryActiveFlag[] | null
+  parentRef: SerializedEntityRef | null
+  recentActionLog: DisplayInventoryActionLogEntry[]
   createdAt: string
   updatedAt: string
 }
