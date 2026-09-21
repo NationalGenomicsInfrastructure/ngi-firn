@@ -678,6 +678,25 @@ export const ContainerService = {
     if (!existing) {
       throw new Error(`Container with identifier "${updates.containerSlug}" not found.`)
     }
+    const nextContainerType = updates.containerType ?? existing.containerType
+    const containerTypeChanged = nextContainerType !== existing.containerType
+    const parent = containerTypeChanged && existing.parent
+      ? await resolveContainerParentRef(existing.parent)
+      : null
+
+    if (containerTypeChanged && existing.parent && !parent) {
+      throw new Error(`Parent for container "${existing.slug}" could not be resolved; its type cannot be changed.`)
+    }
+
+    /*
+     * A container's type is the category charged against its parent. Reserve the
+     * new category before changing the child, then release the old category only
+     * after the child write succeeds. Grid parents keep their existing occupied
+     * position, so they validate the replacement type without changing occupancy.
+     */
+    const reservedNewCategory = parent
+      ? await reserveParentCategoryForTypeChange(parent, nextContainerType)
+      : false
 
     // Re-validate and merge capacity restrictions while preserving stored counts.
     // An explicitly provided empty array clears them (merged result is null); a missing
@@ -690,7 +709,7 @@ export const ContainerService = {
 
     const updatedContainer: Container = {
       ...existing,
-      containerType: updates.containerType ?? existing.containerType,
+      containerType: nextContainerType,
       classification: updates.classification ?? existing.classification,
       name: updates.name ?? existing.name,
       label: updates.label === undefined ? existing.label : (updates.label?.trim() || null),
@@ -705,8 +724,43 @@ export const ContainerService = {
       ? [...existing.actionLog, changelogEntry]
       : existing.actionLog
 
-    const result = await couchDB.updateDocument(updatedContainer._id, updatedContainer, existing._rev)
-    updatedContainer._rev = result.rev
+    try {
+      const result = await couchDB.updateDocument(updatedContainer._id, updatedContainer, existing._rev)
+      updatedContainer._rev = result.rev
+    }
+    catch (error) {
+      if (parent && reservedNewCategory) {
+        try {
+          await adjustParentOccupancy(parent, nextContainerType, null, -1)
+        }
+        catch (rollbackError) {
+          console.error('Failed to release parent capacity reserved for a container type update:', rollbackError)
+        }
+      }
+      throw error
+    }
+
+    if (parent && reservedNewCategory) {
+      try {
+        await adjustParentRefOccupancy(existing.parent, existing.positionParent, existing.containerType, -1)
+      }
+      catch (error) {
+        try {
+          const rollbackResult = await couchDB.updateDocument(existing._id, existing, updatedContainer._rev)
+          existing._rev = rollbackResult.rev
+        }
+        catch (rollbackError) {
+          console.error('Failed to restore a container after releasing its former capacity failed:', rollbackError)
+        }
+        try {
+          await adjustParentOccupancy(parent, nextContainerType, null, -1)
+        }
+        catch (rollbackError) {
+          console.error('Failed to release parent capacity while rolling back a container type update:', rollbackError)
+        }
+        throw error
+      }
+    }
     return updatedContainer
   },
 
@@ -1317,6 +1371,41 @@ async function adjustParentRefOccupancy(
   else {
     await ContainerService.adjustStoredCount(parentRef.id, childType, delta)
   }
+}
+
+/* Resolve a stored parent reference into the discriminated parent shape used by capacity helpers. */
+async function resolveContainerParentRef(parentRef: NonNullable<Container['parent']>): Promise<ResolvedParent | null> {
+  const parent = await ContainerService.resolveParentRef(parentRef)
+  if (!parent) return null
+  return parent.type === 'storageEquipment'
+    ? { kind: 'equipment', doc: parent }
+    : { kind: 'container', doc: parent }
+}
+
+/*
+ * Reserve capacity for a container whose type is changing in-place.
+ * Grid occupancy is per slot rather than category: the existing child stays in
+ * its slot, so validating the grid's accepted category is sufficient and no
+ * stored counter changes.
+ */
+async function reserveParentCategoryForTypeChange(
+  parent: ResolvedParent,
+  nextContainerType: ContainerType
+): Promise<boolean> {
+  if (parent.kind === 'container') {
+    const entry = parent.doc.capacity?.find(
+      capacityEntry => capacityEntry.childKind === 'container' && capacityEntry.type === nextContainerType
+    )
+    if (!entry) {
+      throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${nextContainerType}".`)
+    }
+    if (entry.layout === 'grid') {
+      return false
+    }
+  }
+
+  await adjustParentOccupancy(parent, nextContainerType, null, 1)
+  return true
 }
 
 /*
