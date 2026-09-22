@@ -59,7 +59,7 @@ const columns = computed<ColumnDef<ItemRow>[]>(() => {
 })
 
 function itemUrl(slug: string): string {
-  return `/inventory/items/${encodeURIComponent(slug)}`
+  return `/inventory/items/${encodeURIComponent(slug)}/details`
 }
 
 function parentUrl(row: ItemRow): string | null {
