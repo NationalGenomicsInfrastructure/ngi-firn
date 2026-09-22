@@ -371,6 +371,14 @@ export interface ContainerMoveTarget {
   free: number
 }
 
+/* A candidate destination for moving one or more items. `free: null` means unbounded equipment capacity. */
+export interface ItemMoveTarget {
+  slug: string
+  name: string
+  kind: 'container' | 'equipment'
+  free: number | null
+}
+
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */
 export interface InventoryItem extends BaseDocument {
   type: 'inventoryItem'

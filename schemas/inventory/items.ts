@@ -117,6 +117,15 @@ export const alterItemSchema = z.object({
   logComment: z.string().nullish()
 })
 
+export const itemMoveTargetsSchema = z.object({
+  itemSlug: z.string().min(1, { message: 'Item identifier is required' })
+})
+
+export const itemMoveTargetsBatchSchema = z.object({
+  itemSlug: z.array(z.string().min(1, { message: 'Item identifier is required' }))
+    .min(1, { message: 'At least one item identifier is required' })
+})
+
 export type ItemType = z.infer<typeof itemTypeSchema>
 export type ItemParentKind = z.infer<typeof itemParentKindSchema>
 export type CreateItemSchemaInput = z.infer<typeof createItemSchema>
@@ -125,3 +134,5 @@ export type DeleteItemSchemaInput = z.infer<typeof deleteItemSchema>
 export type MoveItemSchemaInput = z.infer<typeof moveItemSchema>
 export type LocateItemSchemaInput = z.infer<typeof locateItemSchema>
 export type AlterItemSchemaInput = z.infer<typeof alterItemSchema>
+export type ItemMoveTargetsSchemaInput = z.infer<typeof itemMoveTargetsSchema>
+export type ItemMoveTargetsBatchSchemaInput = z.infer<typeof itemMoveTargetsBatchSchema>

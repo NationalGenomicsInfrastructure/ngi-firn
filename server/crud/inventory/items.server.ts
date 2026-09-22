@@ -1,5 +1,6 @@
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
 import { ContainerService, type ResolvedParent } from './containers.server'
+import { EquipmentService } from './equipment.server'
 import { deriveGridLabel, findFirstFreeGridSlot, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
 import {
   buildAlterActionNotes,
@@ -16,6 +17,7 @@ import type {
   GridPosition,
   InventoryActiveFlag,
   InventoryItem,
+  ItemMoveTarget,
   InventoryProjectRef,
   SerializedEntityRef,
   StorageEquipment
@@ -51,6 +53,8 @@ import { allowedActionsForStatus, isAlterAction, isVacatingAction } from '~~/sch
  * adjustParentOccupancy(...) - Reserve or release a resolved parent's item capacity
  * adjustParentRefOccupancy(...) - Reserve or release a stored parent reference's capacity
  * assertBatchCapacityAvailable(parent, items) - Validate a shared destination for a batch
+ * getMoveTargetsForItem(slug) - List parents that can accept one item
+ * getMoveTargetsForItems(slugs) - List parents that can accept an item batch
  *
  * CREATE, UPDATE, DELETE, AND MOVE:
  * createItem(input, firnUser) - Register an item and reserve parent capacity
@@ -368,6 +372,101 @@ export const ItemService = {
       .sort((a, b) => a.name.localeCompare(b.name))
   },
 
+  /* List valid equipment/container destinations for one item, excluding its current parent. */
+  async getMoveTargetsForItem(itemSlug: string): Promise<ItemMoveTarget[]> {
+    return this.getMoveTargetsForItems([itemSlug])
+  },
+
+  /*
+   * List valid shared destinations for an item batch. Active equipment is unbounded for
+   * items; containers must accept every requested category with enough remaining capacity.
+   */
+  async getMoveTargetsForItems(itemSlugs: string[]): Promise<ItemMoveTarget[]> {
+    const items: InventoryItem[] = []
+    for (const slug of itemSlugs) {
+      const item = await this.getItemBySlug(slug)
+      if (!item) {
+        throw new Error(`Item with identifier "${slug}" not found.`)
+      }
+      items.push(item)
+    }
+
+    const excludedParentIds = new Set(
+      items.map(item => item.parent?.id).filter((id): id is string => !!id)
+    )
+    const neededByCategory = new Map<string, number>()
+    for (const item of items) {
+      neededByCategory.set(item.category, (neededByCategory.get(item.category) ?? 0) + 1)
+    }
+
+    const targets = new Map<string, ItemMoveTarget>()
+    const equipment = await EquipmentService.getAllEquipment()
+    for (const parent of equipment) {
+      if (parent.isActive && !excludedParentIds.has(parent._id)) {
+        targets.set(parent.slug, {
+          slug: parent.slug,
+          name: parent.name,
+          kind: 'equipment',
+          free: null
+        })
+      }
+    }
+
+    const categories = [...neededByCategory.keys()]
+    if (categories.length === 0) {
+      return [...targets.values()].sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    const candidatesByCategory = new Map<string, Map<string, { doc: Container, free: number }>>()
+    for (const category of categories) {
+      const result = await couchDB.queryView<[string, string], { free: number }, Container>(
+        'firn-inventory',
+        'capacity_by_accepted_category',
+        {
+          key: ['item', category],
+          include_docs: true,
+          reduce: false
+        }
+      )
+      const candidates = new Map<string, { doc: Container, free: number }>()
+      for (const row of result.rows) {
+        const container = row.doc
+        if (!container || container.type !== 'container' || excludedParentIds.has(container._id)) continue
+        const free = row.value?.free ?? 0
+        if (!candidates.has(container.slug)) {
+          candidates.set(container.slug, { doc: container, free })
+        }
+      }
+      candidatesByCategory.set(category, candidates)
+    }
+
+    const firstCategory = categories[0]
+    const firstCandidates = firstCategory ? candidatesByCategory.get(firstCategory) : undefined
+    for (const [slug, candidate] of firstCandidates ?? []) {
+      let fits = true
+      let minimumFree = Number.POSITIVE_INFINITY
+      for (const category of categories) {
+        const match = candidatesByCategory.get(category)?.get(slug)
+        const needed = neededByCategory.get(category) ?? 0
+        if (!match || match.free < needed) {
+          fits = false
+          break
+        }
+        minimumFree = Math.min(minimumFree, match.free)
+      }
+      if (fits) {
+        targets.set(slug, {
+          slug,
+          name: candidate.doc.name,
+          kind: 'container',
+          free: Number.isFinite(minimumFree) ? minimumFree : 0
+        })
+      }
+    }
+
+    return [...targets.values()].sort((a, b) => a.name.localeCompare(b.name))
+  },
+
   /* Register an item after reserving its parent's capacity or grid slot. */
   async createItem(input: CreateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem> {
     const parent = await resolveItemParent(input.parentSlug, input.parentKind)
@@ -658,7 +757,7 @@ export const ItemService = {
           timestamp: updated.updatedAt,
           notes: buildAlterActionNotes('inventory_item', input.performedAction, existing.name, input.logComment, input.flagKind),
           flag: input.performedAction === 'flag' || input.performedAction === 'unflag'
-            ? input.flagKind
+            ? input.flagKind ?? undefined
             : undefined,
           changes: changes.length > 0 ? changes : undefined
         }
