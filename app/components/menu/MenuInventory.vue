@@ -56,6 +56,10 @@ const data = {
         {
           title: 'Overview',
           url: '/inventory/items'
+        },
+        {
+          title: 'Add item',
+          url: '/inventory/items/add'
         }
       ]
     }

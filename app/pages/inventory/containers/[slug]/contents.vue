@@ -82,7 +82,8 @@ const containerTypeLabel = computed(() =>
         <InventoryContainerCapacityBars :slug="slug" />
       </NCard>
 
-      <InventoryContainerChildrenSection :container="container" />
+      <InventoryContainerContainerSection :container="container" />
+      <InventoryContainerItemSection :container="container" />
 
       <div class="flex justify-end mt-4">
         <NButton

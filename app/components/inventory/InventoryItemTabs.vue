@@ -2,17 +2,13 @@
 const route = useRoute()
 
 const tabs = [
-  { label: 'Contents', to: 'contents', icon: 'i-lucide-package-open' },
-  { label: 'Details', to: 'details', icon: 'i-lucide-book-open-text' }
+  { label: 'Details', to: 'details', icon: 'i-lucide-book-open-text' },
+  { label: 'Action log', to: 'log', icon: 'i-lucide-clipboard-clock' }
 ] as const
 
-// Strip the current tab segment to get the base path for this slug
 const basePath = computed(() => {
   const parts = route.path.split('/')
-  const last = parts.at(-1)
-  if (last === 'details' || last === 'contents') {
-    parts.pop()
-  }
+  if (parts.at(-1) === 'details' || parts.at(-1) === 'log') parts.pop()
   return parts.join('/')
 })
 

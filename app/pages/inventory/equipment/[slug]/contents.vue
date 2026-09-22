@@ -95,6 +95,7 @@ const equipmentTypeLabel = computed(() =>
       </NCard>
 
       <InventoryEquipmentContainerSection :equipment="equipment" />
+      <InventoryEquipmentItemSection :equipment="equipment" />
 
       <div class="flex justify-end mt-4">
         <NButton
