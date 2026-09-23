@@ -158,6 +158,7 @@ export const createContainerSchema = z.object({
   name: z.string().min(1, { message: 'Container name is required' }),
   label: z.string().nullish(),
   description: z.string().nullish(),
+  temperatureCelsius: z.number().nullish(),
   parentSlug: z.string().min(1, { message: 'Parent identifier is required' }),
   parentKind: parentKindSchema,
   // Placement of THIS container within its parent's grid (if the parent is a grid).
@@ -179,6 +180,7 @@ export const updateContainerSchema = z.object({
   name: z.string().min(1).optional(),
   label: z.string().nullish(),
   description: z.string().nullish(),
+  temperatureCelsius: z.number().nullish(),
   position: gridPositionSchema.nullish(),
   capacity: containerCapacityArraySchema.nullish(),
   logComment: z.string().nullish() // Optional note to append to the container's action log

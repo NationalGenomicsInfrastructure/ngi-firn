@@ -157,6 +157,18 @@ async function resolveItemPlacement(
   return position
 }
 
+function assertTemperatureCompatible(
+  itemTemperature: number | null,
+  parent: ResolvedParent
+): void {
+  if (itemTemperature == null) return
+  if (parent.doc.temperatureCelsius !== itemTemperature) {
+    throw new Error(
+      `Item temperature ${itemTemperature} °C requires a parent with the same explicit temperature.`
+    )
+  }
+}
+
 /*
  * Change capacity on a resolved parent. Count containers track per category; grid
  * containers track occupied positions. Equipment intentionally does not track items.
@@ -168,6 +180,7 @@ async function adjustParentOccupancy(
   delta: number
 ): Promise<void> {
   if (parent.kind === 'equipment') {
+    await EquipmentService.adjustItemStoredCount(parent.doc._id, category, delta)
     return
   }
   if (position) {
@@ -184,7 +197,11 @@ async function adjustParentRefOccupancy(
   category: ItemType,
   delta: number
 ): Promise<void> {
-  if (!parentRef || parentRef.type === 'storageEquipment') {
+  if (!parentRef) {
+    return
+  }
+  if (parentRef.type === 'storageEquipment') {
+    await EquipmentService.adjustItemStoredCount(parentRef.id, category, delta)
     return
   }
   if (position) {
@@ -251,6 +268,7 @@ async function moveItemOne(
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<InventoryItem> {
   const position = await resolveItemPlacement(newParent, requestedPosition, existing.category)
+  assertTemperatureCompatible(existing.temperatureCelsius, newParent)
   await adjustParentOccupancy(newParent, existing.category, position, 1)
 
   const now = new Date().toISOString()
@@ -471,6 +489,7 @@ export const ItemService = {
   async createItem(input: CreateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem> {
     const parent = await resolveItemParent(input.parentSlug, input.parentKind)
     const position = await resolveItemPlacement(parent, input.position ?? null, input.category)
+    assertTemperatureCompatible(input.temperatureCelsius ?? null, parent)
     await adjustParentOccupancy(parent, input.category, position, 1)
 
     const now = new Date().toISOString()
@@ -495,6 +514,7 @@ export const ItemService = {
       unit: input.unit?.trim() || null,
       concentration: input.concentration ?? null,
       concentrationUnit: input.concentrationUnit?.trim() || null,
+      temperatureCelsius: input.temperatureCelsius ?? null,
       position,
       arrivalDate: input.arrivalDate ?? null,
       openingDate: input.openingDate ?? null,
@@ -831,6 +851,7 @@ export const ItemService = {
       unit: item.unit,
       concentration: item.concentration,
       concentrationUnit: item.concentrationUnit,
+      temperatureCelsius: item.temperatureCelsius,
       position: item.position,
       arrivalDate: item.arrivalDate,
       openingDate: item.openingDate,

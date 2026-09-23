@@ -2,7 +2,7 @@ import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
 import type { ContainerCapacityEntry, ContainerChildKindType, ContainerType } from '../schemas/inventory/container'
-import type { EquipmentCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
+import type { EquipmentCapacityEntry, EquipmentItemCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
 import type { ItemType } from '../schemas/inventory/items'
 import type { InventoryActionType, InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '../schemas/inventory/metadata'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
@@ -206,6 +206,7 @@ export interface StorageEquipment extends BaseDocument {
   description: string | null
   /* One entry per container type; `stored` is the server-owned occupancy counter. */
   capacity: EquipmentCapacityEntry[] | null
+  itemCapacity: EquipmentItemCapacityEntry[] | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null
@@ -232,6 +233,7 @@ export interface DisplayStorageEquipment {
   description: string | null
   /* One entry per container type; `stored` is the server-owned occupancy counter. */
   capacity: EquipmentCapacityEntry[] | null
+  itemCapacity: EquipmentItemCapacityEntry[] | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null
@@ -263,6 +265,7 @@ export interface Container extends BaseDocument {
   name: string
   label: string | null
   description: string | null
+  temperatureCelsius: number | null
   /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
   capacity: ContainerCapacityEntry[] | null
   /* Generated from this container template (if applicable). */
@@ -314,6 +317,7 @@ export interface DisplayContainer {
   name: string
   label: string | null
   description: string | null
+  temperatureCelsius: number | null
   /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
   capacity: ContainerCapacityEntry[] | null
   /* Position of this container within its parent container (null when parent is equipment). */
@@ -396,6 +400,7 @@ export interface InventoryItem extends BaseDocument {
   name: string
   label: string | null
   description: string | null
+  temperatureCelsius: number | null
   quantity: number | null
   unit: string | null
   /* Sample/reagent concentration. */
@@ -433,6 +438,7 @@ export interface DisplayInventoryItem {
   name: string
   label: string | null
   description: string | null
+  temperatureCelsius: number | null
   quantity: number | null
   unit: string | null
   concentration: number | null

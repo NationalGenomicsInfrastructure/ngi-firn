@@ -2,6 +2,7 @@ import { z } from 'zod'
 // Storage equipment schemas
 
 import { containerTypeSchema } from './container'
+import { itemTypeSchema } from './items'
 
 export const equipmentTypeSchema = z.enum([
   'Cabinet',
@@ -35,6 +36,19 @@ export const equipmentCapacityEntrySchema = equipmentCapacitySchema.extend({
 
 export type EquipmentCapacityEntry = z.infer<typeof equipmentCapacityEntrySchema>
 
+export const equipmentItemCapacitySchema = z.object({
+  category: itemTypeSchema,
+  capacity: z.number().int().min(0)
+})
+
+export type EquipmentItemCapacity = z.infer<typeof equipmentItemCapacitySchema>
+
+export const equipmentItemCapacityEntrySchema = equipmentItemCapacitySchema.extend({
+  stored: z.number().int().min(0)
+})
+
+export type EquipmentItemCapacityEntry = z.infer<typeof equipmentItemCapacityEntrySchema>
+
 export const createEquipmentSchema = z.object({
   parentSlug: z.string().min(1, { message: 'Parent room identifier is required' }),
   equipmentType: equipmentTypeSchema,
@@ -42,6 +56,7 @@ export const createEquipmentSchema = z.object({
   label: z.string().nullish(),
   description: z.string().nullish(),
   capacity: z.array(equipmentCapacitySchema).nullish(),
+  itemCapacity: z.array(equipmentItemCapacitySchema).nullish(),
   temperatureCelsius: z.number().nullish(),
   temperatureSensorId: z.array(z.string()).nullish(),
   manufacturer: z.string().nullish(),
@@ -58,6 +73,7 @@ export const updateEquipmentSchema = z.object({
   label: z.string().optional(),
   description: z.string().optional(),
   capacity: z.array(equipmentCapacitySchema).optional(),
+  itemCapacity: z.array(equipmentItemCapacitySchema).optional(),
   temperatureCelsius: z.number().optional(),
   temperatureSensorId: z.array(z.string()).optional(),
   manufacturer: z.string().optional(),

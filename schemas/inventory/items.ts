@@ -35,6 +35,7 @@ export const createItemSchema = z.object({
   unit: z.string().nullish(),
   concentration: z.number().nonnegative().nullish(),
   concentrationUnit: z.string().nullish(),
+  temperatureCelsius: z.number().nullish(),
   arrivalDate: z.string().nullish(),
   openingDate: z.string().nullish(),
   expiryDate: z.string().nullish(),
@@ -59,6 +60,7 @@ export const updateItemSchema = z.object({
   unit: z.string().nullish(),
   concentration: z.number().nonnegative().nullish(),
   concentrationUnit: z.string().nullish(),
+  temperatureCelsius: z.number().nullish(),
   arrivalDate: z.string().nullish(),
   openingDate: z.string().nullish(),
   expiryDate: z.string().nullish(),
@@ -118,12 +120,14 @@ export const alterItemSchema = z.object({
 })
 
 export const itemMoveTargetsSchema = z.object({
-  itemSlug: z.string().min(1, { message: 'Item identifier is required' })
+  itemSlug: z.string().min(1, { message: 'Item identifier is required' }),
+  showAllClassifications: z.boolean().optional()
 })
 
 export const itemMoveTargetsBatchSchema = z.object({
   itemSlug: z.array(z.string().min(1, { message: 'Item identifier is required' }))
-    .min(1, { message: 'At least one item identifier is required' })
+    .min(1, { message: 'At least one item identifier is required' }),
+  showAllClassifications: z.boolean().optional()
 })
 
 export type ItemType = z.infer<typeof itemTypeSchema>

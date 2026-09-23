@@ -39,6 +39,7 @@ import type {
 } from '../../../types/inventory'
 import type { CreateEquipmentInput, DeleteEquipmentInput, UpdateEquipmentInput, MoveEquipmentInput, EquipmentCapacityEntry } from '~~/schemas/inventory/equipment'
 import type { ContainerType } from '~~/schemas/inventory/container'
+import type { ItemType } from '~~/schemas/inventory/items'
 
 /* Check if a document is a StorageEquipment document. */
 function isStorageEquipment(doc: unknown): doc is StorageEquipment {
@@ -132,6 +133,22 @@ function validateAndJoinEquipmentCapacity(
   return [...mergedByType.values()]
 }
 
+function validateAndJoinEquipmentItemCapacity(
+  existing: StorageEquipment['itemCapacity'],
+  updates: NonNullable<UpdateEquipmentInput['itemCapacity']>
+): NonNullable<StorageEquipment['itemCapacity']> {
+  const existingByCategory = new Map((existing ?? []).map(entry => [entry.category, entry]))
+  const merged = new Map<ItemType, NonNullable<StorageEquipment['itemCapacity']>[number]>()
+  for (const { category, capacity } of updates) {
+    const stored = existingByCategory.get(category)?.stored ?? 0
+    if (capacity < stored) {
+      throw new Error(`Cannot set item capacity for category "${category}" to ${capacity}: ${stored} items are already stored.`)
+    }
+    merged.set(category, { category, capacity, stored })
+  }
+  return [...merged.values()]
+}
+
 export const EquipmentService = {
 
   /* Fetch one equipment document by document ID. */
@@ -175,6 +192,7 @@ export const EquipmentService = {
     // Convert the wire-shape { type, capacity }[] input rows into the stored
     // EquipmentCapacityEntry[] shape, initializing stored counts to zero.
     const initialCapacity = validateAndJoinEquipmentCapacity(null, input.capacity ?? [])
+    const initialItemCapacity = validateAndJoinEquipmentItemCapacity(null, input.itemCapacity ?? [])
 
     const equipmentDocument: Omit<StorageEquipment, '_id' | '_rev'> = {
       type: 'storageEquipment',
@@ -186,6 +204,7 @@ export const EquipmentService = {
       label: input.label?.trim() || null,
       description: input.description ?? null,
       capacity: initialCapacity.length > 0 ? initialCapacity : null,
+      itemCapacity: initialItemCapacity.length > 0 ? initialItemCapacity : null,
       temperatureCelsius: input.temperatureCelsius ?? null,
       temperatureSensorId: input.temperatureSensorId ?? null,
       manufacturer: input.manufacturer ?? null,
@@ -219,7 +238,7 @@ export const EquipmentService = {
     }
 
     // Strip request-only identifiers so they are not persisted into the document.
-    const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, ...updatedFields } = updates
+    const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, itemCapacity, ...updatedFields } = updates
 
     // Re-validate and merge capacity restrictions while preserving stored counts.
     // When the caller did not touch capacity, keep the existing restrictions;
@@ -229,6 +248,11 @@ export const EquipmentService = {
       const merged = validateAndJoinEquipmentCapacity(existing.capacity, capacity)
       mergedCapacity = merged.length > 0 ? merged : null
     }
+    let mergedItemCapacity = existing.itemCapacity
+    if (itemCapacity) {
+      const merged = validateAndJoinEquipmentItemCapacity(existing.itemCapacity, itemCapacity)
+      mergedItemCapacity = merged && merged.length > 0 ? merged : null
+    }
 
     // recreate the updated equipment document by merging existing and updates, and updating the timestamp
     const updatedEquipment = {
@@ -236,6 +260,7 @@ export const EquipmentService = {
       ...updatedFields,
       slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
       capacity: mergedCapacity,
+      itemCapacity: mergedItemCapacity,
       updatedAt: new Date().toISOString()
     } as StorageEquipment
 
@@ -344,6 +369,31 @@ export const EquipmentService = {
     return { equipment: updatedEquipment, atCapacity: newStored === entry.capacity }
   },
 
+  async adjustItemStoredCount(
+    equipmentDocumentId: string,
+    category: ItemType,
+    delta: number
+  ): Promise<StorageEquipment> {
+    const equipment = await EquipmentService.getEquipment(equipmentDocumentId)
+    if (!equipment) throw new Error(`Equipment with ID "${equipmentDocumentId}" not found.`)
+    const entry = equipment.itemCapacity?.find(capacityEntry => capacityEntry.category === category)
+    if (!entry) return equipment
+    const stored = entry.stored + delta
+    if (stored < 0 || stored > entry.capacity) {
+      throw new Error(`Cannot store ${delta > 0 ? 'another' : 'fewer'} "${category}" item in equipment "${equipment.slug}".`)
+    }
+    const updated: StorageEquipment = {
+      ...equipment,
+      itemCapacity: (equipment.itemCapacity ?? []).map(capacityEntry =>
+        capacityEntry.category === category ? { ...capacityEntry, stored } : capacityEntry
+      ),
+      updatedAt: new Date().toISOString()
+    }
+    const result = await couchDB.updateDocument(updated._id, updated, equipment._rev)
+    updated._rev = result.rev
+    return updated
+  },
+
   /*
    * Strip CouchDB-internal fields before sending a single StorageEquipment to the client.
    * The caller must supply the pre-fetched parent Room to avoid an extra DB round-trip
@@ -357,6 +407,7 @@ export const EquipmentService = {
       label: equipment.label,
       description: equipment.description,
       capacity: equipment.capacity,
+      itemCapacity: equipment.itemCapacity ?? null,
       temperatureCelsius: equipment.temperatureCelsius,
       temperatureSensorId: equipment.temperatureSensorId,
       manufacturer: equipment.manufacturer,
