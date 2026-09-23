@@ -60,7 +60,6 @@ const capacityRows = computed<CapacityDisplayRow[]>(() => {
         valueClass: capacity === 0 ? 'text-muted' : undefined
       }
     })
-
 })
 
 const itemCapacityRows = computed(() =>

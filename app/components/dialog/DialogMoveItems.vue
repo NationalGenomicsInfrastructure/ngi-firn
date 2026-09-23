@@ -37,7 +37,7 @@ const targetOptions = computed(() =>
   targetsState.value.status === 'success'
     ? targetsState.value.data.map(target => ({
         value: `${target.kind}:${target.slug}`,
-        label: `${target.name} (${target.slug}) · ${target.free ?? 'Unlimited'} free · ${target.temperatureCelsius == null ? 'No temperature' : `${target.temperatureCelsius} °C`} · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
+        label: `${target.name} · ${target.free ?? 'Unlimited'} free · ${target.temperatureCelsius == null ? 'No temperature' : `${target.temperatureCelsius} °C`} · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
       }))
     : []
 )
@@ -121,6 +121,7 @@ async function handleMove() {
     :open="isOpen"
     title="Move items"
     description="Select a destination that accepts every selected item."
+    :una="{ dialogContent: '!w-[90vw] !max-w-[42rem]' }"
     @update:open="onDialogOpenChange"
   >
     <template #trigger>
@@ -152,6 +153,7 @@ async function handleMove() {
         :una="{ formLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
       >
         <NSelect
+          class="w-full"
           :model-value="selectedTarget"
           :items="targetOptions"
           by="value"

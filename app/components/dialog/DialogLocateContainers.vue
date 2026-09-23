@@ -32,7 +32,7 @@ const targetOptions = computed(() =>
   targetsState.value.status === 'success'
     ? targetsState.value.data.map(target => ({
         value: `${target.kind}:${target.slug}`,
-        label: `${target.name} (${target.slug}) · ${target.free} free · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
+        label: `${target.name} · ${target.free} free · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
       }))
     : []
 )
@@ -122,6 +122,7 @@ async function handleLocate() {
     :open="isOpen"
     :title="`Locate container${count === 1 ? '' : 's'}`"
     :description="`Return the lost container${count === 1 ? '' : 's'} to storage — pick a destination or let the system choose one.`"
+    :una="{ dialogContent: '!w-[90vw] !max-w-[42rem]' }"
     @update:open="onDialogOpenChange"
   >
     <template #trigger>
@@ -163,6 +164,7 @@ async function handleLocate() {
           :una="{ formLabel: FORM_LABEL_STYLE }"
         >
           <NSelect
+            class="w-full"
             :model-value="selectedTarget"
             :items="targetOptions"
             by="value"
