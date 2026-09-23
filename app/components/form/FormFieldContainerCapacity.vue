@@ -123,9 +123,9 @@ function onCountTypeUpdate(index: number, value: unknown) {
   emitEntries(entries.value.map((e, i) => i === index ? makeCountRow(current.childKind, type, e.layout === 'count' ? e.capacity : undefined) : e))
 }
 
-function onCountCapacityUpdate(index: number, value: unknown) {
-  const n = resolveNullableNumberFromInput(value)
-  const capacity = n == null ? 0 : Math.max(0, Math.round(n))
+function onCountCapacityUpdate(index: number, value: number[] | undefined) {
+  const capacity = value?.[0]
+  if (capacity == null) return
   emitEntries(entries.value.map((e, i) => i === index && e.layout === 'count' ? { ...e, capacity } : e))
 }
 
@@ -224,15 +224,16 @@ const gridTotalSlots = computed(() => {
 
         <NFormGroup
           label="Maximum capacity"
+          :message="`${entries[index]?.layout === 'count' ? entries[index].capacity : 0} ${getChildTypeMeta(row.childKind, row.type).label.toLowerCase()}${entries[index]?.layout === 'count' && entries[index].capacity === 1 ? '' : 's'}`"
           class="flex-1"
           :una="{ formGroupLabel: EQUIPMENT_FORM_LABEL_STYLE }"
         >
-          <NInput
-            :model-value="entries[index]?.layout === 'count' ? String(entries[index].capacity) : '0'"
-            type="number"
-            min="0"
-            step="1"
-            @update:model-value="(value: unknown) => onCountCapacityUpdate(index, value)"
+          <NSlider
+            :model-value="[entries[index]?.layout === 'count' ? entries[index].capacity : 0]"
+            :min="0"
+            :max="100"
+            :step="1"
+            @update:model-value="(value: number[] | undefined) => onCountCapacityUpdate(index, value)"
           />
         </NFormGroup>
 
