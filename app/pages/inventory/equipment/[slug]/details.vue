@@ -161,7 +161,7 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <footer class="flex flex-wrap items-center justify-end gap-2">
-          <DialogInventoryEquipmentUpdate
+          <DrawerInventoryEquipmentEdit
             :equipment="equipment"
             :room-slug="equipment.parentRoom.slug"
           />

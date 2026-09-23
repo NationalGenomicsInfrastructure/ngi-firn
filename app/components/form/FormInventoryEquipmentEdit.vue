@@ -2,11 +2,13 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { updateEquipmentSchema } from '~~/schemas/inventory/equipment'
 import type { DisplayStorageEquipment } from '~~/types/inventory'
+import type { EquipmentItemCapacity } from '~~/schemas/inventory/equipment'
 import { updateEquipment } from '~/utils/mutations/inventory/equipment'
 import {
   EQUIPMENT_FORM_LABEL_STYLE,
   EQUIPMENT_TYPE_OPTIONS,
   displayCapacityToFormCapacity,
+  displayItemCapacityToFormCapacity,
   resolveEquipmentTypeFromSelect,
   resolveNullableNumberFromInput,
   type CapacityRow
@@ -42,6 +44,7 @@ const { handleSubmit, validate, errors } = useForm({
     label: props.equipment.label ?? '',
     description: props.equipment.description ?? '',
     capacity: displayCapacityToFormCapacity(props.equipment.capacity),
+    itemCapacity: displayItemCapacityToFormCapacity(props.equipment.itemCapacity),
     temperatureCelsius: props.equipment.temperatureCelsius ?? undefined,
     manufacturer: props.equipment.manufacturer ?? '',
     model: props.equipment.model ?? '',
@@ -53,6 +56,7 @@ const { handleSubmit, validate, errors } = useForm({
 const { value: equipmentTypeValue, setValue: setEquipmentTypeValue } = useField<string>('equipmentType')
 const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
 const { value: capacityValue, setValue: setCapacityValue } = useField<CapacityRow[]>('capacity')
+const { value: itemCapacityValue, setValue: setItemCapacityValue } = useField<EquipmentItemCapacity[]>('itemCapacity')
 
 const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
 
@@ -169,6 +173,22 @@ async function onValidating() {
       <FormFieldEquipmentCapacity
         :model-value="capacityValue"
         @update:model-value="setCapacityValue"
+      />
+    </div>
+
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <NIcon
+          name="i-lucide-test-tubes"
+          class="text-muted"
+        />
+        <h4 class="text-sm font-semibold">
+          Direct item capacity
+        </h4>
+      </div>
+      <FormFieldEquipmentItemCapacity
+        :model-value="itemCapacityValue"
+        @update:model-value="setItemCapacityValue"
       />
     </div>
 

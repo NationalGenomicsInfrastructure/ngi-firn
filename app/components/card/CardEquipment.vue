@@ -95,7 +95,7 @@ const infoFields = computed(() => [
 
       <footer class="shrink-0 flex flex-wrap items-center justify-end gap-2">
         <DialogMoveEquipment :equipment="equipment" />
-        <DialogInventoryEquipmentUpdate
+        <DrawerInventoryEquipmentEdit
           :equipment="equipment"
           :room-slug="roomSlug"
         />

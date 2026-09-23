@@ -1,5 +1,6 @@
-import type { EquipmentType } from '~~/schemas/inventory/equipment'
+import type { EquipmentType, EquipmentItemCapacity } from '~~/schemas/inventory/equipment'
 import type { ContainerType } from '~~/schemas/inventory/container'
+import type { ItemType } from '~~/schemas/inventory/items'
 import type { DisplayStorageEquipment } from '~~/types/inventory'
 
 export interface SelectOption<T extends string> {
@@ -159,4 +160,10 @@ export function displayCapacityToFormCapacity(
   return capacity
     .filter(entry => entry && entry.type in CONTAINER_TYPE_LABELS)
     .map(entry => ({ type: entry.type, capacity: entry.capacity }))
+}
+
+export function displayItemCapacityToFormCapacity(
+  capacity: { category: ItemType, capacity: number }[] | null
+): EquipmentItemCapacity[] {
+  return capacity ?? []
 }

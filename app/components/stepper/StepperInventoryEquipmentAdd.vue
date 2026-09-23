@@ -10,6 +10,7 @@ import {
   resolveNullableNumberFromInput,
   type CapacityRow
 } from '~/utils/inventory/equipment'
+import type { EquipmentItemCapacity } from '~~/schemas/inventory/equipment'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
@@ -60,6 +61,7 @@ const { handleSubmit, validate, errors, resetForm, values } = useForm({
     label: '',
     description: '',
     capacity: [] as CapacityRow[],
+    itemCapacity: [] as EquipmentItemCapacity[],
     temperatureCelsius: undefined,
     manufacturer: '',
     model: '',
@@ -72,6 +74,7 @@ const { handleSubmit, validate, errors, resetForm, values } = useForm({
 const { value: equipmentTypeValue, setValue: setEquipmentTypeValue } = useField<string>('equipmentType')
 const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
 const { value: capacityValue, setValue: setCapacityValue } = useField<CapacityRow[]>('capacity')
+const { value: itemCapacityValue, setValue: setItemCapacityValue } = useField<EquipmentItemCapacity[]>('itemCapacity')
 
 const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
 
@@ -254,6 +257,20 @@ async function onValidatingSubmit() {
             <FormFieldEquipmentCapacity
               :model-value="capacityValue"
               @update:model-value="setCapacityValue"
+            />
+            <NSeparator class="my-4" />
+            <div class="flex items-center gap-2 mb-3">
+              <NIcon
+                name="i-lucide-test-tubes"
+                class="text-muted"
+              />
+              <h4 class="text-sm font-semibold">
+                Direct item capacity
+              </h4>
+            </div>
+            <FormFieldEquipmentItemCapacity
+              :model-value="itemCapacityValue"
+              @update:model-value="setItemCapacityValue"
             />
           </NCard>
 
