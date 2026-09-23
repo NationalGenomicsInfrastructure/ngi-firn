@@ -381,6 +381,7 @@ export interface ItemMoveTarget {
   name: string
   kind: 'container' | 'equipment'
   free: number | null
+  temperatureCelsius: number | null
 }
 
 /* Trackable inventory entity with quantity/status and concrete placement in hierarchy. */

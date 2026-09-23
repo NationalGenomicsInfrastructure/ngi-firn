@@ -16,6 +16,7 @@ const isOpen = ref(false)
 // Value encodes both parent kind and slug ("equipment:eq-abc"), since the move mutation needs
 // newParentKind and equipment/item slugs share no guaranteed namespace.
 const selectedTarget = ref<string | undefined>()
+const showAllClassifications = ref(false)
 
 const slugs = computed(() => props.items.map(c => c.slug))
 const count = computed(() => props.items.length)
@@ -23,14 +24,20 @@ const count = computed(() => props.items.length)
 // Only fetch candidate destinations while the dialog is open — avoids a query on every
 // selection change in the underlying table.
 const { state: targetsState, asyncStatus: targetsStatus } = useQueryColada(
-  () => ({ ...itemMoveTargetsBatchQuery(slugs.value), enabled: isOpen.value })
+  () => ({
+    ...itemMoveTargetsBatchQuery({
+      itemSlug: slugs.value,
+      showAllClassifications: showAllClassifications.value
+    }),
+    enabled: isOpen.value
+  })
 )
 
 const targetOptions = computed(() =>
   targetsState.value.status === 'success'
     ? targetsState.value.data.map(target => ({
         value: `${target.kind}:${target.slug}`,
-        label: `${target.name} (${target.slug}) · ${target.free} free · ${target.kind === 'equipment' ? 'Equipment' : 'Item'}`
+        label: `${target.name} (${target.slug}) · ${target.free ?? 'Unlimited'} free · ${target.temperatureCelsius == null ? 'No temperature' : `${target.temperatureCelsius} °C`} · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
       }))
     : []
 )
@@ -151,6 +158,17 @@ async function handleMove() {
           @update:model-value="onTargetUpdate"
         />
       </NFormField>
+
+      <NFormGroup
+        v-if="!isLoadingTargets"
+        label="Classification"
+        :una="{ formGroupLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
+      >
+        <NSwitch
+          v-model="showAllClassifications"
+          label="Show all classifications"
+        />
+      </NFormGroup>
 
       <NAlert
         v-else

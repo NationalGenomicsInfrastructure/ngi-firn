@@ -391,15 +391,15 @@ export const ItemService = {
   },
 
   /* List valid equipment/container destinations for one item, excluding its current parent. */
-  async getMoveTargetsForItem(itemSlug: string): Promise<ItemMoveTarget[]> {
-    return this.getMoveTargetsForItems([itemSlug])
+  async getMoveTargetsForItem(itemSlug: string, showAllClassifications = false): Promise<ItemMoveTarget[]> {
+    return this.getMoveTargetsForItems([itemSlug], showAllClassifications)
   },
 
   /*
    * List valid shared destinations for an item batch. Active equipment is unbounded for
    * items; containers must accept every requested category with enough remaining capacity.
    */
-  async getMoveTargetsForItems(itemSlugs: string[]): Promise<ItemMoveTarget[]> {
+  async getMoveTargetsForItems(itemSlugs: string[], showAllClassifications = false): Promise<ItemMoveTarget[]> {
     const items: InventoryItem[] = []
     for (const slug of itemSlugs) {
       const item = await this.getItemBySlug(slug)
@@ -416,16 +416,36 @@ export const ItemService = {
     for (const item of items) {
       neededByCategory.set(item.category, (neededByCategory.get(item.category) ?? 0) + 1)
     }
+    const explicitTemperatures = new Set(
+      items.map(item => item.temperatureCelsius).filter((temperature): temperature is number => temperature != null)
+    )
+    if (explicitTemperatures.size > 1) return []
+    const requiredTemperature = [...explicitTemperatures][0]
+    const classifications = new Set(
+      items.map(item => item.classification).filter((classification): classification is NonNullable<InventoryItem['classification']> => classification != null)
+    )
 
     const targets = new Map<string, ItemMoveTarget>()
     const equipment = await EquipmentService.getAllEquipment()
     for (const parent of equipment) {
-      if (parent.isActive && !excludedParentIds.has(parent._id)) {
+      const temperatureMatches = requiredTemperature == null || parent.temperatureCelsius === requiredTemperature
+      const fitsCapacity = [...neededByCategory].every(([category, count]) => {
+        const entry = parent.itemCapacity?.find(capacity => capacity.category === category)
+        return !entry || entry.capacity - entry.stored >= count
+      })
+      if (parent.isActive && temperatureMatches && fitsCapacity && !excludedParentIds.has(parent._id)) {
+        const free = parent.itemCapacity && parent.itemCapacity.length > 0
+          ? Math.min(...[...neededByCategory].map(([category]) => {
+              const entry = parent.itemCapacity?.find(capacity => capacity.category === category)
+              return entry ? entry.capacity - entry.stored : Number.POSITIVE_INFINITY
+            }))
+          : null
         targets.set(parent.slug, {
           slug: parent.slug,
           name: parent.name,
           kind: 'equipment',
-          free: null
+          free: Number.isFinite(free) ? free : null,
+          temperatureCelsius: parent.temperatureCelsius
         })
       }
     }
@@ -450,6 +470,8 @@ export const ItemService = {
       for (const row of result.rows) {
         const container = row.doc
         if (!container || container.type !== 'container' || excludedParentIds.has(container._id)) continue
+        if (requiredTemperature != null && container.temperatureCelsius !== requiredTemperature) continue
+        if (!showAllClassifications && classifications.size === 1 && container.classification !== [...classifications][0]) continue
         const free = row.value?.free ?? 0
         if (!candidates.has(container.slug)) {
           candidates.set(container.slug, { doc: container, free })
@@ -477,12 +499,16 @@ export const ItemService = {
           slug,
           name: candidate.doc.name,
           kind: 'container',
-          free: Number.isFinite(minimumFree) ? minimumFree : 0
+          free: Number.isFinite(minimumFree) ? minimumFree : 0,
+          temperatureCelsius: candidate.doc.temperatureCelsius
         })
       }
     }
 
-    return [...targets.values()].sort((a, b) => a.name.localeCompare(b.name))
+    return [...targets.values()].sort((a, b) =>
+      (a.temperatureCelsius == null ? -1 : b.temperatureCelsius == null ? 1 : a.temperatureCelsius - b.temperatureCelsius)
+      || a.name.localeCompare(b.name)
+    )
   },
 
   /* Register an item after reserving its parent's capacity or grid slot. */

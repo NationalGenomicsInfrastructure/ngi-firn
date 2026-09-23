@@ -23,7 +23,7 @@ const count = computed(() => props.items.length)
 
 // Item location requires an explicit destination parent.
 const { state: targetsState, asyncStatus: targetsStatus } = useQueryColada(
-  () => ({ ...itemMoveTargetsBatchQuery(slugs.value), enabled: isOpen.value })
+  () => ({ ...itemMoveTargetsBatchQuery({ itemSlug: slugs.value }), enabled: isOpen.value })
 )
 
 const targetOptions = computed(() =>

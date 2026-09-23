@@ -17,8 +17,8 @@ export const INVENTORY_ITEMS_QUERY_KEYS = {
   actionLog: (slug: string) => [...INVENTORY_ITEMS_QUERY_KEYS.detailBySlug(slug), 'action-log'] as const,
   projectRefs: (slug: string) => [...INVENTORY_ITEMS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const,
   acceptedCapacity: (parentKind: ItemParentKind, parentSlug: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'accepted-capacity', parentKind, parentSlug] as const,
-  moveTargets: (itemSlug: string) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'move-targets', itemSlug] as const,
-  moveTargetsBatch: (itemSlugs: string[]) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'move-targets-batch', ...[...itemSlugs].sort()] as const
+  moveTargets: (itemSlug: string, showAllClassifications = false) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'move-targets', itemSlug, showAllClassifications] as const,
+  moveTargetsBatch: (itemSlugs: string[], showAllClassifications = false) => [...INVENTORY_ITEMS_QUERY_KEYS.root, 'move-targets-batch', ...[...itemSlugs].sort(), showAllClassifications] as const
 } as const
 
 export const allItemsQuery = defineQueryOptions<DisplayInventoryItem[]>({
@@ -70,21 +70,21 @@ export const acceptedItemCapacityQuery = defineQueryOptions(
 )
 
 export const itemMoveTargetsQuery = defineQueryOptions(
-  (itemSlug: string) => ({
-    key: INVENTORY_ITEMS_QUERY_KEYS.moveTargets(itemSlug),
+  (itemSlug: string, showAllClassifications = false) => ({
+    key: INVENTORY_ITEMS_QUERY_KEYS.moveTargets(itemSlug, showAllClassifications),
     query: (): Promise<ItemMoveTarget[]> => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.items.getMoveTargets.query({ itemSlug })
+      return $trpc.inventory.items.getMoveTargets.query({ itemSlug, showAllClassifications })
     }
   })
 )
 
 export const itemMoveTargetsBatchQuery = defineQueryOptions(
-  (itemSlug: string[]) => ({
-    key: INVENTORY_ITEMS_QUERY_KEYS.moveTargetsBatch(itemSlug),
+  (args: { itemSlug: string[], showAllClassifications?: boolean }) => ({
+    key: INVENTORY_ITEMS_QUERY_KEYS.moveTargetsBatch(args.itemSlug, args.showAllClassifications ?? false),
     query: (): Promise<ItemMoveTarget[]> => {
       const { $trpc } = useNuxtApp()
-      return $trpc.inventory.items.getMoveTargetsForItems.query({ itemSlug })
+      return $trpc.inventory.items.getMoveTargetsForItems.query(args)
     }
   })
 )
