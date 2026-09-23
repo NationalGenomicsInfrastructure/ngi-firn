@@ -7,9 +7,12 @@ import {
   type CapacityRow
 } from '~/utils/inventory/equipment'
 import type { ContainerType } from '~~/schemas/inventory/container'
+import type { EquipmentItemCapacityEntry } from '~~/schemas/inventory/equipment'
+import { ITEM_TYPE_ICONS, ITEM_TYPE_LABELS } from '~/utils/inventory/item'
 
 const props = defineProps<{
   capacity: CapacityRow[] | null
+  itemCapacity: EquipmentItemCapacityEntry[] | null
 }>()
 
 interface CapacityDisplayRow {
@@ -57,7 +60,20 @@ const capacityRows = computed<CapacityDisplayRow[]>(() => {
         valueClass: capacity === 0 ? 'text-muted' : undefined
       }
     })
+
 })
+
+const itemCapacityRows = computed(() =>
+  (props.itemCapacity ?? [])
+    .map(entry => ({
+      type: entry.category,
+      label: ITEM_TYPE_LABELS[entry.category],
+      icon: ITEM_TYPE_ICONS[entry.category],
+      value: `${entry.stored} / ${entry.capacity}`,
+      valueClass: entry.capacity === 0 ? 'text-muted' : undefined
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+)
 </script>
 
 <template>
@@ -91,6 +107,39 @@ const capacityRows = computed<CapacityDisplayRow[]>(() => {
       class="text-sm text-muted"
     >
       No container type limits configured.
+    </p>
+
+    <NSeparator class="my-4" />
+
+    <div class="flex items-center gap-2">
+      <NIcon
+        name="i-lucide-test-tubes"
+        class="text-muted"
+      />
+      <h4 class="text-sm font-semibold">
+        Direct item capacity
+      </h4>
+    </div>
+
+    <div
+      v-if="itemCapacityRows.length > 0"
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm"
+    >
+      <IndicatorIconText
+        v-for="row in itemCapacityRows"
+        :key="row.type"
+        :icon="row.icon"
+        :label="row.label"
+        :value="row.value"
+        :value-class="row.valueClass"
+      />
+    </div>
+
+    <p
+      v-else
+      class="text-sm text-muted"
+    >
+      No direct item type limits configured.
     </p>
   </div>
 </template>

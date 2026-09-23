@@ -156,7 +156,10 @@ const infoFields = computed(() => {
 
         <NSeparator />
 
-        <InventoryEquipmentCapacityIndicator :capacity="equipment.capacity" />
+        <InventoryEquipmentCapacityIndicator
+          :capacity="equipment.capacity"
+          :item-capacity="equipment.itemCapacity"
+        />
 
         <NSeparator />
 
