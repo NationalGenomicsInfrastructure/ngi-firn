@@ -24,6 +24,7 @@ const { handleSubmit, validate, errors, setFieldValue } = useForm({
     unit: props.item.unit ?? '',
     concentration: props.item.concentration ?? undefined,
     concentrationUnit: props.item.concentrationUnit ?? '',
+    temperatureCelsius: props.item.temperatureCelsius ?? undefined,
     arrivalDate: props.item.arrivalDate ?? '',
     openingDate: props.item.openingDate ?? '',
     expiryDate: props.item.expiryDate ?? '',
@@ -37,6 +38,7 @@ const { handleSubmit, validate, errors, setFieldValue } = useForm({
 })
 const { value: quantityValue } = useField<number | undefined>('quantity')
 const { value: concentrationValue } = useField<number | undefined>('concentration')
+const { value: temperatureValue } = useField<number | undefined>('temperatureCelsius')
 const { value: classificationValue, setValue: setClassificationValue } = useField<InventoryClassificationType | undefined>('classification')
 
 const classificationOptions = [
@@ -60,7 +62,7 @@ function setClassification(value: unknown) {
   }
 }
 
-function setOptionalNumber(field: 'quantity' | 'concentration', value: unknown) {
+function setOptionalNumber(field: 'quantity' | 'concentration' | 'temperatureCelsius', value: unknown) {
   const parsed = value === '' || value == null ? undefined : Number(value)
   setFieldValue(field, Number.isFinite(parsed) ? parsed : undefined)
 }
@@ -90,6 +92,19 @@ async function onValidating() {
         :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
       >
         <NInput />
+      </NFormField>
+      <NFormField
+        name="temperatureCelsius"
+        label="Temperature (°C)"
+        :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+      >
+        <NInput
+          :model-value="temperatureValue ?? ''"
+          type="number"
+          step="0.1"
+          placeholder="Optional"
+          @update:model-value="setOptionalNumber('temperatureCelsius', $event)"
+        />
       </NFormField>
       <NFormField
         name="classification"

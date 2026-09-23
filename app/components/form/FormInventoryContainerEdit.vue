@@ -39,7 +39,7 @@ const containerFormSchema = toTypedSchema(
   updateContainerSchema.omit({ position: true, containerType: true })
 )
 
-const { handleSubmit, validate, errors } = useForm({
+const { handleSubmit, validate, errors, setFieldValue } = useForm({
   validationSchema: containerFormSchema,
   initialValues: {
     containerSlug: props.container.slug,
@@ -47,6 +47,7 @@ const { handleSubmit, validate, errors } = useForm({
     name: props.container.name,
     label: props.container.label ?? '',
     description: props.container.description ?? '',
+    temperatureCelsius: props.container.temperatureCelsius ?? undefined,
     capacity: containerCapacityEntriesToForm(props.container.capacity),
     logComment: ''
   }
@@ -54,10 +55,16 @@ const { handleSubmit, validate, errors } = useForm({
 
 const { value: classificationValue, setValue: setClassificationValue } = useField<ContainerClassification | undefined>('classification')
 const { value: capacityValue, setValue: setCapacityValue } = useField<ContainerCapacity[]>('capacity')
+const { value: temperatureValue } = useField<number | undefined>('temperatureCelsius')
 
 function onClassificationUpdate(value: unknown) {
   const resolved = resolveClassificationFromSelect(value)
   setClassificationValue(resolved ?? undefined)
+}
+
+function onTemperatureUpdate(value: unknown) {
+  const parsed = value === '' || value == null ? undefined : Number(value)
+  setFieldValue('temperatureCelsius', Number.isFinite(parsed) ? parsed : undefined)
 }
 
 const onSubmit = handleSubmit(async (values) => {
@@ -144,6 +151,19 @@ async function onValidating() {
         type="textarea"
         :rows="3"
         placeholder="Optional notes"
+      />
+    </NFormField>
+    <NFormField
+      name="temperatureCelsius"
+      label="Temperature (°C)"
+      :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+    >
+      <NInput
+        :model-value="temperatureValue ?? ''"
+        type="number"
+        step="0.1"
+        placeholder="Optional"
+        @update:model-value="onTemperatureUpdate"
       />
     </NFormField>
 

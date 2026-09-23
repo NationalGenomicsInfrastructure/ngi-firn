@@ -592,6 +592,7 @@ export const ContainerService = {
    */
   async createContainer(input: CreateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
     const parent = await ContainerService.resolveParent(input.parentSlug, input.parentKind)
+    assertContainerTemperatureCompatible(input.temperatureCelsius ?? null, parent)
     const positionParent = await resolvePlacement(parent, input.position ?? null, input.containerType)
 
     await adjustParentOccupancy(parent, input.containerType, positionParent, 1)
@@ -1341,11 +1342,24 @@ async function adjustParentOccupancy(
   if (parent.kind === 'equipment') {
     await EquipmentService.adjustStoredCount(parent.doc._id, childType, delta)
   }
+
   else if (position) {
     await ContainerService.adjustOccupancy(parent.doc._id, position, delta)
   }
   else {
     await ContainerService.adjustStoredCount(parent.doc._id, childType, delta)
+  }
+}
+
+function assertContainerTemperatureCompatible(
+  containerTemperature: number | null,
+  parent: ResolvedParent
+): void {
+  if (containerTemperature == null) return
+  if (parent.doc.temperatureCelsius !== containerTemperature) {
+    throw new Error(
+      `Container temperature ${containerTemperature} °C requires a parent with the same explicit temperature.`
+    )
   }
 }
 
@@ -1499,6 +1513,7 @@ async function moveContainerOne(
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<Container> {
   const actionType = options.actionType ?? 'move'
+  assertContainerTemperatureCompatible(existing.temperatureCelsius, newParent)
   const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType)
 
   await adjustParentOccupancy(newParent, existing.containerType, positionParent, 1)
