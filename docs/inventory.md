@@ -245,7 +245,42 @@ StorageEquipment, Container, and InventoryItem describe their temperature with a
 
 **Compatibility** is category equality, not float equality. `temperaturesCompatible(child, parent)` returns `true` when the child has no explicit category (unspecified fits anywhere) or the categories match — and, for `other`, the free numeric values match too. `assertTemperatureCompatible` / `assertContainerTemperatureCompatible` enforce this on create and move; `updateContainer`/`updateItem` re-validate against the current parent when the temperature changes. `getMoveTargetsForItems` groups the selected items by category (a shared destination requires one distinct category, plus one numeric for `other`), filters candidate parents by `temperaturesCompatible`, and sorts by `resolveEffectiveCelsius` (coldest first) then name.
 
-Use `formatTemperature(category, celsius)` for all display surfaces (cards, tables, dialogs) and `TEMPERATURE_CATEGORY_OPTIONS` / `resolveTemperatureCategoryFromSelect` (from `app/utils/inventory/temperature.ts`) for the form `NSelect` pickers. Creation UIs for containers and items do not set a temperature — it is assigned via the edit forms once the entity exists.
+Use `formatTemperature(category, celsius)` for all display surfaces (cards, tables, dialogs) and `TEMPERATURE_CATEGORY_OPTIONS` / `resolveTemperatureCategoryFromSelect` (from `app/utils/inventory/temperature.ts`) for the form `NSelect` pickers. Equipment, container, and item creation/edit forms all expose the categorical selector plus a conditional custom-°C input for `other`.
+
+### 13. Cloning inventory entities reuses the create path
+
+Equipment, container, and item detail pages expose a **Clone** dialog for quickly
+registering a similarly configured entity. Cloning is not a separate database
+operation: `DialogCloneInventoryEntity` transforms the source display DTO into
+wire/form defaults and renders the existing create stepper. The normal create
+mutation remains responsible for validation, capacity reservation, document
+initialization, cache invalidation, notifications, and navigation to the new
+entity.
+
+Clones are created under the source entity's current parent (equipment in the
+same room; containers/items in the same equipment or container). Unplaced
+containers/items do not show Clone because creation requires an explicit parent.
+
+Reusable setup is copied:
+
+- Equipment: type, description, container/item capacities, temperature,
+  manufacturer/model, and active state.
+- Container: type, classification, description, capacity, and temperature.
+- Item: type, classification, description, quantity/unit, concentration/unit,
+  temperature, notes, and metadata.
+
+Identity, placement, and lifecycle data is deliberately cleared or regenerated:
+name, label, barcode, serial/sensor IDs, positions, dates, lot/template/project
+references, status, flags, action logs, slugs, timestamps, CouchDB IDs, and
+revisions. Capacity helpers project stored entries back to their wire shapes, so
+server-owned `stored` occupancy counters are never cloned. The create services
+initialize the clone's occupancy counters at zero.
+
+The three create steppers accept optional typed initial values. Container and
+item creation also expose the same categorical temperature controls as their
+edit forms; this is part of the normal create workflow, not clone-only UI.
+Closing and reopening the clone dialog remounts the stepper and discards any
+partial edits.
 
 ## CRUD Service Organisation
 
