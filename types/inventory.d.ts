@@ -201,6 +201,8 @@ export interface StorageEquipment extends BaseDocument {
   parent: TypedDocumentReference<Room>
   /* Stable URL slug, not the CouchDB _id. */
   slug: string
+  /* Unique barcode on the physical unit — integrates with barcode scanning infra. */
+  barcode: string | null
   equipmentType: EquipmentType
   name: string
   label: string | null
@@ -229,6 +231,7 @@ export interface StorageEquipment extends BaseDocument {
  */
 export interface DisplayStorageEquipment {
   slug: string
+  barcode: string | null
   equipmentType: EquipmentType
   name: string
   label: string | null

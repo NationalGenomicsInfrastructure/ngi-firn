@@ -24,6 +24,8 @@ export function equipmentCloneFormValues(
     equipmentType: equipment.equipmentType,
     name: '',
     label: '',
+    // Never cloned: a barcode must uniquely identify exactly one physical unit.
+    barcode: '',
     description: equipment.description ?? '',
     capacity: displayCapacityToFormCapacity(equipment.capacity),
     itemCapacity: displayItemCapacityToFormCapacity(equipment.itemCapacity),

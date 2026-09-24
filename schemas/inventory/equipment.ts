@@ -55,6 +55,8 @@ export const createEquipmentSchema = z.object({
   equipmentType: equipmentTypeSchema,
   name: z.string().min(1, { message: 'Equipment name is required' }),
   label: z.string().nullish(),
+  /* Optional external label; omit to have Firn issue a unique barcode on create. */
+  barcode: z.string().nullish(),
   description: z.string().nullish(),
   capacity: z.array(equipmentCapacitySchema).nullish(),
   itemCapacity: z.array(equipmentItemCapacitySchema).nullish(),
@@ -73,6 +75,7 @@ export const updateEquipmentSchema = z.object({
   equipmentType: equipmentTypeSchema.optional(),
   name: z.string().optional(),
   label: z.string().optional(),
+  barcode: z.string().nullish(),
   description: z.string().optional(),
   capacity: z.array(equipmentCapacitySchema).optional(),
   itemCapacity: z.array(equipmentItemCapacitySchema).optional(),

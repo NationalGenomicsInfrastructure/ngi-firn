@@ -200,6 +200,7 @@ export const EquipmentService = {
       schema: 1,
       parent: toParentRef(room),
       slug: equipmentSlug,
+      barcode: input.barcode?.trim() || null,
       equipmentType: input.equipmentType,
       name: input.name,
       label: input.label?.trim() || null,
@@ -411,6 +412,7 @@ export const EquipmentService = {
   convertToDisplayStorageEquipment(equipment: StorageEquipment, parentRoom: Room): DisplayStorageEquipment {
     return {
       slug: equipment.slug,
+      barcode: equipment.barcode ?? null,
       equipmentType: equipment.equipmentType,
       name: equipment.name,
       label: equipment.label,
