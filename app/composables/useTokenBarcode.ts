@@ -1,47 +1,15 @@
 import type { Margins, TDocumentDefinitions } from 'pdfmake/interfaces'
+import { loadBarcodeDependencies, renderBarcodeDataUrl } from '~/utils/barcodeRendering'
 
 export function useTokenBarcode() {
-  // Lazy-load browser-only dependencies
-  const loadDependencies = async () => {
-    const [{ default: JsBarcode }, { default: pdfMake }, pdfFontsModule] = await Promise.all([
-      import('jsbarcode'),
-      import('pdfmake/build/pdfmake'),
-      import('pdfmake/build/vfs_fonts')
-    ])
-    // pdfmake bundle only has a default export; addVirtualFileSystem is a method on that instance
-    ;(pdfMake as { addVirtualFileSystem: (vfs: Record<string, unknown>) => void }).addVirtualFileSystem(pdfFontsModule.default)
-    return { JsBarcode, pdfMake }
-  }
-  // Generate barcode as data URL using JSBarcode
-  async function generateBarcodeDataUrl(token: string): Promise<string> {
-    const { JsBarcode } = await loadDependencies()
-    return new Promise((resolve, reject) => {
-      try {
-        // Create a temporary canvas element
-        const canvas = document.createElement('canvas')
-
-        // Generate barcode on canvas
-        JsBarcode(canvas, token, {
-          format: 'CODE128',
-          width: 3,
-          height: 150,
-          displayValue: false,
-          margin: 5
-        })
-
-        // Convert canvas to data URL
-        const dataUrl = canvas.toDataURL('image/png')
-        resolve(dataUrl)
-      }
-      catch (error) {
-        reject(error)
-      }
-    })
-  }
-
   // Build a PDF document with a barcode and a user name
   async function buildDoc(token: string, tokenID: string, userName: string) {
-    const barcodeDataUrl = await generateBarcodeDataUrl(token)
+    const barcodeDataUrl = await renderBarcodeDataUrl(token, {
+      width: 3,
+      height: 150,
+      displayValue: false,
+      margin: 5
+    })
 
     return {
       content: [
@@ -70,14 +38,14 @@ export function useTokenBarcode() {
 
   // Download the barcode as a PDF
   async function downloadTokenBarcode(token: string, tokenID: string, userName: string) {
-    const { pdfMake } = await loadDependencies()
+    const { pdfMake } = await loadBarcodeDependencies()
     const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).download('token.pdf')
   }
 
   // Preview the barcode in a new tab
   async function previewTokenBarcode(token: string, tokenID: string, userName: string) {
-    const { pdfMake } = await loadDependencies()
+    const { pdfMake } = await loadBarcodeDependencies()
     const docDefinition = await buildDoc(token, tokenID, userName)
     pdfMake.createPdf(docDefinition as TDocumentDefinitions).open()
   }
