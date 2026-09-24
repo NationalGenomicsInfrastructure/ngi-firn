@@ -426,9 +426,23 @@ async function resolveRoles(hits: BarcodeLookupHit[], relocating: boolean): Prom
     hit => hit.doc.type === 'container' && ancestorIds.has(hit.doc._id)
   )
 
-  // Prefer the most specific location: an enclosing container beats the equipment
-  // it sits in, since it names the exact shelf rather than the whole freezer.
-  const contextCandidates = [...containerContextHits, ...equipmentHits]
+  /*
+   * Prefer the most specific location. Scanning a box, the rack it sits in and a
+   * vial inside the box makes both containers ancestors, but only the box names
+   * where the vial actually is — reporting the rack would produce a misleading
+   * parent mismatch. Depth is measured by ancestor-chain length, so the deepest
+   * enclosing container wins regardless of the order the labels were scanned in,
+   * and any enclosing container beats the equipment it sits in.
+   */
+  const containerDepths = new Map<string, number>()
+  for (const hit of containerContextHits) {
+    containerDepths.set(hit.doc._id, (await collectAncestorIds(hit.doc, parentCache)).size)
+  }
+  const orderedContainers = [...containerContextHits].sort(
+    (a, b) => (containerDepths.get(b.doc._id) ?? 0) - (containerDepths.get(a.doc._id) ?? 0)
+  )
+
+  const contextCandidates = [...orderedContainers, ...equipmentHits]
   const contextHit = contextCandidates[0] ?? null
 
   if (contextCandidates.length > 1) {

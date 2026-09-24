@@ -257,7 +257,7 @@ export const EquipmentService = {
     const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, itemCapacity, barcode, ...updatedFields } = updates
 
     // Validate a manually supplied barcode for uniqueness before it reaches the document.
-    const nextBarcode = await BarcodeService.resolveBarcodeForUpdate(barcode, existing.barcode, existing._id)
+    const nextBarcode = await BarcodeService.resolveBarcodeForUpdate(barcode, existing.barcode, existing._id, 'equipment')
 
     // Re-validate and merge capacity restrictions while preserving stored counts.
     // When the caller did not touch capacity, keep the existing restrictions;

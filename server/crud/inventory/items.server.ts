@@ -669,7 +669,7 @@ export const ItemService = {
       openingDate: updates.openingDate === undefined ? existing.openingDate : updates.openingDate ?? null,
       expiryDate: updates.expiryDate === undefined ? existing.expiryDate : updates.expiryDate ?? null,
       lotNumber: updates.lotNumber === undefined ? existing.lotNumber : updates.lotNumber?.trim() || null,
-      barcode: await BarcodeService.resolveBarcodeForUpdate(updates.barcode, existing.barcode, existing._id),
+      barcode: await BarcodeService.resolveBarcodeForUpdate(updates.barcode, existing.barcode, existing._id, 'item'),
       templateId: updates.templateId === undefined ? existing.templateId : updates.templateId ?? null,
       notes: updates.notes === undefined ? existing.notes : updates.notes ?? null,
       metadata: updates.metadata === undefined ? existing.metadata : updates.metadata ?? null,

@@ -753,7 +753,7 @@ export const ContainerService = {
       classification: updates.classification ?? existing.classification,
       name: updates.name ?? existing.name,
       label: updates.label === undefined ? existing.label : (updates.label?.trim() || null),
-      barcode: await BarcodeService.resolveBarcodeForUpdate(updates.barcode, existing.barcode, existing._id),
+      barcode: await BarcodeService.resolveBarcodeForUpdate(updates.barcode, existing.barcode, existing._id, 'container'),
       description: updates.description === undefined ? existing.description : (updates.description ?? null),
       temperatureCategory: nextTemperatureCategory,
       temperatureCelsius: nextTemperatureCelsius,

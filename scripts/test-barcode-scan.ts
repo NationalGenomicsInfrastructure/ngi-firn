@@ -125,6 +125,86 @@ async function run() {
     new Set([equip, boxA, boxB, v1, v2].map(bc)).size === 5
   )
 
+  console.log('\nBarcode prefix must match the entity it is assigned to')
+  {
+    // Asserting on the message matters here: an earlier draft of this test passed a
+    // wrong field name, so every call failed with "not found" and the checks went
+    // green without ever reaching the guard they were meant to exercise.
+    const refusalReason = async (barcode: string): Promise<string> => {
+      try {
+        await ItemService.updateItem({ itemSlug: v1.slug, barcode }, user)
+        return ''
+      }
+      catch (error) { return error instanceof Error ? error.message : String(error) }
+    }
+
+    const wrongKind = await refusalReason(bc(boxB))
+    check('an item cannot be given a container-prefixed barcode',
+      wrongKind.includes('container code') && wrongKind.includes('cannot be assigned to a item'),
+      wrongKind)
+
+    const actionCard = await refusalReason(BARCODE_FOR_ACTION.dispose)
+    check('an entity cannot be given a reserved action barcode',
+      actionCard.includes('reserved action card'), actionCard)
+
+    const duplicate = await refusalReason(bc(v2))
+    check('a barcode already held by another entity is refused',
+      duplicate.includes('already assigned'), duplicate)
+
+    const external = await ItemService.updateItem({ itemSlug: v1.slug, barcode: 'VENDOR-12345' }, user)
+    check('a non-Firn external label is still accepted', external.barcode === 'vendor-12345',
+      String(external.barcode))
+    const restored = await ItemService.updateItem({ itemSlug: v1.slug, barcode: bc(v1) }, user)
+    check('the original item barcode can be restored', restored.barcode === bc(v1),
+      String(restored.barcode))
+  }
+
+  console.log('\nNested containers: the deepest enclosing location wins')
+  {
+    const rack = await ContainerService.createContainer({
+      containerType: 'Compartment',
+      classification: 'Sample',
+      name: 'BCTEST Rack',
+      parentSlug: equip.slug,
+      parentKind: 'equipment',
+      capacity: [{ layout: 'count', childKind: 'container', type: 'Box', capacity: 5 }]
+    }, user)
+    createdIds.push(rack._id)
+
+    const inner = await ContainerService.createContainer({
+      containerType: 'Box',
+      classification: 'Sample',
+      name: 'BCTEST Inner Box',
+      parentSlug: rack.slug,
+      parentKind: 'container',
+      capacity: [{ layout: 'count', childKind: 'item', type: 'cryovial', capacity: 10 }]
+    }, user)
+    createdIds.push(inner._id)
+
+    const nested = await ItemService.createItem({
+      category: 'cryovial', name: 'BCTEST Nested Vial', parentSlug: inner.slug, parentKind: 'container'
+    }, user)
+    createdIds.push(nested._id)
+
+    // Both containers enclose the vial, but only the inner box is its actual parent.
+    // Scanning the outer rack first must not let scan order pick the wrong location.
+    const outerFirst = summarize(
+      await BarcodeScanService.resolveScan([bc(rack), bc(inner), bc(nested)])
+    )
+    check('the deepest enclosing container wins when the outer one is scanned first',
+      outerFirst.context === 'BCTEST Inner Box', JSON.stringify(outerFirst))
+    check('the true parent produces no mismatch warning regardless of scan order',
+      !outerFirst.warnings.includes('parent_mismatch'), JSON.stringify(outerFirst.warnings))
+
+    const innerFirst = summarize(
+      await BarcodeScanService.resolveScan([bc(inner), bc(rack), bc(nested)])
+    )
+    check('the resolved location is identical for the reversed scan order',
+      innerFirst.context === outerFirst.context, JSON.stringify(innerFirst))
+    check('only the vial is a target; both containers are context',
+      outerFirst.targets.join('|') === 'BCTEST Nested Vial:checkout:exec', JSON.stringify(outerFirst))
+  }
+
   console.log('\nDefault checkout/return toggle')
   {
     const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(v2), bc(boxA)]))

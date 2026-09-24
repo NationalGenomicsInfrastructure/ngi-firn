@@ -190,8 +190,17 @@ export const BarcodeService = {
    * code and every scan of it would be ambiguous. A Firn-prefixed code that fails
    * its check character is also rejected here, since accepting a mistyped one would
    * mint a code that no printed label can ever match.
+   *
+   * `expectedKind` guards the self-describing property of the format: a valid `fi…`
+   * item code typed onto a container would otherwise be stored happily, leaving a
+   * label that announces the wrong entity kind to anything reading the code before
+   * it resolves the document.
    */
-  async assertBarcodeAvailable(code: string, ignoreDocumentId?: string): Promise<string> {
+  async assertBarcodeAvailable(
+    code: string,
+    ignoreDocumentId?: string,
+    expectedKind?: BarcodeEntityKind
+  ): Promise<string> {
     const normalized = normalizeBarcode(code)
 
     const parsed = parseBarcode(normalized)
@@ -200,6 +209,11 @@ export const BarcodeService = {
     }
     if (parsed.kind === 'action') {
       throw new Error(`Barcode "${normalized}" is a reserved action card and cannot be assigned to an entity.`)
+    }
+    if (parsed.kind === 'entity' && expectedKind && parsed.entityKind !== expectedKind) {
+      throw new Error(
+        `Barcode "${normalized}" is a Firn ${parsed.entityKind} code and cannot be assigned to a ${expectedKind}. Leave the field empty to have Firn issue a ${expectedKind} barcode.`
+      )
     }
 
     if (await BarcodeService.isBarcodeTaken(normalized, ignoreDocumentId)) {
@@ -236,7 +250,7 @@ export const BarcodeService = {
   async resolveBarcodeForCreate(kind: BarcodeEntityKind, supplied?: string | null): Promise<string> {
     const trimmed = supplied?.trim()
     if (trimmed) {
-      return await BarcodeService.assertBarcodeAvailable(trimmed)
+      return await BarcodeService.assertBarcodeAvailable(trimmed, undefined, kind)
     }
     return await BarcodeService.generateUniqueBarcode(kind)
   },
@@ -252,7 +266,8 @@ export const BarcodeService = {
   async resolveBarcodeForUpdate(
     supplied: string | null | undefined,
     existingBarcode: string | null,
-    documentId: string
+    documentId: string,
+    expectedKind?: BarcodeEntityKind
   ): Promise<string | null> {
     if (supplied === undefined) return existingBarcode
 
@@ -262,7 +277,7 @@ export const BarcodeService = {
     const normalized = normalizeBarcode(trimmed)
     if (normalized === existingBarcode) return existingBarcode
 
-    return await BarcodeService.assertBarcodeAvailable(normalized, documentId)
+    return await BarcodeService.assertBarcodeAvailable(normalized, documentId, expectedKind)
   },
 
   /*

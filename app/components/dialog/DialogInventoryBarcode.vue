@@ -24,16 +24,30 @@ const description = computed(() => describeCode(props.barcode))
 const symbolDataUrl = ref<string | null>(null)
 const renderError = ref<string | null>(null)
 
+/*
+ * Rendering is async, so a slow render started for an earlier barcode could resolve
+ * after a newer one and overwrite it — visible when re-issuing, where the old image
+ * would reappear under the new code. A generation counter discards stale results.
+ */
+let renderGeneration = 0
+
 watchEffect(async () => {
+  const generation = ++renderGeneration
+
   if (!isOpen.value || !props.barcode) {
     symbolDataUrl.value = null
+    renderError.value = null
     return
   }
+
   try {
+    const dataUrl = await previewDataUrl(props.barcode)
+    if (generation !== renderGeneration) return
     renderError.value = null
-    symbolDataUrl.value = await previewDataUrl(props.barcode)
+    symbolDataUrl.value = dataUrl
   }
   catch (error) {
+    if (generation !== renderGeneration) return
     // A code that cannot be encoded must be visible as such, not silently blank.
     symbolDataUrl.value = null
     renderError.value = error instanceof Error ? error.message : String(error)
