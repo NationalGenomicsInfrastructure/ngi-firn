@@ -35,6 +35,8 @@ import type {
 } from '~~/schemas/inventory/items'
 import type { InventoryActionType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import { allowedActionsForStatus, isAlterAction, isVacatingAction } from '~~/schemas/inventory/metadata'
+import { normalizeStoredCelsius, resolveEffectiveCelsius, temperaturesCompatible, formatTemperature } from '~~/schemas/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 
 /*
  * ItemService - Table of Contents
@@ -158,13 +160,16 @@ async function resolveItemPlacement(
 }
 
 function assertTemperatureCompatible(
-  itemTemperature: number | null,
+  item: { category: TemperatureCategory | null, celsius: number | null },
   parent: ResolvedParent
 ): void {
-  if (itemTemperature == null) return
-  if (parent.doc.temperatureCelsius !== itemTemperature) {
+  const compatible = temperaturesCompatible(item, {
+    category: parent.doc.temperatureCategory,
+    celsius: parent.doc.temperatureCelsius
+  })
+  if (!compatible) {
     throw new Error(
-      `Item temperature ${itemTemperature} °C requires a parent with the same explicit temperature.`
+      `Item temperature (${formatTemperature(item.category, item.celsius)}) requires a parent with the same temperature.`
     )
   }
 }
@@ -268,7 +273,7 @@ async function moveItemOne(
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<InventoryItem> {
   const position = await resolveItemPlacement(newParent, requestedPosition, existing.category)
-  assertTemperatureCompatible(existing.temperatureCelsius, newParent)
+  assertTemperatureCompatible({ category: existing.temperatureCategory, celsius: existing.temperatureCelsius }, newParent)
   await adjustParentOccupancy(newParent, existing.category, position, 1)
 
   const now = new Date().toISOString()
@@ -416,11 +421,20 @@ export const ItemService = {
     for (const item of items) {
       neededByCategory.set(item.category, (neededByCategory.get(item.category) ?? 0) + 1)
     }
-    const explicitTemperatures = new Set(
-      items.map(item => item.temperatureCelsius).filter((temperature): temperature is number => temperature != null)
-    )
+    // Group the selected items by their temperature: a shared destination only
+    // exists when every explicit temperature is identical (category, and the free
+    // numeric too for the `other` bucket). Items with no category fit anywhere.
+    const explicitTemperatures = new Map<string, { category: TemperatureCategory, celsius: number | null }>()
+    for (const item of items) {
+      if (item.temperatureCategory != null) {
+        const key = item.temperatureCategory === 'other'
+          ? `other:${item.temperatureCelsius ?? ''}`
+          : item.temperatureCategory
+        explicitTemperatures.set(key, { category: item.temperatureCategory, celsius: item.temperatureCelsius })
+      }
+    }
     if (explicitTemperatures.size > 1) return []
-    const requiredTemperature = [...explicitTemperatures][0]
+    const requiredTemperature = [...explicitTemperatures.values()][0] ?? null
     const classifications = new Set(
       items.map(item => item.classification).filter((classification): classification is NonNullable<InventoryItem['classification']> => classification != null)
     )
@@ -428,7 +442,10 @@ export const ItemService = {
     const targets = new Map<string, ItemMoveTarget>()
     const equipment = await EquipmentService.getAllEquipment()
     for (const parent of equipment) {
-      const temperatureMatches = requiredTemperature == null || parent.temperatureCelsius === requiredTemperature
+      const temperatureMatches = requiredTemperature == null || temperaturesCompatible(
+        requiredTemperature,
+        { category: parent.temperatureCategory, celsius: parent.temperatureCelsius }
+      )
       const fitsCapacity = [...neededByCategory].every(([category, count]) => {
         const entry = parent.itemCapacity?.find(capacity => capacity.category === category)
         return !entry || entry.capacity - entry.stored >= count
@@ -445,6 +462,7 @@ export const ItemService = {
           name: parent.name,
           kind: 'equipment',
           free: Number.isFinite(free) ? free : null,
+          temperatureCategory: parent.temperatureCategory,
           temperatureCelsius: parent.temperatureCelsius
         })
       }
@@ -470,7 +488,10 @@ export const ItemService = {
       for (const row of result.rows) {
         const container = row.doc
         if (!container || container.type !== 'container' || excludedParentIds.has(container._id)) continue
-        if (requiredTemperature != null && container.temperatureCelsius !== requiredTemperature) continue
+        if (requiredTemperature != null && !temperaturesCompatible(
+          requiredTemperature,
+          { category: container.temperatureCategory, celsius: container.temperatureCelsius }
+        )) continue
         if (!showAllClassifications && classifications.size === 1 && container.classification !== [...classifications][0]) continue
         const free = row.value?.free ?? 0
         if (!candidates.has(container.slug)) {
@@ -500,22 +521,25 @@ export const ItemService = {
           name: candidate.doc.name,
           kind: 'container',
           free: Number.isFinite(minimumFree) ? minimumFree : 0,
+          temperatureCategory: candidate.doc.temperatureCategory,
           temperatureCelsius: candidate.doc.temperatureCelsius
         })
       }
     }
 
-    return [...targets.values()].sort((a, b) =>
-      (a.temperatureCelsius == null ? -1 : b.temperatureCelsius == null ? 1 : a.temperatureCelsius - b.temperatureCelsius)
-      || a.name.localeCompare(b.name)
-    )
+    return [...targets.values()].sort((a, b) => {
+      const ea = resolveEffectiveCelsius(a.temperatureCategory, a.temperatureCelsius)
+      const eb = resolveEffectiveCelsius(b.temperatureCategory, b.temperatureCelsius)
+      return (ea == null ? -1 : eb == null ? 1 : ea - eb)
+        || a.name.localeCompare(b.name)
+    })
   },
 
   /* Register an item after reserving its parent's capacity or grid slot. */
   async createItem(input: CreateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem> {
     const parent = await resolveItemParent(input.parentSlug, input.parentKind)
     const position = await resolveItemPlacement(parent, input.position ?? null, input.category)
-    assertTemperatureCompatible(input.temperatureCelsius ?? null, parent)
+    assertTemperatureCompatible({ category: input.temperatureCategory ?? null, celsius: input.temperatureCelsius ?? null }, parent)
     await adjustParentOccupancy(parent, input.category, position, 1)
 
     const now = new Date().toISOString()
@@ -540,7 +564,8 @@ export const ItemService = {
       unit: input.unit?.trim() || null,
       concentration: input.concentration ?? null,
       concentrationUnit: input.concentrationUnit?.trim() || null,
-      temperatureCelsius: input.temperatureCelsius ?? null,
+      temperatureCategory: input.temperatureCategory ?? null,
+      temperatureCelsius: normalizeStoredCelsius(input.temperatureCategory, input.temperatureCelsius),
       position,
       arrivalDate: input.arrivalDate ?? null,
       openingDate: input.openingDate ?? null,
@@ -589,6 +614,30 @@ export const ItemService = {
       throw new Error(`Item with identifier "${updates.itemSlug}" not found.`)
     }
 
+    // Resolve the requested temperature (undefined = untouched, null = cleared),
+    // normalizing the numeric so it only persists for the `other` category. When it
+    // changes, re-validate against the parent's temperature.
+    const nextTemperatureCategory = updates.temperatureCategory === undefined
+      ? existing.temperatureCategory
+      : (updates.temperatureCategory ?? null)
+    const nextTemperatureCelsius = normalizeStoredCelsius(
+      nextTemperatureCategory,
+      updates.temperatureCelsius === undefined ? existing.temperatureCelsius : (updates.temperatureCelsius ?? null)
+    )
+    const temperatureChanged = nextTemperatureCategory !== existing.temperatureCategory
+      || nextTemperatureCelsius !== existing.temperatureCelsius
+    if (temperatureChanged && existing.parent) {
+      const parentDoc = await ContainerService.resolveParentRef(existing.parent)
+      if (parentDoc && !temperaturesCompatible(
+        { category: nextTemperatureCategory, celsius: nextTemperatureCelsius },
+        { category: parentDoc.temperatureCategory, celsius: parentDoc.temperatureCelsius }
+      )) {
+        throw new Error(
+          `Item temperature (${formatTemperature(nextTemperatureCategory, nextTemperatureCelsius)}) requires a parent with the same temperature.`
+        )
+      }
+    }
+
     const updated: InventoryItem = {
       ...existing,
       classification: updates.classification === undefined ? existing.classification : updates.classification ?? null,
@@ -601,6 +650,8 @@ export const ItemService = {
       concentrationUnit: updates.concentrationUnit === undefined
         ? existing.concentrationUnit
         : updates.concentrationUnit?.trim() || null,
+      temperatureCategory: nextTemperatureCategory,
+      temperatureCelsius: nextTemperatureCelsius,
       arrivalDate: updates.arrivalDate === undefined ? existing.arrivalDate : updates.arrivalDate ?? null,
       openingDate: updates.openingDate === undefined ? existing.openingDate : updates.openingDate ?? null,
       expiryDate: updates.expiryDate === undefined ? existing.expiryDate : updates.expiryDate ?? null,
@@ -626,6 +677,8 @@ export const ItemService = {
         { field: 'unit', before: existing.unit, after: updated.unit },
         { field: 'concentration', before: existing.concentration, after: updated.concentration },
         { field: 'concentrationUnit', before: existing.concentrationUnit, after: updated.concentrationUnit },
+        { field: 'temperatureCategory', before: existing.temperatureCategory, after: updated.temperatureCategory },
+        { field: 'temperatureCelsius', before: existing.temperatureCelsius, after: updated.temperatureCelsius },
         { field: 'arrivalDate', before: existing.arrivalDate, after: updated.arrivalDate },
         { field: 'openingDate', before: existing.openingDate, after: updated.openingDate },
         { field: 'expiryDate', before: existing.expiryDate, after: updated.expiryDate },
@@ -877,6 +930,7 @@ export const ItemService = {
       unit: item.unit,
       concentration: item.concentration,
       concentrationUnit: item.concentrationUnit,
+      temperatureCategory: item.temperatureCategory,
       temperatureCelsius: item.temperatureCelsius,
       position: item.position,
       arrivalDate: item.arrivalDate,

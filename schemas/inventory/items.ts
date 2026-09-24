@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { gridPositionSchema } from './grid'
 import { inventoryActionSchema, inventoryClassificationSchema, inventoryFlagSchema } from './metadata'
+import { temperatureCategorySchema } from './temperature'
 
 // Physical item form-factor classifications.
 export const itemTypeSchema = z.enum([
@@ -35,6 +36,7 @@ export const createItemSchema = z.object({
   unit: z.string().nullish(),
   concentration: z.number().nonnegative().nullish(),
   concentrationUnit: z.string().nullish(),
+  temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),
   arrivalDate: z.string().nullish(),
   openingDate: z.string().nullish(),
@@ -60,6 +62,7 @@ export const updateItemSchema = z.object({
   unit: z.string().nullish(),
   concentration: z.number().nonnegative().nullish(),
   concentrationUnit: z.string().nullish(),
+  temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),
   arrivalDate: z.string().nullish(),
   openingDate: z.string().nullish(),

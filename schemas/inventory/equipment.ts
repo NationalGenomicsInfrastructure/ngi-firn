@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { containerTypeSchema } from './container'
 import { itemTypeSchema } from './items'
+import { temperatureCategorySchema } from './temperature'
 
 export const equipmentTypeSchema = z.enum([
   'Cabinet',
@@ -57,6 +58,7 @@ export const createEquipmentSchema = z.object({
   description: z.string().nullish(),
   capacity: z.array(equipmentCapacitySchema).nullish(),
   itemCapacity: z.array(equipmentItemCapacitySchema).nullish(),
+  temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),
   temperatureSensorId: z.array(z.string()).nullish(),
   manufacturer: z.string().nullish(),
@@ -74,6 +76,7 @@ export const updateEquipmentSchema = z.object({
   description: z.string().optional(),
   capacity: z.array(equipmentCapacitySchema).optional(),
   itemCapacity: z.array(equipmentItemCapacitySchema).optional(),
+  temperatureCategory: temperatureCategorySchema.optional(),
   temperatureCelsius: z.number().optional(),
   temperatureSensorId: z.array(z.string()).optional(),
   manufacturer: z.string().optional(),

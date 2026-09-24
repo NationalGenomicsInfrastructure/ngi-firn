@@ -40,6 +40,7 @@ import type {
 import type { CreateEquipmentInput, DeleteEquipmentInput, UpdateEquipmentInput, MoveEquipmentInput, EquipmentCapacityEntry } from '~~/schemas/inventory/equipment'
 import type { ContainerType } from '~~/schemas/inventory/container'
 import type { ItemType } from '~~/schemas/inventory/items'
+import { normalizeStoredCelsius } from '~~/schemas/inventory/temperature'
 
 /* Check if a document is a StorageEquipment document. */
 function isStorageEquipment(doc: unknown): doc is StorageEquipment {
@@ -205,7 +206,8 @@ export const EquipmentService = {
       description: input.description ?? null,
       capacity: initialCapacity.length > 0 ? initialCapacity : null,
       itemCapacity: initialItemCapacity.length > 0 ? initialItemCapacity : null,
-      temperatureCelsius: input.temperatureCelsius ?? null,
+      temperatureCategory: input.temperatureCategory ?? null,
+      temperatureCelsius: normalizeStoredCelsius(input.temperatureCategory, input.temperatureCelsius),
       temperatureSensorId: input.temperatureSensorId ?? null,
       manufacturer: input.manufacturer ?? null,
       model: input.model ?? null,
@@ -263,6 +265,13 @@ export const EquipmentService = {
       itemCapacity: mergedItemCapacity,
       updatedAt: new Date().toISOString()
     } as StorageEquipment
+
+    // The stored numeric only carries a value for the `other` category; every
+    // predefined category derives its °C from the category itself.
+    updatedEquipment.temperatureCelsius = normalizeStoredCelsius(
+      updatedEquipment.temperatureCategory,
+      updatedEquipment.temperatureCelsius
+    )
 
     const result = await couchDB.updateDocument(updatedEquipment._id, updatedEquipment, existing._rev)
     updatedEquipment._rev = result.rev
@@ -408,6 +417,7 @@ export const EquipmentService = {
       description: equipment.description,
       capacity: equipment.capacity,
       itemCapacity: equipment.itemCapacity ?? null,
+      temperatureCategory: equipment.temperatureCategory,
       temperatureCelsius: equipment.temperatureCelsius,
       temperatureSensorId: equipment.temperatureSensorId,
       manufacturer: equipment.manufacturer,

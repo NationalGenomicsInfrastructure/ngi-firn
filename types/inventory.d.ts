@@ -4,6 +4,7 @@ import type { DocumentReferenceMap, TypedDocumentReference } from './references'
 import type { ContainerCapacityEntry, ContainerChildKindType, ContainerType } from '../schemas/inventory/container'
 import type { EquipmentCapacityEntry, EquipmentItemCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
 import type { ItemType } from '../schemas/inventory/items'
+import type { TemperatureCategory } from '../schemas/inventory/temperature'
 import type { InventoryActionType, InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '../schemas/inventory/metadata'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
 
@@ -207,6 +208,7 @@ export interface StorageEquipment extends BaseDocument {
   /* One entry per container type; `stored` is the server-owned occupancy counter. */
   capacity: EquipmentCapacityEntry[] | null
   itemCapacity: EquipmentItemCapacityEntry[] | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null
@@ -234,6 +236,7 @@ export interface DisplayStorageEquipment {
   /* One entry per container type; `stored` is the server-owned occupancy counter. */
   capacity: EquipmentCapacityEntry[] | null
   itemCapacity: EquipmentItemCapacityEntry[] | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
   /* Optional IDs for remote temperature sensor integration (SensorPush). */
   temperatureSensorId: string[] | null
@@ -265,6 +268,7 @@ export interface Container extends BaseDocument {
   name: string
   label: string | null
   description: string | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
   /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
   capacity: ContainerCapacityEntry[] | null
@@ -317,6 +321,7 @@ export interface DisplayContainer {
   name: string
   label: string | null
   description: string | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
   /* One entry per container or item type; `stored` is the server-owned occupancy counter. */
   capacity: ContainerCapacityEntry[] | null
@@ -381,6 +386,7 @@ export interface ItemMoveTarget {
   name: string
   kind: 'container' | 'equipment'
   free: number | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
 }
 
@@ -401,6 +407,7 @@ export interface InventoryItem extends BaseDocument {
   name: string
   label: string | null
   description: string | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
   quantity: number | null
   unit: string | null
@@ -439,6 +446,7 @@ export interface DisplayInventoryItem {
   name: string
   label: string | null
   description: string | null
+  temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
   quantity: number | null
   unit: string | null

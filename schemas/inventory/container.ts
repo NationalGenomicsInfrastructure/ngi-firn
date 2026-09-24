@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { gridPositionSchema } from './grid'
 import { itemTypeSchema } from './items'
 import { inventoryActionSchema, inventoryFlagSchema } from './metadata'
+import { temperatureCategorySchema } from './temperature'
 import type { DisplayContainer } from '~~/types/inventory'
 
 // ---------------------------------------------------------------------------
@@ -158,6 +159,7 @@ export const createContainerSchema = z.object({
   name: z.string().min(1, { message: 'Container name is required' }),
   label: z.string().nullish(),
   description: z.string().nullish(),
+  temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),
   parentSlug: z.string().min(1, { message: 'Parent identifier is required' }),
   parentKind: parentKindSchema,
@@ -180,6 +182,7 @@ export const updateContainerSchema = z.object({
   name: z.string().min(1).optional(),
   label: z.string().nullish(),
   description: z.string().nullish(),
+  temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),
   position: gridPositionSchema.nullish(),
   capacity: containerCapacityArraySchema.nullish(),
@@ -271,6 +274,7 @@ export const suggestLocationsSchema = z.object({
   count: z.number().int().positive({ message: 'Requested slot count must be positive' }),
   classification: z.string().nullish(),
   ancestorId: z.string().nullish(),
+  temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish()
 })
 

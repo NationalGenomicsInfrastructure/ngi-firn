@@ -85,6 +85,8 @@ import type {
 } from '~~/schemas/inventory/container'
 import { allowedActionsForStatus, isAlterAction, isVacatingAction } from '~~/schemas/inventory/metadata'
 import type { InventoryActionType, InventoryStatusType } from '~~/schemas/inventory/metadata'
+import { normalizeStoredCelsius, temperaturesCompatible, formatTemperature } from '~~/schemas/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import type { FirnUser } from '../../../types/auth'
 
 /* Check if a document is a Container document. */
@@ -592,7 +594,7 @@ export const ContainerService = {
    */
   async createContainer(input: CreateContainerSchemaInput, firnUser: FirnUser): Promise<Container> {
     const parent = await ContainerService.resolveParent(input.parentSlug, input.parentKind)
-    assertContainerTemperatureCompatible(input.temperatureCelsius ?? null, parent)
+    assertContainerTemperatureCompatible({ category: input.temperatureCategory ?? null, celsius: input.temperatureCelsius ?? null }, parent)
     const positionParent = await resolvePlacement(parent, input.position ?? null, input.containerType)
 
     await adjustParentOccupancy(parent, input.containerType, positionParent, 1)
@@ -635,7 +637,8 @@ export const ContainerService = {
       name: input.name,
       label: input.label?.trim() || null,
       description: input.description ?? null,
-      temperatureCelsius: input.temperatureCelsius ?? null,
+      temperatureCategory: input.temperatureCategory ?? null,
+      temperatureCelsius: normalizeStoredCelsius(input.temperatureCategory, input.temperatureCelsius),
       capacity: initialCapacity.length > 0 ? initialCapacity : null,
       templateId: input.templateId ?? null,
       projectRefs,
@@ -709,6 +712,28 @@ export const ContainerService = {
       mergedCapacity = merged.length > 0 ? merged : null
     }
 
+    // Resolve the requested temperature (undefined = untouched, null = cleared),
+    // normalizing the numeric so it only persists for the `other` category. When it
+    // changes, re-validate against the parent's temperature.
+    const nextTemperatureCategory = updates.temperatureCategory === undefined
+      ? existing.temperatureCategory
+      : (updates.temperatureCategory ?? null)
+    const nextTemperatureCelsius = normalizeStoredCelsius(
+      nextTemperatureCategory,
+      updates.temperatureCelsius === undefined ? existing.temperatureCelsius : (updates.temperatureCelsius ?? null)
+    )
+    const temperatureChanged = nextTemperatureCategory !== existing.temperatureCategory
+      || nextTemperatureCelsius !== existing.temperatureCelsius
+    if (temperatureChanged && existing.parent) {
+      const temperatureParent = parent ?? await resolveContainerParentRef(existing.parent)
+      if (temperatureParent) {
+        assertContainerTemperatureCompatible(
+          { category: nextTemperatureCategory, celsius: nextTemperatureCelsius },
+          temperatureParent
+        )
+      }
+    }
+
     const updatedContainer: Container = {
       ...existing,
       containerType: nextContainerType,
@@ -716,6 +741,8 @@ export const ContainerService = {
       name: updates.name ?? existing.name,
       label: updates.label === undefined ? existing.label : (updates.label?.trim() || null),
       description: updates.description === undefined ? existing.description : (updates.description ?? null),
+      temperatureCategory: nextTemperatureCategory,
+      temperatureCelsius: nextTemperatureCelsius,
       capacity: mergedCapacity,
       slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
       updatedAt: new Date().toISOString()
@@ -1181,6 +1208,7 @@ export const ContainerService = {
       name: container.name,
       label: container.label,
       description: container.description,
+      temperatureCategory: container.temperatureCategory,
       temperatureCelsius: container.temperatureCelsius,
       capacity: container.capacity,
       positionParent: container.positionParent,
@@ -1352,13 +1380,16 @@ async function adjustParentOccupancy(
 }
 
 function assertContainerTemperatureCompatible(
-  containerTemperature: number | null,
+  container: { category: TemperatureCategory | null, celsius: number | null },
   parent: ResolvedParent
 ): void {
-  if (containerTemperature == null) return
-  if (parent.doc.temperatureCelsius !== containerTemperature) {
+  const compatible = temperaturesCompatible(container, {
+    category: parent.doc.temperatureCategory,
+    celsius: parent.doc.temperatureCelsius
+  })
+  if (!compatible) {
     throw new Error(
-      `Container temperature ${containerTemperature} °C requires a parent with the same explicit temperature.`
+      `Container temperature (${formatTemperature(container.category, container.celsius)}) requires a parent with the same temperature.`
     )
   }
 }
@@ -1513,7 +1544,7 @@ async function moveContainerOne(
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<Container> {
   const actionType = options.actionType ?? 'move'
-  assertContainerTemperatureCompatible(existing.temperatureCelsius, newParent)
+  assertContainerTemperatureCompatible({ category: existing.temperatureCategory, celsius: existing.temperatureCelsius }, newParent)
   const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType)
 
   await adjustParentOccupancy(newParent, existing.containerType, positionParent, 1)
