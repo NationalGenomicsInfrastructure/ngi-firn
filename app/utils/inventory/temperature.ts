@@ -7,8 +7,8 @@ import type { SelectOption } from './equipment'
 export { TEMPERATURE_CATEGORY_LABELS, formatTemperature, resolveEffectiveCelsius } from '~~/schemas/inventory/temperature'
 export type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 
-export const TEMPERATURE_CATEGORY_OPTIONS: SelectOption<TemperatureCategory>[] =
-  temperatureCategorySchema.options.map(value => ({
+export const TEMPERATURE_CATEGORY_OPTIONS: SelectOption<TemperatureCategory>[]
+  = temperatureCategorySchema.options.map(value => ({
     value,
     label: TEMPERATURE_CATEGORY_LABELS[value]
   }))

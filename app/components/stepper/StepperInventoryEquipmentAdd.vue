@@ -11,6 +11,8 @@ import {
   type CapacityRow
 } from '~/utils/inventory/equipment'
 import type { EquipmentItemCapacity } from '~~/schemas/inventory/equipment'
+import { TEMPERATURE_CATEGORY_OPTIONS, formatTemperature, resolveTemperatureCategoryFromSelect } from '~/utils/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
@@ -62,6 +64,7 @@ const { handleSubmit, validate, errors, resetForm, values } = useForm({
     description: '',
     capacity: [] as CapacityRow[],
     itemCapacity: [] as EquipmentItemCapacity[],
+    temperatureCategory: undefined,
     temperatureCelsius: undefined,
     manufacturer: '',
     model: '',
@@ -73,10 +76,12 @@ const { handleSubmit, validate, errors, resetForm, values } = useForm({
 
 const { value: equipmentTypeValue, setValue: setEquipmentTypeValue } = useField<string>('equipmentType')
 const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: temperatureCategoryValue, setValue: setTemperatureCategoryValue } = useField<TemperatureCategory | undefined>('temperatureCategory')
 const { value: capacityValue, setValue: setCapacityValue } = useField<CapacityRow[]>('capacity')
 const { value: itemCapacityValue, setValue: setItemCapacityValue } = useField<EquipmentItemCapacity[]>('itemCapacity')
 
 const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
+const showCustomTemperature = computed(() => temperatureCategoryValue.value === 'other')
 
 const selectedTypeLabel = computed(() =>
   equipmentTypeValue.value ? EQUIPMENT_TYPE_LABELS[equipmentTypeValue.value as keyof typeof EQUIPMENT_TYPE_LABELS] : '—'
@@ -87,6 +92,12 @@ function onEquipmentTypeUpdate(value: unknown) {
   if (resolved) {
     setEquipmentTypeValue(resolved)
   }
+}
+
+function onTemperatureCategoryUpdate(value: unknown) {
+  const resolved = resolveTemperatureCategoryFromSelect(value)
+  setTemperatureCategoryValue(resolved ?? undefined)
+  if (resolved !== 'other') setTemperatureValue(undefined)
 }
 
 function onTemperatureUpdate(value: unknown) {
@@ -207,15 +218,30 @@ async function onValidatingSubmit() {
             </div>
 
             <NFormField
+              name="temperatureCategory"
+              label="Temperature"
+              :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+            >
+              <NSelect
+                :model-value="temperatureCategoryValue"
+                :items="TEMPERATURE_CATEGORY_OPTIONS"
+                by="value"
+                placeholder="Optional"
+                @update:model-value="onTemperatureCategoryUpdate"
+              />
+            </NFormField>
+
+            <NFormField
+              v-if="showCustomTemperature"
               name="temperatureCelsius"
-              label="Temperature (°C)"
+              label="Custom temperature (°C)"
               :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
             >
               <NInput
                 :model-value="temperatureInputValue"
                 type="number"
                 step="0.1"
-                placeholder="e.g. -80"
+                placeholder="e.g. -150"
                 @update:model-value="onTemperatureUpdate"
               />
             </NFormField>
@@ -365,7 +391,7 @@ async function onValidatingSubmit() {
                   Temperature
                 </p>
                 <p class="font-medium">
-                  {{ values.temperatureCelsius == null ? '—' : `${values.temperatureCelsius} °C` }}
+                  {{ formatTemperature(values.temperatureCategory ?? null, values.temperatureCelsius ?? null) }}
                 </p>
               </div>
               <div>

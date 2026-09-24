@@ -3,6 +3,7 @@ import { useQuery as useQueryColada } from '@pinia/colada'
 import type { DisplayInventoryItem } from '~~/types/inventory'
 import { itemMoveTargetsBatchQuery } from '~/utils/queries/inventory/items'
 import { locateItem as useLocateItemsMutation } from '~/utils/mutations/inventory/items'
+import { formatTemperature } from '~/utils/inventory/temperature'
 
 const props = defineProps<{
   items: DisplayInventoryItem[]
@@ -30,7 +31,7 @@ const targetOptions = computed(() =>
   targetsState.value.status === 'success'
     ? targetsState.value.data.map(target => ({
         value: `${target.kind}:${target.slug}`,
-        label: `${target.name} · ${target.free ?? 'Unlimited'} free · ${target.temperatureCelsius == null ? 'No temperature' : `${target.temperatureCelsius} °C`} · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
+        label: `${target.name} · ${target.free ?? 'Unlimited'} free · ${formatTemperature(target.temperatureCategory, target.temperatureCelsius)} · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
       }))
     : []
 )

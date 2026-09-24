@@ -2,6 +2,7 @@
 import type { ColumnDef, Table } from '@tanstack/vue-table'
 import type { DisplayStorageEquipment } from '~~/types/inventory'
 import { EQUIPMENT_TYPE_LABELS } from '~/utils/inventory/equipment'
+import { formatTemperature } from '~/utils/inventory/temperature'
 
 const props = defineProps<{
   equipment: DisplayStorageEquipment[]
@@ -59,7 +60,7 @@ const tableData = computed((): EquipmentRow[] => {
     parentRoomName: eq.parentRoom.name,
     parentRoomSlug: eq.parentRoom.slug,
     temperatureCelsius: eq.temperatureCelsius,
-    temperatureLabel: eq.temperatureCelsius == null ? '—' : `${eq.temperatureCelsius} °C`,
+    temperatureLabel: formatTemperature(eq.temperatureCategory, eq.temperatureCelsius),
     manufacturer: eq.manufacturer,
     model: eq.model,
     serialNumber: eq.serialNumber,

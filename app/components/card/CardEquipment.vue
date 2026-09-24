@@ -2,6 +2,7 @@
 import type { DisplayStorageEquipment } from '~~/types/inventory'
 import { NLink } from '#components'
 import { EQUIPMENT_TYPE_LABELS, getEquipmentCapacityLabel } from '~/utils/inventory/equipment'
+import { formatTemperature } from '~/utils/inventory/temperature'
 
 const props = defineProps<{
   equipment: DisplayStorageEquipment
@@ -30,7 +31,7 @@ const infoFields = computed(() => [
   {
     icon: 'i-lucide-thermometer',
     label: 'Temperature',
-    value: props.equipment.temperatureCelsius == null ? '—' : `${props.equipment.temperatureCelsius} °C`
+    value: formatTemperature(props.equipment.temperatureCategory, props.equipment.temperatureCelsius)
   },
   {
     icon: 'i-lucide-package-open',

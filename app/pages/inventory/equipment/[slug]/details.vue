@@ -4,6 +4,7 @@ import {
   equipmentBySlugQuery
 } from '~/utils/queries/inventory/equipment'
 import { EQUIPMENT_TYPE_LABELS, getEquipmentCapacityLabel } from '~/utils/inventory/equipment'
+import { formatTemperature } from '~/utils/inventory/temperature'
 
 definePageMeta({
   layout: 'private'
@@ -57,7 +58,7 @@ const infoFields = computed(() => {
     {
       icon: 'i-lucide-thermometer',
       label: 'Temperature',
-      value: equipment.value.temperatureCelsius == null ? '—' : `${equipment.value.temperatureCelsius} °C`
+      value: formatTemperature(equipment.value.temperatureCategory, equipment.value.temperatureCelsius)
     },
     {
       icon: 'i-lucide-package-open',

@@ -5,6 +5,8 @@ import { updateItemSchema } from '~~/schemas/inventory/items'
 import type { InventoryClassificationType } from '~~/schemas/inventory/metadata'
 import { updateItem } from '~/utils/mutations/inventory/items'
 import { EQUIPMENT_FORM_LABEL_STYLE } from '~/utils/inventory/equipment'
+import { TEMPERATURE_CATEGORY_OPTIONS, resolveTemperatureCategoryFromSelect } from '~/utils/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{ item: DisplayInventoryItem, hideSubmit?: boolean, formId?: string }>()
@@ -24,6 +26,7 @@ const { handleSubmit, validate, errors, setFieldValue } = useForm({
     unit: props.item.unit ?? '',
     concentration: props.item.concentration ?? undefined,
     concentrationUnit: props.item.concentrationUnit ?? '',
+    temperatureCategory: props.item.temperatureCategory ?? undefined,
     temperatureCelsius: props.item.temperatureCelsius ?? undefined,
     arrivalDate: props.item.arrivalDate ?? '',
     openingDate: props.item.openingDate ?? '',
@@ -39,6 +42,14 @@ const { handleSubmit, validate, errors, setFieldValue } = useForm({
 const { value: quantityValue } = useField<number | undefined>('quantity')
 const { value: concentrationValue } = useField<number | undefined>('concentration')
 const { value: temperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: temperatureCategoryValue, setValue: setTemperatureCategoryValue } = useField<TemperatureCategory | undefined>('temperatureCategory')
+const showCustomTemperature = computed(() => temperatureCategoryValue.value === 'other')
+
+function onTemperatureCategoryUpdate(value: unknown) {
+  const resolved = resolveTemperatureCategoryFromSelect(value)
+  setTemperatureCategoryValue(resolved ?? undefined)
+  if (resolved !== 'other') setFieldValue('temperatureCelsius', undefined)
+}
 const { value: classificationValue, setValue: setClassificationValue } = useField<InventoryClassificationType | undefined>('classification')
 
 const classificationOptions = [
@@ -94,15 +105,29 @@ async function onValidating() {
         <NInput />
       </NFormField>
       <NFormField
+        name="temperatureCategory"
+        label="Temperature"
+        :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+      >
+        <NSelect
+          :model-value="temperatureCategoryValue"
+          :items="TEMPERATURE_CATEGORY_OPTIONS"
+          by="value"
+          placeholder="Optional"
+          @update:model-value="onTemperatureCategoryUpdate"
+        />
+      </NFormField>
+      <NFormField
+        v-if="showCustomTemperature"
         name="temperatureCelsius"
-        label="Temperature (°C)"
+        label="Custom temperature (°C)"
         :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
       >
         <NInput
           :model-value="temperatureValue ?? ''"
           type="number"
           step="0.1"
-          placeholder="Optional"
+          placeholder="e.g. -150"
           @update:model-value="setOptionalNumber('temperatureCelsius', $event)"
         />
       </NFormField>

@@ -13,6 +13,8 @@ import {
   resolveClassificationFromSelect,
   containerCapacityEntriesToForm
 } from '~/utils/inventory/container'
+import { TEMPERATURE_CATEGORY_OPTIONS, resolveTemperatureCategoryFromSelect } from '~/utils/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
@@ -46,6 +48,7 @@ const { handleSubmit, validate, errors, setFieldValue } = useForm({
     name: props.container.name,
     label: props.container.label ?? '',
     description: props.container.description ?? '',
+    temperatureCategory: props.container.temperatureCategory ?? undefined,
     temperatureCelsius: props.container.temperatureCelsius ?? undefined,
     capacity: containerCapacityEntriesToForm(props.container.capacity),
     logComment: ''
@@ -55,10 +58,18 @@ const { handleSubmit, validate, errors, setFieldValue } = useForm({
 const { value: classificationValue, setValue: setClassificationValue } = useField<ContainerClassification | undefined>('classification')
 const { value: capacityValue, setValue: setCapacityValue } = useField<ContainerCapacity[]>('capacity')
 const { value: temperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: temperatureCategoryValue, setValue: setTemperatureCategoryValue } = useField<TemperatureCategory | undefined>('temperatureCategory')
+const showCustomTemperature = computed(() => temperatureCategoryValue.value === 'other')
 
 function onClassificationUpdate(value: unknown) {
   const resolved = resolveClassificationFromSelect(value)
   setClassificationValue(resolved ?? undefined)
+}
+
+function onTemperatureCategoryUpdate(value: unknown) {
+  const resolved = resolveTemperatureCategoryFromSelect(value)
+  setTemperatureCategoryValue(resolved ?? undefined)
+  if (resolved !== 'other') setFieldValue('temperatureCelsius', undefined)
 }
 
 function onTemperatureUpdate(value: unknown) {
@@ -152,15 +163,29 @@ async function onValidating() {
           />
         </NFormField>
         <NFormField
+          name="temperatureCategory"
+          label="Temperature"
+          :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+        >
+          <NSelect
+            :model-value="temperatureCategoryValue"
+            :items="TEMPERATURE_CATEGORY_OPTIONS"
+            by="value"
+            placeholder="Optional"
+            @update:model-value="onTemperatureCategoryUpdate"
+          />
+        </NFormField>
+        <NFormField
+          v-if="showCustomTemperature"
           name="temperatureCelsius"
-          label="Temperature (°C)"
+          label="Custom temperature (°C)"
           :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
         >
           <NInput
             :model-value="temperatureValue ?? ''"
             type="number"
             step="0.1"
-            placeholder="Optional"
+            placeholder="e.g. -150"
             @update:model-value="onTemperatureUpdate"
           />
         </NFormField>
