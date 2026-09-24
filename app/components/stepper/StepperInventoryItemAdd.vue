@@ -1,16 +1,33 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
 import { toTypedSchema } from '@vee-validate/zod'
-import { createItemSchema, type ItemParentKind, type ItemType } from '~~/schemas/inventory/items'
+import {
+  createItemSchema,
+  type CreateItemFormValues,
+  type ItemParentKind,
+  type ItemType
+} from '~~/schemas/inventory/items'
 import { createItem } from '~/utils/mutations/inventory/items'
 import { acceptedItemCapacityQuery } from '~/utils/queries/inventory/items'
 import { EQUIPMENT_FORM_LABEL_STYLE, type SelectOption } from '~/utils/inventory/equipment'
 import { ITEM_TYPE_LABELS, ITEM_TYPE_OPTIONS, resolveItemTypeFromSelect } from '~/utils/inventory/item'
+import {
+  TEMPERATURE_CATEGORY_OPTIONS,
+  formatTemperature,
+  resolveTemperatureCategoryFromSelect
+} from '~/utils/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
   parentSlug: string
   parentKind: ItemParentKind
+  initialValues?: Partial<CreateItemFormValues>
+  submitLabel?: string
+}>()
+
+const emit = defineEmits<{
+  created: []
 }>()
 
 const STEP1_FIELDS = ['category', 'name'] as const
@@ -36,27 +53,36 @@ const stepper = useTemplateRef('itemStepper')
 const { mutateAsync: createItemAsync } = createItem()
 const itemFormSchema = toTypedSchema(createItemSchema.omit({ parentSlug: true, parentKind: true, position: true, projectIds: true }))
 
+const defaultInitialValues: CreateItemFormValues = {
+  category: 'cryovial',
+  classification: undefined,
+  name: '',
+  label: '',
+  description: '',
+  quantity: undefined,
+  unit: '',
+  concentration: undefined,
+  concentrationUnit: '',
+  temperatureCategory: undefined,
+  temperatureCelsius: undefined,
+  arrivalDate: '',
+  openingDate: '',
+  expiryDate: '',
+  lotNumber: '',
+  barcode: '',
+  templateId: '',
+  notes: '',
+  metadata: undefined
+}
+
+const formInitialValues: CreateItemFormValues = {
+  ...defaultInitialValues,
+  ...structuredClone(props.initialValues ?? {})
+}
+
 const { handleSubmit, validate, errors, resetForm, values } = useForm({
   validationSchema: itemFormSchema,
-  initialValues: {
-    category: 'cryovial' as const,
-    classification: undefined,
-    name: '',
-    label: '',
-    description: '',
-    quantity: undefined,
-    unit: '',
-    concentration: undefined,
-    concentrationUnit: '',
-    arrivalDate: '',
-    openingDate: '',
-    expiryDate: '',
-    lotNumber: '',
-    barcode: '',
-    templateId: '',
-    notes: '',
-    metadata: undefined
-  },
+  initialValues: formInitialValues,
   keepValuesOnUnmount: true
 })
 
@@ -64,6 +90,8 @@ const { value: categoryValue, setValue: setCategoryValue } = useField<ItemType>(
 const { value: classificationValue, setValue: setClassificationValue } = useField<string | undefined>('classification')
 const { value: quantityValue, setValue: setQuantityValue } = useField<number | undefined>('quantity')
 const { value: concentrationValue, setValue: setConcentrationValue } = useField<number | undefined>('concentration')
+const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: temperatureCategoryValue, setValue: setTemperatureCategoryValue } = useField<TemperatureCategory | undefined>('temperatureCategory')
 
 const {
   state: acceptanceState,
@@ -105,6 +133,8 @@ const acceptanceBlocked = computed(() =>
 const selectedCategoryLabel = computed(() => ITEM_TYPE_LABELS[categoryValue.value] ?? '—')
 const quantityInputValue = computed(() => quantityValue.value == null ? '' : String(quantityValue.value))
 const concentrationInputValue = computed(() => concentrationValue.value == null ? '' : String(concentrationValue.value))
+const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
+const showCustomTemperature = computed(() => temperatureCategoryValue.value === 'other')
 
 watch(availableCategories, (categories) => {
   if (categories.length === 0) return
@@ -131,6 +161,16 @@ function resolveNullableNumber(value: unknown): number | undefined {
 function onCategoryUpdate(value: unknown) {
   const category = resolveItemTypeFromSelect(value)
   if (category && availableCategories.value.some(option => option.value === category)) setCategoryValue(category)
+}
+
+function onTemperatureCategoryUpdate(value: unknown) {
+  const resolved = resolveTemperatureCategoryFromSelect(value)
+  setTemperatureCategoryValue(resolved ?? undefined)
+  if (resolved !== 'other') setTemperatureValue(undefined)
+}
+
+function onTemperatureUpdate(value: unknown) {
+  setTemperatureValue(resolveNullableNumber(value))
 }
 
 function resetToFirstStep() {
@@ -161,6 +201,7 @@ const onSubmit = handleSubmit(async (formValues) => {
   if (result) {
     resetForm()
     resetToFirstStep()
+    emit('created')
   }
 })
 
@@ -332,6 +373,33 @@ async function onValidatingSubmit() {
                   <NInput placeholder="e.g. ng/µL" />
                 </NFormField>
                 <NFormField
+                  name="temperatureCategory"
+                  label="Temperature"
+                  :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+                >
+                  <NSelect
+                    :model-value="temperatureCategoryValue"
+                    :items="TEMPERATURE_CATEGORY_OPTIONS"
+                    by="value"
+                    placeholder="Optional"
+                    @update:model-value="onTemperatureCategoryUpdate"
+                  />
+                </NFormField>
+                <NFormField
+                  v-if="showCustomTemperature"
+                  name="temperatureCelsius"
+                  label="Custom temperature (°C)"
+                  :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+                >
+                  <NInput
+                    :model-value="temperatureInputValue"
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. -150"
+                    @update:model-value="onTemperatureUpdate"
+                  />
+                </NFormField>
+                <NFormField
                   name="lotNumber"
                   label="Lot number"
                   :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
@@ -445,6 +513,13 @@ async function onValidatingSubmit() {
                     {{ values.lotNumber || '—' }}
                   </p>
                 </div>
+                <div>
+                  <p :class="EQUIPMENT_FORM_LABEL_STYLE">
+                    Temperature
+                  </p><p class="font-medium">
+                    {{ formatTemperature(values.temperatureCategory ?? null, values.temperatureCelsius ?? null) }}
+                  </p>
+                </div>
               </div>
             </NCard>
             <div class="flex justify-between">
@@ -457,7 +532,7 @@ async function onValidatingSubmit() {
               />
               <NButton
                 type="submit"
-                label="Register item"
+                :label="props.submitLabel ?? 'Register item'"
                 btn="soft-primary hover:outline-primary"
                 trailing="i-lucide-package-plus"
               />

@@ -2,7 +2,12 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useQuery as useQueryColada } from '@pinia/colada'
 import { createContainerSchema } from '~~/schemas/inventory/container'
-import type { ContainerParentKindType, ContainerCapacity, ContainerType } from '~~/schemas/inventory/container'
+import type {
+  ContainerParentKindType,
+  ContainerCapacity,
+  ContainerType,
+  CreateContainerFormValues
+} from '~~/schemas/inventory/container'
 import { createContainer } from '~/utils/mutations/inventory/containers'
 import { acceptedChildrenQuery } from '~/utils/queries/inventory/containers'
 import {
@@ -16,11 +21,19 @@ import {
   resolveClassificationFromSelect,
   capacityMode
 } from '~/utils/inventory/container'
+import {
+  TEMPERATURE_CATEGORY_OPTIONS,
+  formatTemperature,
+  resolveTemperatureCategoryFromSelect
+} from '~/utils/inventory/temperature'
+import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
   parentSlug: string
   parentKind: ContainerParentKindType
+  initialValues?: Partial<CreateContainerFormValues>
+  submitLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -64,22 +77,35 @@ const containerFormSchema = toTypedSchema(
   })
 )
 
+const defaultInitialValues: CreateContainerFormValues = {
+  containerType: 'Box',
+  classification: 'Sample',
+  name: '',
+  label: '',
+  description: '',
+  temperatureCategory: undefined,
+  temperatureCelsius: undefined,
+  capacity: []
+}
+
+const formInitialValues: CreateContainerFormValues = {
+  ...defaultInitialValues,
+  ...structuredClone(props.initialValues ?? {})
+}
+
 const { handleSubmit, validate, errors, resetForm, values } = useForm({
   validationSchema: containerFormSchema,
-  initialValues: {
-    containerType: 'Box' as const,
-    classification: 'Sample' as const,
-    name: '',
-    label: '',
-    description: '',
-    capacity: [] as ContainerCapacity[]
-  },
+  initialValues: formInitialValues,
   keepValuesOnUnmount: true
 })
 
 const { value: containerTypeValue, setValue: setContainerTypeValue } = useField<string>('containerType')
 const { value: classificationValue, setValue: setClassificationValue } = useField<string>('classification')
 const { value: capacityValue, setValue: setCapacityValue } = useField<ContainerCapacity[]>('capacity')
+const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
+const { value: temperatureCategoryValue, setValue: setTemperatureCategoryValue } = useField<TemperatureCategory | undefined>('temperatureCategory')
+const showCustomTemperature = computed(() => temperatureCategoryValue.value === 'other')
+const temperatureInputValue = computed(() => temperatureValue.value == null ? '' : String(temperatureValue.value))
 
 // What container types the parent accepts, with remaining free-slot counts. The
 // authoritative capacity check still runs on create; this gates the select up-front.
@@ -185,6 +211,17 @@ function onClassificationUpdate(value: unknown) {
   if (resolved) {
     setClassificationValue(resolved)
   }
+}
+
+function onTemperatureCategoryUpdate(value: unknown) {
+  const resolved = resolveTemperatureCategoryFromSelect(value)
+  setTemperatureCategoryValue(resolved ?? undefined)
+  if (resolved !== 'other') setTemperatureValue(undefined)
+}
+
+function onTemperatureUpdate(value: unknown) {
+  const parsed = value === '' || value == null ? undefined : Number(value)
+  setTemperatureValue(Number.isFinite(parsed) ? parsed : undefined)
 }
 
 function resetToFirstStep() {
@@ -357,6 +394,36 @@ async function onValidatingSubmit() {
                   placeholder="Optional notes"
                 />
               </NFormField>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <NFormField
+                  name="temperatureCategory"
+                  label="Temperature"
+                  :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+                >
+                  <NSelect
+                    :model-value="temperatureCategoryValue"
+                    :items="TEMPERATURE_CATEGORY_OPTIONS"
+                    by="value"
+                    placeholder="Optional"
+                    @update:model-value="onTemperatureCategoryUpdate"
+                  />
+                </NFormField>
+                <NFormField
+                  v-if="showCustomTemperature"
+                  name="temperatureCelsius"
+                  label="Custom temperature (°C)"
+                  :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+                >
+                  <NInput
+                    :model-value="temperatureInputValue"
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. -150"
+                    @update:model-value="onTemperatureUpdate"
+                  />
+                </NFormField>
+              </div>
             </NCard>
 
             <div class="flex justify-end">
@@ -455,6 +522,14 @@ async function onValidatingSubmit() {
                     {{ capacitySummary }}
                   </p>
                 </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium mb-0.5">
+                    Temperature
+                  </p>
+                  <p class="font-medium">
+                    {{ formatTemperature(values.temperatureCategory ?? null, values.temperatureCelsius ?? null) }}
+                  </p>
+                </div>
               </div>
             </NCard>
 
@@ -468,7 +543,7 @@ async function onValidatingSubmit() {
               />
               <NButton
                 type="submit"
-                label="Create container"
+                :label="props.submitLabel ?? 'Create container'"
                 btn="soft-primary hover:outline-primary"
                 trailing="i-lucide-package-plus"
               />

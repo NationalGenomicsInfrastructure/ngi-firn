@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { createEquipmentSchema } from '~~/schemas/inventory/equipment'
+import {
+  createEquipmentSchema,
+  type CreateEquipmentFormValues
+} from '~~/schemas/inventory/equipment'
 import { createEquipment } from '~/utils/mutations/inventory/equipment'
 import {
   EQUIPMENT_FORM_LABEL_STYLE,
@@ -17,6 +20,8 @@ import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
   roomSlug: string
+  initialValues?: Partial<CreateEquipmentFormValues>
+  submitLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -55,22 +60,29 @@ const equipmentFormSchema = toTypedSchema(
   createEquipmentSchema.omit({ parentSlug: true, temperatureSensorId: true })
 )
 
+const defaultInitialValues: CreateEquipmentFormValues = {
+  equipmentType: 'Freezer',
+  name: '',
+  label: '',
+  description: '',
+  capacity: [],
+  itemCapacity: [],
+  temperatureCategory: undefined,
+  temperatureCelsius: undefined,
+  manufacturer: '',
+  model: '',
+  serialNumber: '',
+  isActive: true
+}
+
+const formInitialValues: CreateEquipmentFormValues = {
+  ...defaultInitialValues,
+  ...structuredClone(props.initialValues ?? {})
+}
+
 const { handleSubmit, validate, errors, resetForm, values } = useForm({
   validationSchema: equipmentFormSchema,
-  initialValues: {
-    equipmentType: 'Freezer' as const,
-    name: '',
-    label: '',
-    description: '',
-    capacity: [] as CapacityRow[],
-    itemCapacity: [] as EquipmentItemCapacity[],
-    temperatureCategory: undefined,
-    temperatureCelsius: undefined,
-    manufacturer: '',
-    model: '',
-    serialNumber: '',
-    isActive: true
-  },
+  initialValues: formInitialValues,
   keepValuesOnUnmount: true
 })
 
@@ -415,7 +427,7 @@ async function onValidatingSubmit() {
             />
             <NButton
               type="submit"
-              label="Create equipment"
+              :label="props.submitLabel ?? 'Create equipment'"
               btn="soft-primary hover:outline-primary"
               trailing="i-lucide-layers-plus"
             />

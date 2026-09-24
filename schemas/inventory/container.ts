@@ -303,6 +303,10 @@ export const containerMoveTargetsBatchSchema = z.object({
 
 // Inferred types
 export type CreateContainerSchemaInput = z.infer<typeof createContainerSchema>
+export type CreateContainerFormValues = Omit<
+  CreateContainerSchemaInput,
+  'parentSlug' | 'parentKind' | 'position' | 'templateId' | 'projectIds'
+>
 export type UpdateContainerSchemaInput = z.infer<typeof updateContainerSchema>
 export type DeleteContainerSchemaInput = z.infer<typeof deleteContainerSchema> & {
   // UI-only labels for toasts; never sent to the API.

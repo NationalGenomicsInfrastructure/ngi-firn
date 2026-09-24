@@ -136,6 +136,10 @@ export const itemMoveTargetsBatchSchema = z.object({
 export type ItemType = z.infer<typeof itemTypeSchema>
 export type ItemParentKind = z.infer<typeof itemParentKindSchema>
 export type CreateItemSchemaInput = z.infer<typeof createItemSchema>
+export type CreateItemFormValues = Omit<
+  CreateItemSchemaInput,
+  'parentSlug' | 'parentKind' | 'position' | 'projectIds'
+>
 export type UpdateItemSchemaInput = z.infer<typeof updateItemSchema>
 export type DeleteItemSchemaInput = z.infer<typeof deleteItemSchema>
 export type MoveItemSchemaInput = z.infer<typeof moveItemSchema>
