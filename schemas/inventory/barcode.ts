@@ -167,6 +167,18 @@ export const ACTION_BARCODES: Record<string, InventoryActionType> = Object.fromE
   })
 )
 
+/*
+ * The inverse of `ACTION_BARCODES`: action name to its barcode. Needed wherever a
+ * barcode has to be produced for a known action rather than recognised from a scan
+ * — printing the action reference sheet, for example.
+ */
+export const BARCODE_FOR_ACTION = Object.fromEntries(
+  Object.keys(BARCODE_ACTION_MNEMONICS).map((action) => {
+    const typed = action as InventoryActionType
+    return [typed, buildActionBarcode(typed)]
+  })
+) as Record<InventoryActionType, string>
+
 /* Normalise scanned input: trim surrounding whitespace and lowercase. */
 export function normalizeBarcode(raw: string): string {
   return raw.trim().toLowerCase()

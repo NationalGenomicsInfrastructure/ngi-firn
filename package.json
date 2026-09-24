@@ -44,6 +44,7 @@
     "postinstall": "nuxt prepare",
     "db:init": "tsx scripts/init-db.ts",
     "db:test": "tsx scripts/test-db-connection.ts",
+    "test:barcode": "tsx scripts/test-barcode-scan.ts",
     "db:views": "tsx scripts/ensure-views.ts",
     "db:views:projects": "tsx scripts/pull-project-views.ts"
   },

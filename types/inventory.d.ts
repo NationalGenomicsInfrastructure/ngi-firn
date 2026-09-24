@@ -513,3 +513,81 @@ export interface InventoryTask extends BaseDocument {
   description: string | null
   notes: string | null
 }
+
+/*
+ * BARCODE SCANNING
+ * ****************
+ *
+ * A scanned set of barcodes is interpreted rather than executed blindly: the set
+ * is split into action targets, an optional location context, and an optional
+ * action card, and the result is offered for review before anything is written.
+ */
+
+/* Why a scanned code could not be turned into an actionable target. */
+export type BarcodeScanRejectionReason
+  = | 'invalid'
+    | 'unknown'
+    | 'ambiguous'
+
+/* A scanned code that could not be resolved or acted upon, with an explanation. */
+export interface BarcodeScanRejection {
+  code: string
+  reason: BarcodeScanRejectionReason
+  message: string
+}
+
+/* Non-fatal observations worth surfacing before the user confirms. */
+export type BarcodeScanWarningKind = 'parent_mismatch' | 'duplicate_scan' | 'context_ignored'
+
+export interface BarcodeScanWarning {
+  kind: BarcodeScanWarningKind
+  message: string
+  /* The entity the warning concerns, when it is entity-specific. */
+  slug: string | null
+}
+
+/* One entity resolved from the scanned set, with the action inferred for it. */
+export interface BarcodeScanTarget {
+  code: string
+  slug: string
+  name: string
+  kind: 'container' | 'item'
+  status: InventoryStatusType
+  /* The action that would be applied. Null when the entity cannot be acted upon. */
+  proposedAction: InventoryActionType | null
+  /* Whether this target would actually be included when the plan is applied. */
+  executable: boolean
+  /* Why the target is not executable, when it is not. */
+  reason: string | null
+  /* Current parent, used to explain relocations and parent mismatches. */
+  parentRef: SerializedEntityRef | null
+}
+
+/*
+ * The interpreted result of one scanned set.
+ *
+ * `action` is null for the default checkout/return toggle, where the operation is
+ * decided per target from its current status rather than being uniform.
+ */
+export interface BarcodeScanPlan {
+  /* The explicit action card found in the set, or null for the default toggle. */
+  action: InventoryActionType | null
+  /* Whether the action came from a scanned card rather than being inferred. */
+  explicitAction: boolean
+  /* The location context: scanned equipment, or a container that is an ancestor. */
+  context: SerializedEntityRef | null
+  targets: BarcodeScanTarget[]
+  rejected: BarcodeScanRejection[]
+  warnings: BarcodeScanWarning[]
+  /* Blocking problem that prevents the whole set from being applied. */
+  error: string | null
+}
+
+/* The outcome of applying a scan plan. */
+export interface BarcodeScanResult {
+  /* The plan as re-resolved at execution time, not the one the client reviewed. */
+  plan: BarcodeScanPlan
+  /* Slugs successfully acted upon, grouped by the action that was applied. */
+  applied: { action: InventoryActionType, slugs: string[] }[]
+  failures: { slug: string, error: string }[]
+}
