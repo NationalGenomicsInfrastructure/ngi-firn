@@ -282,8 +282,96 @@ edit forms; this is part of the normal create workflow, not clone-only UI.
 Closing and reopening the clone dialog remounts the stepper and discards any
 partial edits.
 
-## CRUD Service Organisation
+### 14. Scanning a set of barcodes, not one barcode at a time
 
+The scanner workflow is built around a **set** of codes rather than a single scan.
+The user gathers what they are handling — some vials, the box they came out of,
+optionally an action card — and the whole set is interpreted together. The format
+and the action-card table are documented in `docs/barcodesAndQRCodes.md`.
+
+Interpretation happens in `server/crud/inventory/barcode-scan.server.ts`:
+
+1. **Parse locally.** Each code's prefix and check character are verified before any
+   database access, so misreads never reach CouchDB. Malformed, unknown and
+   duplicate codes are reported but never abort the usable part of the scan.
+2. **Resolve in one query.** Every entity code is looked up in a single multi-key
+   query against the pre-existing `by_barcode` view. That view keys on the bare
+   barcode with no document type, which is exactly what makes uniqueness global —
+   and why every resolved document must be type-checked afterwards.
+3. **Split into targets and context.**
+4. **Derive an action per target**, validated individually.
+
+**Equipment can never be a target.** It has no `status` and no `actionLog`, so an
+`fe…` code is only ever location context. This is a structural constraint, not a
+policy choice.
+
+#### Which container is the location?
+
+A scanned container is genuinely ambiguous: "check out this box" and "put these
+tubes back in this box" produce identical scans. The two are distinguished by the
+operation:
+
+- For **lifecycle actions** (the checkout/return toggle, dispose, reserve, …) the
+  context is where the entities already are, so a scanned container is the location
+  exactly when it encloses something else in the set. A container that encloses
+  nothing scanned is a target in its own right. Where both a container and its
+  equipment are scanned, the container wins — it names the exact shelf.
+- For **move and locate** the destination is by definition *not* the current parent,
+  so the enclosure test cannot identify it. The destination is instead the **last
+  location scanned**, which matches the physical workflow of gathering the entities
+  first and scanning the shelf they are going onto last.
+
+Because there is no materialised ancestry index, enclosure is determined by walking
+the `parent` chain.
+
+#### Relocation is never implicit
+
+Scanning a container that is not a target's current parent produces a
+`parent_mismatch` **warning**, and the checkout or return still applies where the
+entity actually is. It does **not** move anything. Moving requires an explicit
+`move` card.
+
+This is deliberate. It is far too easy to keep adding to a scanned set across two
+unrelated operations without resetting it, and silently relocating inventory on the
+strength of a forgotten scan would be the worst possible failure mode for a freezer.
+
+#### Move and locate bypass the status/action matrix
+
+`STATUS_ACTION_MATRIX` describes lifecycle transitions. `move` appears in **no**
+status row, because relocation is a dedicated workflow rather than a state change —
+gating it on the matrix would reject every move. Relocating actions are therefore
+checked against their own preconditions: `locate` requires the entity to be `lost`,
+and `move` requires it to be placed somewhere at all.
+
+#### Resolve and apply are separate, and apply re-resolves
+
+`resolveBarcodes` is a pure query returning a reviewable plan, so the UI can
+re-resolve after every additional scan. `applyBarcodeScan` accepts only the raw
+codes and **re-resolves them server-side** before executing. It never trusts a
+client-supplied plan: statuses can change between review and confirmation, and a
+forged plan would otherwise bypass the state machine entirely.
+
+Execution groups targets by action *and* entity kind, then delegates to the existing
+`alterItem` / `alterContainer` / `moveItem` / `moveContainer` / `locateItem` /
+`locateContainer` services. Grouping by kind is needed because items and containers
+have separate services; grouping by action is needed because the default toggle can
+legitimately yield `checkout` for one entity and `return` for another in the same
+set. No new lifecycle semantics are introduced.
+
+#### Ambiguity is surfaced, never guessed
+
+Two different action cards, a move or locate without a destination, or a target in a
+status that forbids the action each produce an explicit error or a non-executable
+target carrying a human-readable reason — rather than a silently reinterpreted
+operation.
+
+#### Re-issuing a barcode orphans the printed label
+
+Re-issue requires an explicit opt-in and is recorded in the entity's action log as a
+`modify` entry naming both codes, so the history explains why a physical label
+stopped working.
+
+## CRUD Service Organisation
 All database operations are implemented as service objects in `server/crud/inventory`:
 
 | File | Service | Responsibility |
@@ -292,6 +380,8 @@ All database operations are implemented as service objects in `server/crud/inven
 | `inventory/equipment.server.ts` | `EquipmentService` | Storage to Equipment CRUD |
 | `inventory/items.server.ts` | `ItemService` | Item CRUD, status transitions (checkout/return/reserve/dispose), search, expiry queries |
 | `inventory/room.server.ts` | `RoomService` | Room CRUD, equipment-to-room moves |
+| `inventory/barcodes.server.ts` | `BarcodeService` | Barcode generation, cross-type uniqueness, lookup, issue/re-issue |
+| `inventory/barcode-scan.server.ts` | `BarcodeScanService` | Interpreting a scanned set into a plan, and executing it via the services above |
 | `inventory/tasks.server.ts` | `TaskService` | Planned task lifecycle, auto-reminders, overdue detection, expiry task generation |
 | `inventory/templates.server.ts` | `TemplateService` | Template CRUD, applying defaults to create payloads |
 

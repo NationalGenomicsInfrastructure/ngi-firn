@@ -12,10 +12,16 @@ pnpm build-analyze # Production build with bundle size analysis
 pnpm typecheck     # TypeScript type-check (not run during dev, only at build)
 pnpm lint          # ESLint
 pnpm db:test       # Verify CouchDB connection
+pnpm test:barcode  # Integration test for the barcode scan resolver (needs a live CouchDB)
 pnpm db:init       # Create first admin user (set FIRST_ADMIN_EMAIL first)
 ```
 
-There is no automated test suite. `pnpm` is enforced as the package manager (a `preinstall` script blocks npm/yarn). Node ≥ 24 is required.
+There is no unit-test framework. The one automated test, `pnpm test:barcode`, is an
+integration test that runs against a live CouchDB: it creates a throwaway fixture
+(prefixed `BCTEST`), asserts against it, and deletes it again. Write further tests in
+the same style — assertion-based scripts under `scripts/`, registered as a `pnpm`
+script — unless a proper test runner is introduced deliberately. `pnpm` is enforced as
+the package manager (a `preinstall` script blocks npm/yarn). Node ≥ 24 is required.
 
 ## Feature Development Workflow
 
