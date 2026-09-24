@@ -196,6 +196,10 @@ const infoFields = computed(() => {
             v-if="!isLost && !isDisposed"
             :container="container"
           />
+          <DialogCloneInventoryEntity
+            v-if="container.parentRef"
+            :source="{ kind: 'container', entity: container }"
+          />
           <DrawerInventoryContainerEdit :container="container" />
           <DialogDeleteContainer
             v-if="isAdmin"

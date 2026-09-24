@@ -165,6 +165,9 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <footer class="flex flex-wrap items-center justify-end gap-2">
+          <DialogCloneInventoryEntity
+            :source="{ kind: 'equipment', entity: equipment }"
+          />
           <DrawerInventoryEquipmentEdit
             :equipment="equipment"
             :room-slug="equipment.parentRoom.slug"

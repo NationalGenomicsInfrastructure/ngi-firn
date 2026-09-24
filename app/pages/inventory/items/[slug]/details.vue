@@ -210,6 +210,10 @@ function typedValue(value: number | null, unit: string | null): string {
             v-if="!isLost && !isDisposed"
             :items="[item]"
           />
+          <DialogCloneInventoryEntity
+            v-if="item.parentRef"
+            :source="{ kind: 'item', entity: item }"
+          />
           <DrawerInventoryItemEdit :item="item" />
           <DialogDeleteItem
             v-if="isAdmin"
