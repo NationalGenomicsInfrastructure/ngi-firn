@@ -196,6 +196,12 @@ const infoFields = computed(() => {
             v-if="!isLost && !isDisposed"
             :container="container"
           />
+          <DialogInventoryBarcode
+            entity-kind="container"
+            :slug="container.slug"
+            :name="container.name"
+            :barcode="container.barcode ?? null"
+          />
           <DialogCloneInventoryEntity
             v-if="container.parentRef"
             :source="{ kind: 'container', entity: container }"

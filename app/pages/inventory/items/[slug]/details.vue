@@ -210,6 +210,12 @@ function typedValue(value: number | null, unit: string | null): string {
             v-if="!isLost && !isDisposed"
             :items="[item]"
           />
+          <DialogInventoryBarcode
+            entity-kind="item"
+            :slug="item.slug"
+            :name="item.name"
+            :barcode="item.barcode ?? null"
+          />
           <DialogCloneInventoryEntity
             v-if="item.parentRef"
             :source="{ kind: 'item', entity: item }"

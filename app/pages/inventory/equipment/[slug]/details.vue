@@ -54,6 +54,7 @@ const infoFields = computed(() => {
 
   return [
     { icon: 'i-lucide-key-round', label: 'Identifier', value: equipment.value.slug },
+    { icon: 'i-lucide-scan-barcode', label: 'Barcode', value: equipment.value.barcode ?? '—' },
     { icon: 'i-lucide-thermometer-snowflake', label: 'Type', value: equipmentTypeLabel.value },
     {
       icon: 'i-lucide-thermometer',
@@ -165,6 +166,12 @@ const infoFields = computed(() => {
         <NSeparator />
 
         <footer class="flex flex-wrap items-center justify-end gap-2">
+          <DialogInventoryBarcode
+            entity-kind="equipment"
+            :slug="equipment.slug"
+            :name="equipment.name"
+            :barcode="equipment.barcode ?? null"
+          />
           <DialogCloneInventoryEntity
             :source="{ kind: 'equipment', entity: equipment }"
           />
