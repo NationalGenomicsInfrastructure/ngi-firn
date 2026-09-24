@@ -314,6 +314,55 @@ async function run() {
     check('a plan-level error prevents any write',
       out.plan.error !== null && out.applied.length === 0, JSON.stringify(out.plan.error))
   }
+
+  console.log('\nAssigning and re-issuing barcodes')
+  {
+    const { BarcodeService } = await import('../server/crud/inventory/barcodes.server')
+
+    let refused = false
+    try {
+      await BarcodeService.assignBarcode({ entityKind: 'item', slug: v1.slug }, user)
+    }
+    catch { refused = true }
+    check('re-issuing over an existing barcode is refused without an opt-in', refused)
+
+    const before = (await ItemService.getItemBySlug(v1.slug))!.barcode
+    const result = await BarcodeService.assignBarcode(
+      { entityKind: 'item', slug: v1.slug, replaceExisting: true }, user)
+    check('an explicit re-issue reports the barcode it replaced',
+      result.previousBarcode === before && result.barcode !== before,
+      JSON.stringify(result))
+
+    const after = await ItemService.getItemBySlug(v1.slug)
+    check('the new barcode is persisted', after?.barcode === result.barcode,
+      `stored=${after?.barcode} issued=${result.barcode}`)
+
+    const lastEntry = (after?.actionLog ?? []).at(-1)
+    check('the re-issue is recorded as a modify entry naming the orphaned label',
+      lastEntry?.actionType === 'modify'
+      && lastEntry.notes?.includes(result.barcode) === true
+      && lastEntry.notes?.includes(before!) === true,
+      JSON.stringify(lastEntry))
+    check('the re-issue records a structured before/after change',
+      (lastEntry?.changes ?? []).some(
+        c => c.field === 'barcode' && c.before === before && c.after === result.barcode
+      ),
+      JSON.stringify(lastEntry?.changes))
+
+    const oldResolves = await BarcodeScanService.resolveScan([before!])
+    check('the replaced label no longer resolves',
+      oldResolves.targets.length === 0 && oldResolves.rejected.length === 1,
+      JSON.stringify(oldResolves.rejected))
+
+    const newResolves = await BarcodeScanService.resolveScan([result.barcode])
+    check('the newly issued label resolves to the same entity',
+      newResolves.targets[0]?.slug === v1.slug, JSON.stringify(newResolves.targets))
+
+    check('equipment can be re-issued too, despite having no action log',
+      (await BarcodeService.assignBarcode(
+        { entityKind: 'equipment', slug: equip.slug, replaceExisting: true }, user)).barcode
+        .startsWith('fe'))
+  }
 }
 
 async function cleanup() {

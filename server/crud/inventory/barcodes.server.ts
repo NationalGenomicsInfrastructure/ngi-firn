@@ -9,6 +9,7 @@ import {
 } from '~~/schemas/inventory/barcode'
 import type { BarcodeEntityKind } from '~~/schemas/inventory/barcode'
 import type { Container, InventoryItem, StorageEquipment } from '../../../types/inventory'
+import type { FirnUser } from '../../../types/auth'
 
 /*
  * Barcode generation and lookup.
@@ -32,6 +33,11 @@ import type { Container, InventoryItem, StorageEquipment } from '../../../types/
  * findDocumentByBarcode(code) - Resolve a single code
  * isBarcodeTaken(code, ignoreDocumentId?) - Uniqueness probe
  * assertBarcodeAvailable(code, ignoreDocumentId?) - Throwing uniqueness guard
+ *
+ * ASSIGNMENT:
+ * resolveBarcodeForCreate(kind, supplied?) - Barcode to store on a new document
+ * resolveBarcodeForUpdate(supplied, existing, id) - Barcode to store on an edit
+ * assignBarcode(input, firnUser) - Issue and persist a fresh barcode for an entity
  */
 
 /* Any document type that can carry a barcode. Rooms are excluded by design. */
@@ -257,5 +263,74 @@ export const BarcodeService = {
     if (normalized === existingBarcode) return existingBarcode
 
     return await BarcodeService.assertBarcodeAvailable(normalized, documentId)
+  },
+
+  /*
+   * Issue a fresh barcode for an existing entity and persist it.
+   *
+   * Re-issuing orphans whatever label is already stuck on the physical object: the
+   * printed code stops resolving. That is why replacing an existing barcode requires
+   * an explicit opt-in rather than happening silently.
+   *
+   * The write is delegated to the entity's own update service so that validation and
+   * the `modify` action-log entry are produced exactly as they are for a manual edit,
+   * instead of this module writing documents behind the services' backs.
+   */
+  async assignBarcode(
+    input: { entityKind: BarcodeEntityKind, slug: string, replaceExisting?: boolean },
+    firnUser: FirnUser
+  ): Promise<{ slug: string, barcode: string, previousBarcode: string | null }> {
+    const { entityKind, slug, replaceExisting } = input
+
+    const existing = await loadBarcodedEntity(entityKind, slug)
+    if (!existing) {
+      throw new Error(`No ${entityKind} found with identifier "${slug}".`)
+    }
+
+    if (existing.barcode && !replaceExisting) {
+      throw new Error(
+        `"${existing.name}" already has the barcode "${existing.barcode}". Re-issuing will stop the printed label from working, so it has to be confirmed explicitly.`
+      )
+    }
+
+    const barcode = await BarcodeService.generateUniqueBarcode(entityKind)
+    const previousBarcode = existing.barcode ?? null
+
+    const logComment = previousBarcode
+      ? `Barcode re-issued as "${barcode}"; the previously printed label "${previousBarcode}" no longer resolves.`
+      : `Barcode "${barcode}" assigned.`
+
+    if (entityKind === 'item') {
+      const { ItemService } = await import('./items.server')
+      await ItemService.updateItem({ itemSlug: slug, barcode, logComment }, firnUser)
+    }
+    else if (entityKind === 'container') {
+      const { ContainerService } = await import('./containers.server')
+      await ContainerService.updateContainer({ containerSlug: slug, barcode, logComment }, firnUser)
+    }
+    else {
+      // Equipment has no action log, so there is no comment to record.
+      const { EquipmentService } = await import('./equipment.server')
+      await EquipmentService.updateEquipment({ equipmentSlug: slug, barcode })
+    }
+
+    return { slug, barcode, previousBarcode }
   }
+}
+
+/* Fetch an entity of the given kind by slug, without caring which service owns it. */
+async function loadBarcodedEntity(
+  kind: BarcodeEntityKind,
+  slug: string
+): Promise<BarcodedDocument | null> {
+  if (kind === 'item') {
+    const { ItemService } = await import('./items.server')
+    return await ItemService.getItemBySlug(slug)
+  }
+  if (kind === 'container') {
+    const { ContainerService } = await import('./containers.server')
+    return await ContainerService.getContainerBySlug(slug)
+  }
+  const { EquipmentService } = await import('./equipment.server')
+  return await EquipmentService.getEquipmentBySlug(slug)
 }

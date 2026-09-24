@@ -14,6 +14,7 @@ import { roomsRouter } from './rooms'
 import { equipmentRouter } from './equipment'
 import { containersRouter } from './containers'
 import { itemsRouter } from './items'
+import { barcodesRouter } from './barcodes'
 // import { tasksRouter } from './tasks'
 // import { templatesRouter } from './templates'
 import { couchDB } from '../../../database/couchdb'
@@ -24,6 +25,7 @@ export const inventoryRouter = createTRPCRouter({
   equipment: equipmentRouter,
   containers: containersRouter,
   items: itemsRouter,
+  barcodes: barcodesRouter,
   // tasks: tasksRouter,
   // templates: templatesRouter,
 

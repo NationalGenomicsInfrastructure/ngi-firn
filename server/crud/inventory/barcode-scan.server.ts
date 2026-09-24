@@ -245,7 +245,7 @@ export const BarcodeScanService = {
    * Targets are grouped by action and entity kind so each service is called once
    * per group instead of once per entity.
    */
-  async applyScan(codes: string[], firnUser: FirnUser): Promise<BarcodeScanResult> {
+  async applyScan(codes: string[], firnUser: FirnUser, logComment?: string | null): Promise<BarcodeScanResult> {
     const plan = await BarcodeScanService.resolveScan(codes)
     const applied: BarcodeScanResult['applied'] = []
     const failures: BarcodeScanResult['failures'] = []
@@ -274,42 +274,49 @@ export const BarcodeScanService = {
       groups.set(groupKey, group)
     }
 
-    const logComment = 'Applied by barcode scan.'
-
+    // A caller-supplied note is appended to each entity's action log; otherwise the
+    // entry still records that the change came from a scan rather than the web UI.
+    const entryComment = logComment?.trim()
+      ? `Applied by barcode scan. ${logComment.trim()}`
+      : 'Applied by barcode scan.'
     for (const group of groups.values()) {
       const slugs = group.targets.map(target => target.slug)
 
       try {
         if (group.action === 'move' || group.action === 'locate') {
-          // Guarded by resolveScan, which refuses a relocating scan without a
-          // destination; re-checked here so a future caller cannot skip that.
-          if (!plan.context || plan.context.kind === 'item') {
+          /*
+           * Guarded by resolveScan, which refuses a relocating scan without a
+           * destination; re-checked positively here both to narrow the ref's wider
+           * `kind` union and so a future caller cannot skip that guarantee.
+           */
+          const destination = plan.context
+          if (!destination || (destination.kind !== 'equipment' && destination.kind !== 'container')) {
             throw new Error('A destination container or equipment is required.')
           }
-          const newParentSlug = plan.context.slug
-          const newParentKind = plan.context.kind
+          const newParentSlug = destination.slug
+          const newParentKind = destination.kind
 
           // `position` is deliberately omitted: a scan carries no placement, and the
           // services auto-place into the first free slot of a grid parent.
           if (group.kind === 'item') {
-            const input = { itemSlug: slugs, newParentSlug, newParentKind, logComment }
+            const input = { itemSlug: slugs, newParentSlug, newParentKind, logComment: entryComment }
             if (group.action === 'move') await ItemService.moveItem(input, firnUser)
             else await ItemService.locateItem(input, firnUser)
           }
           else {
-            const input = { containerSlug: slugs, newParentSlug, newParentKind, logComment }
+            const input = { containerSlug: slugs, newParentSlug, newParentKind, logComment: entryComment }
             if (group.action === 'move') await ContainerService.moveContainer(input, firnUser)
             else await ContainerService.locateContainer(input, firnUser)
           }
         }
         else if (group.kind === 'item') {
           await ItemService.alterItem(
-            { itemSlug: slugs, performedAction: group.action, logComment }, firnUser
+            { itemSlug: slugs, performedAction: group.action, logComment: entryComment }, firnUser
           )
         }
         else {
           await ContainerService.alterContainer(
-            { containerSlug: slugs, performedAction: group.action, logComment }, firnUser
+            { containerSlug: slugs, performedAction: group.action, logComment: entryComment }, firnUser
           )
         }
 
