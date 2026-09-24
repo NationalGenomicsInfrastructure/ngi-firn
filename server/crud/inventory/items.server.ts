@@ -9,6 +9,7 @@ import {
   statusFromAction
 } from './logging.server'
 import { ProjectService } from '../projects.server'
+import { BarcodeService } from './barcodes.server'
 import { resolveActionLogUsers, toParentRef, toUserRef } from './relations.server'
 import type {
   Container,
@@ -46,6 +47,7 @@ import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
  * isInventoryItem(doc) - Check whether a fetched document is an InventoryItem
  * getItem(id) - Fetch one item document by ID
  * getItemBySlug(slug) - Fetch one item document by slug
+ * getItemByBarcode(barcode) - Fetch one item document by barcode
  * getItemsByParent(parentDocumentId, parentKind) - List direct item children of a parent
  * getAllItems() - List all inventory items
  *
@@ -368,6 +370,17 @@ export const ItemService = {
     return (await queryItemsBySlug(slug))[0] ?? null
   },
 
+  /*
+   * Fetch one inventory item by barcode.
+   * Barcodes are unique across all inventory types, so the resolved document is
+   * type-checked: a code belonging to a container or equipment yields null here
+   * rather than a mistyped item.
+   */
+  async getItemByBarcode(barcode: string): Promise<InventoryItem | null> {
+    const hit = await BarcodeService.findDocumentByBarcode(barcode)
+    return hit && isInventoryItem(hit.doc) ? hit.doc : null
+  },
+
   /* List direct item children of one equipment or container parent. */
   async getItemsByParent(parentDocumentId: string, parentKind: ItemParentKind): Promise<InventoryItem[]> {
     const parentType = parentKind === 'equipment' ? 'storageEquipment' : 'container'
@@ -571,7 +584,7 @@ export const ItemService = {
       openingDate: input.openingDate ?? null,
       expiryDate: input.expiryDate ?? null,
       lotNumber: input.lotNumber?.trim() || null,
-      barcode: input.barcode?.trim() || null,
+      barcode: await BarcodeService.resolveBarcodeForCreate('item', input.barcode),
       templateId: input.templateId ?? null,
       notes: input.notes ?? null,
       metadata: input.metadata ?? null,
@@ -656,7 +669,7 @@ export const ItemService = {
       openingDate: updates.openingDate === undefined ? existing.openingDate : updates.openingDate ?? null,
       expiryDate: updates.expiryDate === undefined ? existing.expiryDate : updates.expiryDate ?? null,
       lotNumber: updates.lotNumber === undefined ? existing.lotNumber : updates.lotNumber?.trim() || null,
-      barcode: updates.barcode === undefined ? existing.barcode : updates.barcode?.trim() || null,
+      barcode: await BarcodeService.resolveBarcodeForUpdate(updates.barcode, existing.barcode, existing._id),
       templateId: updates.templateId === undefined ? existing.templateId : updates.templateId ?? null,
       notes: updates.notes === undefined ? existing.notes : updates.notes ?? null,
       metadata: updates.metadata === undefined ? existing.metadata : updates.metadata ?? null,

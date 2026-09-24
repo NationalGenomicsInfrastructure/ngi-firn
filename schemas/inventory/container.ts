@@ -158,6 +158,8 @@ export const createContainerSchema = z.object({
   classification: containerClassificationSchema,
   name: z.string().min(1, { message: 'Container name is required' }),
   label: z.string().nullish(),
+  /* Optional external label; omit to have Firn issue a unique barcode on create. */
+  barcode: z.string().nullish(),
   description: z.string().nullish(),
   temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),
@@ -181,6 +183,7 @@ export const updateContainerSchema = z.object({
   classification: containerClassificationSchema.optional(),
   name: z.string().min(1).optional(),
   label: z.string().nullish(),
+  barcode: z.string().nullish(),
   description: z.string().nullish(),
   temperatureCategory: temperatureCategorySchema.nullish(),
   temperatureCelsius: z.number().nullish(),

@@ -233,5 +233,29 @@ export const BarcodeService = {
       return await BarcodeService.assertBarcodeAvailable(trimmed)
     }
     return await BarcodeService.generateUniqueBarcode(kind)
+  },
+
+  /*
+   * Resolve the barcode to store when updating an entity, following the tri-state
+   * convention used throughout the update services: `undefined` leaves the value
+   * untouched, `null` or an empty string clears it, and a string sets it.
+   *
+   * Re-submitting the unchanged value is a no-op rather than a self-collision,
+   * since the edit forms post every field back regardless of what was touched.
+   */
+  async resolveBarcodeForUpdate(
+    supplied: string | null | undefined,
+    existingBarcode: string | null,
+    documentId: string
+  ): Promise<string | null> {
+    if (supplied === undefined) return existingBarcode
+
+    const trimmed = supplied?.trim()
+    if (!trimmed) return null
+
+    const normalized = normalizeBarcode(trimmed)
+    if (normalized === existingBarcode) return existingBarcode
+
+    return await BarcodeService.assertBarcodeAvailable(normalized, documentId)
   }
 }

@@ -8,6 +8,7 @@
  * CONTAINER LISTING AND RETRIEVAL:
  * getContainer(id) - Fetch one container document by ID
  * getContainerBySlug(slug) - Fetch one container document by slug
+ * getContainerByBarcode(barcode) - Fetch one container document by barcode
  * getContainersByParent(parentDocumentId, parentKind) - List direct children of an equipment or container parent
  *
  * PARENT RESOLUTION:
@@ -51,6 +52,7 @@ import {
   toUserRef
 } from './relations.server'
 import { EquipmentService } from './equipment.server'
+import { BarcodeService } from './barcodes.server'
 import {
   buildAlterActionNotes,
   createChangelogEntry,
@@ -149,6 +151,17 @@ export const ContainerService = {
   async getContainerBySlug(slug: string): Promise<Container | null> {
     const container = (await queryContainersBySlug(slug))[0]
     return container && isContainer(container) ? container : null
+  },
+
+  /*
+   * Fetch one container document by barcode.
+   * Barcodes are unique across all inventory types, so the resolved document is
+   * type-checked: a code belonging to an item or equipment yields null here rather
+   * than a mistyped container.
+   */
+  async getContainerByBarcode(barcode: string): Promise<Container | null> {
+    const hit = await BarcodeService.findDocumentByBarcode(barcode)
+    return hit && isContainer(hit.doc) ? hit.doc : null
   },
 
   /* List all direct container children of a given parent using the by_parent view index. */
@@ -631,7 +644,7 @@ export const ContainerService = {
       parent: toParentRef(parent.doc),
       positionParent,
       slug: containerSlug,
-      barcode: null,
+      barcode: await BarcodeService.resolveBarcodeForCreate('container', input.barcode),
       containerType: input.containerType,
       classification: input.classification,
       name: input.name,
@@ -740,6 +753,7 @@ export const ContainerService = {
       classification: updates.classification ?? existing.classification,
       name: updates.name ?? existing.name,
       label: updates.label === undefined ? existing.label : (updates.label?.trim() || null),
+      barcode: await BarcodeService.resolveBarcodeForUpdate(updates.barcode, existing.barcode, existing._id),
       description: updates.description === undefined ? existing.description : (updates.description ?? null),
       temperatureCategory: nextTemperatureCategory,
       temperatureCelsius: nextTemperatureCelsius,

@@ -9,6 +9,7 @@
  * EQUIPMENT LISTING AND RETRIEVAL:
  * getEquipment(equipmentDocumentId) - Fetch one equipment document by ID
  * getEquipmentBySlug(slug) - Fetch one equipment document by slug
+ * getEquipmentByBarcode(barcode) - Fetch one equipment document by barcode
  * getAllEquipment() - List all storage equipment across all rooms
  * getEquipmentByRoom(roomDocumentId) - List equipment in a room
  *
@@ -32,6 +33,7 @@ import {
   toParentRef
 } from './relations.server'
 import { RoomService } from './rooms.server'
+import { BarcodeService } from './barcodes.server'
 import type {
   DisplayStorageEquipment,
   Room,
@@ -165,6 +167,17 @@ export const EquipmentService = {
     return equipment && isStorageEquipment(equipment) ? equipment : null
   },
 
+  /*
+   * Fetch one storage equipment document by barcode.
+   * Barcodes are unique across all inventory types, so the resolved document is
+   * type-checked: a code belonging to an item or container yields null here rather
+   * than mistyped equipment.
+   */
+  async getEquipmentByBarcode(barcode: string): Promise<StorageEquipment | null> {
+    const hit = await BarcodeService.findDocumentByBarcode(barcode)
+    return hit && isStorageEquipment(hit.doc) ? hit.doc : null
+  },
+
   /* List all storage equipment across all rooms, sorted by name. */
   async getAllEquipment(): Promise<StorageEquipment[]> {
     const equipment = await queryAllEquipmentByType()
@@ -200,7 +213,7 @@ export const EquipmentService = {
       schema: 1,
       parent: toParentRef(room),
       slug: equipmentSlug,
-      barcode: input.barcode?.trim() || null,
+      barcode: await BarcodeService.resolveBarcodeForCreate('equipment', input.barcode),
       equipmentType: input.equipmentType,
       name: input.name,
       label: input.label?.trim() || null,
@@ -241,7 +254,10 @@ export const EquipmentService = {
     }
 
     // Strip request-only identifiers so they are not persisted into the document.
-    const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, itemCapacity, ...updatedFields } = updates
+    const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, itemCapacity, barcode, ...updatedFields } = updates
+
+    // Validate a manually supplied barcode for uniqueness before it reaches the document.
+    const nextBarcode = await BarcodeService.resolveBarcodeForUpdate(barcode, existing.barcode, existing._id)
 
     // Re-validate and merge capacity restrictions while preserving stored counts.
     // When the caller did not touch capacity, keep the existing restrictions;
@@ -262,6 +278,7 @@ export const EquipmentService = {
       ...existing,
       ...updatedFields,
       slug: updates.name && existing.name !== updates.name ? generateSlug(updates.name) : existing.slug,
+      barcode: nextBarcode,
       capacity: mergedCapacity,
       itemCapacity: mergedItemCapacity,
       updatedAt: new Date().toISOString()
