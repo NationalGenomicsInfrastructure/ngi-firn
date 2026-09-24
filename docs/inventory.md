@@ -35,7 +35,7 @@ A physical location in a building — the root of every storage hierarchy. Rooms
 
 ### StorageEquipment
 
-A piece of storage hardware inside a room: freezers (−20 °C, −80 °C), fridges (+4 °C), liquid nitrogen tanks (−196 °C), shelves, or cabinets. Equipment records its target temperature, optional grid dimensions (rows × columns × levels), and hardware details (manufacturer, model, serial number) for maintenance tracking.
+A piece of storage hardware inside a room: freezers (−25 °C, −80 °C), fridges (+4 °C), liquid nitrogen tanks (−196 °C), shelves, or cabinets. Equipment records its target temperature as a **category** (see [decision 12](#12-categorical-storage-temperature)), optional grid dimensions (rows × columns × levels), and hardware details (manufacturer, model, serial number) for maintenance tracking.
 
 Equipment can optionally restrict how many containers of each type it holds via its `capacity` field. Note that the stored document shape differs from the form/API shape — see [decision 11](#11-equipment-capacity-wire-shape-vs-stored-shape).
 
@@ -235,6 +235,17 @@ Capacity restrictions on StorageEquipment exist in **two deliberately different 
 The `stored` field being **required** is what makes the split compiler-enforced: raw wire input is missing `stored`, so storing it unconverted fails typechecking. An earlier design used `Partial<Record<ContainerType, …>>` — with all keys optional, the flat wire array was structurally assignable to it, and a bug where `createEquipment` stored raw form rows compiled cleanly and crashed the frontend at render time. When adding capacity-style fields to other entities (e.g. Containers), copy this pattern: stored shape = wire shape + at least one required server-owned field, converted in the CRUD service.
 
 > ⚠️ **Related pitfall — index signatures disable these checks.** `BaseDocument` deliberately does **not** extend `CloudantV1.Document`, whose `[propName: string]: any` index signature would leak into every document interface. `Omit<T, …>` over a type with a string index signature collapses *all* properties to `any`, so the typed document literals in the CRUD services would silently stop being checked. Keep index signatures out of document types; where an external document really is open-shaped (LIMS projects), declare `[key: string]: unknown` explicitly — `unknown` still forces narrowing.
+
+### 12. Categorical storage temperature
+
+StorageEquipment, Container, and InventoryItem describe their temperature with a **category** rather than an arbitrary number. The canonical model lives in `schemas/inventory/temperature.ts` (a plain-TS + Zod module shared by both `server/` and `app/`):
+
+- **`temperatureCategory`** — a Zod enum: `liquid_nitrogen` (−196 °C), `deep_freezer` (−80 °C), `freezer` (−25 °C), `fridge` (+4 °C), `ambient` (~21 °C), `incubator` (+37 °C), and `other`. `TEMPERATURE_CATEGORY_CELSIUS` maps every non-`other` category to a representative °C used for display and sort ordering; `TEMPERATURE_CATEGORY_LABELS` supplies the UI labels.
+- **`temperatureCelsius`** — the original numeric field is retained but now only carries a value for the `other` bucket (a free custom temperature). `normalizeStoredCelsius(category, celsius)` is applied on every CRUD write so that predefined categories always store `null` and derive their °C from the category.
+
+**Compatibility** is category equality, not float equality. `temperaturesCompatible(child, parent)` returns `true` when the child has no explicit category (unspecified fits anywhere) or the categories match — and, for `other`, the free numeric values match too. `assertTemperatureCompatible` / `assertContainerTemperatureCompatible` enforce this on create and move; `updateContainer`/`updateItem` re-validate against the current parent when the temperature changes. `getMoveTargetsForItems` groups the selected items by category (a shared destination requires one distinct category, plus one numeric for `other`), filters candidate parents by `temperaturesCompatible`, and sorts by `resolveEffectiveCelsius` (coldest first) then name.
+
+Use `formatTemperature(category, celsius)` for all display surfaces (cards, tables, dialogs) and `TEMPERATURE_CATEGORY_OPTIONS` / `resolveTemperatureCategoryFromSelect` (from `app/utils/inventory/temperature.ts`) for the form `NSelect` pickers. Creation UIs for containers and items do not set a temperature — it is assigned via the edit forms once the entity exists.
 
 ## CRUD Service Organisation
 
