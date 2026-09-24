@@ -7,6 +7,7 @@ import type { InventoryActionType } from '~~/schemas/inventory/metadata'
 import type {
   BarcodeScanPlan,
   BarcodeScanRejection,
+  BarcodeScanResult,
   BarcodeScanTarget,
   BarcodeScanWarning,
   Container,
@@ -14,6 +15,7 @@ import type {
   SerializedEntityRef,
   StorageEquipment
 } from '../../../types/inventory'
+import type { FirnUser } from '../../../types/auth'
 
 /*
  * Barcode scan interpretation.
@@ -228,6 +230,105 @@ export const BarcodeScanService = {
       warnings,
       error: null
     }
+  },
+
+  /*
+   * Execute a scanned set.
+   *
+   * The codes are re-resolved here rather than accepting a plan from the client:
+   * statuses may have changed between review and confirmation, and trusting a
+   * submitted plan would let a forged one bypass the status/action state machine
+   * entirely.
+   *
+   * Execution delegates to the existing batch services, so capacity bookkeeping,
+   * grid placement, ordering and audit logging all stay in exactly one place.
+   * Targets are grouped by action and entity kind so each service is called once
+   * per group instead of once per entity.
+   */
+  async applyScan(codes: string[], firnUser: FirnUser): Promise<BarcodeScanResult> {
+    const plan = await BarcodeScanService.resolveScan(codes)
+    const applied: BarcodeScanResult['applied'] = []
+    const failures: BarcodeScanResult['failures'] = []
+
+    if (plan.error) {
+      return { plan, applied, failures }
+    }
+
+    const executable = plan.targets.filter(target => target.executable && target.proposedAction)
+
+    if (executable.length === 0) {
+      return { plan, applied, failures }
+    }
+
+    const { ItemService } = await import('./items.server')
+    const { ContainerService } = await import('./containers.server')
+
+    // Group by action *and* kind: items and containers have separate services, and
+    // the default toggle can yield checkout for one target and return for another.
+    const groups = new Map<string, { action: InventoryActionType, kind: 'item' | 'container', targets: BarcodeScanTarget[] }>()
+    for (const target of executable) {
+      const action = target.proposedAction!
+      const groupKey = `${action}:${target.kind}`
+      const group = groups.get(groupKey) ?? { action, kind: target.kind, targets: [] }
+      group.targets.push(target)
+      groups.set(groupKey, group)
+    }
+
+    const logComment = 'Applied by barcode scan.'
+
+    for (const group of groups.values()) {
+      const slugs = group.targets.map(target => target.slug)
+
+      try {
+        if (group.action === 'move' || group.action === 'locate') {
+          // Guarded by resolveScan, which refuses a relocating scan without a
+          // destination; re-checked here so a future caller cannot skip that.
+          if (!plan.context || plan.context.kind === 'item') {
+            throw new Error('A destination container or equipment is required.')
+          }
+          const newParentSlug = plan.context.slug
+          const newParentKind = plan.context.kind
+
+          // `position` is deliberately omitted: a scan carries no placement, and the
+          // services auto-place into the first free slot of a grid parent.
+          if (group.kind === 'item') {
+            const input = { itemSlug: slugs, newParentSlug, newParentKind, logComment }
+            if (group.action === 'move') await ItemService.moveItem(input, firnUser)
+            else await ItemService.locateItem(input, firnUser)
+          }
+          else {
+            const input = { containerSlug: slugs, newParentSlug, newParentKind, logComment }
+            if (group.action === 'move') await ContainerService.moveContainer(input, firnUser)
+            else await ContainerService.locateContainer(input, firnUser)
+          }
+        }
+        else if (group.kind === 'item') {
+          await ItemService.alterItem(
+            { itemSlug: slugs, performedAction: group.action, logComment }, firnUser
+          )
+        }
+        else {
+          await ContainerService.alterContainer(
+            { containerSlug: slugs, performedAction: group.action, logComment }, firnUser
+          )
+        }
+
+        applied.push({ action: group.action, slugs })
+      }
+      catch (error) {
+        /*
+         * The batch services validate every entity before writing any of them, so a
+         * throw means the whole group was rejected. Attribute the failure to each
+         * slug in the group rather than losing which entities did not change.
+         */
+        const message = error instanceof Error ? error.message : String(error)
+        for (const slug of slugs) {
+          failures.push({ slug, error: message })
+        }
+      }
+    }
+
+    return { plan, applied, failures }
   }
 }
 

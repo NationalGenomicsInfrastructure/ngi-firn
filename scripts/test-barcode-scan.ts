@@ -227,6 +227,93 @@ async function run() {
     check('an uppercase scan still resolves',
       p.targets.join('|') === 'BCTEST Vial 1:checkout:exec', JSON.stringify(p))
   }
+
+  console.log('\nApplying a scan (checkout / return round trip)')
+  {
+    const set = [bc(v1), bc(v2), bc(boxA)]
+
+    const out1 = await BarcodeScanService.applyScan(set, user)
+    check('checkout applies to both vials in one grouped call',
+      out1.failures.length === 0 && out1.applied.length === 1
+      && out1.applied[0]!.action === 'checkout' && out1.applied[0]!.slugs.length === 2,
+      JSON.stringify({ applied: out1.applied, failures: out1.failures }))
+
+    const afterCheckout = await ItemService.getItemBySlug(v1.slug)
+    check('the vial is persisted as in_use', afterCheckout?.status === 'in_use',
+      `status=${afterCheckout?.status}`)
+    check('checkout does not unplace the item',
+      afterCheckout?.parent?.id === boxA._id, JSON.stringify(afterCheckout?.parent))
+
+    // Re-scanning the very same set must now mean the opposite, with no action card.
+    const replan = summarize(await BarcodeScanService.resolveScan(set))
+    check('re-scanning the same set now proposes return, not checkout',
+      replan.targets.every(t => t.includes(':return:')), JSON.stringify(replan))
+
+    const out2 = await BarcodeScanService.applyScan(set, user)
+    check('return applies cleanly',
+      out2.failures.length === 0 && out2.applied[0]?.action === 'return',
+      JSON.stringify({ applied: out2.applied, failures: out2.failures }))
+
+    const afterReturn = await ItemService.getItemBySlug(v1.slug)
+    check('the vial is back to available', afterReturn?.status === 'available',
+      `status=${afterReturn?.status}`)
+  }
+
+  console.log('\nApplying a scan (mixed statuses and relocation)')
+  {
+    // Check out only vial 1, so the set then holds one in_use and one available item.
+    await BarcodeScanService.applyScan([bc(v1), bc(boxA)], user)
+
+    const out = await BarcodeScanService.applyScan([bc(v1), bc(v2), bc(boxA)], user)
+    const byAction = Object.fromEntries(out.applied.map(a => [a.action, a.slugs.length]))
+    check('a mixed set is split into separate checkout and return groups',
+      out.failures.length === 0 && byAction.return === 1 && byAction.checkout === 1,
+      JSON.stringify(out.applied))
+
+    const v1After = await ItemService.getItemBySlug(v1.slug)
+    const v2After = await ItemService.getItemBySlug(v2.slug)
+    check('each item moved in its own direction',
+      v1After?.status === 'available' && v2After?.status === 'in_use',
+      `v1=${v1After?.status} v2=${v2After?.status}`)
+
+    // Put both back to available before relocating.
+    await BarcodeScanService.applyScan([bc(v2), bc(boxA)], user)
+  }
+  {
+    const out = await BarcodeScanService.applyScan(
+      [bc(v1), bc(v2), BARCODE_FOR_ACTION.move, bc(boxB)], user)
+    check('move relocates the batch to the scanned destination',
+      out.failures.length === 0 && out.applied[0]?.action === 'move',
+      JSON.stringify({ applied: out.applied, failures: out.failures }))
+
+    const moved = await ItemService.getItemBySlug(v1.slug)
+    check('the item now really lives in box B', moved?.parent?.id === boxB._id,
+      JSON.stringify(moved?.parent))
+
+    const boxAAfter = await ContainerService.getContainerBySlug(boxA.slug)
+    const boxBAfter = await ContainerService.getContainerBySlug(boxB.slug)
+    const stored = (c: typeof boxAAfter) =>
+      (c?.capacity ?? []).reduce((sum, entry) => sum + (entry.stored ?? 0), 0)
+    check('capacity counters follow the move (A emptied, B filled)',
+      stored(boxAAfter) === 0 && stored(boxBAfter) === 2,
+      `A=${stored(boxAAfter)} B=${stored(boxBAfter)}`)
+  }
+  {
+    // A blocked target must not be silently executed, and must not abort the rest.
+    const out = await BarcodeScanService.applyScan([bc(v1), BARCODE_FOR_ACTION.unreserve], user)
+    check('a blocked target is skipped rather than applied',
+      out.applied.length === 0 && out.failures.length === 0,
+      JSON.stringify({ applied: out.applied, failures: out.failures }))
+
+    const untouched = await ItemService.getItemBySlug(v1.slug)
+    check('the blocked target is left unchanged', untouched?.status === 'available',
+      `status=${untouched?.status}`)
+  }
+  {
+    const out = await BarcodeScanService.applyScan([bc(v1), BARCODE_FOR_ACTION.move], user)
+    check('a plan-level error prevents any write',
+      out.plan.error !== null && out.applied.length === 0, JSON.stringify(out.plan.error))
+  }
 }
 
 async function cleanup() {
