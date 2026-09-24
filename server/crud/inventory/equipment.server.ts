@@ -177,7 +177,7 @@ export const EquipmentService = {
     return equipment.sort((a, b) => a.name.localeCompare(b.name))
   },
 
-  /* Create storage equipment in a room and derive its initial locationPath. */
+  /* Create storage equipment in a room, referencing the room as its parent. */
   async createEquipment(input: CreateEquipmentInput): Promise<StorageEquipment> {
     // retrieve the room document to ensure it exists and to get its reference
     const room = await RoomService.getRoomBySlug(input.parentSlug)

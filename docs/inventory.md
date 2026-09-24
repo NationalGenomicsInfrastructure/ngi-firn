@@ -141,13 +141,13 @@ Each entity below the room level stores only a typed reference to its immediate 
 
 **Why this matters**: Direct-child queries such as _"show this freezer’s contents"_ are answered with one indexed view request. A breadcrumb or complete ancestry chain is resolved by following parent references, avoiding denormalized paths that would need cascade updates whenever a container moves.
 
-**Trade-off**: Descendant-wide queries are not currently materialized. They require traversal or a future, explicitly maintained ancestry index; inventory documents do not persist a `locationPath`.
+**Trade-off**: Descendant-wide queries are not materialized. They require traversal of the parent references or a future, explicitly maintained ancestry index.
 
 ### 3. CouchDB views, not Mango indexes
 
-The project prefers MapReduce views over Mango indexes for inventory queries. View definitions live as reference JSON files in `docs/couchdb-views/` and are bootstrapped into the database by `ensureInventoryViews()` at startup. Two design documents are used:
+The project prefers MapReduce views over Mango indexes for inventory queries. View definitions live as design-document JSON files in `server/database/couchdb-views/` and are bootstrapped into the database by `ensureViews()` in `server/crud/views.ts` at startup. Two design documents are used:
 
-- **`_design/firn-inventory`** — Hierarchy queries: `by_type`, `by_parent`, `by_ancestor`, `by_status`, `by_expiry`, `by_barcode`, `by_category`, `templates_by_kind`, `children_count`, `capacity_by_accepted_category`, `by_project`.
+- **`_design/firn-inventory`** — Hierarchy queries: `by_type`, `by_slug`, `by_parent`, `by_status`, `by_expiry`, `by_barcode`, `by_category`, `templates_by_kind`, `children_count`, `grid_occupancy`, `capacity_by_accepted_category`, `by_project`.
 - **`_design/firn-inventory-actions`** — Action queries: `by_target`, `by_status`, `by_assignee`, `planned_for_target`.
 
 ### 4. Typed `parent` references

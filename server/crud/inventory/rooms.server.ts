@@ -142,7 +142,7 @@ export const RoomService = {
     return room
   },
 
-  /* Update room fields and propagate locationPath changes to descendants. */
+  /* Update room fields, regenerating the slug when its constituent parts change. */
   async updateRoom(updates: UpdateRoomInput): Promise<Room> {
     const existing = await RoomService.getRoomBySlug(updates.slug)
     if (!existing) {
