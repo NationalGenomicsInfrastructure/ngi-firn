@@ -2,7 +2,8 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import {
   createEquipmentSchema,
-  type CreateEquipmentFormValues
+  type CreateEquipmentFormValues,
+  type EquipmentItemCapacity
 } from '~~/schemas/inventory/equipment'
 import { createEquipment } from '~/utils/mutations/inventory/equipment'
 import {
@@ -13,7 +14,6 @@ import {
   resolveNullableNumberFromInput,
   type CapacityRow
 } from '~/utils/inventory/equipment'
-import type { EquipmentItemCapacity } from '~~/schemas/inventory/equipment'
 import { TEMPERATURE_CATEGORY_OPTIONS, formatTemperature, resolveTemperatureCategoryFromSelect } from '~/utils/inventory/temperature'
 import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'

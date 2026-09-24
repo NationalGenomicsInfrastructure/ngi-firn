@@ -12,10 +12,10 @@ import {
 } from './equipment'
 import { containerCapacityEntriesToForm } from './container'
 
-export type CloneInventorySource =
-  | { kind: 'equipment', entity: DisplayStorageEquipment }
-  | { kind: 'container', entity: DisplayContainer }
-  | { kind: 'item', entity: DisplayInventoryItem }
+export type CloneInventorySource
+  = | { kind: 'equipment', entity: DisplayStorageEquipment }
+    | { kind: 'container', entity: DisplayContainer }
+    | { kind: 'item', entity: DisplayInventoryItem }
 
 export function equipmentCloneFormValues(
   equipment: DisplayStorageEquipment
