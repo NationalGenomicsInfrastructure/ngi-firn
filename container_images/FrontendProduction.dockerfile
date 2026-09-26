@@ -16,7 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 # Install pnpm with specific version from package.json
 # Set CI=true to make corepack non-interactive during build
 ENV CI=true
-RUN corepack prepare pnpm@11.22.0 --activate
+RUN corepack prepare pnpm@12.6.0 --activate
 
 # STAGE: Production dependencies stage (mind the --prod flag)
 FROM base AS prod-deps
@@ -65,7 +65,7 @@ EXPOSE 3000
 
 # Set host to listen on all interfaces (required for Docker)
 ENV HOST=0.0.0.0
-ENV PORT=3000
+ENV PORT=3001
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
