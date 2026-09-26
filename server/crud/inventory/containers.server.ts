@@ -48,6 +48,7 @@ import { deriveGridLabel, findFirstFreeGridSlot, isSlotOccupied, isWithinGrid, t
 import {
   hasDirectChildren,
   resolveActionLogUsers,
+  resolveUserDisplayName,
   toParentRef,
   toUserRef
 } from './relations.server'
@@ -57,6 +58,8 @@ import {
   buildAlterActionNotes,
   createChangelogEntry,
   createInventoryChangeRecords,
+  activeReservationOwnerId,
+  reservationBlockedMessage,
   statusFromAction
 } from './logging.server'
 import type {
@@ -1057,6 +1060,15 @@ export const ContainerService = {
         throw new Error(
           `Action "${input.performedAction}" is not allowed on container "${slug}" while it is "${existing.status}".`
         )
+      }
+      // A reserved container may only be checked out by the user who reserved it;
+      // anyone else must clear the reservation first, so both users are aware.
+      if (input.performedAction === 'checkout' && existing.status === 'reserved') {
+        const ownerId = activeReservationOwnerId(existing)
+        if (ownerId && ownerId !== firnUser._id) {
+          const ownerName = await resolveUserDisplayName(ownerId)
+          throw new Error(reservationBlockedMessage('container', existing.name, ownerName))
+        }
       }
       existingContainers.push(existing)
     }

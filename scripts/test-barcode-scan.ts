@@ -189,7 +189,7 @@ async function run() {
     // Both containers enclose the vial, but only the inner box is its actual parent.
     // Scanning the outer rack first must not let scan order pick the wrong location.
     const outerFirst = summarize(
-      await BarcodeScanService.resolveScan([bc(rack), bc(inner), bc(nested)])
+      await BarcodeScanService.resolveScan([bc(rack), bc(inner), bc(nested)], user)
     )
     check('the deepest enclosing container wins when the outer one is scanned first',
       outerFirst.context === 'BCTEST Inner Box', JSON.stringify(outerFirst))
@@ -197,7 +197,7 @@ async function run() {
       !outerFirst.warnings.includes('parent_mismatch'), JSON.stringify(outerFirst.warnings))
 
     const innerFirst = summarize(
-      await BarcodeScanService.resolveScan([bc(inner), bc(rack), bc(nested)])
+      await BarcodeScanService.resolveScan([bc(inner), bc(rack), bc(nested)], user)
     )
     check('the resolved location is identical for the reversed scan order',
       innerFirst.context === outerFirst.context, JSON.stringify(innerFirst))
@@ -207,7 +207,7 @@ async function run() {
 
   console.log('\nDefault checkout/return toggle')
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(v2), bc(boxA)]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(v2), bc(boxA)], user))
     check('enclosing container becomes context, items become targets',
       p.contextKind === 'container' && p.context === 'BCTEST Box A'
       && p.targets.join('|') === 'BCTEST Vial 1:checkout:exec|BCTEST Vial 2:checkout:exec',
@@ -216,27 +216,27 @@ async function run() {
       p.warnings.length === 0, JSON.stringify(p.warnings))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(boxA), bc(equip)]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(boxA), bc(equip)], user))
     check('an enclosing container is preferred over the equipment',
       p.context === 'BCTEST Box A' && p.warnings.includes('context_ignored'), JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(equip)]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(equip)], user))
     check('grandparent equipment as context warns about the parent mismatch',
       p.context === 'BCTEST Freezer' && p.warnings.includes('parent_mismatch'), JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(boxA)]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(boxA)], user))
     check('a container scanned alone is a target, not context',
       p.context === null && p.targets.join('|') === 'BCTEST Box A:checkout:exec', JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(boxB)]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(boxB)], user))
     check('a container that encloses nothing scanned is a target',
       p.context === null && p.targets.length === 2, JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(equip)]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(equip)], user))
     check('scanning only a location is an error, not a silent no-op',
       p.error !== null && p.targets.length === 0, JSON.stringify(p))
   }
@@ -244,19 +244,19 @@ async function run() {
   console.log('\nRelocating actions')
   {
     const p = summarize(await BarcodeScanService.resolveScan(
-      [bc(v1), bc(v2), BARCODE_FOR_ACTION.move, bc(boxB)]))
+      [bc(v1), bc(v2), BARCODE_FOR_ACTION.move, bc(boxB)], user))
     check('move treats the last scanned location as the destination',
       p.action === 'move' && p.context === 'BCTEST Box B'
       && p.targets.every(t => t.endsWith(':move:exec')) && p.targets.length === 2,
       JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), BARCODE_FOR_ACTION.move]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), BARCODE_FOR_ACTION.move], user))
     check('move without a destination is rejected', p.error !== null, JSON.stringify(p))
   }
   {
     const p = summarize(await BarcodeScanService.resolveScan(
-      [bc(v1), BARCODE_FOR_ACTION.locate, bc(boxB)]))
+      [bc(v1), BARCODE_FOR_ACTION.locate, bc(boxB)], user))
     check('locate is blocked on an entity that is not lost',
       p.targets.join('|') === 'BCTEST Vial 1:locate:blocked', JSON.stringify(p))
   }
@@ -264,23 +264,23 @@ async function run() {
   console.log('\nAction cards and the status matrix')
   {
     const p = summarize(await BarcodeScanService.resolveScan(
-      [bc(v1), bc(v2), BARCODE_FOR_ACTION.dispose]))
+      [bc(v1), bc(v2), BARCODE_FOR_ACTION.dispose], user))
     check('dispose applies to every target',
       p.action === 'dispose' && p.targets.every(t => t.endsWith(':dispose:exec')), JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), BARCODE_FOR_ACTION.unreserve]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1), BARCODE_FOR_ACTION.unreserve], user))
     check('an action the status forbids yields a blocked target, not an error',
       p.error === null && p.targets.join('|') === 'BCTEST Vial 1:unreserve:blocked', JSON.stringify(p))
   }
   {
     const p = summarize(await BarcodeScanService.resolveScan(
-      [bc(v1), BARCODE_FOR_ACTION.dispose, BARCODE_FOR_ACTION.reserve]))
+      [bc(v1), BARCODE_FOR_ACTION.dispose, BARCODE_FOR_ACTION.reserve], user))
     check('two conflicting action cards abort the scan', p.error !== null, JSON.stringify(p))
   }
   {
     const p = summarize(await BarcodeScanService.resolveScan(
-      [bc(v1), BARCODE_FOR_ACTION.dispose, BARCODE_FOR_ACTION.dispose]))
+      [bc(v1), BARCODE_FOR_ACTION.dispose, BARCODE_FOR_ACTION.dispose], user))
     check('the same action card scanned twice is tolerated',
       p.error === null && p.action === 'dispose' && p.warnings.includes('duplicate_scan'),
       JSON.stringify(p))
@@ -289,7 +289,7 @@ async function run() {
   console.log('\nMalformed and unknown input')
   {
     const p = summarize(await BarcodeScanService.resolveScan(
-      ['hello', 'fi00000000x', 'ftabcdefghi', bc(v1), bc(v1)]))
+      ['hello', 'fi00000000x', 'ftabcdefghi', bc(v1), bc(v1)], user))
     check('bad codes are reported without aborting the usable part of the scan',
       p.targets.join('|') === 'BCTEST Vial 1:checkout:exec' && p.rejected.length === 3,
       JSON.stringify(p))
@@ -299,11 +299,11 @@ async function run() {
       p.warnings.includes('duplicate_scan'), JSON.stringify(p.warnings))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([]))
+    const p = summarize(await BarcodeScanService.resolveScan([], user))
     check('an empty scan is an error', p.error !== null, JSON.stringify(p))
   }
   {
-    const p = summarize(await BarcodeScanService.resolveScan([bc(v1).toUpperCase()]))
+    const p = summarize(await BarcodeScanService.resolveScan([bc(v1).toUpperCase()], user))
     check('an uppercase scan still resolves',
       p.targets.join('|') === 'BCTEST Vial 1:checkout:exec', JSON.stringify(p))
   }
@@ -325,7 +325,7 @@ async function run() {
       afterCheckout?.parent?.id === boxA._id, JSON.stringify(afterCheckout?.parent))
 
     // Re-scanning the very same set must now mean the opposite, with no action card.
-    const replan = summarize(await BarcodeScanService.resolveScan(set))
+    const replan = summarize(await BarcodeScanService.resolveScan(set, user))
     check('re-scanning the same set now proposes return, not checkout',
       replan.targets.every(t => t.includes(':return:')), JSON.stringify(replan))
 
@@ -337,6 +337,48 @@ async function run() {
     const afterReturn = await ItemService.getItemBySlug(v1.slug)
     check('the vial is back to available', afterReturn?.status === 'available',
       `status=${afterReturn?.status}`)
+  }
+
+  console.log('\nReservation ownership on checkout')
+  {
+    // A second identity that never reserved anything. Its _id is what the ownership
+    // guard compares against, so a synthetic id is enough to stand in for another user
+    // without creating a real account.
+    const imposter: FirnUser = { ...user, _id: 'BCTEST-imposter-user' }
+
+    await ItemService.alterItem({ itemSlug: [v1.slug], performedAction: 'reserve' }, user)
+    const reserved = await ItemService.getItemBySlug(v1.slug)
+    check('the vial is persisted as reserved', reserved?.status === 'reserved',
+      `status=${reserved?.status}`)
+
+    const ownerPlan = summarize(await BarcodeScanService.resolveScan([bc(v1)], user))
+    check('the reserving user may check out their own reservation on a bare scan',
+      ownerPlan.targets.join('|') === 'BCTEST Vial 1:checkout:exec', JSON.stringify(ownerPlan))
+
+    const otherPlan = summarize(await BarcodeScanService.resolveScan([bc(v1)], imposter))
+    check('another user is blocked from checking out a reserved item',
+      otherPlan.error === null
+      && otherPlan.targets.join('|') === 'BCTEST Vial 1:checkout:blocked', JSON.stringify(otherPlan))
+
+    let guarded = false
+    try {
+      await ItemService.alterItem({ itemSlug: [v1.slug], performedAction: 'checkout' }, imposter)
+    }
+    catch {
+      guarded = true
+    }
+    check('the write service also refuses a foreign checkout of a reserved item', guarded,
+      'alterItem did not throw for a non-owner checkout')
+
+    // The owner takes it out and returns it, leaving the vial available for later tests.
+    await BarcodeScanService.applyScan([bc(v1)], user)
+    const owned = await ItemService.getItemBySlug(v1.slug)
+    check('the reserving user\'s bare scan checks the item out', owned?.status === 'in_use',
+      `status=${owned?.status}`)
+    await BarcodeScanService.applyScan([bc(v1)], user)
+    const restored = await ItemService.getItemBySlug(v1.slug)
+    check('the vial is returned to available after the reservation round trip',
+      restored?.status === 'available', `status=${restored?.status}`)
   }
 
   console.log('\nApplying a scan (mixed statuses and relocation)')
@@ -429,12 +471,12 @@ async function run() {
       ),
       JSON.stringify(lastEntry?.changes))
 
-    const oldResolves = await BarcodeScanService.resolveScan([before!])
+    const oldResolves = await BarcodeScanService.resolveScan([before!], user)
     check('the replaced label no longer resolves',
       oldResolves.targets.length === 0 && oldResolves.rejected.length === 1,
       JSON.stringify(oldResolves.rejected))
 
-    const newResolves = await BarcodeScanService.resolveScan([result.barcode])
+    const newResolves = await BarcodeScanService.resolveScan([result.barcode], user)
     check('the newly issued label resolves to the same entity',
       newResolves.targets[0]?.slug === v1.slug, JSON.stringify(newResolves.targets))
 

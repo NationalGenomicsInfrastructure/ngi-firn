@@ -358,6 +358,26 @@ have separate services; grouping by action is needed because the default toggle 
 legitimately yield `checkout` for one entity and `return` for another in the same
 set. No new lifecycle semantics are introduced.
 
+#### A reserved entity can only be checked out by whoever reserved it
+
+A reservation is not a dedicated field: it is `status === 'reserved'` plus a `reserve`
+entry in the audit log. Because every transition is logged, the most recent `reserve`
+entry while the entity is reserved names the current holder
+(`activeReservationOwnerId` in `logging.server.ts`).
+
+Checking out (including the default bare-scan toggle, which now proposes `checkout`
+for a reserved entity) is allowed only for that holder. Anyone else is blocked with a
+message naming the holder and telling them to clear the reservation first — the block
+exists so the two people talk to each other rather than one silently taking the item.
+Anyone may `unreserve` to clear a forgotten reservation.
+
+The rule is enforced in the write services (`alterItem` / `alterContainer`), so it
+holds for the web dialogs and the barcode-scan apply path alike, and mirrored in the
+scan resolver so the review shows a reserved target as executable for the holder and
+blocked for everyone else. The static `STATUS_ACTION_MATRIX` lists `checkout` under
+`reserved` (it cannot express the per-user rule on its own); the ownership guard is
+what restricts it.
+
 #### Ambiguity is surfaced, never guessed
 
 Two different action cards, a move or locate without a destination, or a target in a

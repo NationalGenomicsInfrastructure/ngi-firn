@@ -8,6 +8,7 @@
  *
  * REFERENCE RESOLVERS:
  * resolveActionLogUsers(entries) - Enrich raw action log user references into client-safe SerializedUserRef stubs
+ * resolveUserDisplayName(userId) - Resolve a stored user id to a display name (falls back gracefully)
  *
  * CHILD COUNT QUERIES:
  * countDirectChildren(parentDocumentId) - Count direct children via the inventory reduce view
@@ -79,6 +80,18 @@ export async function resolveActionLogUsers(
     ...rest,
     firnUser: (firnUser?.id ? userMap.get(firnUser.id) : undefined) ?? UNKNOWN_USER_REF
   }))
+}
+
+/*
+ * Resolve one stored user id to a display name. Used for messages that name a user
+ * (e.g. the holder of a reservation) without exposing the CouchDB _id. Falls back to
+ * a neutral label when the id is missing or the user can no longer be resolved.
+ */
+export async function resolveUserDisplayName(userId: string | null | undefined): Promise<string> {
+  if (!userId) return UNKNOWN_USER_REF.name
+  const doc = await couchDB.getDocument<FirnUser>(userId)
+  if (doc && doc.type === 'firnUser') return toSerializedUserRef(doc).name
+  return UNKNOWN_USER_REF.name
 }
 
 /* Count direct children of one parent document using the inventory reduce view. */

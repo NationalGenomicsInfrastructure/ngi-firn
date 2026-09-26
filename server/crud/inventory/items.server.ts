@@ -6,11 +6,13 @@ import {
   buildAlterActionNotes,
   createInventoryChangeRecords,
   createModifyActionLogEntry,
+  activeReservationOwnerId,
+  reservationBlockedMessage,
   statusFromAction
 } from './logging.server'
 import { ProjectService } from '../projects.server'
 import { BarcodeService } from './barcodes.server'
-import { resolveActionLogUsers, toParentRef, toUserRef } from './relations.server'
+import { resolveActionLogUsers, resolveUserDisplayName, toParentRef, toUserRef } from './relations.server'
 import type {
   Container,
   DisplayInventoryActionLogEntry,
@@ -828,6 +830,15 @@ export const ItemService = {
       }
       if (!allowedActionsForStatus(item.status).includes(input.performedAction)) {
         throw new Error(`Action "${input.performedAction}" is not allowed on item "${slug}" while it is "${item.status}".`)
+      }
+      // A reserved item may only be checked out by the user who reserved it; anyone
+      // else must clear the reservation first, so both users are aware of the contest.
+      if (input.performedAction === 'checkout' && item.status === 'reserved') {
+        const ownerId = activeReservationOwnerId(item)
+        if (ownerId && ownerId !== firnUser._id) {
+          const ownerName = await resolveUserDisplayName(ownerId)
+          throw new Error(reservationBlockedMessage('inventory_item', item.name, ownerName))
+        }
       }
       items.push(item)
     }

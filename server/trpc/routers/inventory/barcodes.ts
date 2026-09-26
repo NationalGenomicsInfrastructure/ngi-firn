@@ -2,7 +2,7 @@
  * Inventory Barcodes Router - Table of Contents
  * *********************************************
  *
- * BARCODE QUERIES (authedProcedure):
+ * BARCODE QUERIES (firnUserProcedure):
  * resolveBarcodes - Interpret a scanned set into a reviewable plan, without writing anything
  *
  * BARCODE MUTATIONS (firnUserProcedure):
@@ -15,7 +15,7 @@
  * through exactly the same procedures as the web UI.
  */
 
-import { createTRPCRouter, authedProcedure, firnUserProcedure } from '../../init'
+import { createTRPCRouter, firnUserProcedure } from '../../init'
 import {
   resolveBarcodesSchema,
   applyBarcodeScanSchema,
@@ -33,11 +33,12 @@ export const barcodesRouter = createTRPCRouter({
    * Exposed separately from the mutation so the UI can re-resolve after every
    * additional scan and show the user what would happen before they commit.
    */
-  resolveBarcodes: authedProcedure
+  resolveBarcodes: firnUserProcedure
     .input(resolveBarcodesSchema)
-    .query(async ({ input }): Promise<BarcodeScanPlan> => {
+    .query(async ({ input, ctx }): Promise<BarcodeScanPlan> => {
+      if (!ctx.firnUser) throw new Error('User context is required to resolve a barcode scan.')
       const { BarcodeScanService } = await import('../../../crud/inventory/barcode-scan.server')
-      return await BarcodeScanService.resolveScan(input.codes)
+      return await BarcodeScanService.resolveScan(input.codes, ctx.firnUser)
     }),
 
   // Barcode mutations

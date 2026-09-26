@@ -1,6 +1,7 @@
 import { couchDB } from '../../database/couchdb'
 import { BarcodeService } from './barcodes.server'
 import type { BarcodedDocument, BarcodeLookupHit } from './barcodes.server'
+import { activeReservationOwnerId, reservationBlockedMessage } from './logging.server'
 import { parseBarcode } from '~~/schemas/inventory/barcode'
 import { allowedActionsForStatus } from '~~/schemas/inventory/metadata'
 import type { InventoryActionType } from '~~/schemas/inventory/metadata'
@@ -98,7 +99,7 @@ export const BarcodeScanService = {
    * Safe to call repeatedly, which is what lets the UI re-resolve as codes are
    * added to the set and show the user what would happen before they commit.
    */
-  async resolveScan(codes: string[]): Promise<BarcodeScanPlan> {
+  async resolveScan(codes: string[], firnUser: FirnUser): Promise<BarcodeScanPlan> {
     const rejected: BarcodeScanRejection[] = []
     const warnings: BarcodeScanWarning[] = []
 
@@ -201,10 +202,15 @@ export const BarcodeScanService = {
     // ---- Phase 5: derive the action for each target ----
     const parentRefs = await resolveTargetParentRefs(targetHits)
 
+    // A reserved target can only be checked out by its reserver; resolve the holders'
+    // names up front so a blocked target can name who to talk to, batched into one
+    // fetch rather than one per reserved entity.
+    const reserverNames = await resolveReserverNames(targetHits)
+
     const targets: BarcodeScanTarget[] = targetHits.map((hit) => {
       const doc = hit.doc as ActionableDocument
       const parentRef = doc.parent ? parentRefs.get(doc.parent.id) ?? null : null
-      return buildTarget(hit, doc, action, contextDoc, parentRef, warnings)
+      return buildTarget(hit, doc, action, contextDoc, parentRef, firnUser, reserverNames, warnings)
     })
 
     if (targets.length === 0) {
@@ -246,7 +252,7 @@ export const BarcodeScanService = {
    * per group instead of once per entity.
    */
   async applyScan(codes: string[], firnUser: FirnUser, logComment?: string | null): Promise<BarcodeScanResult> {
-    const plan = await BarcodeScanService.resolveScan(codes)
+    const plan = await BarcodeScanService.resolveScan(codes, firnUser)
     const applied: BarcodeScanResult['applied'] = []
     const failures: BarcodeScanResult['failures'] = []
 
@@ -366,6 +372,35 @@ async function resolveTargetParentRefs(
 }
 
 /*
+ * Resolve the display name of every distinct user who holds a reservation on one of
+ * the targets, keyed by their stored user id. Only reserved targets contribute, and
+ * the lookup is batched so a rack of reserved tubes costs a single fetch.
+ */
+async function resolveReserverNames(targetHits: BarcodeLookupHit[]): Promise<Map<string, string>> {
+  const ownerIds = [...new Set(
+    targetHits
+      .filter(hit => isActionable(hit.doc))
+      .map(hit => activeReservationOwnerId(hit.doc as ActionableDocument))
+      .filter((id): id is string => Boolean(id))
+  )]
+
+  const names = new Map<string, string>()
+  if (ownerIds.length === 0) return names
+
+  const userDocs = await couchDB.getDocumentsByIds<FirnUser>(ownerIds)
+  for (const doc of userDocs) {
+    if (doc && doc.type === 'firnUser') {
+      const name = doc.googleName?.trim()
+        || [doc.googleGivenName, doc.googleFamilyName].filter(Boolean).join(' ').trim()
+        || doc.githubName?.trim()
+        || doc.firnId
+      names.set(doc._id, name)
+    }
+  }
+  return names
+}
+
+/*
  * Decide which resolved entities are the location context and which are targets.
  *
  * Equipment is always context, since it has no status or action log and therefore
@@ -480,6 +515,8 @@ function buildTarget(
   action: InventoryActionType | null,
   contextDoc: BarcodedDocument | null,
   parentRef: SerializedEntityRef | null,
+  firnUser: FirnUser,
+  reserverNames: Map<string, string>,
   warnings: BarcodeScanWarning[]
 ): BarcodeScanTarget {
   const kind = doc.type === 'inventoryItem' ? 'item' : 'container'
@@ -541,6 +578,25 @@ function buildTarget(
     }
   }
 
+  // A reserved entity may only be checked out by whoever reserved it. Everyone else is
+  // blocked and told who to talk to, so a forgotten or contested reservation surfaces
+  // as a conversation rather than a silent takeover.
+  if (proposed === 'checkout' && doc.status === 'reserved') {
+    const ownerId = activeReservationOwnerId(doc)
+    if (ownerId && ownerId !== firnUser._id) {
+      return {
+        ...base,
+        proposedAction: proposed,
+        executable: false,
+        reason: reservationBlockedMessage(
+          doc.type === 'inventoryItem' ? 'inventory_item' : 'container',
+          doc.name,
+          reserverNames.get(ownerId) ?? 'another user'
+        )
+      }
+    }
+  }
+
   // A mismatch is reported but not corrected: silently relocating on a plain scan
   // would make it far too easy to move samples by forgetting to clear the set
   // between two unrelated operations. Relocation requires an explicit action card.
@@ -565,10 +621,13 @@ function buildTarget(
 
 /*
  * The default operation for a bare scan: check out what is shelved, return what is
- * out. Any other status has no obvious counterpart and needs an explicit card.
+ * out. A reserved entity also checks out — its reserver walking up to use it is the
+ * whole point of reserving — but the ownership guard in buildTarget blocks anyone
+ * else. Any other status has no obvious counterpart and needs an explicit card.
  */
 function defaultToggleAction(status: Container['status']): InventoryActionType | null {
   if (status === 'available') return 'checkout'
+  if (status === 'reserved') return 'checkout'
   if (status === 'in_use') return 'return'
   return null
 }

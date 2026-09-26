@@ -126,6 +126,42 @@ export function statusFromAction(action: InventoryActionType): InventoryStatusTy
   }
 }
 
+/*
+ * Identify the user who currently holds an entity's reservation.
+ *
+ * A reservation has no dedicated field: it is expressed by `status === 'reserved'`
+ * plus a `reserve` entry in the audit log. Every status transition (unreserve,
+ * checkout, return, dispose, …) is itself logged, so while the entity is reserved the
+ * most recent `reserve` entry is the active one and its author is the holder. Returns
+ * the holder's stored user id, or null when the entity is not reserved or the log has
+ * no reserve entry to attribute it to.
+ */
+export function activeReservationOwnerId(
+  entity: { status: InventoryStatusType, actionLog: InventoryActionLogEntry[] }
+): string | null {
+  if (entity.status !== 'reserved') return null
+  for (let i = entity.actionLog.length - 1; i >= 0; i--) {
+    if (entity.actionLog[i]?.actionType === 'reserve') {
+      return entity.actionLog[i]?.firnUser?.id ?? null
+    }
+  }
+  return null
+}
+
+/*
+ * Message shown when a user tries to check out an entity reserved by someone else.
+ * The reservation is deliberately not overridden: the block exists so the two people
+ * talk to each other. Anyone can clear it via `unreserve` in case it was forgotten.
+ */
+export function reservationBlockedMessage(
+  target: 'container' | 'inventory_item',
+  name: string,
+  ownerName: string
+): string {
+  const targetString = target === 'container' ? 'container' : 'item'
+  return `The ${targetString} "${name}" is reserved by ${ownerName}. Clear their reservation (unreserve) before it can be checked out.`
+}
+
 // If no log comment is provided, this function generates a default log message based on the action type and target (container or inventory item)
 export function buildAlterActionNotes(
   target: 'container' | 'inventory_item',

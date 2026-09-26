@@ -73,11 +73,16 @@ const DEDICATED_ACTIONS: readonly InventoryActionType[] = ['register', 'modify',
  *
  * `locate` is included for `lost` (its own dialog handles the re-placement); `dispose`
  * transitions to the terminal `disposed` status, which only permits `note`.
+ *
+ * `reserved` permits `checkout`, but only for the user who holds the reservation: the
+ * matrix cannot express that per-user rule (it has no user context), so the ownership
+ * guard lives in the write services (alterItem/alterContainer) and is mirrored in the
+ * barcode-scan resolver. Anyone may `unreserve` to clear a forgotten reservation.
  */
 export const STATUS_ACTION_MATRIX: Record<InventoryStatusType, readonly InventoryActionType[]> = {
   available: ['checkout', 'reserve', 'dispose', 'post_missing', 'mark_expired', 'flag', 'unflag', 'note'],
   in_use: ['return', 'dispose', 'post_missing', 'mark_expired', 'flag', 'unflag', 'note'],
-  reserved: ['unreserve', 'dispose', 'post_missing', 'flag', 'unflag', 'note'],
+  reserved: ['checkout', 'unreserve', 'dispose', 'post_missing', 'flag', 'unflag', 'note'],
   expired: ['dispose', 'post_missing', 'flag', 'unflag', 'note'],
   lost: ['locate', 'flag', 'unflag', 'note'],
   disposed: ['note']

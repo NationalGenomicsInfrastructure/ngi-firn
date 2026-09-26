@@ -78,8 +78,10 @@ code must identify exactly one physical object.
 ### Action cards
 
 Scanning entities with no action card checks them out, or returns them if they are
-already checked out. That toggle covers the overwhelmingly common case and needs no
-extra label.
+already checked out. A `reserved` entity checks out too — but only for the user who
+reserved it; anyone else is blocked and told to clear the reservation first (see
+`docs/inventory.md`, "A reserved entity can only be checked out by whoever reserved
+it"). That toggle covers the overwhelmingly common case and needs no extra label.
 
 Anything else requires exactly one action card in the scanned set. These codes are
 deterministic and backed by no database documents, so the reference sheet can be
