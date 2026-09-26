@@ -100,8 +100,4 @@ const data = {
     title="Pages"
     :items="data.menuItems"
   />
-  <NavigationWorksets
-    title="Your Worksets"
-    :worksets="data.worksets"
-  />
 </template>

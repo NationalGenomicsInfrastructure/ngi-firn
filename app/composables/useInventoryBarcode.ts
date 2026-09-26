@@ -1,4 +1,4 @@
-import type { Margins, TDocumentDefinitions } from 'pdfmake/interfaces'
+import type { CustomTableLayout, Margins, TDocumentDefinitions } from 'pdfmake/interfaces'
 import { loadBarcodeDependencies, renderBarcodeDataUrl } from '~/utils/barcodeRendering'
 import {
   BARCODE_ACTION_MNEMONICS,
@@ -91,9 +91,19 @@ export function useInventoryBarcode() {
    * Action barcodes are deterministic and backed by no documents, so this sheet can
    * be printed once and stays valid indefinitely. It is what makes the scan-only
    * workflow usable for anything beyond the default check-out/return toggle.
+   *
+   * An optional subset may be supplied to print only some cards; whatever is passed
+   * is always emitted in canonical mnemonic order, so two prints of the same
+   * selection are byte-for-byte identical regardless of the order it was picked in.
    */
-  async function buildActionSheetDoc() {
-    const actions = Object.keys(BARCODE_ACTION_MNEMONICS) as InventoryActionType[]
+  async function buildActionSheetDoc(selected?: InventoryActionType[]) {
+    const allActions = Object.keys(BARCODE_ACTION_MNEMONICS) as InventoryActionType[]
+    const wanted = selected ? new Set(selected) : null
+    const actions = wanted ? allActions.filter(action => wanted.has(action)) : allActions
+
+    if (actions.length === 0) {
+      throw new Error('Select at least one action card to print.')
+    }
 
     const rows = await Promise.all(actions.map(async (action) => {
       const code = BARCODE_FOR_ACTION[action]
@@ -105,23 +115,38 @@ export function useInventoryBarcode() {
         fontSize: 12
       })
       return [
-        { text: action.replace('_', ' '), bold: true, margin: [0, 14, 0, 0] as Margins },
+        // pdfmake has no vertical cell alignment, so the label's top margin is what
+        // centres it against the ~50 pt barcode; it has to track the row padding below.
+        { text: action.replace('_', ' '), bold: true, margin: [0, 26, 0, 0] as Margins },
         { image, fit: [180, 50] as [number, number], alignment: 'right' as const }
       ]
     }))
+
+    // Taller rows than the stock lightHorizontalLines layout: generous top/bottom
+    // padding stops consecutive barcodes from crowding each other, with a faint rule
+    // only between rows (not around the outer edge) and no vertical rules.
+    const sheetLayout: CustomTableLayout = {
+      hLineWidth: (i, node) => (i === 0 || i === node.table.body.length ? 0 : 1),
+      vLineWidth: () => 0,
+      hLineColor: () => '#e5e7eb',
+      paddingTop: () => 12,
+      paddingBottom: () => 12,
+      paddingLeft: () => 0,
+      paddingRight: () => 0
+    }
 
     return {
       content: [
         { text: 'Firn inventory action cards', style: 'header' as const },
         {
-          text: 'Include one of these in a scanned set to say what should happen to the entities scanned with it. Scanning entities with no action card checks them out, or returns them if they are already checked out.',
+          text: 'Including such a barcode in a scanned set allows to control the actions applied to the scanned entities. Scanning entities with no action card checks them out, or returns them if they are already checked out.',
           fontSize: 9,
           color: 'gray',
           margin: [0, 0, 0, 10] as Margins
         },
         {
           table: { widths: ['*', 'auto'], body: rows },
-          layout: 'lightHorizontalLines'
+          layout: sheetLayout
         }
       ],
       styles: {
@@ -131,15 +156,15 @@ export function useInventoryBarcode() {
     }
   }
 
-  async function downloadActionSheet() {
+  async function downloadActionSheet(selected?: InventoryActionType[]) {
     const { pdfMake } = await loadBarcodeDependencies()
-    const doc = await buildActionSheetDoc()
+    const doc = await buildActionSheetDoc(selected)
     pdfMake.createPdf(doc as TDocumentDefinitions).download('firn-action-cards.pdf')
   }
 
-  async function previewActionSheet() {
+  async function previewActionSheet(selected?: InventoryActionType[]) {
     const { pdfMake } = await loadBarcodeDependencies()
-    const doc = await buildActionSheetDoc()
+    const doc = await buildActionSheetDoc(selected)
     pdfMake.createPdf(doc as TDocumentDefinitions).open()
   }
 

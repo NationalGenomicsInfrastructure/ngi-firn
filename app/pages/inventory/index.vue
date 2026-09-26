@@ -99,8 +99,8 @@ definePageMeta({
       </NCard>
 
       <NCard
-        title="Print barcodes"
-        description="Action cards let a scanned set say what should happen to it — dispose, reserve, locate and more. Print the reference sheet once; the codes never expire."
+        title="Print action barcodes"
+        description="Action codes let you control the actions applied to scanned entities — dispose, reserve, locate and more."
         card="outline-gray"
       >
         <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">

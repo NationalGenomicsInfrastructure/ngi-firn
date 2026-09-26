@@ -85,7 +85,11 @@ Anything else requires exactly one action card in the scanned set. These codes a
 deterministic and backed by no database documents, so the reference sheet can be
 printed once and stays valid indefinitely. Generate it from the dedicated
 *Action barcodes* page at `/inventory/barcodes/actions` (linked from the inventory
-navigation and landing page), which previews or downloads the sheet as a PDF.
+navigation and landing page), which previews or downloads the sheet as a PDF. A
+toggle group on that page selects which cards to include, so the sheet can be printed
+for the full set or any subset; the print buttons stay disabled until at least one
+card is selected. Whatever is selected is always emitted in the canonical order below,
+so repeated prints of the same choice are identical.
 
 | Action | Barcode |
 |---|---|

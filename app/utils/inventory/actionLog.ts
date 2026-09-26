@@ -2,6 +2,8 @@ import type { InventoryActionType, InventoryFlagType } from '~~/schemas/inventor
 
 export interface ActionTypeMeta {
   label: string
+  /* Human-readable label for the action when used in progressive tense (e.g., "Check out" for "Checked out"). */
+  progressive: string
   icon: string
   /* UnaUI badge variant used to color the action badge. */
   badge: string
@@ -18,20 +20,20 @@ export interface FlagMeta {
  * so every i-lucide-* used here must also be present in uno.config.ts `safelist`.
  */
 export const ACTION_TYPE_META: Record<InventoryActionType, ActionTypeMeta> = {
-  checkout: { label: 'Checked out', icon: 'i-lucide-package-open', badge: 'solid-indigo' },
-  return: { label: 'Returned', icon: 'i-lucide-package-check', badge: 'solid-success' },
-  move: { label: 'Moved', icon: 'i-lucide-move', badge: 'solid-primary' },
-  mark_expired: { label: 'Marked expired', icon: 'i-lucide-calendar-x', badge: 'solid-yellow' },
-  dispose: { label: 'Disposed', icon: 'i-lucide-trash-2', badge: 'solid-error' },
-  post_missing: { label: 'Reported missing', icon: 'i-lucide-search-x', badge: 'solid-error' },
-  reserve: { label: 'Reserved', icon: 'i-lucide-bookmark', badge: 'solid-indigo' },
-  unreserve: { label: 'Released reservation', icon: 'i-lucide-bookmark-x', badge: 'solid-gray' },
-  register: { label: 'Registered', icon: 'i-lucide-circle-plus', badge: 'solid-success' },
-  modify: { label: 'Modified', icon: 'i-lucide-pencil', badge: 'solid-primary' },
-  locate: { label: 'Located', icon: 'i-lucide-map-pin', badge: 'solid-success' },
-  flag: { label: 'Flagged', icon: 'i-lucide-flag', badge: 'solid-yellow' },
-  unflag: { label: 'Unflagged', icon: 'i-lucide-flag-off', badge: 'solid-gray' },
-  note: { label: 'Note', icon: 'i-lucide-message-square', badge: 'solid-gray' }
+  checkout: { label: 'Checked out', progressive: 'Check out', icon: 'i-lucide-package-open', badge: 'solid-indigo' },
+  return: { label: 'Returned', progressive: 'Return', icon: 'i-lucide-package-check', badge: 'solid-success' },
+  move: { label: 'Moved', progressive: 'Move', icon: 'i-lucide-move', badge: 'solid-primary' },
+  mark_expired: { label: 'Marked expired', progressive: 'Mark as expired', icon: 'i-lucide-calendar-x', badge: 'solid-yellow' },
+  dispose: { label: 'Disposed', progressive: 'Dispose', icon: 'i-lucide-trash-2', badge: 'solid-error' },
+  post_missing: { label: 'Reported missing', progressive: 'Report missing', icon: 'i-lucide-search-x', badge: 'solid-error' },
+  reserve: { label: 'Reserved', progressive: 'Reserve', icon: 'i-lucide-bookmark', badge: 'solid-indigo' },
+  unreserve: { label: 'Released reservation', progressive: 'Release reservation', icon: 'i-lucide-bookmark-x', badge: 'solid-gray' },
+  register: { label: 'Registered', progressive: 'Register', icon: 'i-lucide-circle-plus', badge: 'solid-success' },
+  modify: { label: 'Modified', progressive: 'Modify', icon: 'i-lucide-pencil', badge: 'solid-primary' },
+  locate: { label: 'Located', progressive: 'Locate', icon: 'i-lucide-map-pin', badge: 'solid-success' },
+  flag: { label: 'Flagged', progressive: 'Flag', icon: 'i-lucide-flag', badge: 'solid-yellow' },
+  unflag: { label: 'Unflagged', progressive: 'Unflag', icon: 'i-lucide-flag-off', badge: 'solid-gray' },
+  note: { label: 'Note', progressive: 'Note', icon: 'i-lucide-message-square', badge: 'solid-gray' }
 }
 
 /*
