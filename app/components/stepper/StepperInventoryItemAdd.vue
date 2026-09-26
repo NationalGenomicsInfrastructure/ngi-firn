@@ -17,6 +17,12 @@ import {
   resolveTemperatureCategoryFromSelect
 } from '~/utils/inventory/temperature'
 import type { TemperatureCategory } from '~~/schemas/inventory/temperature'
+import { normalizeBarcode } from '~~/schemas/inventory/barcode'
+import {
+  BARCODE_MODE_OPTIONS,
+  resolveBarcodeModeFromSelect,
+  type BarcodeMode
+} from '~/utils/inventory/barcode'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 
 const props = defineProps<{
@@ -43,11 +49,18 @@ const CLASSIFICATION_OPTIONS: SelectOption<string>[] = [
   { value: 'Other', label: 'Other' }
 ]
 
-const items = [
-  { title: 'Basics', description: 'Set item type and labels', icon: 'i-lucide-info', stage: 1 },
-  { title: 'Details', description: 'Add optional stock details', icon: 'i-lucide-flask-conical', stage: 2 },
-  { title: 'Review', description: 'Confirm and register', icon: 'i-lucide-clipboard-check', stage: 3 }
-]
+const items = computed(() => {
+  const steps = [
+    { title: 'Basics', description: 'Set item type and labels', icon: 'i-lucide-info', stage: 1 },
+    { title: 'Details', description: 'Add optional stock details', icon: 'i-lucide-flask-conical', stage: 2 }
+  ]
+  // The scan step only exists when the user opts to record an existing label.
+  if (barcodeMode.value === 'existing') {
+    steps.push({ title: 'Barcode', description: 'Scan the existing label', icon: 'i-lucide-scan-barcode', stage: 4 })
+  }
+  steps.push({ title: 'Review', description: 'Confirm and register', icon: 'i-lucide-clipboard-check', stage: 3 })
+  return steps
+})
 
 const stepper = useTemplateRef('itemStepper')
 const { mutateAsync: createItemAsync } = createItem()
@@ -92,6 +105,11 @@ const { value: quantityValue, setValue: setQuantityValue } = useField<number | u
 const { value: concentrationValue, setValue: setConcentrationValue } = useField<number | undefined>('concentration')
 const { value: temperatureValue, setValue: setTemperatureValue } = useField<number | undefined>('temperatureCelsius')
 const { value: temperatureCategoryValue, setValue: setTemperatureCategoryValue } = useField<TemperatureCategory | undefined>('temperatureCategory')
+const { value: barcodeValue, setValue: setBarcodeValue } = useField<string | undefined>('barcode')
+
+// UI-only mode. Clone sources never carry a barcode, so the default is generation.
+const barcodeMode = ref<BarcodeMode>(props.initialValues?.barcode ? 'existing' : 'generate')
+const barcodeStepError = ref('')
 
 const {
   state: acceptanceState,
@@ -173,6 +191,30 @@ function onTemperatureUpdate(value: unknown) {
   setTemperatureValue(resolveNullableNumber(value))
 }
 
+function onBarcodeModeUpdate(value: unknown) {
+  const resolved = resolveBarcodeModeFromSelect(value)
+  if (!resolved) return
+  barcodeMode.value = resolved
+  // Drop any captured code when reverting to generation so a stale value is never
+  // sent, and clear the step error tied to the abandoned mode.
+  if (resolved === 'generate') setBarcodeValue('')
+  barcodeStepError.value = ''
+}
+
+function onBarcodeScanned(code: string) {
+  setBarcodeValue(code)
+  if (normalizeBarcode(code)) barcodeStepError.value = ''
+}
+
+async function nextFromBarcode() {
+  if (!normalizeBarcode(barcodeValue.value ?? '')) {
+    barcodeStepError.value = 'Scan or type a barcode, or go back to generate one automatically.'
+    return
+  }
+  barcodeStepError.value = ''
+  stepper.value?.nextStep()
+}
+
 function resetToFirstStep() {
   stepper.value?.goToStep(0)
 }
@@ -195,11 +237,17 @@ async function nextFromStep1() {
 const onSubmit = handleSubmit(async (formValues) => {
   const result = await createItemAsync({
     ...formValues,
+    // Only forward a supplied label in "existing" mode; otherwise omit it so the
+    // server issues a fresh barcode. Server-side uniqueness/format checks remain
+    // authoritative.
+    barcode: barcodeMode.value === 'existing' ? formValues.barcode : undefined,
     parentSlug: props.parentSlug,
     parentKind: props.parentKind
   })
   if (result) {
     resetForm()
+    barcodeMode.value = 'generate'
+    barcodeStepError.value = ''
     resetToFirstStep()
     emit('created')
   }
@@ -279,6 +327,19 @@ async function onValidatingSubmit() {
                     @update:model-value="(value: unknown) => setClassificationValue(resolveClassification(value))"
                   />
                 </NFormField>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <NFormGroup
+                  label="Barcode"
+                  :una="{ formGroupLabel: EQUIPMENT_FORM_LABEL_STYLE }"
+                >
+                  <NSelect
+                    :model-value="barcodeMode"
+                    :items="BARCODE_MODE_OPTIONS"
+                    by="value"
+                    @update:model-value="onBarcodeModeUpdate"
+                  />
+                </NFormGroup>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <NFormField
@@ -406,13 +467,6 @@ async function onValidatingSubmit() {
                 >
                   <NInput placeholder="Optional" />
                 </NFormField>
-                <NFormField
-                  name="barcode"
-                  label="Barcode"
-                  :una="{ formLabel: EQUIPMENT_FORM_LABEL_STYLE }"
-                >
-                  <NInput placeholder="Optional" />
-                </NFormField>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <NFormField
@@ -448,6 +502,47 @@ async function onValidatingSubmit() {
                   placeholder="Optional notes"
                 />
               </NFormField>
+            </NCard>
+            <div class="flex justify-between">
+              <NButton
+                type="button"
+                label="Previous"
+                btn="soft-gray hover:outline-gray"
+                leading="i-lucide-arrow-left"
+                @click="stepper?.prevStep()"
+              />
+              <NButton
+                type="submit"
+                label="Next"
+                btn="soft-primary hover:outline-primary"
+                trailing="i-lucide-arrow-right"
+              />
+            </div>
+          </form>
+
+          <form
+            v-else-if="item.stage === 4"
+            class="mx-auto p-4 space-y-4 w-full"
+            @submit.prevent="nextFromBarcode()"
+          >
+            <NCard
+              title="Existing barcode"
+              description="Scan or type the label already on this item. External vendor labels are accepted; Firn checks that the code is unique when the item is registered."
+              card="outline-gray"
+              :una="{ cardContent: 'space-y-4', cardDescription: 'text-muted' }"
+            >
+              <BarcodeInventoryScanner
+                :model-value="barcodeValue ?? ''"
+                placeholder="Scan or type the item barcode"
+                @update:model-value="setBarcodeValue"
+                @scanned="onBarcodeScanned"
+              />
+              <p
+                v-if="barcodeStepError"
+                class="text-sm text-error"
+              >
+                {{ barcodeStepError }}
+              </p>
             </NCard>
             <div class="flex justify-between">
               <NButton
@@ -518,6 +613,13 @@ async function onValidatingSubmit() {
                     Temperature
                   </p><p class="font-medium">
                     {{ formatTemperature(values.temperatureCategory ?? null, values.temperatureCelsius ?? null) }}
+                  </p>
+                </div>
+                <div>
+                  <p :class="EQUIPMENT_FORM_LABEL_STYLE">
+                    Barcode
+                  </p><p class="font-medium">
+                    {{ barcodeMode === 'existing' ? (values.barcode || '—') : 'Generated on registration' }}
                   </p>
                 </div>
               </div>

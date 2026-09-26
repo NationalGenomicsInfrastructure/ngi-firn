@@ -89,7 +89,7 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
         class="text-muted"
       />
       <h4 class="text-sm font-semibold">
-        Occupancy and Capacity
+        Container occupancy and capacity
       </h4>
     </div>
 

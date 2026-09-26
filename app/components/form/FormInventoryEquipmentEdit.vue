@@ -258,7 +258,7 @@ async function onValidating() {
               class="text-muted"
             />
             <h4 class="text-sm font-semibold">
-              Direct item capacity
+              Item capacity and storage
             </h4>
           </div>
           <FormFieldEquipmentItemCapacity

@@ -62,6 +62,17 @@ const data = {
           url: '/inventory/items/add'
         }
       ]
+    },
+    {
+      title: 'Barcodes',
+      url: '#',
+      icon: 'i-lucide-scan-barcode',
+      items: [
+        {
+          title: 'Action cards',
+          url: '/inventory/barcodes/actions'
+        }
+      ]
     }
   ],
   worksets: [

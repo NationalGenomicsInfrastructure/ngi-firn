@@ -19,7 +19,14 @@ NGI internally uses **Code_128** for plate labels.
 Items, containers and storage equipment each carry a unique barcode. Rooms do not:
 they are never physically handled, so there is nothing to put a label on.
 
-Barcodes are **issued automatically when an entity is created**. An existing entity
+Barcodes are **issued automatically when an entity is created**. When registering an
+item, container or storage equipment, the create form's *Barcode* selector defaults
+to *Generate barcode*; choosing *Use existing* reveals an extra step that scans or
+accepts a pre-existing label (for example a vendor's own code). The scan step reuses
+an autofocused, debounced reader field plus an optional device camera, wrapped in the
+reusable `app/components/barcode/InventoryScanner.vue` component (kept separate from,
+and modelled loosely on, the login-token scanner). A supplied code need not follow the
+Firn prefix scheme; the server enforces global uniqueness on save. An existing entity
 can also be given one, or have its code re-issued, from the *Barcode* dialog on its
 detail page.
 
@@ -76,7 +83,9 @@ extra label.
 
 Anything else requires exactly one action card in the scanned set. These codes are
 deterministic and backed by no database documents, so the reference sheet can be
-printed once and stays valid indefinitely. Generate it from the *Barcode* dialog.
+printed once and stays valid indefinitely. Generate it from the dedicated
+*Action barcodes* page at `/inventory/barcodes/actions` (linked from the inventory
+navigation and landing page), which previews or downloads the sheet as a PDF.
 
 | Action | Barcode |
 |---|---|

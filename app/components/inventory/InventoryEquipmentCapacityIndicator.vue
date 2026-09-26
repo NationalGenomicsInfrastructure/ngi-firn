@@ -83,7 +83,7 @@ const itemCapacityRows = computed(() =>
         class="text-muted"
       />
       <h4 class="text-sm font-semibold">
-        Occupancy and Capacity
+        Container occupancy and capacity
       </h4>
     </div>
 
@@ -116,7 +116,7 @@ const itemCapacityRows = computed(() =>
         class="text-muted"
       />
       <h4 class="text-sm font-semibold">
-        Direct item capacity
+        Item capacity and storage
       </h4>
     </div>
 
@@ -138,7 +138,7 @@ const itemCapacityRows = computed(() =>
       v-else
       class="text-sm text-muted"
     >
-      No direct item type limits configured.
+      No item type limits configured.
     </p>
   </div>
 </template>

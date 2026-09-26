@@ -37,7 +37,7 @@ function updateCapacity(index: number, value: number[] | undefined) {
       v-if="rows.length === 0"
       class="text-sm text-muted rounded-md border border-dashed border-primary-200 dark:border-primary-800 p-4 text-center"
     >
-      No direct item capacities configured. Unlisted item categories remain unlimited.
+      No item capacities configured. Unlisted item categories remain unlimited.
     </p>
     <div
       v-for="(row, index) in rows"

@@ -97,6 +97,21 @@ definePageMeta({
           />
         </div>
       </NCard>
+
+      <NCard
+        title="Print barcodes"
+        description="Action cards let a scanned set say what should happen to it — dispose, reserve, locate and more. Print the reference sheet once; the codes never expire."
+        card="outline-gray"
+      >
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <NButton
+            label="Action barcodes"
+            btn="soft-primary hover:outline-primary"
+            leading="i-lucide-scan-barcode"
+            to="/inventory/barcodes/actions"
+          />
+        </div>
+      </NCard>
     </div>
   </main>
 </template>
