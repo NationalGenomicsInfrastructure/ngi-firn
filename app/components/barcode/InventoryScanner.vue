@@ -18,10 +18,19 @@ const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string
   autofocus?: boolean
+  /* Empty the field after each capture, ready for the next code (scan-many workflows). */
+  clearOnScan?: boolean
+  /* Keep the camera running after a capture instead of stopping at the first code. */
+  continuous?: boolean
+  /* Larger tab triggers and input, for touch use on the scanner page. */
+  large?: boolean
 }>(), {
   modelValue: '',
   placeholder: 'Scan or type a barcode',
-  autofocus: true
+  autofocus: true,
+  clearOnScan: false,
+  continuous: false,
+  large: false
 })
 
 const emit = defineEmits<{
@@ -56,6 +65,15 @@ function clearDebounce() {
   }
 }
 
+/* Emit a capture, then empty the field when the caller collects many codes in a row. */
+function capture(code: string) {
+  emit('scanned', code)
+  if (props.clearOnScan) {
+    localValue.value = ''
+    emit('update:modelValue', '')
+  }
+}
+
 function onInput(value: string | undefined) {
   const next = value ?? ''
   localValue.value = next
@@ -64,20 +82,21 @@ function onInput(value: string | undefined) {
   clearDebounce()
   debounceTimer = setTimeout(() => {
     const trimmed = normalizeBarcode(next)
-    if (trimmed) emit('scanned', trimmed)
+    if (trimmed) capture(trimmed)
   }, 300)
 }
 
 function onSubmit() {
   clearDebounce()
   const trimmed = normalizeBarcode(localValue.value)
-  if (trimmed) emit('scanned', trimmed)
+  if (trimmed) capture(trimmed)
 }
 
 function clearValue() {
   clearDebounce()
   localValue.value = ''
   emit('update:modelValue', '')
+  focus()
 }
 
 // Use the shared detections composable so a shaky read stabilises on the most
@@ -87,6 +106,13 @@ const {
   mostDetectedItem,
   clearDetections
 } = useBarcodeDetections()
+
+/*
+ * In continuous mode the camera keeps seeing the label it just read. The same code is
+ * therefore ignored for a short cooldown, so holding a tube in view adds it once.
+ */
+const CONTINUOUS_COOLDOWN_MS = 1500
+let lastCapture: { code: string, at: number } | null = null
 
 function onDetect(codes: DetectedCode[]) {
   codes.forEach(code => upsertZxingDetection(code))
@@ -104,12 +130,35 @@ function onDetect(codes: DetectedCode[]) {
   const code = normalizeBarcode(detection.code)
   if (!code) return
 
+  if (props.continuous) {
+    clearDetections()
+    const now = Date.now()
+    if (lastCapture && lastCapture.code === code && now - lastCapture.at < CONTINUOUS_COOLDOWN_MS) return
+    lastCapture = { code, at: now }
+    capture(code)
+    return
+  }
+
   localValue.value = code
   emit('update:modelValue', code)
   emit('scanned', code)
   // Stop the camera once a code is captured; the user confirms with Next.
   enableCamera.value = false
 }
+
+/*
+ * Return keyboard focus to the reader field. A keyboard-wedge scanner types into
+ * whatever has focus, so callers refocus after every tap to keep scans landing here.
+ */
+const formRef = useTemplateRef<HTMLFormElement>('formRef')
+const activeTab = ref('reader')
+
+function focus() {
+  if (activeTab.value !== 'reader') return
+  formRef.value?.querySelector('input')?.focus({ preventScroll: true })
+}
+
+defineExpose({ focus })
 
 function disableCamera() {
   enableCamera.value = false
@@ -129,13 +178,22 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <NTabs default-value="reader">
-    <NTabsList class="mx-auto border-b border-primary bg-primary-50 dark:bg-primary/10">
-      <NTabsTrigger value="reader">
+  <NTabs v-model="activeTab">
+    <NTabsList
+      class="mx-auto border-b border-primary bg-primary-50 dark:bg-primary/10"
+      :class="large ? 'grid grid-cols-2 w-full h-auto' : ''"
+    >
+      <NTabsTrigger
+        value="reader"
+        :class="large ? 'min-h-12 text-base' : ''"
+      >
         <NIcon name="i-lucide-scan-barcode" />
         Scanner or keyboard
       </NTabsTrigger>
-      <NTabsTrigger value="camera">
+      <NTabsTrigger
+        value="camera"
+        :class="large ? 'min-h-12 text-base' : ''"
+      >
         <NIcon name="i-lucide-camera" />
         Device camera
       </NTabsTrigger>
@@ -143,6 +201,7 @@ onBeforeUnmount(() => {
 
     <NTabsContent value="reader">
       <form
+        ref="formRef"
         class="flex flex-row gap-2 p-2"
         @submit.prevent="onSubmit()"
       >
@@ -153,7 +212,7 @@ onBeforeUnmount(() => {
           class="w-full bg-background"
           leading="i-lucide-scan-barcode"
           :placeholder="placeholder"
-          size="lg"
+          :size="large ? 'xl' : 'lg'"
           :una="{ inputWrapper: 'w-full' }"
           @update:model-value="onInput"
         />
@@ -161,7 +220,7 @@ onBeforeUnmount(() => {
           btn="soft-error hover:outline-error"
           label="i-lucide-trash-2"
           icon
-          size="lg"
+          :size="large ? 'xl' : 'lg'"
           type="button"
           @click="clearValue()"
         />
