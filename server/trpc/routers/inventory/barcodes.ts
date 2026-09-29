@@ -4,6 +4,7 @@
  *
  * BARCODE QUERIES (firnUserProcedure):
  * resolveBarcodes - Interpret a scanned set into a reviewable plan, without writing anything
+ * lookupBarcode - Identify the single entity (kind and slug) behind one scanned code
  *
  * BARCODE MUTATIONS (firnUserProcedure):
  * applyBarcodeScan - Re-resolve a scanned set server-side and execute it
@@ -18,9 +19,12 @@
 import { createTRPCRouter, firnUserProcedure } from '../../init'
 import {
   resolveBarcodesSchema,
+  lookupBarcodeSchema,
   applyBarcodeScanSchema,
-  assignBarcodeSchema
+  assignBarcodeSchema,
+  parseBarcode
 } from '~~/schemas/inventory/barcode'
+import type { BarcodeEntityKind } from '~~/schemas/inventory/barcode'
 import type { BarcodeScanPlan, BarcodeScanResult } from '~~/types/inventory'
 
 export const barcodesRouter = createTRPCRouter({
@@ -39,6 +43,27 @@ export const barcodesRouter = createTRPCRouter({
       if (!ctx.firnUser) throw new Error('User context is required to resolve a barcode scan.')
       const { BarcodeScanService } = await import('../../../crud/inventory/barcode-scan.server')
       return await BarcodeScanService.resolveScan(input.codes, ctx.firnUser)
+    }),
+
+  /*
+   * Identify the single entity behind a scanned code.
+   *
+   * Returns only the kind and slug: the scanner page then reads the entity through the
+   * existing detail queries, which share their cache keys with the rest of the UI and
+   * are invalidated by every scan applied. Codes that can never name an entity are
+   * refused with the parser's own explanation instead of a blank "not found".
+   */
+  lookupBarcode: firnUserProcedure
+    .input(lookupBarcodeSchema)
+    .query(async ({ input }): Promise<{ entityKind: BarcodeEntityKind, slug: string } | null> => {
+      const parsed = parseBarcode(input.code)
+      if (parsed.kind === 'invalid') throw new Error(parsed.reason)
+      if (parsed.kind === 'action') {
+        throw new Error(`"${parsed.value}" is the action card for "${parsed.action}", not an inventory entity.`)
+      }
+      const { BarcodeService } = await import('../../../crud/inventory/barcodes.server')
+      const hit = await BarcodeService.findDocumentByBarcode(parsed.value)
+      return hit ? { entityKind: hit.entityKind, slug: hit.doc.slug } : null
     }),
 
   // Barcode mutations

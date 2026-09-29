@@ -262,6 +262,11 @@ export const resolveBarcodesSchema = z.object({
   codes: scannedCodesSchema
 })
 
+/* A single code to identify, for the scanner page's info view. */
+export const lookupBarcodeSchema = z.object({
+  code: z.string().min(1, { message: 'A scanned barcode cannot be empty' })
+})
+
 export const applyBarcodeScanSchema = z.object({
   codes: scannedCodesSchema,
   logComment: z.string().nullish()
@@ -278,5 +283,6 @@ export const assignBarcodeSchema = z.object({
 })
 
 export type ResolveBarcodesInput = z.infer<typeof resolveBarcodesSchema>
+export type LookupBarcodeInput = z.infer<typeof lookupBarcodeSchema>
 export type ApplyBarcodeScanInput = z.infer<typeof applyBarcodeScanSchema>
 export type AssignBarcodeInput = z.infer<typeof assignBarcodeSchema>

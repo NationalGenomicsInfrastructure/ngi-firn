@@ -219,6 +219,11 @@ async function run() {
     const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(boxA), bc(equip)], user))
     check('an enclosing container is preferred over the equipment',
       p.context === 'BCTEST Box A' && p.warnings.includes('context_ignored'), JSON.stringify(p))
+    const plan = await BarcodeScanService.resolveScan([bc(v1), bc(boxA), bc(equip)], user)
+    check('the context row is identified by its scanned code',
+      plan.contextCode === bc(boxA), String(plan.contextCode))
+    check('the unused equipment code is reported as an ignored location',
+      plan.ignoredLocationCodes.join('|') === bc(equip), JSON.stringify(plan.ignoredLocationCodes))
   }
   {
     const p = summarize(await BarcodeScanService.resolveScan([bc(v1), bc(equip)], user))
@@ -249,6 +254,12 @@ async function run() {
       p.action === 'move' && p.context === 'BCTEST Box B'
       && p.targets.every(t => t.endsWith(':move:exec')) && p.targets.length === 2,
       JSON.stringify(p))
+    const plan = await BarcodeScanService.resolveScan(
+      [bc(v1), bc(equip), BARCODE_FOR_ACTION.move, bc(boxB)], user)
+    check('the move destination is identified by its scanned code',
+      plan.contextCode === bc(boxB), String(plan.contextCode))
+    check('equipment scanned before the destination is an ignored location',
+      plan.ignoredLocationCodes.join('|') === bc(equip), JSON.stringify(plan.ignoredLocationCodes))
   }
   {
     const p = summarize(await BarcodeScanService.resolveScan([bc(v1), BARCODE_FOR_ACTION.move], user))

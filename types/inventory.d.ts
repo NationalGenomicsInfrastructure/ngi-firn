@@ -576,6 +576,14 @@ export interface BarcodeScanPlan {
   explicitAction: boolean
   /* The location context: scanned equipment, or a container that is an ancestor. */
   context: SerializedEntityRef | null
+  /* The scanned code that resolved to `context`, so a client can label that code's row. */
+  contextCode: string | null
+  /*
+   * Location codes that were resolved but play no role: extra locations beyond the one
+   * chosen as context, or equipment scanned before a move/locate destination. Reported
+   * so every scanned code can be accounted for, not just the ones that were used.
+   */
+  ignoredLocationCodes: string[]
   targets: BarcodeScanTarget[]
   rejected: BarcodeScanRejection[]
   warnings: BarcodeScanWarning[]

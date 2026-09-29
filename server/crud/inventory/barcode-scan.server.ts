@@ -142,6 +142,8 @@ export const BarcodeScanService = {
         action: null,
         explicitAction: false,
         context: null,
+        contextCode: null,
+        ignoredLocationCodes: [],
         targets: [],
         rejected,
         warnings,
@@ -174,6 +176,8 @@ export const BarcodeScanService = {
         action,
         explicitAction: action !== null,
         context: null,
+        contextCode: null,
+        ignoredLocationCodes: [],
         targets: [],
         rejected,
         warnings,
@@ -183,7 +187,7 @@ export const BarcodeScanService = {
 
     // ---- Phase 3: split the set into context and targets ----
     const relocating = action !== null && RELOCATING_ACTIONS.includes(action)
-    const { context, contextDoc, targetHits, roleWarnings } = await resolveRoles(hits, relocating)
+    const { context, contextDoc, contextCode, ignoredLocationCodes, targetHits, roleWarnings } = await resolveRoles(hits, relocating)
     warnings.push(...roleWarnings)
 
     // ---- Phase 4: validate the action against the resolved roles ----
@@ -192,6 +196,8 @@ export const BarcodeScanService = {
         action,
         explicitAction: true,
         context: null,
+        contextCode: null,
+        ignoredLocationCodes: [],
         targets: [],
         rejected,
         warnings,
@@ -218,6 +224,8 @@ export const BarcodeScanService = {
         action,
         explicitAction: action !== null,
         context,
+        contextCode,
+        ignoredLocationCodes,
         targets: [],
         rejected,
         warnings,
@@ -231,6 +239,8 @@ export const BarcodeScanService = {
       action,
       explicitAction: action !== null,
       context,
+      contextCode,
+      ignoredLocationCodes,
       targets,
       rejected,
       warnings,
@@ -420,6 +430,8 @@ async function resolveReserverNames(targetHits: BarcodeLookupHit[]): Promise<Map
 async function resolveRoles(hits: BarcodeLookupHit[], relocating: boolean): Promise<{
   context: SerializedEntityRef | null
   contextDoc: BarcodedDocument | null
+  contextCode: string | null
+  ignoredLocationCodes: string[]
   targetHits: BarcodeLookupHit[]
   roleWarnings: BarcodeScanWarning[]
 }> {
@@ -434,12 +446,20 @@ async function resolveRoles(hits: BarcodeLookupHit[], relocating: boolean): Prom
     const destination = locationHits[locationHits.length - 1] ?? null
 
     if (!destination) {
-      return { context: null, contextDoc: null, targetHits: [], roleWarnings }
+      return { context: null, contextDoc: null, contextCode: null, ignoredLocationCodes: [], targetHits: [], roleWarnings }
     }
+
+    // Containers scanned before the destination are moved along as targets; only
+    // equipment, which can never be a target, is left without a role.
+    const ignoredLocationCodes = hits
+      .filter(hit => hit.doc.type === 'storageEquipment' && hit.doc._id !== destination.doc._id)
+      .map(hit => hit.code)
 
     return {
       context: toEntityRef(destination.doc),
       contextDoc: destination.doc,
+      contextCode: destination.code,
+      ignoredLocationCodes,
       targetHits: hits.filter(hit => isActionable(hit.doc) && hit.doc._id !== destination.doc._id),
       roleWarnings
     }
@@ -494,6 +514,8 @@ async function resolveRoles(hits: BarcodeLookupHit[], relocating: boolean): Prom
   return {
     context: contextHit ? toEntityRef(contextHit.doc) : null,
     contextDoc: contextHit?.doc ?? null,
+    contextCode: contextHit?.code ?? null,
+    ignoredLocationCodes: contextCandidates.slice(1).map(hit => hit.code),
     targetHits,
     roleWarnings
   }
