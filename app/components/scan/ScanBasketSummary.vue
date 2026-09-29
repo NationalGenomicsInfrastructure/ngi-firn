@@ -71,7 +71,7 @@ const showWarnings = ref(false)
         size="sm"
         :leading="showWarnings ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
         :label="`${plan.warnings.length} warning${plan.warnings.length === 1 ? '' : 's'}`"
-        @pointerdown.prevent
+        @mousedown.prevent
         @click="showWarnings = !showWarnings"
       />
       <ul

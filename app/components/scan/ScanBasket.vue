@@ -65,7 +65,7 @@ const approveLabel = computed(() => {
 
 async function onApprove(event: MouseEvent) {
   // A click with detail 0 came from the keyboard (Enter/Space), not a finger or mouse.
-  if (event.detail === 0 || !canApprove.value) return
+  if (event.detail === 0 || !canApprove.value) return refocus()
 
   const codes = [...props.basket.resolvedCodes.value]
   try {
@@ -95,18 +95,22 @@ async function onApprove(event: MouseEvent) {
 const confirmingClear = ref(false)
 let confirmTimer: ReturnType<typeof setTimeout> | null = null
 
-function onClear() {
+function onClear(event: MouseEvent) {
+  // Same guard as Approve: a wedge scanner's Enter must never wipe the basket.
+  if (event.detail === 0) return refocus()
+
   if (!confirmingClear.value) {
     confirmingClear.value = true
     confirmTimer = setTimeout(() => {
       confirmingClear.value = false
     }, 3000)
-    return
   }
-  if (confirmTimer) clearTimeout(confirmTimer)
-  confirmingClear.value = false
-  props.basket.clear()
-  lastResult.value = null
+  else {
+    if (confirmTimer) clearTimeout(confirmTimer)
+    confirmingClear.value = false
+    props.basket.clear()
+    lastResult.value = null
+  }
   refocus()
 }
 
@@ -248,7 +252,7 @@ function warningsFor(code: string) {
           :label="confirmingClear ? 'Tap again' : 'Clear'"
           class="min-h-16 shrink-0"
           :disabled="basket.entityCodes.value.length === 0 && !basket.action.value"
-          @pointerdown.prevent
+          @mousedown.prevent
           @click="onClear"
         />
         <NButton
@@ -258,7 +262,7 @@ function warningsFor(code: string) {
           :label="approveLabel"
           class="min-h-16 flex-1 text-lg font-semibold"
           :disabled="!canApprove"
-          @pointerdown.prevent
+          @mousedown.prevent
           @click="onApprove"
         />
       </div>

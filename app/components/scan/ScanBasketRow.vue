@@ -46,6 +46,7 @@ const icon = computed(() => {
   }
   if (props.role.kind === 'location' || props.role.kind === 'ignored-location') return 'i-lucide-map-pin'
   if (props.role.kind === 'rejected') return 'i-lucide-circle-x'
+  if (props.role.kind === 'unassigned') return 'i-lucide-circle-dashed'
   return 'i-lucide-loader-2'
 })
 
@@ -134,6 +135,12 @@ const title = computed(() => target.value?.name ?? props.code)
         {{ role.rejection.message }}
       </p>
       <p
+        v-else-if="role.kind === 'unassigned'"
+        class="text-sm text-muted"
+      >
+        {{ role.message }}
+      </p>
+      <p
         v-else-if="role.kind === 'pending'"
         class="text-sm text-muted"
       >
@@ -148,7 +155,7 @@ const title = computed(() => target.value?.name ?? props.code)
       size="lg"
       class="shrink-0"
       :aria-label="`Remove ${title} from the basket`"
-      @pointerdown.prevent
+      @mousedown.prevent
       @click="emit('remove', code)"
     />
   </li>

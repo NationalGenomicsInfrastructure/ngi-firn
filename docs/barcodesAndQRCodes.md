@@ -130,8 +130,8 @@ A phone- or tablet-first page for bench work, built from `app/components/scan/`.
 
 **Enter-safety.** A keyboard-wedge scanner types each code followed by Enter into
 whatever has focus. If a button kept focus after a tap, the next scan would click it.
-Buttons on the page therefore never take focus (`@pointerdown.prevent`), the reader
-field is refocused after each tap, and Approve ignores clicks with `event.detail === 0`
+Buttons on the page therefore never take focus (`@mousedown.prevent`), the reader
+field is refocused after each tap, and Approve and Clear ignore clicks with `event.detail === 0`
 (keyboard-originated), so a scan can never apply the basket.
 
 **Scan order matters.** A move or locate takes the *last* scanned location as its

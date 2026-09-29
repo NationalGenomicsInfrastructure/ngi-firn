@@ -24,6 +24,8 @@ export type ScanBasketRole
     | { kind: 'location', relocating: boolean }
     | { kind: 'ignored-location' }
     | { kind: 'rejected', rejection: BarcodeScanRejection }
+    /* Resolved, but the plan gave the code no role — e.g. a move still missing its destination. */
+    | { kind: 'unassigned', message: string }
     | { kind: 'pending' }
 
 const RELOCATING_ACTIONS: readonly InventoryActionType[] = ['move', 'locate']
@@ -113,7 +115,7 @@ export function useScanBasket() {
   /* The role of one basket row, derived from the latest plan. */
   function roleOf(code: string): ScanBasketRole {
     const current = plan.value
-    if (!current) return { kind: 'pending' }
+    if (!current) return isResolving.value ? { kind: 'pending' } : unassigned(null)
 
     const target = current.targets.find(t => t.code === code)
     if (target) return { kind: 'target', target }
@@ -121,7 +123,16 @@ export function useScanBasket() {
     if (current.ignoredLocationCodes.includes(code)) return { kind: 'ignored-location' }
     const rejection = current.rejected.find(r => r.code === code)
     if (rejection) return { kind: 'rejected', rejection }
-    return { kind: 'pending' }
+    // A code the shown plan has not seen yet is still on its way to the server.
+    if (isResolving.value) return { kind: 'pending' }
+    return unassigned(current)
+  }
+
+  function unassigned(current: BarcodeScanPlan | null): ScanBasketRole {
+    if (relocating.value && !current?.contextCode) {
+      return { kind: 'unassigned', message: 'Waiting for a destination: scan where these should go, last.' }
+    }
+    return { kind: 'unassigned', message: current?.error ?? 'Not part of this action.' }
   }
 
   return {

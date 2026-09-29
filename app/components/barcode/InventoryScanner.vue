@@ -18,7 +18,10 @@ const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string
   autofocus?: boolean
-  /* Empty the field after each capture, ready for the next code (scan-many workflows). */
+  /*
+   * Empty the field after each capture, ready for the next code (scan-many workflows).
+   * Typed input is then captured on Enter only, never after a typing pause.
+   */
   clearOnScan?: boolean
   /* Keep the camera running after a capture instead of stopping at the first code. */
   continuous?: boolean
@@ -80,6 +83,9 @@ function onInput(value: string | undefined) {
   emit('update:modelValue', next)
 
   clearDebounce()
+  // Clearing after a debounce would wipe a slowly hand-typed code mid-entry, so a
+  // clear-on-scan field captures only on Enter, which wedge scanners send anyway.
+  if (props.clearOnScan) return
   debounceTimer = setTimeout(() => {
     const trimmed = normalizeBarcode(next)
     if (trimmed) capture(trimmed)
@@ -109,7 +115,8 @@ const {
 
 /*
  * In continuous mode the camera keeps seeing the label it just read. The same code is
- * therefore ignored for a short cooldown, so holding a tube in view adds it once.
+ * therefore ignored until it has been out of view for a short cooldown, so holding a
+ * tube in front of the camera adds it once.
  */
 const CONTINUOUS_COOLDOWN_MS = 1500
 let lastCapture: { code: string, at: number } | null = null
@@ -133,9 +140,10 @@ function onDetect(codes: DetectedCode[]) {
   if (props.continuous) {
     clearDetections()
     const now = Date.now()
-    if (lastCapture && lastCapture.code === code && now - lastCapture.at < CONTINUOUS_COOLDOWN_MS) return
+    const recentlySeen = lastCapture?.code === code && now - lastCapture.at < CONTINUOUS_COOLDOWN_MS
+    // Sliding window: a label kept in view keeps extending its own cooldown.
     lastCapture = { code, at: now }
-    capture(code)
+    if (!recentlySeen) capture(code)
     return
   }
 

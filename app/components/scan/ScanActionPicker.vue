@@ -10,7 +10,7 @@ import { getActionTypeMeta } from '~/utils/inventory/actionLog'
  * instead of hunting for the card sheet. Scanning a card and tapping a button drive
  * the same single selection. "Check out / return" is the card-less default toggle.
  *
- * Buttons never take focus (pointerdown is prevented): a keyboard-wedge scanner ends
+ * Buttons never take focus (mousedown is prevented): a keyboard-wedge scanner ends
  * each code with Enter, which would otherwise re-click whichever button was tapped last.
  */
 
@@ -49,7 +49,7 @@ const options = computed(() => [
         :label="option.label"
         class="min-h-14 justify-start whitespace-normal text-left"
         :class="option.value === null ? 'col-span-2 sm:col-span-4' : ''"
-        @pointerdown.prevent
+        @mousedown.prevent
         @click="emit('update:modelValue', option.value)"
       />
     </div>
