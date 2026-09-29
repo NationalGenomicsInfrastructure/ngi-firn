@@ -421,6 +421,10 @@ Verify quickly with a UnoCSS generator over the real config: the generated CSS m
 
 > ⚠️ **Avoid dynamic `:una` object bindings for badge variants that include `dark:badge-solid*`.** Patterns like `:una="{ badgeDefaultVariant: cond ? 'badge-soft dark:badge-solid' : 'badge-soft-gray dark:badge-solid-gray' }"` can make UnoCSS over-tokenize compiled template fragments and emit bogus candidates (`badge-solid-},`, `badge-solid-absolute`, `badge-solid-User`, ...), which flood `pnpm build` with `[unocss] unmatched utility` warnings. Prefer static class strings on explicit `v-if`/`v-else` branches for these badges.
 
+> ⚠️ **Keyboard-wedge barcode scanners press Enter after every code.** On any page that takes scanner input (e.g. `/scan`), a button that keeps focus after being tapped gets clicked by the next scan. Give such buttons `@pointerdown.prevent` so they never take focus, refocus the reader input after each tap (`InventoryScanner` exposes `focus()`), and have destructive or committing handlers ignore keyboard clicks (`if (event.detail === 0) return`). Details: `docs/barcodesAndQRCodes.md` → "Scanner page".
+
+> ⚠️ **Do not sort barcode scan-plan query keys.** A move/locate destination is the last location scanned, so `INVENTORY_BARCODE_QUERY_KEYS.scan(codes)` must keep scan order; a sorted key serves a cached plan with the wrong destination.
+
 **Lazy hydration** for below-the-fold components:
 
 ```vue

@@ -111,6 +111,33 @@ meaningless without typed free text.
 
 See design decision 14 in `docs/inventory.md`.
 
+### Scanner page (`/scan`)
+
+A phone- or tablet-first page for bench work, built from `app/components/scan/`.
+
+- **Info** scans one code and shows the entity's name, location (direct parent and
+  slot), temperature, expiry and the last action-log entry. `lookupBarcode` returns only
+  kind and slug; the card then reads the regular detail queries, so it refreshes when a
+  scan is applied.
+- **Actions** is a basket (`useScanBasket`). Codes are screened locally with
+  `parseBarcode` before they are added: misreads and login tokens are refused,
+  duplicates are ignored. An action card, or a tap on an action button, fills a single
+  action slot rather than being listed as a row, so a basket can never hold two cards.
+  Every addition re-resolves the set, and each row is labelled from the plan: target
+  (with its proposed action or blocking reason), location or destination
+  (`plan.contextCode`), ignored location (`plan.ignoredLocationCodes`) or rejected.
+  Approve sends the same codes to `applyBarcodeScan` and removes what was applied.
+
+**Enter-safety.** A keyboard-wedge scanner types each code followed by Enter into
+whatever has focus. If a button kept focus after a tap, the next scan would click it.
+Buttons on the page therefore never take focus (`@pointerdown.prevent`), the reader
+field is refocused after each tap, and Approve ignores clicks with `event.detail === 0`
+(keyboard-originated), so a scan can never apply the basket.
+
+**Scan order matters.** A move or locate takes the *last* scanned location as its
+destination, so the plan query key keeps codes in scan order. Sorting the key would let a
+re-ordered basket show a cached plan with the wrong destination.
+
 ### Printing
 
 The dedicated label printer is not wired up yet. Until it is, labels and the action
