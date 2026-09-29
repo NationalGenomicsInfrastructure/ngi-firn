@@ -84,6 +84,10 @@ export function useScanBasket() {
     action.value = next
   }
 
+  function setLogComment(value: string): void {
+    logComment.value = value
+  }
+
   function clear(): void {
     entityCodes.value = []
     action.value = null
@@ -123,7 +127,7 @@ export function useScanBasket() {
   return {
     entityCodes: readonly(entityCodes),
     action: readonly(action),
-    logComment,
+    logComment: readonly(logComment),
     relocating,
     resolvedCodes,
     plan,
@@ -134,6 +138,7 @@ export function useScanBasket() {
     addCode,
     removeCode,
     setAction,
+    setLogComment,
     clear,
     roleOf,
     refetch
