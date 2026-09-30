@@ -389,6 +389,8 @@ export interface ItemMoveTarget {
   name: string
   kind: 'container' | 'equipment'
   free: number | null
+  /* Container purpose; null for equipment. Used for ordering only, never to exclude a target. */
+  classification: InventoryClassificationType | null
   temperatureCategory: TemperatureCategory | null
   temperatureCelsius: number | null
 }

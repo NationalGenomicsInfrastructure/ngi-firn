@@ -196,11 +196,11 @@ Acceptance rules on containers can filter by either axis — a sample box might 
 
 A common lab task is _"I need to store 5 × 96-well plates — where is there room?"_ In a document database with a bottom-up tree (each child stores its parent, parents don't list children), answering this requires knowing both **what each container accepts** and **how full it currently is**. The system solves this with a two-query indexed approach rather than recursive traversal:
 
-1. **`capacity_by_accepted_category` view** — Indexes every active container by the categories it accepts. A container with `acceptedItemCategories: ['plate96', 'plate384']` emits two entries. Containers and equipment with no acceptance restrictions emit under a `['any', 'any']` wildcard key. Each emitted value includes the container's declared `capacity`.
+1. **`capacity_by_accepted_category` view** — Indexes every active container by the `[childKind, type]` of each of its capacity entries (e.g. `['item', 'plate96']`). Each emitted value carries `free = total − stored` from the container's stored capacity counter.
 
-2. **`children_count` view** — A map+reduce view (`_count`) that emits every child document's `parent.id`. Queried with `group=true` and a list of candidate IDs, it returns the current occupancy of each candidate in a single round-trip.
+2. **Server-side join** — The move-target listings (`ItemService.getMoveTargetsForItems`, `ContainerService.getMoveTargetsForContainers`) query that view once per needed category, intersect the candidates and keep those whose `free` covers the batch. Items additionally require temperature compatibility; a candidate's classification only affects the sort order (matching classification first), never whether it is offered.
 
-3. **Server-side join** — `ContainerService.suggestLocations()` runs both view queries in parallel, computes `available = capacity − occupied` per candidate, and filters for `available ≥ requested count`. Results can be further narrowed by classification, ancestor subtree (e.g. "only in Freezer X"), and sorted by temperature preference (closest match first) then by most available space.
+The listings back the Move dialogs only. The mutations (`moveItem`, `moveContainer`, also used by barcode scans) validate independently, so a listing must never be stricter than the mutation.
 
 This approach is efficient because both queries hit B-tree indexes — O(log n) per key — and the join operates over a small candidate set. No recursive ancestry walking is needed.
 

@@ -332,6 +332,8 @@ For **toggle controls and sliders**, use `NFormGroup` instead of `NFormField`:
 
 > ⚠️ **`NDialog` open state uses `:open` / `@update:open`, NOT `v-model` / `:model-value` / `@update:model-value`.** `NDialog` wraps reka-ui `DialogRoot`, whose controlled prop is `open` (emit `update:open`); it also sets `inheritAttrs: false`, so a stray `:model-value` attr is silently dropped and `@update:model-value` is **never** emitted. Binding `:model-value="isOpen"` / `@update:model-value="onDialogOpenChange"` therefore leaves your local `isOpen` ref stuck at its initial value: the dialog still opens via its `#trigger`, but any logic that reads `isOpen` breaks — a Pinia Colada query gated on `enabled: isOpen.value` never fetches (renders an empty "nothing available" state), and a programmatic `isOpen.value = false` never closes the dialog. Correct usage: `<NDialog :open="isOpen" @update:open="onDialogOpenChange">` with `function onDialogOpenChange(open: boolean) { isOpen.value = open }`. Note the inner `NSelect`/input `@update:model-value` handlers are unrelated and correct — this rule is only about the `NDialog` root.
 
+> ⚠️ **Move-target listings must not be stricter than the move mutation.** The move dialogs list candidates via `getMoveTargets*` while the barcode scanner calls `moveItem`/`moveContainer` directly with no listing. Any rule that exists only in the listing (e.g. the former classification filter in `ItemService.getMoveTargetsForItems`) makes valid destinations unreachable from the UI while the scanner still succeeds. Put a rule in the mutation first; the listing may only mirror it or *sort* by preference, never exclude on it.
+
 **Table headers** share a single constant:
 
 ```ts

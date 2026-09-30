@@ -105,14 +105,14 @@ export const itemsRouter = createTRPCRouter({
     .input(itemMoveTargetsSchema)
     .query(async ({ input }): Promise<ItemMoveTarget[]> => {
       const { ItemService } = await import('../../../crud/inventory/items.server')
-      return await ItemService.getMoveTargetsForItem(input.itemSlug, input.showAllClassifications ?? false)
+      return await ItemService.getMoveTargetsForItem(input.itemSlug)
     }),
 
   getMoveTargetsForItems: authedProcedure
     .input(itemMoveTargetsBatchSchema)
     .query(async ({ input }): Promise<ItemMoveTarget[]> => {
       const { ItemService } = await import('../../../crud/inventory/items.server')
-      return await ItemService.getMoveTargetsForItems(input.itemSlug, input.showAllClassifications ?? false)
+      return await ItemService.getMoveTargetsForItems(input.itemSlug)
     }),
 
   getItemActionLog: authedProcedure

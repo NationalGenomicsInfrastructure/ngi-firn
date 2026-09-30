@@ -124,14 +124,12 @@ export const alterItemSchema = z.object({
 })
 
 export const itemMoveTargetsSchema = z.object({
-  itemSlug: z.string().min(1, { message: 'Item identifier is required' }),
-  showAllClassifications: z.boolean().optional()
+  itemSlug: z.string().min(1, { message: 'Item identifier is required' })
 })
 
 export const itemMoveTargetsBatchSchema = z.object({
   itemSlug: z.array(z.string().min(1, { message: 'Item identifier is required' }))
-    .min(1, { message: 'At least one item identifier is required' }),
-  showAllClassifications: z.boolean().optional()
+    .min(1, { message: 'At least one item identifier is required' })
 })
 
 export type ItemType = z.infer<typeof itemTypeSchema>

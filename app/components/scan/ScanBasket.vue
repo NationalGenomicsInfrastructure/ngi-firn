@@ -141,7 +141,6 @@ function warningsFor(code: string) {
 
 <template>
   <div class="space-y-5">
-
     <ScanActionPicker
       :model-value="basket.action.value"
       @update:model-value="onActionChange"

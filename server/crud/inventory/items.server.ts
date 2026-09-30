@@ -411,15 +411,17 @@ export const ItemService = {
   },
 
   /* List valid equipment/container destinations for one item, excluding its current parent. */
-  async getMoveTargetsForItem(itemSlug: string, showAllClassifications = false): Promise<ItemMoveTarget[]> {
-    return this.getMoveTargetsForItems([itemSlug], showAllClassifications)
+  async getMoveTargetsForItem(itemSlug: string): Promise<ItemMoveTarget[]> {
+    return this.getMoveTargetsForItems([itemSlug])
   },
 
   /*
    * List valid shared destinations for an item batch. Active equipment is unbounded for
    * items; containers must accept every requested category with enough remaining capacity.
+   * Classification never excludes a target (moveItem doesn't check it either); containers
+   * matching the items' classification are only sorted first.
    */
-  async getMoveTargetsForItems(itemSlugs: string[], showAllClassifications = false): Promise<ItemMoveTarget[]> {
+  async getMoveTargetsForItems(itemSlugs: string[]): Promise<ItemMoveTarget[]> {
     const items: InventoryItem[] = []
     for (const slug of itemSlugs) {
       const item = await this.getItemBySlug(slug)
@@ -477,6 +479,7 @@ export const ItemService = {
           name: parent.name,
           kind: 'equipment',
           free: Number.isFinite(free) ? free : null,
+          classification: null,
           temperatureCategory: parent.temperatureCategory,
           temperatureCelsius: parent.temperatureCelsius
         })
@@ -507,7 +510,6 @@ export const ItemService = {
           requiredTemperature,
           { category: container.temperatureCategory, celsius: container.temperatureCelsius }
         )) continue
-        if (!showAllClassifications && classifications.size === 1 && container.classification !== [...classifications][0]) continue
         const free = row.value?.free ?? 0
         if (!candidates.has(container.slug)) {
           candidates.set(container.slug, { doc: container, free })
@@ -536,16 +538,20 @@ export const ItemService = {
           name: candidate.doc.name,
           kind: 'container',
           free: Number.isFinite(minimumFree) ? minimumFree : 0,
+          classification: candidate.doc.classification,
           temperatureCategory: candidate.doc.temperatureCategory,
           temperatureCelsius: candidate.doc.temperatureCelsius
         })
       }
     }
 
+    const preferred = classifications.size === 1 ? [...classifications][0] : null
+    const classificationRank = (target: ItemMoveTarget) => preferred != null && target.classification === preferred ? 0 : 1
     return [...targets.values()].sort((a, b) => {
       const ea = resolveEffectiveCelsius(a.temperatureCategory, a.temperatureCelsius)
       const eb = resolveEffectiveCelsius(b.temperatureCategory, b.temperatureCelsius)
-      return (ea == null ? -1 : eb == null ? 1 : ea - eb)
+      return (classificationRank(a) - classificationRank(b))
+        || (ea == null ? -1 : eb == null ? 1 : ea - eb)
         || a.name.localeCompare(b.name)
     })
   },
