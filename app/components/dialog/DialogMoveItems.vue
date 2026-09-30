@@ -4,6 +4,7 @@ import type { DisplayInventoryItem } from '~~/types/inventory'
 import { itemMoveTargetsBatchQuery } from '~/utils/queries/inventory/items'
 import { moveItem as useMoveItemsMutation } from '~/utils/mutations/inventory/items'
 import { formatTemperature } from '~/utils/inventory/temperature'
+import type { MoveTargetOption } from '~/components/select/SelectMoveTarget.vue'
 
 const props = defineProps<{
   items: DisplayInventoryItem[]
@@ -34,10 +35,11 @@ const { state: targetsState, asyncStatus: targetsStatus } = useQueryColada(
   })
 )
 
-const targetOptions = computed(() =>
+const targetOptions = computed<MoveTargetOption[]>(() =>
   targetsState.value.status === 'success'
     ? targetsState.value.data.map(target => ({
         value: `${target.kind}:${target.slug}`,
+        kind: target.kind,
         label: `${target.name} · ${target.free ?? 'Unlimited'} free · ${formatTemperature(target.temperatureCategory, target.temperatureCelsius)} · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
       }))
     : []
@@ -66,19 +68,6 @@ watch(targetOptions, (options) => {
 
 function onDialogOpenChange(open: boolean) {
   isOpen.value = open
-}
-
-function onTargetUpdate(value: unknown) {
-  if (typeof value === 'string') {
-    selectedTarget.value = value
-    return
-  }
-  if (value && typeof value === 'object' && 'value' in value) {
-    const optionValue = (value as { value?: unknown }).value
-    if (typeof optionValue === 'string') {
-      selectedTarget.value = optionValue
-    }
-  }
 }
 
 const { mutateAsync: moveItemsAsync, isLoading } = useMoveItemsMutation()
@@ -153,12 +142,9 @@ async function handleMove() {
         label="Destination parent"
         :una="{ formLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
       >
-        <NSelect
-          class="w-full"
-          :model-value="selectedTarget"
-          :items="targetOptions"
-          by="value"
-          @update:model-value="onTargetUpdate"
+        <SelectMoveTarget
+          v-model="selectedTarget"
+          :options="targetOptions"
         />
       </NFormField>
 
@@ -171,6 +157,9 @@ async function handleMove() {
           v-model="showAllClassifications"
           label="Show all classifications"
         />
+        <p class="text-muted text-xs mt-1">
+          By default, containers whose classification differs from the selected items are hidden.
+        </p>
       </NFormGroup>
 
       <NAlert

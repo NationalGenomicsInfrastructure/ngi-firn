@@ -3,6 +3,7 @@ import { useQuery as useQueryColada } from '@pinia/colada'
 import type { DisplayContainer } from '~~/types/inventory'
 import { containerMoveTargetsBatchQuery } from '~/utils/queries/inventory/containers'
 import { moveContainer as useMoveContainersMutation } from '~/utils/mutations/inventory/containers'
+import type { MoveTargetOption } from '~/components/select/SelectMoveTarget.vue'
 
 const props = defineProps<{
   containers: DisplayContainer[]
@@ -26,10 +27,11 @@ const { state: targetsState, asyncStatus: targetsStatus } = useQueryColada(
   () => ({ ...containerMoveTargetsBatchQuery(slugs.value), enabled: isOpen.value })
 )
 
-const targetOptions = computed(() =>
+const targetOptions = computed<MoveTargetOption[]>(() =>
   targetsState.value.status === 'success'
     ? targetsState.value.data.map(target => ({
         value: `${target.kind}:${target.slug}`,
+        kind: target.kind,
         label: `${target.name} · ${target.free} free · ${target.kind === 'equipment' ? 'Equipment' : 'Container'}`
       }))
     : []
@@ -58,19 +60,6 @@ watch(targetOptions, (options) => {
 
 function onDialogOpenChange(open: boolean) {
   isOpen.value = open
-}
-
-function onTargetUpdate(value: unknown) {
-  if (typeof value === 'string') {
-    selectedTarget.value = value
-    return
-  }
-  if (value && typeof value === 'object' && 'value' in value) {
-    const optionValue = (value as { value?: unknown }).value
-    if (typeof optionValue === 'string') {
-      selectedTarget.value = optionValue
-    }
-  }
 }
 
 const { mutateAsync: moveContainersAsync, isLoading } = useMoveContainersMutation()
@@ -146,12 +135,9 @@ async function handleMove() {
         label="Destination parent"
         :una="{ formLabel: 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium' }"
       >
-        <NSelect
-          class="w-full"
-          :model-value="selectedTarget"
-          :items="targetOptions"
-          by="value"
-          @update:model-value="onTargetUpdate"
+        <SelectMoveTarget
+          v-model="selectedTarget"
+          :options="targetOptions"
         />
       </NFormField>
 
