@@ -117,7 +117,7 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     // POST to the token endpoint with the token in the Authorization header
-    await $fetch('/api/auth/token?redirectUrl=/firn', {
+    await $fetch('/api/auth/token?redirectUrl=/scan', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${values.tokenString}`
@@ -125,7 +125,7 @@ const onSubmit = handleSubmit(async (values) => {
     })
 
     await fetchUserSession()
-    await navigateTo('/firn')
+    await navigateTo('/scan')
   }
   catch (error) {
     console.error(error)

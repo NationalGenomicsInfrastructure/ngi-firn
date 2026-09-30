@@ -240,4 +240,4 @@ Various tRPC endpoints are defined in `server/trpc/routers/tokens.ts` to perform
 
 - The QR flow reads and submits the JWE string.
 - The barcode flow reads and submits the compact `ft...` token pointer.
-- The login dialog posts `Authorization: Bearer <token>` to `/api/auth/token?redirectUrl=/firn`, establishes a session and navigates on success.
+- The login dialog posts `Authorization: Bearer <token>` to `/api/auth/token?redirectUrl=/scan`, establishes a session and navigates on success.

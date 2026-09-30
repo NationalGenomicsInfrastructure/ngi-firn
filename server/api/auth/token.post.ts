@@ -62,7 +62,7 @@ export default defineEventHandler(async (event: H3Event) => {
         }
       })
       // retrieve the redirect URL from the request parameters
-      const redirectUrl = getQuery(event).redirectUrl as string || '/firn'
+      const redirectUrl = getQuery(event).redirectUrl as string || '/scan'
       return sendRedirect(event, redirectUrl, 201)
     }
     else {
