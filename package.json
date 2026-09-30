@@ -45,6 +45,7 @@
     "db:init": "tsx scripts/init-db.ts",
     "db:test": "tsx scripts/test-db-connection.ts",
     "test:barcode": "tsx scripts/test-barcode-scan.ts",
+    "test:labels": "tsx scripts/test-label-sheet.ts",
     "db:views": "tsx scripts/ensure-views.ts",
     "db:views:projects": "tsx scripts/pull-project-views.ts"
   },

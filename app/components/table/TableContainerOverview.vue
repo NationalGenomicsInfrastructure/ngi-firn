@@ -132,6 +132,13 @@ const selectedContainers = computed<DisplayContainer[]>(() => {
     .filter((c): c is DisplayContainer => c != null)
 })
 
+const selectedPrintables = computed(() => selectedContainers.value.map(c => ({
+  entityKind: 'container' as const,
+  slug: c.slug,
+  name: c.name,
+  barcode: c.barcode
+})))
+
 function clearSelection() {
   select.value = undefined
 }
@@ -439,6 +446,7 @@ const canMoveSelection = computed(() =>
         {{ table?.getFilteredRowModel().rows.length }} container(s) selected.
       </div>
       <div class="flex flex-wrap gap-3 justify-end">
+        <DialogPrintBarcodes :entities="selectedPrintables" />
         <DialogAlterContainers
           :containers="selectedContainers"
           @done="clearSelection"

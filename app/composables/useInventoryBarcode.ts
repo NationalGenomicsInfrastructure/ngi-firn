@@ -6,13 +6,25 @@ import {
   parseBarcode
 } from '~~/schemas/inventory/barcode'
 import type { InventoryActionType } from '~~/schemas/inventory/metadata'
+import {
+  LABEL_SHEET_PRESETS,
+  computeSheetLayout,
+  cutMarkSegments
+} from '~/utils/inventory/labelSheet'
+import type { LabelSheetPresetId } from '~/utils/inventory/labelSheet'
+
+export interface LabelSheetEntry {
+  code: string
+  caption: string
+}
 
 /*
  * Rendering of inventory barcodes.
  * ********************************
  *
  * Inventory labels are printed far smaller than the login-token sheets, so they use
- * a denser symbol and a label-sized page rather than A4. The human-readable code is
+ * a denser symbol. Single labels get a label-sized page; batches are arranged as a
+ * grid on A4 with cut marks (see buildLabelSheetDoc). The human-readable code is
  * printed beneath the bars here — unlike on token sheets — because a damaged
  * inventory label still has to be enterable by hand.
  *
@@ -169,6 +181,101 @@ export function useInventoryBarcode() {
   }
 
   /*
+   * Build a batch sheet of labels on A4 with cut marks.
+   *
+   * Duplicate codes are printed once, in the order given. Geometry comes from
+   * computeSheetLayout; each page is its own fixed-size table, so a full page never
+   * reflows into the next one.
+   */
+  async function buildLabelSheetDoc(labels: LabelSheetEntry[], presetId: LabelSheetPresetId) {
+    const preset = LABEL_SHEET_PRESETS[presetId]
+    const seen = new Set<string>()
+    const unique = labels.filter((label) => {
+      if (seen.has(label.code)) return false
+      seen.add(label.code)
+      return true
+    })
+
+    if (unique.length === 0) {
+      throw new Error('Select at least one entity with a barcode to print.')
+    }
+
+    const layout = computeSheetLayout(preset, unique.length)
+    const captionHeight = preset.showCaption ? 8 : 0
+    const fit: [number, number] = [layout.labelWidth - 2, layout.cellHeight - 2 - captionHeight]
+
+    const images = await Promise.all(unique.map(label => renderBarcodeDataUrl(label.code, {
+      ...preset.render,
+      displayValue: true
+    })))
+
+    const cellFor = (index: number) => {
+      const label = unique[index]
+      if (!label) return { text: '' }
+      const symbol = { image: images[index]!, fit, alignment: 'center' as const }
+      if (!preset.showCaption) return symbol
+      const caption = label.caption.length > preset.captionMaxChars
+        ? `${label.caption.slice(0, preset.captionMaxChars - 1)}…`
+        : label.caption
+      return {
+        stack: [
+          { text: caption, fontSize: 5, bold: true, alignment: 'center' as const, noWrap: true, margin: [0, 1, 0, 0] as Margins },
+          symbol
+        ]
+      }
+    }
+
+    const content = layout.pages.map((page, pageIndex) => {
+      const body = Array.from({ length: page.usedRows }, (_, row) =>
+        Array.from({ length: layout.cols }, (_, col) => cellFor(page.start + row * layout.cols + col)))
+      return {
+        table: {
+          widths: Array.from({ length: layout.cols }, () => layout.cellWidth),
+          heights: layout.cellHeight,
+          body,
+          dontBreakRows: true
+        },
+        layout: {
+          hLineWidth: () => 0,
+          vLineWidth: () => 0,
+          paddingLeft: () => 0,
+          paddingRight: () => 0,
+          paddingTop: () => 0,
+          paddingBottom: () => 0
+        } as CustomTableLayout,
+        ...(pageIndex > 0 ? { pageBreak: 'before' as const } : {})
+      }
+    })
+
+    return {
+      pageSize: 'A4' as const,
+      pageMargins: [layout.gridX, layout.gridY, layout.gridX, layout.gridY] as Margins,
+      background: (currentPage: number) => ({
+        canvas: cutMarkSegments(layout, currentPage - 1).map(mark => ({
+          type: 'line' as const,
+          ...mark,
+          lineWidth: 0.4,
+          lineColor: '#000000'
+        }))
+      }),
+      content,
+      defaultStyle: { fontSize: 6 }
+    }
+  }
+
+  async function previewLabelSheet(labels: LabelSheetEntry[], presetId: LabelSheetPresetId) {
+    const { pdfMake } = await loadBarcodeDependencies()
+    const doc = await buildLabelSheetDoc(labels, presetId)
+    pdfMake.createPdf(doc as TDocumentDefinitions).open()
+  }
+
+  async function downloadLabelSheet(labels: LabelSheetEntry[], presetId: LabelSheetPresetId) {
+    const { pdfMake } = await loadBarcodeDependencies()
+    const doc = await buildLabelSheetDoc(labels, presetId)
+    pdfMake.createPdf(doc as TDocumentDefinitions).download('firn-barcode-labels.pdf')
+  }
+
+  /*
    * Describe a code for display. Lets the UI label an externally supplied vendor
    * barcode as such, rather than implying Firn issued it.
    */
@@ -194,6 +301,8 @@ export function useInventoryBarcode() {
     downloadLabel,
     previewActionSheet,
     downloadActionSheet,
+    previewLabelSheet,
+    downloadLabelSheet,
     describeCode
   }
 }

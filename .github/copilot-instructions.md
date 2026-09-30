@@ -425,6 +425,8 @@ Verify quickly with a UnoCSS generator over the real config: the generated CSS m
 
 > ⚠️ **Do not sort barcode scan-plan query keys.** A move/locate destination is the last location scanned, so `INVENTORY_BARCODE_QUERY_KEYS.scan(codes)` must keep scan order; a sorted key serves a cached plan with the wrong destination.
 
+> ⚠️ **Bulk barcode issuing must never pass `replaceExisting`.** `assignBarcodes` (batch label printing) only issues codes for entities that have none; re-issuing invalidates a label already stuck on a freezer. Batch label sheets at 30 mm width have a ~0.19 mm module, so check print scale and scanner readability. Details: `docs/barcodesAndQRCodes.md` → "Batch label sheets".
+
 **Lazy hydration** for below-the-fold components:
 
 ```vue

@@ -144,6 +144,23 @@ The dedicated label printer is not wired up yet. Until it is, labels and the act
 sheet are produced as PDFs by `app/composables/useInventoryBarcode.ts`, which shares
 its Code 128 rendering with the token sheets via `app/utils/barcodeRendering.ts`.
 
+### Batch label sheets
+
+Selecting rows in the items, containers or equipment overview shows a **Labels** button
+(`DialogPrintBarcodes.vue`). It arranges the selected entities' barcodes as a gapless
+grid on A4 with crop marks in the page margin (`buildLabelSheetDoc` in
+`useInventoryBarcode.ts`). The grid geometry lives in `app/utils/inventory/labelSheet.ts`
+and is covered by `pnpm test:labels`. Sizes are presets (default 30 × 5 mm).
+
+- A 30 mm wide Code 128 symbol has a module width of only about 0.19 mm. Print at 100 %
+  (no "fit to page") on at least 600 dpi and check the result with the real scanner before
+  printing a large batch.
+- Entities without a barcode are skipped. Issuing is opt-in via a checkbox and goes through
+  `assignBarcodes` (`app/utils/mutations/inventory/barcodes.ts`), which never sets
+  `replaceExisting`, so a bulk print can never invalidate a label already on a freezer.
+- Issuing is a separate button rather than part of Preview, because opening the preview
+  tab after a network round trip can be blocked as a popup.
+
 ### List of barcode formats
 
 - **`code_128`**: Code 128 - A high-density barcode that can encode all 128 ASCII characters. Very versatile and commonly used in shipping, packaging, and logistics.

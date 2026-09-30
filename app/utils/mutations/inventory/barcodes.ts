@@ -124,3 +124,75 @@ export const assignBarcode = defineMutation(() => {
   })
   return { assignBarcode: mutate, ...mutation }
 })
+
+export interface BulkAssignTarget {
+  entityKind: AssignBarcodeInput['entityKind']
+  slug: string
+}
+
+export interface BulkAssignResult {
+  /* slug → newly issued barcode */
+  issued: Map<string, string>
+  failures: { slug: string, error: string }[]
+}
+
+const BULK_ASSIGN_CONCURRENCY = 5
+
+/*
+ * Issue barcodes for several entities that have none.
+ *
+ * Wraps the single-entity procedure rather than adding a server batch endpoint, and
+ * never sets `replaceExisting`: a bulk operation must not be able to invalidate a
+ * label that is already stuck on a freezer. One summary toast replaces the
+ * per-entity ones, and the lists are invalidated once at the end.
+ */
+export const assignBarcodes = defineMutation(() => {
+  const { mutate, ...mutation } = useMutation({
+    mutation: async (targets: BulkAssignTarget[]): Promise<BulkAssignResult> => {
+      const { $trpc } = useNuxtApp()
+      const issued = new Map<string, string>()
+      const failures: BulkAssignResult['failures'] = []
+
+      for (let i = 0; i < targets.length; i += BULK_ASSIGN_CONCURRENCY) {
+        const chunk = targets.slice(i, i + BULK_ASSIGN_CONCURRENCY)
+        const settled = await Promise.allSettled(
+          chunk.map(target => $trpc.inventory.barcodes.assignBarcode.mutate({
+            entityKind: target.entityKind,
+            slug: target.slug
+          }))
+        )
+        settled.forEach((outcome, index) => {
+          const slug = chunk[index]!.slug
+          if (outcome.status === 'fulfilled') {
+            issued.set(slug, outcome.value.barcode)
+          }
+          else {
+            failures.push({
+              slug,
+              error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason)
+            })
+          }
+        })
+      }
+      return { issued, failures }
+    },
+    onError(error: Error) {
+      showError(error.message, 'Barcodes could not be issued')
+    },
+    onSuccess(result: BulkAssignResult) {
+      if (result.failures.length > 0) {
+        const distinct = [...new Set(result.failures.map(failure => failure.error))]
+        showWarning(
+          `${result.issued.size} issued, ${result.failures.length} failed. ${distinct.join(' ')}`,
+          'Barcodes partly issued'
+        )
+        return
+      }
+      showSuccess(`${result.issued.size} barcode(s) issued.`, 'Barcodes issued')
+    },
+    onSettled() {
+      invalidateScannedEntities()
+    }
+  })
+  return { assignBarcodes: mutate, ...mutation }
+})

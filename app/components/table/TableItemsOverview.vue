@@ -114,6 +114,12 @@ const selectedItems = computed<DisplayInventoryItem[]>(() => {
 })
 const allSelectedLost = computed(() => selectedItems.value.length > 0 && selectedItems.value.every(item => item.status === 'lost'))
 const canMoveSelection = computed(() => selectedItems.value.length > 0 && selectedItems.value.every(item => item.status !== 'lost' && item.status !== 'disposed'))
+const selectedPrintables = computed(() => selectedItems.value.map(item => ({
+  entityKind: 'item' as const,
+  slug: item.slug,
+  name: item.name,
+  barcode: item.barcode
+})))
 function clearSelection() {
   select.value = undefined
 }
@@ -264,6 +270,7 @@ function clearSelection() {
     >
       <span class="flex-1 text-sm text-muted">{{ selectedItems.length }} item(s) selected.</span>
       <div class="flex flex-wrap gap-3 justify-end">
+        <DialogPrintBarcodes :entities="selectedPrintables" />
         <DialogAlterItems
           :items="selectedItems"
           @done="clearSelection"
