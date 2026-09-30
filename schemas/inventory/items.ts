@@ -14,6 +14,7 @@ export const itemTypeSchema = z.enum([
   'cryovial',
   'cuvette',
   'jar',
+  'kit',
   'microcentrifugeTube',
   'microscopySlide',
   'pcrStrip',
