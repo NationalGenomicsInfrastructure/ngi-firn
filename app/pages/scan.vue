@@ -93,7 +93,7 @@ const lastInfoCode = ref<string | null>(null)
               Scan a barcode
             </p>
             <p class="text-sm">
-              Shows name, location, temperature, expiry and who handled it last.
+              to see detailed information about the scanned item.
             </p>
           </div>
         </div>
@@ -120,5 +120,11 @@ const lastInfoCode = ref<string | null>(null)
         </div>
       </template>
     </NTabs>
+    <div class="flex justify-center">
+      <ButtonUserLogoff
+        size="lg"
+        class="mt-2 mb-0 w-auto mx-auto"
+      />
+    </div>
   </div>
 </template>
