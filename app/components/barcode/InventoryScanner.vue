@@ -20,7 +20,8 @@ const props = withDefaults(defineProps<{
   autofocus?: boolean
   /*
    * Empty the field after each capture, ready for the next code (scan-many workflows).
-   * Typed input is then captured on Enter only, never after a typing pause.
+   * Hand-typed input is captured on Enter only, never after a typing pause; a burst
+   * typed at scanner speed is captured automatically once it settles (see onInput).
    */
   clearOnScan?: boolean
   /* Keep the camera running after a capture instead of stopping at the first code. */
@@ -74,7 +75,54 @@ function capture(code: string) {
   if (props.clearOnScan) {
     localValue.value = ''
     emit('update:modelValue', '')
+    trackBurst('')
+    lastLength = 0
+    // The field stays the scan target: a wedge scanner types into whatever has focus.
+    focus()
   }
+}
+
+/*
+ * Burst detection for scan-many mode.
+ *
+ * Inventory codes have no format that can be checked locally (external vendor labels
+ * are arbitrary), so "looks like a complete code" cannot be decided from the text.
+ * Timing can: a keyboard-wedge scanner types a whole code in a few milliseconds per
+ * character, or delivers it in a single paste-like insertion, while a person types
+ * at 100 ms or more per key. A burst that then pauses is captured without Enter.
+ * Anything typed slowly is left alone, so a hand-entered code is still captured
+ * only on Enter and never wiped mid-entry.
+ */
+const BURST_MAX_KEY_INTERVAL_MS = 60
+const BURST_MIN_FAST_KEYS = 4
+const BURST_MIN_LENGTH = 4
+const BURST_SETTLE_MS = 100
+
+let lastInputAt = 0
+let lastLength = 0
+let fastKeys = 0
+let bulkInsert = false
+
+function trackBurst(next: string) {
+  const now = performance.now()
+  if (next.length === 0) {
+    fastKeys = 0
+    bulkInsert = false
+  }
+  else if (next.length - lastLength > 1) {
+    // Several characters arrived in one input event: a paste or a scanner that inserts whole codes.
+    bulkInsert = true
+  }
+  else if (next.length > lastLength) {
+    fastKeys = now - lastInputAt <= BURST_MAX_KEY_INTERVAL_MS ? fastKeys + 1 : 0
+    if (fastKeys === 0) bulkInsert = false
+  }
+  lastInputAt = now
+  lastLength = next.length
+}
+
+function isBurst(value: string) {
+  return value.length >= BURST_MIN_LENGTH && (bulkInsert || fastKeys >= BURST_MIN_FAST_KEYS)
 }
 
 function onInput(value: string | undefined) {
@@ -83,9 +131,17 @@ function onInput(value: string | undefined) {
   emit('update:modelValue', next)
 
   clearDebounce()
-  // Clearing after a debounce would wipe a slowly hand-typed code mid-entry, so a
-  // clear-on-scan field captures only on Enter, which wedge scanners send anyway.
-  if (props.clearOnScan) return
+  if (props.clearOnScan) {
+    trackBurst(next)
+    if (isBurst(next)) {
+      debounceTimer = setTimeout(() => {
+        const trimmed = normalizeBarcode(localValue.value)
+        // An Enter from the scanner may already have captured and emptied the field.
+        if (trimmed && isBurst(localValue.value)) capture(trimmed)
+      }, BURST_SETTLE_MS)
+    }
+    return
+  }
   debounceTimer = setTimeout(() => {
     const trimmed = normalizeBarcode(next)
     if (trimmed) capture(trimmed)
@@ -190,17 +246,20 @@ onBeforeUnmount(() => {
     <NTabsList
       class="mx-auto border-b border-primary bg-primary-50 dark:bg-primary/10"
       :class="large ? 'grid grid-cols-2 w-full h-auto' : ''"
+      :size="large ? 'xl' : 'sm'"
     >
       <NTabsTrigger
         value="reader"
-        :class="large ? 'min-h-12 text-base' : ''"
+        :size="large ? 'xl' : 'sm'"
+        :class="large ? 'min-h-12' : ''"
       >
         <NIcon name="i-lucide-scan-barcode" />
         Scanner or keyboard
       </NTabsTrigger>
       <NTabsTrigger
         value="camera"
-        :class="large ? 'min-h-12 text-base' : ''"
+        :size="large ? 'xl' : 'sm'"
+        :class="large ? 'min-h-12' : ''"
       >
         <NIcon name="i-lucide-camera" />
         Device camera

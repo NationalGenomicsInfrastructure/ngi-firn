@@ -141,6 +141,12 @@ function warningsFor(code: string) {
 
 <template>
   <div class="space-y-5">
+
+    <ScanActionPicker
+      :model-value="basket.action.value"
+      @update:model-value="onActionChange"
+    />
+
     <BarcodeInventoryScanner
       ref="scanner"
       large
@@ -149,12 +155,6 @@ function warningsFor(code: string) {
       placeholder="Scan items, containers, locations or an action card"
       @scanned="onScanned"
     />
-
-    <ScanActionPicker
-      :model-value="basket.action.value"
-      @update:model-value="onActionChange"
-    />
-
     <!-- Outcome of the last approval -->
     <NCard
       v-if="resultSummary"
