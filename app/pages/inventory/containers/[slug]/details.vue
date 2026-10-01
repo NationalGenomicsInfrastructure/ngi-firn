@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useQuery as useQueryColada } from '@pinia/colada'
-import { containerBySlugQuery } from '~/utils/queries/inventory/containers'
+import { containerBySlugQuery, containerProjectRefsQuery } from '~/utils/queries/inventory/containers'
 import { CONTAINER_TYPE_LABELS } from '~/utils/inventory/equipment'
 import { getContainerStatusMeta, getClassificationBadge } from '~/utils/inventory/container'
+import { removeProjectRef as useRemoveProjectRef } from '~/utils/mutations/inventory/containers'
 
 definePageMeta({
   layout: 'private'
@@ -33,6 +34,16 @@ const errorMessage = computed(() => {
 const container = computed(() =>
   containerState.value.status === 'success' ? containerState.value.data : null
 )
+
+const { state: projectState } = useQueryColada(() => ({
+  ...containerProjectRefsQuery(slug.value),
+  enabled: (container.value?.projectRefs?.length ?? 0) > 0
+}))
+const projects = computed(() => projectState.value.status === 'success' ? projectState.value.data : [])
+const { removeProjectRef, isLoading: isUnlinking } = useRemoveProjectRef()
+const linkable = computed(() => container.value
+  ? [{ entityKind: 'container' as const, slug: container.value.slug, name: container.value.name, projectRefs: container.value.projectRefs }]
+  : [])
 
 const { user } = useUserSession()
 const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
@@ -263,6 +274,54 @@ const infoFields = computed(() => {
             </template>
           </p>
         </NAlert>
+      </NCard>
+
+      <NCard
+        title="Project information"
+        description="Projects associated with this container."
+        card="outline-gray"
+      >
+        <div class="space-y-3">
+          <p
+            v-if="!container.projectRefs?.length"
+            class="text-sm text-muted"
+          >
+            Not linked to any project.
+          </p>
+          <div
+            v-for="project in projects"
+            :key="project.projectId"
+            class="rounded-md bg-muted/30 p-3"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="font-medium">
+                {{ project.projectName }}
+              </p>
+              <div class="flex items-center gap-2">
+                <NBadge
+                  badge="outline"
+                  :label="project.projectId"
+                />
+                <NButton
+                  size="md"
+                  btn="soft-error hover:outline-error"
+                  leading="i-lucide-unlink"
+                  label="Unlink"
+                  :loading="isUnlinking"
+                  @click="removeProjectRef({ containerSlug: container.slug, projectId: project.projectId })"
+                />
+              </div>
+            </div>
+            <p class="text-sm text-muted">
+              {{ [project.application, project.affiliation, project.status].filter(Boolean).join(' · ') || 'No additional project metadata' }}
+            </p>
+          </div>
+        </div>
+        <template #footer>
+          <div class="flex justify-end">
+            <DialogLinkProject :entities="linkable" />
+          </div>
+        </template>
       </NCard>
 
       <div class="flex justify-end mt-4">

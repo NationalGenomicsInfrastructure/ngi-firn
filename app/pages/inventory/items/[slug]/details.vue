@@ -4,6 +4,7 @@ import { itemBySlugQuery, itemProjectRefsQuery } from '~/utils/queries/inventory
 import { ITEM_TYPE_LABELS, ITEM_TYPE_ICONS } from '~/utils/inventory/item'
 import { getClassificationBadge, getContainerStatusMeta } from '~/utils/inventory/container'
 import { formatDate } from '~/utils/dates/formatting'
+import { removeItemProjectRef as useRemoveItemProjectRef } from '~/utils/mutations/inventory/items'
 
 definePageMeta({ layout: 'private' })
 
@@ -19,6 +20,11 @@ const { state: projectState } = useQueryColada(() => ({
   enabled: (item.value?.projectRefs?.length ?? 0) > 0
 }))
 const projects = computed(() => projectState.value.status === 'success' ? projectState.value.data : [])
+
+const { removeItemProjectRef, isLoading: isUnlinking } = useRemoveItemProjectRef()
+const linkable = computed(() => item.value
+  ? [{ entityKind: 'item' as const, slug: item.value.slug, name: item.value.name, projectRefs: item.value.projectRefs }]
+  : [])
 
 const { user } = useUserSession()
 const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
@@ -268,12 +274,17 @@ function typedValue(value: number | null, unit: string | null): string {
       </NCard>
 
       <NCard
-        v-if="item.projectRefs?.length"
         title="Project information"
         description="Projects associated with this item."
         card="outline-gray"
       >
         <div class="space-y-3">
+          <p
+            v-if="!item.projectRefs?.length"
+            class="text-sm text-muted"
+          >
+            Not linked to any project.
+          </p>
           <div
             v-for="project in projects"
             :key="project.projectId"
@@ -283,16 +294,31 @@ function typedValue(value: number | null, unit: string | null): string {
               <p class="font-medium">
                 {{ project.projectName }}
               </p>
-              <NBadge
-                badge="outline"
-                :label="project.projectId"
-              />
+              <div class="flex items-center gap-2">
+                <NBadge
+                  badge="outline"
+                  :label="project.projectId"
+                />
+                <NButton
+                  size="md"
+                  btn="soft-error hover:outline-error"
+                  leading="i-lucide-unlink"
+                  label="Unlink"
+                  :loading="isUnlinking"
+                  @click="removeItemProjectRef({ itemSlug: item.slug, projectId: project.projectId })"
+                />
+              </div>
             </div>
             <p class="text-sm text-muted">
               {{ [project.application, project.affiliation, project.status].filter(Boolean).join(' · ') || 'No additional project metadata' }}
             </p>
           </div>
         </div>
+        <template #footer>
+          <div class="flex justify-end">
+            <DialogLinkProject :entities="linkable" />
+          </div>
+        </template>
       </NCard>
 
       <div class="flex justify-end">

@@ -155,6 +155,10 @@ const projectSummaryLinks = computed(() =>
             <NIcon name="i-lucide-test-tubes" />
             Samples
           </NTabsTrigger>
+          <NTabsTrigger value="inventory">
+            <NIcon name="i-lucide-package" />
+            Inventory
+          </NTabsTrigger>
           <NTabsTrigger value="timeline">
             <NIcon name="i-lucide-calendar-range" />
             Timeline
@@ -218,6 +222,11 @@ const projectSummaryLinks = computed(() =>
               :loading="isLoading"
             />
           </div>
+        </NTabsContent>
+
+        <NTabsContent value="inventory">
+          <!-- Mounted lazily by the tab, so the inventory is only queried once it is opened. -->
+          <LazyProjectInventory :project-id="project.project_id" />
         </NTabsContent>
 
         <NTabsContent value="timeline">

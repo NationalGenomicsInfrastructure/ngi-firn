@@ -221,6 +221,10 @@ The `projectRefs` field is `null` when no project association exists. It is inte
 
 **Reverse lookup**: The `by_project` CouchDB view indexes all `projectRefs` entries, emitting `[db, projectId]` as the key. Querying `key=["projects", "proj:P12345"]` returns every container and item linked to that project. Note that CouchDB does not support cross-database views — this view lives in the firn database and indexes the `projectRefs` field of inventory documents.
 
+**Service and UI**: `ProjectLinkService` (`server/crud/inventory/projectLinks.server.ts`, tRPC `inventory.projectLinks`) exposes the reverse lookup (`getInventoryByProject`, used by the project page's *Inventory* tab) and best-effort batch `linkEntities` / `unlinkEntities` (used by `DialogLinkProject` and the tables' bulk bars). Two details are easy to get wrong:
+
+> ⚠️ **The `by_project` key is the project document `_id`, not the LIMS `project_id`.** Resolve it first with `ProjectService.getProjectByProjectId(projectId)._id`. The view also emits once per `projectRefs` entry, so a document linked twice appears twice — deduplicate by `_id`. Batch writes run sequentially to avoid `_rev` conflicts on the same document.
+
 While the inventory hierarchy uses typed `parent` references for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse — most inventory entities will not be linked to a project.
 
 ### 11. Equipment capacity: wire shape vs. stored shape

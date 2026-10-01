@@ -481,6 +481,8 @@ Single quotes, no trailing commas (configured in `nuxt.config.ts` eslint stylist
 
 ## Environment Setup
 
+> ⚠️ **Project reverse lookup (`by_project` view): key by the project document `_id`, not the LIMS `project_id`, and deduplicate rows by `_id`** (the view emits once per `projectRefs` entry). Use `ProjectLinkService` (`server/crud/inventory/projectLinks.server.ts`) rather than querying the view directly; batch link/unlink must run sequentially to avoid `_rev` conflicts. Details: `docs/inventory.md` §10.
+
 Copy `.env.example` to `.env`. Required variables:
 
 ```

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { unlinkEntitiesFromProject as useUnlinkMutation } from '~/utils/mutations/inventory/projectLinks'
 import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayContainer, InventoryActiveFlag, SerializedEntityRef } from '~~/types/inventory'
 import type { ContainerType } from '~~/schemas/inventory/container'
@@ -12,6 +13,8 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   /* Show the Parent column — enable for global/mixed lists, disable for single-parent views. */
   showParent?: boolean
+  /* When set, the bulk bar offers unlinking the selection from this project. */
+  unlinkProjectId?: string
 }>(), {
   loading: false,
   showParent: true
@@ -139,8 +142,28 @@ const selectedPrintables = computed(() => selectedContainers.value.map(c => ({
   barcode: c.barcode
 })))
 
+const selectedLinkables = computed(() => selectedContainers.value.map(c => ({
+  entityKind: 'container' as const,
+  slug: c.slug,
+  name: c.name,
+  projectRefs: c.projectRefs
+})))
 function clearSelection() {
   select.value = undefined
+}
+const { unlinkEntitiesFromProject, isLoading: isUnlinking } = useUnlinkMutation()
+async function handleUnlink() {
+  if (!props.unlinkProjectId) return
+  try {
+    await unlinkEntitiesFromProject({
+      projectId: props.unlinkProjectId,
+      entities: selectedLinkables.value.map(({ entityKind, slug }) => ({ entityKind, slug }))
+    })
+    clearSelection()
+  }
+  catch {
+    // The mutation surfaces the failure via a toast.
+  }
 }
 
 // Batch-action gating by status (mirrors the server-side state machine):
@@ -447,6 +470,19 @@ const canMoveSelection = computed(() =>
       </div>
       <div class="flex flex-wrap gap-3 justify-end">
         <DialogPrintBarcodes :entities="selectedPrintables" />
+        <NButton
+          v-if="unlinkProjectId"
+          label="Unlink from project"
+          size="sm"
+          btn="soft-error hover:outline-error"
+          leading="i-lucide-unlink"
+          :loading="isUnlinking"
+          @click="handleUnlink"
+        />
+        <DialogLinkProject
+          :entities="selectedLinkables"
+          @done="clearSelection"
+        />
         <DialogAlterContainers
           :containers="selectedContainers"
           @done="clearSelection"

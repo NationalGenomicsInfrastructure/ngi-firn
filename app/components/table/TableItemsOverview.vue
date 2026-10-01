@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { unlinkEntitiesFromProject as useUnlinkMutation } from '~/utils/mutations/inventory/projectLinks'
 import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayInventoryItem, InventoryActiveFlag, SerializedEntityRef } from '~~/types/inventory'
 import type { ItemType } from '~~/schemas/inventory/items'
@@ -7,7 +8,7 @@ import { ITEM_TYPE_ICONS, ITEM_TYPE_LABELS } from '~/utils/inventory/item'
 import { getClassificationBadge, getContainerStatusMeta } from '~/utils/inventory/container'
 import { formatDate } from '~/utils/dates/formatting'
 
-const props = withDefaults(defineProps<{ items: DisplayInventoryItem[], loading?: boolean, showParent?: boolean }>(), {
+const props = withDefaults(defineProps<{ items: DisplayInventoryItem[], loading?: boolean, showParent?: boolean, unlinkProjectId?: string }>(), {
   loading: false,
   showParent: true
 })
@@ -120,8 +121,28 @@ const selectedPrintables = computed(() => selectedItems.value.map(item => ({
   name: item.name,
   barcode: item.barcode
 })))
+const selectedLinkables = computed(() => selectedItems.value.map(item => ({
+  entityKind: 'item' as const,
+  slug: item.slug,
+  name: item.name,
+  projectRefs: item.projectRefs
+})))
 function clearSelection() {
   select.value = undefined
+}
+const { unlinkEntitiesFromProject, isLoading: isUnlinking } = useUnlinkMutation()
+async function handleUnlink() {
+  if (!props.unlinkProjectId) return
+  try {
+    await unlinkEntitiesFromProject({
+      projectId: props.unlinkProjectId,
+      entities: selectedLinkables.value.map(({ entityKind, slug }) => ({ entityKind, slug }))
+    })
+    clearSelection()
+  }
+  catch {
+    // The mutation surfaces the failure via a toast.
+  }
 }
 </script>
 
@@ -271,6 +292,19 @@ function clearSelection() {
       <span class="flex-1 text-sm text-muted">{{ selectedItems.length }} item(s) selected.</span>
       <div class="flex flex-wrap gap-3 justify-end">
         <DialogPrintBarcodes :entities="selectedPrintables" />
+        <NButton
+          v-if="unlinkProjectId"
+          label="Unlink from project"
+          size="sm"
+          btn="soft-error hover:outline-error"
+          leading="i-lucide-unlink"
+          :loading="isUnlinking"
+          @click="handleUnlink"
+        />
+        <DialogLinkProject
+          :entities="selectedLinkables"
+          @done="clearSelection"
+        />
         <DialogAlterItems
           :items="selectedItems"
           @done="clearSelection"
