@@ -24,6 +24,13 @@ const props = defineProps<{
 
 const scanner = useTemplateRef<{ focus: () => void }>('scanner')
 
+// The scanner section is open by default; the action picker is opened on demand.
+const sections = [
+  { value: 'actions', label: 'Actions', _accordionTrigger: { leading: 'i-lucide-list-checks' } },
+  { value: 'scanner', label: 'Scanner', _accordionTrigger: { leading: 'i-lucide-scan-barcode' } }
+]
+const openSections = ref<string[]>(['scanner'])
+
 function refocus() {
   nextTick(() => scanner.value?.focus())
 }
@@ -141,19 +148,37 @@ function warningsFor(code: string) {
 
 <template>
   <div class="space-y-5">
-    <ScanActionPicker
-      :model-value="basket.action.value"
-      @update:model-value="onActionChange"
-    />
+    <NAccordion
+      v-model="openSections"
+      :items="sections"
+      type="multiple"
+      :_accordion-trigger="{
+        btn: 'solid-gray',
+        rounded: 'none',
+        size: 'lg'
+      }"
+      :una="{
+        accordionPanel: '!text-base !text-foreground'
+      }"
+    >
+      <template #content="{ item }">
+        <ScanActionPicker
+          v-if="item.value === 'actions'"
+          :model-value="basket.action.value"
+          @update:model-value="onActionChange"
+        />
+        <BarcodeInventoryScanner
+          v-else
+          ref="scanner"
+          large
+          continuous
+          clear-on-scan
+          placeholder="Scan items, containers, locations or an action card"
+          @scanned="onScanned"
+        />
+      </template>
+    </NAccordion>
 
-    <BarcodeInventoryScanner
-      ref="scanner"
-      large
-      continuous
-      clear-on-scan
-      placeholder="Scan items, containers, locations or an action card"
-      @scanned="onScanned"
-    />
     <!-- Outcome of the last approval -->
     <NCard
       v-if="resultSummary"
