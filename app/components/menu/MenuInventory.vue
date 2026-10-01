@@ -71,6 +71,10 @@ const data = {
         {
           title: 'Action cards',
           url: '/inventory/barcodes/actions'
+        },
+        {
+          title: 'Open scanner',
+          url: '/scan'
         }
       ]
     }

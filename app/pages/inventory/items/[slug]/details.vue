@@ -247,7 +247,7 @@ function typedValue(value: number | null, unit: string | null): string {
           :value="`${item.parentRef.name} (${item.parentRef.slug})`"
         />
         <NSeparator />
-        <div class="flex justify-end">
+        <div class="flex flex-wrap items-center justify-end gap-2">
           <DialogMoveItems
             v-if="!isLost && !isDisposed"
             :items="[item]"
