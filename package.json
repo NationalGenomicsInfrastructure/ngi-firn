@@ -76,13 +76,13 @@
     "zxing-wasm": "^3.1.4"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.136",
+    "@iconify-json/lucide": "^1.2.138",
     "@iconify-json/radix-icons": "^1.2.6",
-    "@iconify-json/simple-icons": "^1.2.97",
-    "@iconify-json/tabler": "^1.2.40",
+    "@iconify-json/simple-icons": "^1.2.98",
+    "@iconify-json/tabler": "^1.2.41",
     "@nuxt/devtools": "^3.4.2",
     "@nuxt/eslint": "^1.17.0",
-    "@types/luxon": "^3.7.5",
+    "@types/luxon": "^3.7.6",
     "@types/pdfmake": "^0.3.3",
     "@types/qrcode": "^1.5.6",
     "@unocss/nuxt": "66.7.4",
@@ -96,7 +96,7 @@
     "typescript": "^6.0.3",
     "unocss": "66.7.4",
     "vue-tsc": "^3.3.11",
-    "wrangler": "^4.140.0"
+    "wrangler": "^4.145.0"
   },
   "packageManager": "pnpm@12.6.0"
 }
