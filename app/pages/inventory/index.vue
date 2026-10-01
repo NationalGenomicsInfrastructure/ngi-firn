@@ -14,6 +14,11 @@ definePageMeta({
     <CardInventorySummary />
 
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <NSeparator
+        class="text-2xl my-6 col-span-1 sm:col-span-2"
+        label="Inventory pages"
+      />
+
       <NCard
         title="Manage Rooms"
         description="Rooms are the top-level physical storage locations. Each storage equipment must be assigned to a room."
@@ -98,6 +103,11 @@ definePageMeta({
         </div>
       </NCard>
 
+      <NSeparator
+        class="text-2xl my-6 col-span-1 sm:col-span-2"
+        label="Barcode handling"
+      />
+
       <NCard
         title="Print action barcodes"
         description="Action codes let you control the actions applied to scanned entities — dispose, reserve, locate and more."
@@ -109,6 +119,21 @@ definePageMeta({
             btn="soft-primary hover:outline-primary"
             leading="i-lucide-scan-barcode"
             to="/inventory/barcodes/actions"
+          />
+        </div>
+      </NCard>
+
+      <NCard
+        title="Barcode scanner"
+        description="Scan their barcodes to quickly access information about inventory items and perform actions in the lab."
+        card="outline-gray"
+      >
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <NButton
+            label="Open scanner"
+            btn="soft-primary hover:outline-primary"
+            leading="i-lucide-scan-barcode"
+            to="/scan"
           />
         </div>
       </NCard>

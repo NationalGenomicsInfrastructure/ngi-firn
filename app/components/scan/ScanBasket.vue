@@ -270,7 +270,7 @@ function warningsFor(code: string) {
       />
       <div class="flex gap-2">
         <NButton
-          :btn="confirmingClear ? 'solid-error' : 'soft-gray hover:outline-error'"
+          :btn="confirmingClear ? 'solid-error' : 'soft-error hover:outline-error'"
           size="xl"
           :leading="confirmingClear ? 'i-lucide-triangle-alert' : 'i-lucide-trash-2'"
           :label="confirmingClear ? 'Tap again' : 'Clear'"

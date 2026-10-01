@@ -50,6 +50,14 @@ const icon = computed(() => {
   return 'i-lucide-loader-2'
 })
 
+const parent = computed(() => target.value?.parentRef ?? null)
+const parentIcon = computed(() => {
+  const kind = parent.value?.kind
+  if (kind === 'room') return 'i-lucide-door-open'
+  if (kind === 'equipment') return 'i-lucide-refrigerator'
+  return 'i-lucide-package'
+})
+
 const title = computed(() => target.value?.name ?? props.code)
 </script>
 
@@ -98,6 +106,24 @@ const title = computed(() => target.value?.name ?? props.code)
           />
         </template>
       </div>
+      <!-- Where the database registers the target, so a mismatch with reality is noticed. -->
+      <p
+        v-if="target"
+        class="flex items-center gap-1.5 text-sm text-muted"
+      >
+        <NIcon
+          :name="parent ? parentIcon : 'i-lucide-map-pin-off'"
+          class="shrink-0"
+        />
+        <span
+          v-if="parent"
+          class="break-words"
+        >
+          {{ target.status === 'in_use' ? 'Belongs in' : 'Stored in' }}
+          <span class="font-medium text-default">{{ parent.name }}</span>
+        </span>
+        <span v-else>Not placed in storage</span>
+      </p>
       <p
         v-if="target && !target.executable && target.reason"
         class="text-sm text-error-700 dark:text-error-300"

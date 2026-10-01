@@ -121,10 +121,23 @@ const lastInfoCode = ref<string | null>(null)
         </div>
       </template>
     </NTabs>
-    <div class="flex justify-center">
+    <div class="flex justify-center mt-2 mb-0 gap-4">
+      <NTooltip
+        tooltip="primary"
+        trigger="hover"
+        placement="top"
+        content="Return to inventory"
+      >
+        <NButton
+          btn="solid-gray hover:outline-primary"
+          size="lg"
+          icon
+          leading="i-lucide-arrow-left"
+          to="../inventory"
+        />
+      </NTooltip>
       <ButtonUserLogoff
         size="lg"
-        class="mt-2 mb-0 w-auto mx-auto"
       />
     </div>
   </div>
