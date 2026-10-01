@@ -76,6 +76,7 @@ const lastInfoCode = ref<string | null>(null)
             clear-on-scan
             placeholder="Scan one barcode"
             @scanned="lastInfoCode = $event"
+            @cleared="$event && (lastInfoCode = null)"
           />
           <ScanEntityInfo
             v-if="lastInfoCode"

@@ -40,6 +40,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'scanned': [value: string]
+  'cleared': [boolean]
 }>()
 
 const { showWarning } = useFirnToast()
@@ -158,6 +159,7 @@ function clearValue() {
   clearDebounce()
   localValue.value = ''
   emit('update:modelValue', '')
+  emit('cleared', true)
   focus()
 }
 
@@ -334,8 +336,8 @@ onBeforeUnmount(() => {
         <NButton
           v-if="zxingReaderRef"
           btn="soft-primary hover:outline-primary"
-          size="sm"
-          :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back'}`"
+          :size="large ? 'xl' : 'lg'"
+          :label="`Switch to ${zxingReaderRef.state.usingBack ? 'Front' : 'Back '}`"
           leading="i-lucide-repeat"
           :disabled="!enableCamera"
           @click="zxingReaderRef.switchCamera()"
@@ -344,14 +346,21 @@ onBeforeUnmount(() => {
         <NButton
           v-else
           btn="soft-primary hover:outline-primary"
-          size="sm"
+          :size="large ? 'xl' : 'lg'"
           label="Switch camera"
           leading="i-lucide-repeat"
           :disabled="true"
         />
         <NButton
+          btn="soft-error hover:outline-error"
+          leading="i-lucide-trash-2"
+          :size="large ? 'xl' : 'lg'"
+          label="Clear barcode"
+          @click="clearValue()"
+        />
+        <NButton
           btn="soft-primary hover:outline-primary"
-          size="sm"
+          :size="large ? 'xl' : 'lg'"
           label="Disable camera"
           leading="i-lucide-camera-off"
           :disabled="!enableCamera"
