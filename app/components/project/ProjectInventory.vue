@@ -36,7 +36,7 @@ const isEmpty = computed(() => state.value.status === 'success' && containers.va
       v-else-if="isEmpty"
       alert="border-gray"
       title="No inventory linked"
-      description="No items or containers are linked to this project yet. Select entities in the inventory overview and use “Project” to link them."
+      description="No items or containers are linked to this project yet. Select entities in the inventory overview and use “Link to Project” to link them."
       icon="i-lucide-package-open"
     />
     <template v-else>

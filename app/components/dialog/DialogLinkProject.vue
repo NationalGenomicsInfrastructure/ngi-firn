@@ -91,7 +91,7 @@ function onDialogOpenChange(open: boolean) {
   >
     <template #trigger>
       <NButton
-        :label="count === 1 ? 'Project' : `Project (${count})`"
+        :label="count === 1 ? 'Link to Project' : `Link to Project (${count})`"
         size="sm"
         btn="soft-primary hover:outline-primary"
         leading="i-lucide-folder-kanban"

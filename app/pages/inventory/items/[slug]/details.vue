@@ -19,7 +19,12 @@ const { state: projectState } = useQueryColada(() => ({
   ...itemProjectRefsQuery(slug.value),
   enabled: (item.value?.projectRefs?.length ?? 0) > 0
 }))
-const projects = computed(() => projectState.value.status === 'success' ? projectState.value.data : [])
+// Filter by the (optimistically updated) item refs: the project query is disabled once the last link is removed and would keep showing stale cards.
+const projects = computed(() => {
+  if (projectState.value.status !== 'success') return []
+  const linked = new Set(item.value?.projectRefs?.map(ref => ref.slug))
+  return projectState.value.data.filter(project => linked.has(project.projectId))
+})
 
 const { removeItemProjectRef, isLoading: isUnlinking } = useRemoveItemProjectRef()
 const linkable = computed(() => item.value
@@ -212,10 +217,6 @@ function typedValue(value: number | null, unit: string | null): string {
             v-if="isLost"
             :items="[item]"
           />
-          <DialogMoveItems
-            v-if="!isLost && !isDisposed"
-            :items="[item]"
-          />
           <DialogInventoryBarcode
             entity-kind="item"
             :slug="item.slug"
@@ -247,6 +248,10 @@ function typedValue(value: number | null, unit: string | null): string {
         />
         <NSeparator />
         <div class="flex justify-end">
+          <DialogMoveItems
+            v-if="!isLost && !isDisposed"
+            :items="[item]"
+          />
           <NButton
             label="Open parent"
             btn="soft-primary hover:outline-primary"
@@ -285,40 +290,18 @@ function typedValue(value: number | null, unit: string | null): string {
           >
             Not linked to any project.
           </p>
-          <div
+          <ProjectRefCard
             v-for="project in projects"
             :key="project.projectId"
-            class="rounded-md bg-muted/30 p-3"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <p class="font-medium">
-                {{ project.projectName }}
-              </p>
-              <div class="flex items-center gap-2">
-                <NBadge
-                  badge="outline"
-                  :label="project.projectId"
-                />
-                <NButton
-                  size="md"
-                  btn="soft-error hover:outline-error"
-                  leading="i-lucide-unlink"
-                  label="Unlink"
-                  :loading="isUnlinking"
-                  @click="removeItemProjectRef({ itemSlug: item.slug, projectId: project.projectId })"
-                />
-              </div>
-            </div>
-            <p class="text-sm text-muted">
-              {{ [project.application, project.affiliation, project.status].filter(Boolean).join(' · ') || 'No additional project metadata' }}
-            </p>
-          </div>
+            :project="project"
+            :unlinking="isUnlinking"
+            @unlink="removeItemProjectRef({ itemSlug: item.slug, projectId: project.projectId })"
+          />
         </div>
-        <template #footer>
-          <div class="flex justify-end">
-            <DialogLinkProject :entities="linkable" />
-          </div>
-        </template>
+        <NSeparator />
+        <div class="flex justify-end">
+          <DialogLinkProject :entities="linkable" />
+        </div>
       </NCard>
 
       <div class="flex justify-end">
