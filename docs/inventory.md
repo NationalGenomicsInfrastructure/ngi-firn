@@ -90,11 +90,12 @@ interface InventoryActionLogEntry {
 }
 ```
 
-Item `move` and `locate` entries record placement in `changes`, independently of
+Item and container `move` and `locate` entries record placement in `changes`, independently of
 the free-text `notes` (including barcode-scan comments). The `parent` change stores
 before/after `{ slug, name, kind }` snapshots, not CouchDB IDs, so the history stays
 readable after a parent is renamed or deleted. The `position` change stores the old
-and new grid coordinates and labels, with `null` for unpositioned storage.
+and new grid coordinates and labels, with `null` for unpositioned storage
+(`positionParent` for containers).
 Only changed fields are included; `locate` also records the status transition.
 The action-log UI displays parent names/slugs and readable grid coordinates.
 Existing log entries are not rewritten.

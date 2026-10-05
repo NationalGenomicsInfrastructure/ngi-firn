@@ -527,6 +527,106 @@ async function run() {
       out.plan.error !== null && out.applied.length === 0, JSON.stringify(out.plan.error))
   }
 
+  console.log('\nContainer placement audit records')
+  {
+    const moveEquipment = await EquipmentService.createEquipment({
+      parentSlug: roomSlug,
+      equipmentType: 'Freezer',
+      name: 'BCTEST Container Move Freezer',
+      capacity: [{ type: 'Box', capacity: 4 }, { type: 'Rack', capacity: 2 }],
+      temperatureCategory: 'minus80'
+    })
+    createdIds.push(moveEquipment._id)
+    const gridRack = await ContainerService.createContainer({
+      containerType: 'Rack',
+      name: 'BCTEST Container Grid Rack',
+      parentSlug: moveEquipment.slug,
+      parentKind: 'equipment',
+      capacity: [{ layout: 'grid', childKind: 'container', type: 'Box', rows: 2, columns: 2, levels: 1 }]
+    }, user)
+    createdIds.push(gridRack._id)
+    const boxes = []
+    for (const name of ['BCTEST Moving Box 1', 'BCTEST Moving Box 2']) {
+      const box = await ContainerService.createContainer({
+        containerType: 'Box', name, parentSlug: moveEquipment.slug, parentKind: 'equipment'
+      }, user)
+      createdIds.push(box._id)
+      boxes.push(box)
+    }
+    const [firstBox, secondBox] = boxes
+    const out = await BarcodeScanService.applyScan(
+      [bc(firstBox), bc(secondBox), BARCODE_FOR_ACTION.move, bc(gridRack)], user)
+    check('barcode scans move a batch of containers into a grid',
+      out.failures.length === 0 && out.applied[0]?.slugs.length === 2,
+      JSON.stringify(out))
+    for (const box of boxes) {
+      const persisted = await ContainerService.getContainerBySlug(box.slug)
+      const entry = persisted?.actionLog.at(-1)
+      const parentChange = entry?.changes?.find(change => change.field === 'parent')
+      const positionChange = entry?.changes?.find(change => change.field === 'positionParent')
+      check(`container move records public source and destination for ${box.name}`,
+        JSON.stringify(parentChange?.before) === JSON.stringify({ slug: moveEquipment.slug, name: moveEquipment.name, kind: 'equipment' })
+        && JSON.stringify(parentChange?.after) === JSON.stringify({ slug: gridRack.slug, name: gridRack.name, kind: 'container' }),
+        JSON.stringify(parentChange))
+      check(`container move records its allocated grid position for ${box.name}`,
+        positionChange?.before === null && persisted?.positionParent != null
+        && JSON.stringify(positionChange?.after) === JSON.stringify(persisted.positionParent),
+        JSON.stringify(positionChange))
+      check(`container move preserves the scanner note without logging unchanged status for ${box.name}`,
+        entry?.actionType === 'move' && entry.notes === 'Applied by barcode scan.'
+        && entry.changes?.length === 2, JSON.stringify(entry))
+    }
+
+    const firstBefore = await ContainerService.getContainerBySlug(firstBox.slug)
+    await ContainerService.moveContainer({
+      containerSlug: [firstBox.slug], newParentSlug: moveEquipment.slug, newParentKind: 'equipment',
+      logComment: 'Moved for maintenance.'
+    }, user)
+    const firstAfter = await ContainerService.getContainerBySlug(firstBox.slug)
+    const firstEntry = firstAfter?.actionLog.at(-1)
+    const releasedPosition = firstEntry?.changes?.find(change => change.field === 'positionParent')
+    check('container moves preserve custom notes and record leaving a grid',
+      firstEntry?.notes === 'Moved for maintenance.'
+      && JSON.stringify(releasedPosition?.before) === JSON.stringify(firstBefore?.positionParent)
+      && releasedPosition?.after === null, JSON.stringify(firstEntry))
+
+    const secondBefore = await ContainerService.getContainerBySlug(secondBox.slug)
+    await ContainerService.moveContainer({
+      containerSlug: [secondBox.slug], newParentSlug: gridRack.slug, newParentKind: 'container',
+      position: { row: 2, column: 2 }
+    }, user)
+    const secondAfter = await ContainerService.getContainerBySlug(secondBox.slug)
+    const secondEntry = secondAfter?.actionLog.at(-1)
+    check('same-parent container moves record only the changed grid position',
+      secondEntry?.changes?.length === 1 && secondEntry.changes[0]?.field === 'positionParent'
+      && JSON.stringify(secondEntry.changes[0].before) === JSON.stringify(secondBefore?.positionParent)
+      && JSON.stringify(secondEntry.changes[0].after) === JSON.stringify(secondAfter?.positionParent),
+      JSON.stringify(secondEntry))
+    check('container grid changes render through the shared formatter',
+      formatChangeValue(secondAfter?.positionParent, 'positionParent') === 'B2 (row 2, column 2, level 1)')
+
+    await ContainerService.alterContainer({
+      containerSlug: [secondBox.slug], performedAction: 'post_missing'
+    }, user)
+    const locateOut = await BarcodeScanService.applyScan(
+      [bc(secondBox), BARCODE_FOR_ACTION.locate, bc(gridRack)], user, 'Found the box.')
+    check('barcode scans locate lost containers', locateOut.failures.length === 0
+    && locateOut.applied[0]?.action === 'locate', JSON.stringify(locateOut))
+    const located = await ContainerService.getContainerBySlug(secondBox.slug)
+    const locateEntry = located?.actionLog.at(-1)
+    const statusChange = locateEntry?.changes?.find(change => change.field === 'status')
+    check('container locate records placement and status independently of notes',
+      locateEntry?.notes === 'Applied by barcode scan. Found the box.'
+      && locateEntry.changes?.length === 3
+      && locateEntry.changes.find(change => change.field === 'parent')?.before === null
+      && locateEntry.changes.find(change => change.field === 'positionParent')?.before === null
+      && statusChange?.before === 'lost' && statusChange.after === 'available',
+      JSON.stringify(locateEntry))
+    const displayedLog = await ContainerService.getContainerActionLog(secondBox.slug)
+    check('container change records survive the client-safe action-log projection',
+      JSON.stringify(displayedLog.at(-1)?.changes) === JSON.stringify(locateEntry?.changes))
+  }
+
   console.log('\nAssigning and re-issuing barcodes')
   {
     const { BarcodeService } = await import('../server/crud/inventory/barcodes.server')
