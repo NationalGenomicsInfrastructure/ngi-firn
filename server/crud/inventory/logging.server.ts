@@ -4,6 +4,7 @@
  *
  * CHANGE RECORD HELPERS:
  * createInventoryChangeRecords(trackedFields) - Diff tracked before/after field pairs into change records
+ * createPlacementChangeRecords(before, after) - Record parent and grid-position changes using public snapshots
  * createModifyActionLogEntry(params) - Build a "modify" log entry from tracked field changes
  *
  * ACTION LOG HELPERS:
@@ -17,9 +18,12 @@
 import type { FirnUser } from '../../../types/auth'
 import type {
   Container,
+  GridPosition,
   InventoryActionChangeRecord,
   InventoryActionLogEntry,
-  InventoryTrackedField
+  InventoryTrackedField,
+  SerializedEntityRef,
+  StorageEquipment
 } from '../../../types/inventory'
 import type {
   InventoryActionType,
@@ -67,6 +71,25 @@ export function createInventoryChangeRecords(trackedFields: InventoryTrackedFiel
   }
 
   return changes
+}
+
+type PlacementSnapshot = {
+  parent: Pick<Container | StorageEquipment, 'slug' | 'name' | 'type'> | null
+  position: GridPosition | null
+}
+
+export function createPlacementChangeRecords(
+  before: PlacementSnapshot,
+  after: PlacementSnapshot
+): InventoryActionChangeRecord[] {
+  const parentSnapshot = (parent: PlacementSnapshot['parent']): SerializedEntityRef | null => parent
+    ? { slug: parent.slug, name: parent.name, kind: parent.type === 'storageEquipment' ? 'equipment' : 'container' }
+    : null
+
+  return createInventoryChangeRecords([
+    { field: 'parent', before: parentSnapshot(before.parent), after: parentSnapshot(after.parent) },
+    { field: 'position', before: before.position, after: after.position }
+  ])
 }
 
 /*

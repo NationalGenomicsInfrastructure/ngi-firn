@@ -6,6 +6,7 @@ import {
   buildAlterActionNotes,
   createInventoryChangeRecords,
   createModifyActionLogEntry,
+  createPlacementChangeRecords,
   activeReservationOwnerId,
   reservationBlockedMessage,
   statusFromAction
@@ -276,6 +277,12 @@ async function moveItemOne(
   logComment: string | null | undefined,
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<InventoryItem> {
+  const formerParent = existing.parent
+    ? await couchDB.getDocument<StorageEquipment | Container>(existing.parent.id)
+    : null
+  if (existing.parent && (!formerParent || (formerParent.type !== 'storageEquipment' && formerParent.type !== 'container'))) {
+    throw new Error(`Parent for item "${existing.slug}" (ID: ${existing.parent.id}) could not be resolved.`)
+  }
   const position = await resolveItemPlacement(newParent, requestedPosition, existing.category)
   assertTemperatureCompatible({ category: existing.temperatureCategory, celsius: existing.temperatureCelsius }, newParent)
   await adjustParentOccupancy(newParent, existing.category, position, 1)
@@ -289,9 +296,15 @@ async function moveItemOne(
     ...(options.newStatus && { status: options.newStatus }),
     updatedAt: now
   }
-  const placement = position
-    ? ` in position ${position.label ?? deriveGridLabel(position.row, position.column, position.level)}`
-    : ''
+  const changes = [
+    ...createPlacementChangeRecords(
+      { parent: formerParent, position: existing.position },
+      { parent: newParent.doc, position: moved.position }
+    ),
+    ...createInventoryChangeRecords([
+      { field: 'status', before: existing.status, after: moved.status }
+    ])
+  ]
   moved.actionLog = [
     ...existing.actionLog,
     {
@@ -299,8 +312,9 @@ async function moveItemOne(
       firnUser: toUserRef(firnUser),
       timestamp: now,
       notes: logComment ?? (actionType === 'locate'
-        ? `Located and returned to storage in parent "${newParent.doc.name}"${placement}.`
-        : `Moved to parent "${newParent.doc.name}"${placement}.`)
+        ? `Located and returned to storage.`
+        : `Moved item.`),
+      changes
     }
   ]
 
