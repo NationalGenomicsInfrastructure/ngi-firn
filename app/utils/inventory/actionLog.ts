@@ -65,11 +65,26 @@ export function prettifyFieldName(field: string): string {
 }
 
 /* Render a change-record before/after value for display in a compact, readable way. */
-export function formatChangeValue(value: unknown): string {
+export function formatChangeValue(value: unknown, field?: string): string {
   if (value === null || value === undefined) return '—'
   if (typeof value === 'string') return value.trim() === '' ? '—' : value
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (typeof value === 'number') return String(value)
+  if (typeof value === 'object') {
+    if (field === 'parent' && 'name' in value && typeof value.name === 'string'
+      && 'slug' in value && typeof value.slug === 'string') {
+      return `${value.name} (${value.slug})`
+    }
+    if ((field === 'position' || field === 'positionParent')
+      && 'row' in value && typeof value.row === 'number'
+      && 'column' in value && typeof value.column === 'number') {
+      const level = 'level' in value && typeof value.level === 'number' ? value.level : 1
+      const coordinates = `row ${value.row}, column ${value.column}, level ${level}`
+      return 'label' in value && typeof value.label === 'string' && value.label.trim()
+        ? `${value.label} (${coordinates})`
+        : coordinates
+    }
+  }
   try {
     return JSON.stringify(value)
   }

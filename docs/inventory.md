@@ -90,6 +90,15 @@ interface InventoryActionLogEntry {
 }
 ```
 
+Item `move` and `locate` entries record placement in `changes`, independently of
+the free-text `notes` (including barcode-scan comments). The `parent` change stores
+before/after `{ slug, name, kind }` snapshots, not CouchDB IDs, so the history stays
+readable after a parent is renamed or deleted. The `position` change stores the old
+and new grid coordinates and labels, with `null` for unpositioned storage.
+Only changed fields are included; `locate` also records the status transition.
+The action-log UI displays parent names/slugs and readable grid coordinates.
+Existing log entries are not rewritten.
+
 ### InventoryTask (planned tasks)
 
 Planned lab operations that need scheduling, assignment, and lifecycle management. Unlike embedded log entries, tasks are **separate CouchDB documents** so they can be independently queried — overdue tasks, tasks assigned to a specific user, pending disposal tasks, etc.

@@ -6,8 +6,8 @@ const props = defineProps<{
   change: InventoryActionChangeRecord
 }>()
 
-const before = computed(() => formatChangeValue(props.change.before))
-const after = computed(() => formatChangeValue(props.change.after))
+const before = computed(() => formatChangeValue(props.change.before, props.change.field))
+const after = computed(() => formatChangeValue(props.change.after, props.change.field))
 </script>
 
 <template>

@@ -21,6 +21,7 @@ import { ContainerService } from '../server/crud/inventory/containers.server'
 import { ItemService } from '../server/crud/inventory/items.server'
 import { BarcodeScanService } from '../server/crud/inventory/barcode-scan.server'
 import { BARCODE_FOR_ACTION, parseBarcode } from '../schemas/inventory/barcode'
+import { formatChangeValue } from '../app/utils/inventory/actionLog'
 import type { BarcodeScanPlan } from '../types/inventory'
 import type { FirnUser } from '../types/auth'
 
@@ -423,6 +424,22 @@ async function run() {
     check('the item now really lives in box B', moved?.parent?.id === boxB._id,
       JSON.stringify(moved?.parent))
 
+    for (const vial of [v1, v2]) {
+      const persisted = await ItemService.getItemBySlug(vial.slug)
+      const entry = persisted?.actionLog.at(-1)
+      const parentChange = entry?.changes?.find(change => change.field === 'parent')
+      check(`batch move records both parents for ${vial.name}`,
+        JSON.stringify(parentChange?.before) === JSON.stringify({ slug: boxA.slug, name: boxA.name, kind: 'container' })
+        && JSON.stringify(parentChange?.after) === JSON.stringify({ slug: boxB.slug, name: boxB.name, kind: 'container' }),
+        JSON.stringify(parentChange))
+      check(`batch move preserves the scanner note for ${vial.name}`,
+        entry?.notes === 'Applied by barcode scan.', String(entry?.notes))
+      check(`batch move omits unchanged position and status for ${vial.name}`,
+        entry?.changes?.length === 1, JSON.stringify(entry?.changes))
+      check(`parent changes are displayed without raw JSON for ${vial.name}`,
+        formatChangeValue(parentChange?.after, 'parent') === `${boxB.name} (${boxB.slug})`)
+    }
+
     const boxAAfter = await ContainerService.getContainerBySlug(boxA.slug)
     const boxBAfter = await ContainerService.getContainerBySlug(boxB.slug)
     const stored = (c: typeof boxAAfter) =>
@@ -430,6 +447,68 @@ async function run() {
     check('capacity counters follow the move (A emptied, B filled)',
       stored(boxAAfter) === 0 && stored(boxBAfter) === 2,
       `A=${stored(boxAAfter)} B=${stored(boxBAfter)}`)
+  }
+  console.log('\nItem placement audit records')
+  {
+    const gridBox = await ContainerService.createContainer({
+      containerType: 'Compartment',
+      classification: 'Sample',
+      name: 'BCTEST Grid Box',
+      parentSlug: equip.slug,
+      parentKind: 'equipment',
+      capacity: [{ layout: 'grid', childKind: 'item', type: 'cryovial', rows: 2, columns: 2, levels: 2 }]
+    }, user)
+    createdIds.push(gridBox._id)
+
+    const note = 'Transferred for sequencing.'
+    const [inGrid] = await ItemService.moveItem({
+      itemSlug: [v1.slug], newParentSlug: gridBox.slug, newParentKind: 'container',
+      position: { row: 2, column: 1, level: 2 }, logComment: note
+    }, user)
+    const positionChange = inGrid.actionLog.at(-1)?.changes?.find(change => change.field === 'position')
+    check('a custom move note is preserved verbatim', inGrid.actionLog.at(-1)?.notes === note)
+    check('a move into a grid records the resolved destination position',
+      positionChange?.before === null
+      && JSON.stringify(positionChange?.after) === JSON.stringify(inGrid.position),
+      JSON.stringify(positionChange))
+    check('grid change values display labels and coordinates',
+      formatChangeValue(positionChange?.after, 'position') === 'L2-B1 (row 2, column 1, level 2)')
+    check('unlabelled legacy grid values still display readable coordinates',
+      formatChangeValue({ row: 1, column: 2 }, 'position') === 'row 1, column 2, level 1')
+
+    await ItemService.moveItem({
+      itemSlug: [v1.slug], newParentSlug: equip.slug, newParentKind: 'equipment'
+    }, user)
+    const inEquipment = await ItemService.getItemBySlug(v1.slug)
+    const equipmentEntry = inEquipment?.actionLog.at(-1)
+    const releasedPosition = equipmentEntry?.changes?.find(change => change.field === 'position')
+    check('a move without a comment still persists both placement changes',
+      equipmentEntry?.changes?.length === 2
+      && JSON.stringify(releasedPosition?.before) === JSON.stringify(inGrid.position)
+      && releasedPosition?.after === null, JSON.stringify(equipmentEntry))
+    check('equipment parents are stored as public snapshots',
+      JSON.stringify(equipmentEntry?.changes?.find(change => change.field === 'parent')?.after)
+      === JSON.stringify({ slug: equip.slug, name: equip.name, kind: 'equipment' }))
+
+    await ItemService.alterItem({ itemSlug: [v1.slug], performedAction: 'post_missing' }, user)
+    const out = await BarcodeScanService.applyScan(
+      [bc(v1), BARCODE_FOR_ACTION.locate, bc(gridBox)], user, 'Found in the lab.')
+    check('a lost item can be located into a grid', out.failures.length === 0 && out.applied[0]?.action === 'locate',
+      JSON.stringify(out))
+    const located = await ItemService.getItemBySlug(v1.slug)
+    const locateEntry = located?.actionLog.at(-1)
+    const statusChange = locateEntry?.changes?.find(change => change.field === 'status')
+    check('locate records placement and status independently of the scanner comment',
+      locateEntry?.notes === 'Applied by barcode scan. Found in the lab.'
+      && locateEntry.changes?.length === 3
+      && locateEntry.changes.find(change => change.field === 'parent')?.before === null
+      && locateEntry.changes.find(change => change.field === 'position')?.before === null
+      && statusChange?.before === 'lost' && statusChange.after === 'available',
+      JSON.stringify(locateEntry))
+
+    await ItemService.moveItem({
+      itemSlug: [v1.slug], newParentSlug: boxB.slug, newParentKind: 'container'
+    }, user)
   }
   {
     // A blocked target must not be silently executed, and must not abort the rest.
