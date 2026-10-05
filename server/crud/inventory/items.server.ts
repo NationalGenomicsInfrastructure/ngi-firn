@@ -277,10 +277,8 @@ async function moveItemOne(
   logComment: string | null | undefined,
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<InventoryItem> {
-  const formerParent = existing.parent
-    ? await couchDB.getDocument<StorageEquipment | Container>(existing.parent.id)
-    : null
-  if (existing.parent && (!formerParent || (formerParent.type !== 'storageEquipment' && formerParent.type !== 'container'))) {
+  const formerParent = await ContainerService.resolveParentRef(existing.parent)
+  if (existing.parent && !formerParent) {
     throw new Error(`Parent for item "${existing.slug}" (ID: ${existing.parent.id}) could not be resolved.`)
   }
   const position = await resolveItemPlacement(newParent, requestedPosition, existing.category)

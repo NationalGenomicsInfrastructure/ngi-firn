@@ -58,6 +58,7 @@ import {
   buildAlterActionNotes,
   createChangelogEntry,
   createInventoryChangeRecords,
+  createPlacementChangeRecords,
   activeReservationOwnerId,
   reservationBlockedMessage,
   statusFromAction
@@ -1569,6 +1570,10 @@ async function moveContainerOne(
   logComment: string | null | undefined,
   options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
 ): Promise<Container> {
+  const formerParent = await ContainerService.resolveParentRef(existing.parent)
+  if (existing.parent && !formerParent) {
+    throw new Error(`Parent for container "${existing.slug}" (ID: ${existing.parent.id}) could not be resolved.`)
+  }
   const actionType = options.actionType ?? 'move'
   assertContainerTemperatureCompatible({ category: existing.temperatureCategory, celsius: existing.temperatureCelsius }, newParent)
   const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType)
@@ -1584,15 +1589,25 @@ async function moveContainerOne(
     updatedAt: now
   }
 
-  const placementNote = actionType === 'locate'
-    ? `Located and returned to storage in parent "${newParent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}.`
-    : `Moved to parent "${newParent.doc.name}"${positionParent ? ` in position ${positionParent.label ?? deriveGridLabel(positionParent.row, positionParent.column, positionParent.level)}` : ''}".`
+  const changes = [
+    ...createPlacementChangeRecords(
+      { parent: formerParent, position: existing.positionParent },
+      { parent: newParent.doc, position: movedContainer.positionParent },
+      'positionParent'
+    ),
+    ...createInventoryChangeRecords([
+      { field: 'status', before: existing.status, after: movedContainer.status }
+    ])
+  ]
 
   const changelogEntry: InventoryActionLogEntry = {
     actionType,
     firnUser: toUserRef(firnUser),
     timestamp: now,
-    notes: logComment ?? placementNote
+    notes: logComment ?? (actionType === 'locate'
+      ? `Located and returned to storage.`
+      : `Moved container.`),
+    changes
   }
 
   movedContainer.actionLog = [...existing.actionLog, changelogEntry]

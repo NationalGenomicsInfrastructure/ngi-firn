@@ -80,7 +80,8 @@ type PlacementSnapshot = {
 
 export function createPlacementChangeRecords(
   before: PlacementSnapshot,
-  after: PlacementSnapshot
+  after: PlacementSnapshot,
+  positionField: 'position' | 'positionParent' = 'position'
 ): InventoryActionChangeRecord[] {
   const parentSnapshot = (parent: PlacementSnapshot['parent']): SerializedEntityRef | null => parent
     ? { slug: parent.slug, name: parent.name, kind: parent.type === 'storageEquipment' ? 'equipment' : 'container' }
@@ -88,7 +89,7 @@ export function createPlacementChangeRecords(
 
   return createInventoryChangeRecords([
     { field: 'parent', before: parentSnapshot(before.parent), after: parentSnapshot(after.parent) },
-    { field: 'position', before: before.position, after: after.position }
+    { field: positionField, before: before.position, after: after.position }
   ])
 }
 
