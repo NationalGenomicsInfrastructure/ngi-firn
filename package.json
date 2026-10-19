@@ -44,7 +44,11 @@
     "postinstall": "nuxt prepare",
     "db:init": "tsx scripts/init-db.ts",
     "db:test": "tsx scripts/test-db-connection.ts",
-    "test:barcode": "tsx scripts/test-barcode-scan.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run",
+    "test:watch": "vitest",
+    "test:typecheck": "vue-tsc --noEmit -p tsconfig.vitest.json",
+    "test:barcode": "vitest run tests/integration/barcode-scan.test.ts",
     "test:labels": "tsx scripts/test-label-sheet.ts",
     "db:views": "tsx scripts/ensure-views.ts",
     "db:views:projects": "tsx scripts/pull-project-views.ts"
@@ -95,6 +99,7 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "unocss": "66.7.4",
+    "vitest": "^5.0.5",
     "vue-tsc": "^3.3.11",
     "wrangler": "^4.145.0"
   },

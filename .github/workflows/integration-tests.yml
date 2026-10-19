@@ -1,0 +1,87 @@
+name: Integration tests
+
+# Runs the backend integration suite (currently the barcode scan resolver) against
+# a disposable CouchDB service container. No VPN access, external database or
+# repository secrets are required: GitHub starts a fresh CouchDB for the job and
+# destroys it, with all its data, when the job finishes.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    # The CouchDB version is pinned here - upgrade when production version changes
+    strategy:
+      matrix:
+        couchdb-version: ['3.1.1']
+
+    services:
+      couchdb:
+        image: couchdb:${{ matrix.couchdb-version }}
+        env:
+          COUCHDB_USER: ephemeraladmin
+          COUCHDB_PASSWORD: testpassword
+        ports:
+          - 5984:5984
+
+    env:
+      # Connection to the service container, published on the runner's localhost.
+      CLOUDANT_URL: http://127.0.0.1:5984
+      CLOUDANT_USERNAME: ephemeraladmin
+      CLOUDANT_PASSWORD: testpassword
+      CLOUDANT_AUTH_TYPE: COUCHDB_SESSION
+      # Isolated, disposable database the suite is allowed to create and wipe.
+      CLOUDANT_TEST_DATABASE: firn_test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        # Version is read from package.json "packageManager".
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check integration tests
+        run: pnpm test:typecheck
+
+      - name: Wait for CouchDB and initialize system databases
+        run: |
+          echo "Waiting for CouchDB to accept connections..."
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://ephemeraladmin:testpassword@127.0.0.1:5984/" >/dev/null 2>&1; then
+              echo "CouchDB is ready."
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "CouchDB did not become ready in time." >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          # CouchDB 3.x no longer auto-creates its system databases; create the
+          # ones a single node needs. Treat "created" (201) and "exists" (412)
+          # as success.
+          for db in _users _replicator _global_changes; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "http://ephemeraladmin:testpassword@127.0.0.1:5984/${db}")
+            if [ "$status" != "201" ] && [ "$status" != "412" ]; then
+              echo "Failed to create system database ${db} (HTTP ${status})." >&2
+              exit 1
+            fi
+          done
+
+      - name: Run integration tests
+        run: pnpm test:integration

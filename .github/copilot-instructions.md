@@ -12,16 +12,28 @@ pnpm build-analyze # Production build with bundle size analysis
 pnpm typecheck     # TypeScript type-check (not run during dev, only at build)
 pnpm lint          # ESLint
 pnpm db:test       # Verify CouchDB connection
-pnpm test:barcode  # Integration test for the barcode scan resolver (needs a live CouchDB)
+pnpm test          # Run the Vitest integration suite (needs a live CouchDB)
+pnpm test:barcode  # Run only the barcode scan resolver integration test
+pnpm test:typecheck # Type-check the integration test suite
 pnpm db:init       # Create first admin user (set FIRST_ADMIN_EMAIL first)
 ```
 
-There is no unit-test framework. The one automated test, `pnpm test:barcode`, is an
-integration test that runs against a live CouchDB: it creates a throwaway fixture
-(prefixed `BCTEST`), asserts against it, and deletes it again. Write further tests in
-the same style — assertion-based scripts under `scripts/`, registered as a `pnpm`
-script — unless a proper test runner is introduced deliberately. `pnpm` is enforced as
-the package manager (a `preinstall` script blocks npm/yarn). Node ≥ 24 is required.
+Tests use **Vitest**, run as integration tests against a live CouchDB. The suite is
+self-contained: `tests/setup/integration.ts` redirects the app to a dedicated,
+disposable database (`CLOUDANT_TEST_DATABASE`, default `firn_test`, never the
+`CLOUDANT_DATABASE` app database), and each test creates its own throwaway fixture
+(an approved user, a room and an inventory hierarchy, all prefixed `BCTEST`), then
+deletes every created document in `afterAll`. Design views are installed via
+`ensureViews()` and intentionally left in place.
+
+Write further backend tests in the same style — Vitest files under `tests/integration/`,
+sharing the fixture helpers in `tests/integration/fixtures.ts`. The migrated suite runs
+**sequentially** because its cases mutate one shared fixture in order; keep that unless a
+new suite isolates its own fixtures. In CI, `.github/workflows/integration-tests.yml`
+provides CouchDB as an ephemeral service container (no VPN, no secrets); its
+`couchdb-version` matrix value is the single place to change the pinned CouchDB version.
+`pnpm` is enforced as the package manager (a `preinstall` script blocks npm/yarn).
+Node ≥ 24 is required.
 
 ## Feature Development Workflow
 

@@ -1,0 +1,11 @@
+{
+  // Type-checks the integration test suite, which the Nuxt build-time typecheck
+  // does not cover. Extends the generated server tsconfig so the `~~/` aliases
+  // and server globals used by the imported CRUD modules resolve the same way
+  // they do for the application.
+  "extends": "./.nuxt/tsconfig.server.json",
+  "include": [
+    "tests/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

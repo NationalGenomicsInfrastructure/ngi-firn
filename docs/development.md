@@ -142,8 +142,54 @@ The project includes several useful scripts:
 - `pnpm db:test` - Test the database connection
 - `pnpm db:views` - Ensure the application's CouchDB views are present and up to date
 - `pnpm db:views:projects` - Cache the read-only `projects` database views locally
+- `pnpm test` - Run the Vitest integration suite against a live CouchDB
+- `pnpm test:barcode` - Run only the barcode scan resolver integration test
+- `pnpm test:typecheck` - Type-check the integration test suite
 
 For more information about production builds, see [Deployment](./deployment.md).
+
+## Testing
+
+Backend tests use [Vitest](https://vitest.dev/) and run as **integration tests**
+against a live CouchDB. They live under `tests/integration/` and share the fixture
+helpers in `tests/integration/fixtures.ts`.
+
+```bash
+pnpm test             # run the whole suite
+pnpm test:barcode     # run only the barcode scan tests
+pnpm test:watch       # watch mode
+pnpm test:typecheck   # type-check the test suite (tsconfig.vitest.json)
+```
+
+The suite never touches your application database. `tests/setup/integration.ts`
+redirects the server to a dedicated, disposable database named by
+`CLOUDANT_TEST_DATABASE` (default `firn_test`) and refuses to run if that value equals
+`CLOUDANT_DATABASE`. Each run creates its own throwaway documents (prefixed `BCTEST`)
+and deletes them afterwards; only the design documents installed by `ensureViews()`
+remain. Because the migrated barcode suite mutates a single shared fixture in order, it
+runs sequentially — keep new suites that reuse a shared fixture sequential too.
+
+To run the tests locally against a disposable CouchDB container:
+
+```bash
+docker run --rm -d --name firn-test-couch -p 5984:5984 \
+  -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password couchdb:3.1.1
+# create the system databases CouchDB needs
+for db in _users _replicator _global_changes; do \
+  curl -s -X PUT http://admin:password@127.0.0.1:5984/$db >/dev/null; done
+
+CLOUDANT_URL=http://127.0.0.1:5984 CLOUDANT_USERNAME=admin \
+  CLOUDANT_PASSWORD=password CLOUDANT_TEST_DATABASE=firn_test pnpm test
+
+docker rm -f firn-test-couch
+```
+
+In CI, `.github/workflows/integration-tests.yml` runs the suite on pushes to `main`,
+pull requests, and manual dispatch. It provides CouchDB as an ephemeral
+[service container](https://docs.github.com/actions/using-containerized-services/about-service-containers)
+— no VPN or secrets required. The CouchDB version is pinned via the workflow's
+`couchdb-version` matrix (currently `3.1.1`, matching DEV); that matrix value is the
+**single place** to bump the version.
 
 ## TypeScript
 
