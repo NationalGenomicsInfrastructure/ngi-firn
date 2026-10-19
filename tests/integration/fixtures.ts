@@ -30,9 +30,10 @@ function uniqueSuffix(): string {
 /**
  * Ensure the test database and views exist, then create the minimal approved
  * user and host room the barcode fixtures hang off. Both documents are tracked
- * in the returned `createdIds` so cleanup removes them too.
+ * in the returned `createdIds` so cleanup removes them too. An optional callback
+ * lets external harnesses persist ownership before the next creation can fail.
  */
-export async function setupBaseFixture(): Promise<BaseFixture> {
+export async function setupBaseFixture(onCreated?: (id: string) => Promise<void>): Promise<BaseFixture> {
   await ensureDatabase()
   await ensureViews()
 
@@ -51,6 +52,7 @@ export async function setupBaseFixture(): Promise<BaseFixture> {
     throw new Error('Failed to create the test user fixture.')
   }
   createdIds.push(user._id)
+  await onCreated?.(user._id)
 
   const room = await RoomService.createRoom({
     name: `BCTEST Room ${suffix}`,
@@ -62,6 +64,7 @@ export async function setupBaseFixture(): Promise<BaseFixture> {
     description: null
   })
   createdIds.push(room._id)
+  await onCreated?.(room._id)
 
   return { user, room, createdIds }
 }

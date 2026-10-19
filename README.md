@@ -18,8 +18,6 @@
 
 This name was chosen for the application as it aptly reflects the cold storage conditions in the catalogued freezers and liquid nitrogen tanks. The meaning "of last year" also resonates with the application's role in managing items preserved over prolonged periods of time.
 
-
-
 ## Documentation
 
 ### Development
@@ -28,6 +26,7 @@ This name was chosen for the application as it aptly reflects the cold storage c
 - [Initial Setup](docs/development.md)
 - [Containerized setup and development](docs/container.md)
 - [Debugging](docs/debugging.md)
+- [Frontend testing](docs/bombadil.md)
 
 ### Guide to the application
 

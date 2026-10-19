@@ -49,6 +49,8 @@
     "test:watch": "vitest",
     "test:typecheck": "vue-tsc --noEmit -p tsconfig.vitest.json",
     "test:barcode": "vitest run tests/integration/barcode-scan.test.ts",
+    "test:bombadil": "bash tests/bombadil/run.sh",
+    "test:bombadil:typecheck": "tsc --noEmit -p tsconfig.bombadil.json",
     "test:labels": "tsx scripts/test-label-sheet.ts",
     "db:views": "tsx scripts/ensure-views.ts",
     "db:views:projects": "tsx scripts/pull-project-views.ts"
@@ -80,6 +82,7 @@
     "zxing-wasm": "^3.1.4"
   },
   "devDependencies": {
+    "@antithesishq/bombadil": "0.7.9",
     "@iconify-json/lucide": "^1.2.138",
     "@iconify-json/radix-icons": "^1.2.6",
     "@iconify-json/simple-icons": "^1.2.98",

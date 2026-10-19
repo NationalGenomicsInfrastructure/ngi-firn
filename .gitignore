@@ -24,3 +24,6 @@ dist
 node_modules
 nuxt.d.ts
 template
+
+# Bombadil pilot: fixture token + trace output (never commit)
+tests/bombadil/.artifacts

@@ -1,0 +1,140 @@
+name: Bombadil frontend fuzzing
+
+# Non-blocking, exploratory property-based UI test of the authenticated frontend
+# driven by Bombadil.
+#
+# Like the backend integration workflow, it uses an ephemeral CouchDB service
+# container and all credentials below are disposable test values.
+on:
+  schedule:
+    # Mondays 04:17 UTC. Odd minute to avoid the top-of-hour scheduler surge.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      time-limit:
+        description: 'Exploration budget (e.g. 2m, 10m)'
+        required: false
+        default: '3m'
+
+permissions:
+  contents: read
+
+jobs:
+  bombadil:
+    runs-on: ubuntu-latest
+    # Must exceed the Bombadil time limit plus install/build time so the run can
+    # finish, emit its trace and clean up rather than being killed mid-flight.
+    timeout-minutes: 25
+
+    # The CouchDB version is pinned here - keep it in step with the backend
+    # integration workflow and the production version.
+    strategy:
+      matrix:
+        couchdb-version: ['3.1.1']
+
+    services:
+      couchdb:
+        image: couchdb:${{ matrix.couchdb-version }}
+        env:
+          COUCHDB_USER: ephemeraladmin
+          COUCHDB_PASSWORD: testpassword
+        ports:
+          - 5984:5984
+
+    env:
+      # Connection to the service container, published on the runner's localhost.
+      CLOUDANT_URL: http://127.0.0.1:5984
+      CLOUDANT_USERNAME: ephemeraladmin
+      CLOUDANT_PASSWORD: testpassword
+      CLOUDANT_AUTH_TYPE: COUCHDB_SESSION
+      # Isolated, disposable database the pilot is allowed to create and wipe.
+      # Deliberately NOT CLOUDANT_DATABASE: the harness guard refuses to run if
+      # the two ever coincide. CLOUDANT_DATABASE is left unset; run.sh points the
+      # app at the test database for its process only.
+      CLOUDANT_TEST_DATABASE: firn_bombadil
+      # Disposable session secrets. The seeder and the app must agree on these
+      # (and on NUXT_APP_URL) or the login token will not verify. These are test
+      # values with no access to anything real.
+      NUXT_SESSION_PASSWORD: bombadil-pilot-session-password-01234567890
+      NUXT_SESSION_SALT: bombadil-pilot-salt
+      # Start the built server (cleaner signal than the dev server) and run Chrome
+      # headless without a sandbox (GitHub runners restrict user namespaces).
+      BOMBADIL_START_CMD: node .output/server/index.mjs
+      BOMBADIL_EXTRA_ARGS: --headless --no-sandbox
+      BOMBADIL_TIME_LIMIT: ${{ github.event.inputs.time-limit || '3m' }}
+      BOMBADIL_PORT: '3107'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chrome for Testing
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Type-check the specification
+        run: pnpm test:bombadil:typecheck && pnpm test:typecheck
+
+      - name: Test pilot harness and DOM assertions
+        env:
+          CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: pnpm exec vitest run tests/integration/bombadil-harness.test.ts
+
+      - name: Build the application
+        run: pnpm build
+
+      - name: Wait for CouchDB and initialize system databases
+        run: |
+          echo "Waiting for CouchDB to accept connections..."
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$CLOUDANT_URL/" >/dev/null 2>&1; then
+              echo "CouchDB is ready."
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "CouchDB did not become ready in time." >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          for db in _users _replicator _global_changes; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" -u "$CLOUDANT_USERNAME:$CLOUDANT_PASSWORD" -X PUT "$CLOUDANT_URL/${db}")
+            if [ "$status" != "201" ] && [ "$status" != "412" ]; then
+              echo "Failed to create system database ${db} (HTTP ${status})." >&2
+              exit 1
+            fi
+          done
+
+      - name: Run the Bombadil scanner pilot
+        # Bombadil locates Chrome through the CHROME env var; run.sh seeds, starts
+        # the app, logs in, explores and cleans up (even on violation/timeout).
+        env:
+          CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
+          # Lenient cookie/origin handling so the token login works over plain http.
+          NODE_ENV: development
+        run: pnpm test:bombadil
+
+      - name: Upload Bombadil trace
+        # Only the trace output is uploaded — never the fixture artifact or cookie
+        # file, which hold the ephemeral login token (run.sh deletes them anyway).
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bombadil-trace
+          path: tests/bombadil/.artifacts/output
+          if-no-files-found: ignore
+          retention-days: 14

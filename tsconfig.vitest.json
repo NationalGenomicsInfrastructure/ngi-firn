@@ -3,9 +3,21 @@
   // does not cover. Extends the generated server tsconfig so the `~~/` aliases
   // and server globals used by the imported CRUD modules resolve the same way
   // they do for the application.
+  //
+  // A child `include` fully replaces the parent's, which would drop the Nitro
+  // ambient auto-imports (e.g. `getRequestHeader`, used by tokens.server.ts).
+  // Referencing `.nuxt/types/nitro.d.ts` restores those globals, so any server
+  // module — not just the CRUD services — can be imported from a test.
   "extends": "./.nuxt/tsconfig.server.json",
   "include": [
+    ".nuxt/types/nitro.d.ts",
     "tests/**/*.ts",
     "vitest.config.ts"
+  ],
+  // The Bombadil browser spec runs in Bombadil's own TypeScript runtime against
+  // the DOM lib and bundler resolution, so it is checked only by
+  // tsconfig.bombadil.json and must stay out of this server-oriented program.
+  "exclude": [
+    "tests/bombadil/specs/**/*.ts"
   ]
 }

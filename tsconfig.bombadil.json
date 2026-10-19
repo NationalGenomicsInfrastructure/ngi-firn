@@ -1,0 +1,18 @@
+{
+  // Standalone type-check for the Bombadil browser specification. The spec runs
+  // inside Bombadil's own TypeScript runtime (not the Nuxt build), so it is kept
+  // out of the app and server programs and checked on its own here against the
+  // DOM lib and the @antithesishq/bombadil types. Run: pnpm test:bombadil:typecheck
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": [],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+  },
+  "include": ["tests/bombadil/specs/**/*.ts"]
+}
