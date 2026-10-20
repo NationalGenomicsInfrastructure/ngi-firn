@@ -66,37 +66,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Chrome for Testing
-        id: setup-chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-
-      - name: Type-check the specification
-        run: pnpm test:bombadil:typecheck && pnpm test:typecheck
-
-      - name: Test pilot harness and DOM assertions
-        env:
-          CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
-        run: pnpm exec vitest run tests/integration/bombadil-harness.test.ts
-
-      - name: Build the application
-        run: pnpm build
-
+      # Initialize immediately so CouchDB does not repeatedly log missing-system-
+      # database errors while dependencies are installed and the app is built.
       - name: Wait for CouchDB and initialize system databases
         run: |
           echo "Waiting for CouchDB to accept connections..."
@@ -119,6 +92,35 @@ jobs:
             fi
           done
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chrome for Testing
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+
+      - name: Type-check the specification
+        run: pnpm test:bombadil:typecheck && pnpm test:typecheck
+
+      - name: Test pilot harness and DOM assertions
+        env:
+          CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: pnpm exec vitest run tests/integration/bombadil-harness.test.ts
+
+      - name: Build the application
+        run: pnpm build
+
       - name: Run the Bombadil scanner pilot
         # Bombadil locates Chrome through the CHROME env var; run.sh seeds, starts
         # the app, logs in, explores and cleans up (even on violation/timeout).
@@ -132,7 +134,7 @@ jobs:
         # Only the trace output is uploaded — never the fixture artifact or cookie
         # file, which hold the ephemeral login token (run.sh deletes them anyway).
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bombadil-trace
           path: tests/bombadil/.artifacts/output
