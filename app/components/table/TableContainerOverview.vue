@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import { unlinkEntitiesFromProject as useUnlinkMutation } from '~/utils/mutations/inventory/projectLinks'
 import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayContainer, InventoryActiveFlag, SerializedEntityRef } from '~~/types/inventory'
@@ -116,6 +117,28 @@ const expanded = ref<Record<string, boolean>>({})
 const select = ref<RowSelectionState>()
 const table = useTemplateRef<Table<ContainerRow>>('table')
 
+const globalFilter = ref('')
+const globalFilterFn = createGlobalFilter<ContainerRow>(row => toSearchText(
+  row.name,
+  row.label,
+  row.typeLabel,
+  row.classification,
+  getContainerStatusMeta(row.status).label,
+  row.status,
+  row.barcode,
+  row.description,
+  row.parentName,
+  row.capacityLabel,
+  row.projectRefs.map(ref => [ref.name, ref.slug]),
+  row.activeFlags.map(flag => [flag.kind, flag.comment]),
+  row.slug
+))
+// NTable's autoResetPageIndex defaults to false, so reset to the first page manually
+// whenever the filter changes to avoid landing on a now-empty page.
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
+
 const { user } = useUserSession()
 const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
 
@@ -180,10 +203,17 @@ const canMoveSelection = computed(() =>
 
 <template>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search containers"
+      placeholder="Name, barcode, project, parent…"
+    />
     <NTable
       ref="table"
       v-model:expanded="expanded"
       v-model:row-selection="select"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="tableData"

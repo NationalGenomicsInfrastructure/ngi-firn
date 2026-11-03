@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { FirnUserToken } from '~~/types/tokens'
 import { formatDate, getExpirationStatus, type ExpirationStatus } from '~/utils/dates/formatting'
@@ -53,6 +54,17 @@ const pagination = ref({
 
 const select = ref<RowSelectionState>()
 const table = useTemplateRef<Table<FormattedToken>>('table')
+
+const globalFilter = ref('')
+// Only non-sensitive identifiers are searchable — never the encrypted token material.
+const globalFilterFn = createGlobalFilter<FormattedToken>(row => toSearchText(
+  row.tokenID,
+  row.audience,
+  row.expirationStatus
+))
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
 
 // Date formatting options
 const relativeDates = ref(false)
@@ -137,9 +149,16 @@ const handleDeletion = (selectedRows: Row<FormattedToken>[] | undefined) => {
     </NFormGroup>
   </div>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search tokens"
+      placeholder="Token ID, audience…"
+    />
     <NTable
       ref="table"
       v-model:row-selection="select"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="formattedTokens || []"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, Table } from '@tanstack/vue-table'
 import { useQuery as useQueryColada } from '@pinia/colada'
 import type { DisplayInventoryActionLogEntry, InventoryActionChangeRecord, SerializedUserRef } from '~~/types/inventory'
@@ -96,6 +97,21 @@ const pagination = ref({ pageSize: 10, pageIndex: 0 })
 const expanded = ref<Record<string, boolean>>({})
 const table = useTemplateRef<Table<ActionLogRow>>('table')
 
+const globalFilter = ref('')
+const globalFilterFn = createGlobalFilter<ActionLogRow>(row => toSearchText(
+  row.actionLabel,
+  row.userName,
+  row.flag,
+  row.notes,
+  row.linkedTaskId,
+  row.changes.map(change => [change.field, change.before, change.after])
+))
+// NTable's autoResetPageIndex defaults to false, so reset to the first page manually
+// whenever the filter changes to avoid landing on a now-empty page.
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
+
 // Show the button only while the recent slice may be truncated and the full log is not yet loaded.
 const canLoadOlder = computed(() =>
   !fullLogLoaded.value && props.entries.length >= props.recentCap
@@ -112,9 +128,17 @@ function rowHasDetails(row: ActionLogRow): boolean {
 
 <template>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search action log"
+      placeholder="Action, user, notes, changes…"
+      :hint="fullLogLoaded ? 'Searches the full log' : 'Searches loaded entries only'"
+    />
     <NTable
       ref="table"
       v-model:expanded="expanded"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="tableData"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, Table, VisibilityState } from '@tanstack/vue-table'
 import type { ProjectSample } from '~~/types/projects'
 
@@ -100,6 +101,35 @@ const pagination = ref({
 const expanded = ref<Record<string, boolean>>({})
 const table = useTemplateRef<Table<SampleRow>>('table')
 
+const globalFilter = ref('')
+// Include the expanded-detail fields (plate, well, species, QC) so a search covers
+// everything the user can see once a row is expanded, not just the visible columns.
+const globalFilterFn = createGlobalFilter<SampleRow>((row) => {
+  const sample = props.samples[row.sampleId]
+  return toSearchText(
+    row.sampleId,
+    row.scilifeName,
+    row.customerName,
+    row.sampleType,
+    row.progress,
+    row.statusAuto,
+    row.statusManual,
+    row.passedInitialQc,
+    row.passedLibraryQc,
+    row.passedSequencingQc,
+    row.totalReads,
+    sample?.initial_plate_id,
+    sample?.well_location,
+    sample?.details?.species_name,
+    sample?.details?.tissue_type,
+    sample?.details?.storage_type,
+    sample?.initial_qc?.initial_qc_status
+  )
+})
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
+
 const columnVisibility = ref<VisibilityState>({
   sampleType: false,
   progress: false,
@@ -113,6 +143,12 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
 
 <template>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search samples"
+      placeholder="Sample ID, customer, species, QC…"
+      hint="Searches loaded samples only"
+    />
     <NSeparator class="mt-4" />
     <div class="flex flex-wrap gap-4">
       <NCheckbox
@@ -129,6 +165,8 @@ function getSampleByRow(row: SampleRow): ProjectSample | undefined {
       ref="table"
       v-model:expanded="expanded"
       v-model:column-visibility="columnVisibility"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="tableData"

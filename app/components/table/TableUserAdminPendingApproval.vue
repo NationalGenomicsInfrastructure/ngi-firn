@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, Row, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
@@ -33,6 +34,16 @@ const columns: ColumnDef<FormattedUser>[] = [
 
 const select = ref<RowSelectionState>()
 const table = useTemplateRef<Table<FormattedUser>>('table')
+
+const globalFilter = ref('')
+const globalFilterFn = createGlobalFilter<FormattedUser>(row => toSearchText(
+  row.fullName,
+  row.googleGivenName,
+  row.googleFamilyName,
+  row.googleEmail,
+  row.firnId,
+  row.googleId
+))
 
 const formattedUsers = computed((): FormattedUser[] | undefined => {
   return props.users?.map((user) => {
@@ -80,9 +91,16 @@ const handleApproval = (selectedRows: Row<FormattedUser>[] | undefined) => {
 
 <template>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search requests"
+      placeholder="Name, e-mail…"
+    />
     <NTable
       ref="table"
       v-model:row-selection="select"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="formattedUsers || []"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, Table } from '@tanstack/vue-table'
 import type { ProjectSummaryListItemSchema } from '~~/schemas/projects'
 import { formatDate } from '~/utils/dates/formatting'
@@ -56,6 +57,21 @@ const pagination = ref({
 const expanded = ref<Record<string, boolean>>({})
 const table = useTemplateRef<Table<FormattedProjectSummary>>('table')
 
+const globalFilter = ref('')
+const globalFilterFn = createGlobalFilter<FormattedProjectSummary>(row => toSearchText(
+  row.project_id,
+  row.project_name,
+  row.application,
+  row.affiliation,
+  row.contact,
+  row.priority,
+  row.status,
+  row.no_samples
+))
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
+
 const relativeDates = ref(false)
 const includeWeekday = ref(false)
 
@@ -109,9 +125,17 @@ watch(includeWeekday, (isRelative) => {
     </div>
   </div>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search projects"
+      placeholder="ID, name, application, contact…"
+      hint="Searches loaded projects only"
+    />
     <NTable
       ref="table"
       v-model:expanded="expanded"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="formattedProjects || []"

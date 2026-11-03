@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, RowSelectionState, Table } from '@tanstack/vue-table'
 import type { DisplayStorageEquipment } from '~~/types/inventory'
 import { EQUIPMENT_TYPE_LABELS } from '~/utils/inventory/equipment'
@@ -74,6 +75,26 @@ const expanded = ref<Record<string, boolean>>({})
 const select = ref<RowSelectionState>()
 const table = useTemplateRef<Table<EquipmentRow>>('table')
 
+const globalFilter = ref('')
+const globalFilterFn = createGlobalFilter<EquipmentRow>(row => toSearchText(
+  row.name,
+  row.label,
+  row.typeLabel,
+  row.parentRoomName,
+  row.temperatureLabel,
+  row.manufacturer,
+  row.model,
+  row.serialNumber,
+  row.description,
+  row.slug,
+  row.isActive ? 'active' : 'inactive'
+))
+// NTable's autoResetPageIndex defaults to false, so reset to the first page manually
+// whenever the filter changes to avoid landing on a now-empty page.
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
+
 const equipmentBySlug = computed(() => new Map(props.equipment.map(eq => [eq.slug, eq])))
 // Referencing select.value keeps this reactive to selection changes.
 const selectedEquipment = computed<DisplayStorageEquipment[]>(() => {
@@ -92,10 +113,17 @@ const selectedPrintables = computed(() => selectedEquipment.value.map(eq => ({
 
 <template>
   <div class="w-full overflow-x-auto">
+    <TableSearchField
+      v-model="globalFilter"
+      label="Search equipment"
+      placeholder="Name, room, manufacturer, serial…"
+    />
     <NTable
       ref="table"
       v-model:expanded="expanded"
       v-model:row-selection="select"
+      v-model:global-filter="globalFilter"
+      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :data="tableData"
