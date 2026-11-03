@@ -31,6 +31,8 @@ services:
       - /app/node_modules
       - /app/.nuxt
       - /app/.output
+      # Persist the rebuildable Meilisearch index across restarts.
+      - ngi_firn_meili_data:/data/meili
     stdin_open: true
     tty: true
 
@@ -104,7 +106,10 @@ services:
     networks:
       - ngi_firn
     ports:
-      - "3000:3000"
+      - "3000:3001"
+    volumes:
+      # Persist the rebuildable Meilisearch index across restarts.
+      - ngi_firn_meili_data:/data/meili
 
   # Frontend staging (production build test) service with various profiles for different database configurations
   frontend_staging_local_db:
@@ -119,7 +124,7 @@ services:
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
-      - PORT=3000
+      - PORT=3001
       - CLOUDANT_URL=http://host.docker.internal:5984
     env_file:
       - .env-local
@@ -133,7 +138,7 @@ services:
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
-      - PORT=3000
+      - PORT=3001
       - CLOUDANT_URL=http://database_dev:5984
     env_file:
       - .env
@@ -150,7 +155,7 @@ services:
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
-      - PORT=3000
+      - PORT=3001
     # Important since the version of the remote StatusDB database is older and does not support compression.
       - CLOUDANT_COMPRESSION=false
     env_file:
@@ -192,3 +197,5 @@ services:
 # Activate this volume if you want to persist the data between container restarts with a volume instead of a local folder.
 volumes:
   ngi_firn_db_data:
+  # Rebuildable Meilisearch global-search index.
+  ngi_firn_meili_data:

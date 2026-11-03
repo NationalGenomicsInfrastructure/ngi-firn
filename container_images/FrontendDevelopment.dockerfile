@@ -22,6 +22,26 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
+# Pinned Meilisearch community binary for the local global-search engine. Verify
+# the release/checksum before bumping (see the production Dockerfile).
+ARG MEILISEARCH_VERSION=v1.12.0
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends dumb-init ca-certificates curl \
+    && arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+         amd64) meili_arch="amd64" ;; \
+         arm64) meili_arch="aarch64" ;; \
+         *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL -o /usr/local/bin/meilisearch \
+         "https://github.com/meilisearch/meilisearch/releases/download/${MEILISEARCH_VERSION}/meilisearch-linux-${meili_arch}" \
+    && chmod +x /usr/local/bin/meilisearch \
+    && rm -rf /var/lib/apt/lists/*
+
+# Supervisor script that runs Meilisearch (loopback-only) alongside the dev server.
+COPY container_images/firn-entrypoint.sh /usr/local/bin/firn-entrypoint.sh
+RUN chmod +x /usr/local/bin/firn-entrypoint.sh
+
 # Instead of copying the source code into the image,
 # the app directory is mounted as a volume, see Docker Compose file.
 # COPY . .
@@ -35,8 +55,11 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Create directories that Nuxt needs to write to and set ownership
 # These directories are excluded from volume mounts in docker-compose.yml
 # Change permissions of /app so the firn user can write to .nuxt and .output
-RUN mkdir -p /app/.nuxt /app/.output && \
-    chown -R firn:nodejs /app/.nuxt /app/.output /app/node_modules
+RUN mkdir -p /app/.nuxt /app/.output /data/meili && \
+    chown -R firn:nodejs /app/.nuxt /app/.output /app/node_modules /data/meili
+
+# Rebuildable search index path for the local engine.
+ENV MEILI_DB_PATH=/data/meili
 
 # Set HOME environment variable for the user
 ENV HOME=/home/firn
@@ -56,5 +79,8 @@ LABEL maintainer="Matthias Zepper <MatthiasZepper@users.noreply.github.com>"
 LABEL description="NGI Firn - Development environment with live reload"
 LABEL org.opencontainers.image.source="https://github.com/NationalGenomicsInfrastructure/ngi-firn"
 
-# Start the development server with hot module replacement
+# Start the development server with hot module replacement, supervised alongside
+# the loopback-only Meilisearch engine. dumb-init is PID 1 for signal/zombie
+# handling.
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/firn-entrypoint.sh"]
 CMD ["pnpm", "dev"]
