@@ -2,6 +2,18 @@
 const data = {
   menuItems: [
     {
+      title: 'Search',
+      url: '#',
+      icon: 'i-lucide-search',
+      isActive: true,
+      items: [
+        {
+          title: 'Global search',
+          url: '/inventory/search'
+        }
+      ]
+    },
+    {
       title: 'Rooms',
       url: '#',
       icon: 'i-lucide-building-2',
