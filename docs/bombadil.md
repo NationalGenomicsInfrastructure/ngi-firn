@@ -23,37 +23,37 @@ A [famous developer joke](https://www.reddit.com/r/Jokes/comments/prdi4x/a_softw
 >
 > A real customer walks into the bar and asks where the bathroom is. The bar goes up in flames.
 
-The joke illustrates that example-based testing, especially when browser testing, is costly and limited. Limited, in that they only test very small parts of the state space; a bunch of distinct cases, a set of regression tests, and maybe even some error handling cases that are important. But they miss out on many combinations that were not considered. Also because the user interface typically changes rapidly, maintaining suites of Playwright or Cypress tests takes a lot of work even in the age of AI.
+The joke illustrates that example-based testing, browser testing in particular, is costly and limited. Hand-written tests cover only a small part of the state space (a handful of distinct cases, some regression tests, a few important error paths) and miss the combinations nobody thought of. Because the user interface changes quickly, maintaining Playwright or Cypress suites also takes a lot of work, even in the age of AI.
 
-Hence, for Firn the frontend tests will be run with property-based testing instead (or fuzzing if you will). By randomly and systematically searching the state space, [Bombadil](https://github.com/antithesishq/bombadil) may probe strange inputs, unexpected sequences of actions and weird timings that a human-curated test case would not have covered.
+Firn therefore tests its frontend with property-based testing, which is fuzzing in effect. By searching the state space randomly and systematically, [Bombadil](https://github.com/antithesishq/bombadil) may probe strange inputs, unexpected sequences of actions and odd timings that a human-curated test case would not have covered.
 
 ## How Bombadil works
 
 [Bombadil](https://github.com/antithesishq/bombadil) is a property-based /
 fuzzing UI tester from Antithesis. Instead of scripting fixed steps, we declare
 **properties** (invariants that must hold in *every* state) and Bombadil drives
-the real page autonomously — clicking, typing and navigating — trying to reach a
+the real page autonomously (clicking, typing and navigating) trying to reach a
 state that breaks one of them. A specification is TypeScript that exports
 properties plus action generators.
 
-Bombadil runs with a scheduled GitHub action for 3 minutes weekly. Because the state space exploration is random, a bug may not be discovered on the first try. But ultimately, it will surface sooner or later.
+Bombadil runs weekly as a scheduled GitHub action for 3 minutes. Exploration is random, so a bug may not show up on the first run, but repeated runs should eventually find it.
 
 ## Isolation and safety guarantees
 
-The frontend tests make use of the following restrictions:
+The frontend tests run under these restrictions:
 
 - **Dedicated database.** Everything runs against `CLOUDANT_TEST_DATABASE`
   (default `firn_bombadil`), never the app database `CLOUDANT_DATABASE`. The
-  guard in `tests/bombadil/fixtures/env.ts` **throws** if the two coincide, mirroring
+  guard in `tests/bombadil/fixtures/env.ts` throws if the two coincide, mirroring
   `tests/setup/integration.ts`. It must be imported before any server module,
   because the `couchDB` singleton reads the database name once at construction.
 - **Self-contained fixture.** `tests/bombadil/fixtures/seed.ts` creates its own throwaway
-  data — an approved user plus a freezer → 2 boxes → 2 vials hierarchy — reusing
-  the integration fixture helpers (`tests/integration/fixtures.ts`), and records
+  data: an approved user plus a freezer → 2 boxes → 2 vials hierarchy. It reuses
+  the integration fixture helpers (`tests/integration/fixtures.ts`) and records
   each returned document ID immediately in a separate cleanup journal, including
   the user and room before later provisioning can fail.
-- **Real login** The fixture issues a short-lived (1 h) QR login
-  token with the required `User Login` audience. This means the tests can run on parts of Firn that are restricted to authenticated users without dealing with OAuth.
+- **Real login.** The fixture issues a short-lived (1 h) QR login
+  token with the required `User Login` audience, so the tests can reach the parts of Firn restricted to authenticated users without dealing with OAuth.
   `tests/bombadil/fixtures/login.ts` exchanges that token for a genuine session cookie
   through the production token-login endpoint (`/api/auth/token`); that cookie is
   what gets injected into the browser. Both the response status and the
@@ -73,7 +73,7 @@ The frontend tests make use of the following restrictions:
 SIGKILL, machine failure, and a crash between a database write and journaling its
 returned ID cannot be covered by a shell trap. A lock prevents concurrent local
 runs from overwriting each other's artifacts. After an interrupted run, retry
-cleanup using the **same database configuration**:
+cleanup using the same database configuration:
 
 ```bash
 pnpm exec tsx tests/bombadil/fixtures/cleanup.ts
@@ -86,11 +86,11 @@ in the disposable database; never sweep the application database.
 
 ## Local prerequisites
 
-- **Node ≥ 24** and **pnpm** (enforced project-wide).
-- A **running CouchDB** reachable via `CLOUDANT_URL`/`CLOUDANT_USERNAME`/
+- Node ≥ 24 and pnpm (enforced project-wide).
+- A running CouchDB reachable via `CLOUDANT_URL`/`CLOUDANT_USERNAME`/
   `CLOUDANT_PASSWORD` (the same instance you use for `pnpm test`).
-- **Google Chrome / Chrome for Testing.** The `@antithesishq/bombadil` npm
-  package bundles its own `bombadil` binaries but **not** a browser. Bombadil
+- Google Chrome or Chrome for Testing. The `@antithesishq/bombadil` npm
+  package bundles its own `bombadil` binaries but not a browser. Bombadil
   locates Chrome via the `CHROME` environment variable; set it if Chrome is not
   on the default path:
 
@@ -98,7 +98,7 @@ in the disposable database; never sweep the application database.
   export CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
   ```
 
-- The usual session env vars — `NUXT_SESSION_PASSWORD` (≥ 32 chars) and
+- The usual session env vars: `NUXT_SESSION_PASSWORD` (≥ 32 chars) and
   `NUXT_SESSION_SALT`. The harness sets `NUXT_APP_URL` to the pilot origin for
   both the seeder and app, so their token issuers agree.
 
@@ -114,7 +114,7 @@ Set `CHROME` for the real-DOM regression case as well; it is skipped when no
 browser path is supplied. The Bombadil workflow always runs it with Chrome.
 
 `pnpm test:bombadil` runs `tests/bombadil/run.sh`, which starts the app itself on
-the test database. It does **not** touch your normal `pnpm dev` server or the app
+the test database. It does not touch your normal `pnpm dev` server or the app
 database. Useful overrides (all optional):
 
 | Variable | Purpose | Default |
@@ -144,29 +144,28 @@ pnpm exec bombadil browser inspect tests/bombadil/.artifacts/output   # step thr
 pnpm exec bombadil --help                                             # reproduce / other subcommands
 ```
 
-Replay is **best-effort**: Bombadil explicitly does not guarantee an identical reproduction when execution diverges. Treat a trace as strong evidence plus a starting point, not a deterministic script.
+Replay is best-effort: Bombadil does not guarantee an identical reproduction when execution diverges. Treat a trace as strong evidence and a starting point, not a deterministic script.
 
-The exit code is meaningful: **0** = ok, **1** = harness/error, **2** = a property
-was violated.
+Exit codes: 0 = ok, 1 = harness error, 2 = a property was violated.
 
 ## Continuous integration
 
-`.github/workflows/bombadil.yml` runs the frontend tests **non-blockingly**:
+`.github/workflows/bombadil.yml` runs the frontend tests without blocking merges:
 
-- **Triggers:** `schedule` (weekly) and `workflow_dispatch` only — never
+- **Triggers:** `schedule` (weekly) and `workflow_dispatch` only, never
   `pull_request`.
-- **Containerized test database** GitHub provides an ephemeral CouchDB **service
-  container** (version pinned via the `couchdb-version` matrix — keep it in step
+- **Containerized test database.** GitHub provides an ephemeral CouchDB service
+  container (version pinned via the `couchdb-version` matrix; keep it in step
   with `integration-tests.yml`), and all credentials in the workflow are
   disposable test values.
-- **Chrome** is installed with `browser-actions/setup-chrome`, and its path is
+- **Chrome.** It is installed with `browser-actions/setup-chrome`, and its path is
   passed to Bombadil through the `CHROME` env var.
-- The job builds the app (`pnpm build`) and runs the built server for a cleaner
+- **Built server.** The job builds the app (`pnpm build`) and runs the built server for a cleaner
   signal than the dev server. `CLOUDANT_DATABASE` is intentionally left unset so
   the guard cannot be tripped; `run.sh` points only the app process at the test
   database.
-- Only the **trace** (`tests/bombadil/.artifacts/output`) is uploaded as an
-  artifact — never the fixture token or cookie file.
+- **Artifacts.** Only the trace (`tests/bombadil/.artifacts/output`) is uploaded,
+  never the fixture token or cookie file.
 
 To run it on demand, use *Actions → Bombadil scanner pilot → Run workflow*
 (optionally overriding the time limit).

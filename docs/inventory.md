@@ -1,16 +1,16 @@
 # Inventory System
 
-The inventory module tracks where physical items — sample plates, reagents, sequencing libraries, consumables — are stored in the lab. Its primary purpose is answering the question _"where is this thing right now?"_ and maintaining an auditable history of who handled it and when.
+The inventory module tracks where physical items (sample plates, reagents, sequencing libraries, consumables) are stored in the lab. Its primary purpose is answering the question _"where is this thing right now?"_ and maintaining an auditable history of who handled it and when.
 
 ## High-Level Idea
 
 Our genomics facility stores thousands of items across rooms, freezers, fridges, nitrogen tanks, shelves, boxes, racks, and bags. These form a **tree hierarchy**: rooms contain equipment, equipment contains containers, containers can nest inside other containers, and items sit at the leaves.
 
-The system models this tree as **separate CouchDB documents linked by typed `parent` references** rather than embedding children inside their parents. Each non-root entity stores its direct parent document ID and type in a `TypedDocumentReference`. This keeps documents small, avoids write conflicts when different items in the same container are modified concurrently, and allows the hierarchy to grow without bound.
+The system models this tree as separate CouchDB documents linked by typed `parent` references rather than embedding children inside their parents. Each non-root entity stores its direct parent document ID and type in a `TypedDocumentReference`. This keeps documents small, avoids write conflicts when different items in the same container are modified concurrently, and allows the hierarchy to grow without bound.
 
-On top of the hierarchy, an **action log** records every meaningful event — checking an item out, returning it, moving it, disposing it. The same action mechanism doubles as a **task planner**: actions can be created with status `planned` and a due date, then marked `completed` or `skipped` in the lab. This powers auto-reminders (e.g., "return this plate to the freezer") and expiry-based disposal workflows.
+On top of the hierarchy, an action log records every meaningful event: checking an item out, returning it, moving it, disposing it. The same action mechanism doubles as a task planner: actions can be created with status `planned` and a due date, then marked `completed` or `skipped` in the lab. This powers auto-reminders (e.g., "return this plate to the freezer") and expiry-based disposal workflows.
 
-Finally, **templates** capture frequently used configurations (e.g., "cardboard box for 96 eppendorf tubes") so users don't re-enter the same values every time they register a new container or item.
+Finally, templates capture frequently used configurations (e.g., "cardboard box for 96 eppendorf tubes") so users don't re-enter the same values every time they register a new container or item.
 
 ## Entity Hierarchy
 
@@ -31,13 +31,13 @@ for its audit trail (`InventoryActionLogEntry` entries).
 
 ### Room
 
-A physical location in a building — the root of every storage hierarchy. Rooms have a human-readable `slug`, a building, and an optional floor number. Every piece of equipment stores a typed `parent` reference to exactly one room.
+A physical location in a building, and the root of every storage hierarchy. Rooms have a human-readable `slug`, a building, and an optional floor number. Every piece of equipment stores a typed `parent` reference to exactly one room.
 
 ### StorageEquipment
 
-A piece of storage hardware inside a room: freezers (−25 °C, −80 °C), fridges (+4 °C), liquid nitrogen tanks (−196 °C), shelves, or cabinets. Equipment records its target temperature as a **category** (see [decision 12](#12-categorical-storage-temperature)), optional grid dimensions (rows × columns × levels), and hardware details (manufacturer, model, serial number) for maintenance tracking.
+A piece of storage hardware inside a room: freezers (−25 °C, −80 °C), fridges (+4 °C), liquid nitrogen tanks (−196 °C), shelves, or cabinets. Equipment records its target temperature as a category (see [decision 12](#12-categorical-storage-temperature)), optional grid dimensions (rows × columns × levels), and hardware details (manufacturer, model, serial number) for maintenance tracking.
 
-Equipment can optionally restrict how many containers of each type it holds via its `capacity` field. Note that the stored document shape differs from the form/API shape — see [decision 11](#11-equipment-capacity-wire-shape-vs-stored-shape).
+Equipment can optionally restrict how many containers of each type it holds via its `capacity` field. Note that the stored document shape differs from the form/API shape; see [decision 11](#11-equipment-capacity-wire-shape-vs-stored-shape).
 
 ### Container
 
@@ -52,12 +52,12 @@ A nested storage unit: racks, boxes, bags, plates, bottles, jars. Containers can
 
 The trackable unit at the leaves of the tree. Items have two orthogonal categorisation axes:
 
-- **`category`** describes the physical form factor — _what the item IS_: eppendorf tube, falcon tube, cryovial, 96-well plate, 384-well plate, microscopy slide, etc.
-- **`classification`** describes the domain purpose — _what the item is FOR_: sample, reagent, sequencing library, consumable, or equipment.
+- **`category`** describes the physical form factor, _what the item IS_: eppendorf tube, falcon tube, cryovial, 96-well plate, 384-well plate, microscopy slide, etc.
+- **`classification`** describes the domain purpose, _what the item is FOR_: sample, reagent, sequencing library, consumable, or equipment.
 
 This separation matters because the same physical container type (e.g., an eppendorf tube) can hold very different things (a DNA sample vs. a buffer reagent), and the system needs to reason about both dimensions independently.
 
-Items carry lab-specific fields: `quantity`, `unit`, `concentration`, `concentrationUnit`, `arrivalDate`, `openingDate`, `expiryDate`, `lotNumber`, and `barcode`. A `metadata` escape hatch (`Record<string, unknown>`) exists for truly ad-hoc data that doesn't warrant a typed field.
+Items carry lab-specific fields: `quantity`, `unit`, `concentration`, `concentrationUnit`, `arrivalDate`, `openingDate`, `expiryDate`, `lotNumber`, and `barcode`. A `metadata` escape hatch (`Record<string, unknown>`) exists for ad-hoc data that doesn't warrant a typed field.
 
 An item may be placed directly in storage equipment or in a container. Container parents enforce their declared item acceptance and count/grid capacity; storage equipment currently does not declare item capacity and therefore accepts direct items without occupancy bookkeeping. Items are leaves and cannot contain child inventory.
 
@@ -74,9 +74,9 @@ An item may be placed directly in storage equipment or in a container. Container
 
 ### InventoryActionLogEntry (embedded audit log)
 
-Every `Container` and `InventoryItem` document carries an `actionLog: InventoryActionLogEntry[]` array — an append-only, embedded audit trail of handling events. Each entry records one action (checkout, return, move, dispose, etc.) with the user who performed it and a timestamp.
+Every `Container` and `InventoryItem` document carries an `actionLog: InventoryActionLogEntry[]` array: an append-only, embedded audit trail of handling events. Each entry records one action (checkout, return, move, dispose, etc.) with the user who performed it and a timestamp.
 
-Embedding the log directly in entity documents means that fetching an item automatically returns its full history — no secondary query needed. Entries are compact (`~100–150 bytes each`) and immutable once written.
+Embedding the log directly in entity documents means that fetching an item automatically returns its full history, with no secondary query needed. Entries are compact (`~100–150 bytes each`) and immutable once written.
 
 ```ts
 interface InventoryActionLogEntry {
@@ -102,7 +102,7 @@ Existing log entries are not rewritten.
 
 ### InventoryTask (planned tasks)
 
-Planned lab operations that need scheduling, assignment, and lifecycle management. Unlike embedded log entries, tasks are **separate CouchDB documents** so they can be independently queried — overdue tasks, tasks assigned to a specific user, pending disposal tasks, etc.
+Planned lab operations that need scheduling, assignment, and lifecycle management. Unlike embedded log entries, tasks are separate CouchDB documents so they can be queried independently (overdue tasks, tasks assigned to a specific user, pending disposal tasks, etc.).
 
 When a task is completed, an `InventoryActionLogEntry` is appended to the target entity's embedded log and the task document is marked `completed`. This ensures the audit trail lives with the entity while tasks remain independently queryable.
 
@@ -133,7 +133,7 @@ Some tasks come in pairs. When an item is checked out, the system automatically 
 
 ### InventoryTemplate
 
-Reusable presets for creating containers, equipment, or items. A template like "Cardboard box for 96 eppendorfs" pre-fills grid dimensions (8 × 12), capacity (96), and acceptance rules (eppendorf tubes only). Templates store defaults — once an entity is created from a template, it is independent. Changing the template does not retroactively affect existing entities.
+Reusable presets for creating containers, equipment, or items. A template like "Cardboard box for 96 eppendorfs" pre-fills grid dimensions (8 × 12), capacity (96), and acceptance rules (eppendorf tubes only). Templates store defaults: once an entity is created from a template, it is independent. Changing the template does not retroactively affect existing entities.
 
 ## Key Design Decisions
 
@@ -172,9 +172,9 @@ All inventory documents currently live in the `firn` database, but using the typ
 
 ### 5. Hybrid action model: embedded log + separate tasks
 
-Rather than using a single document type for both audit logging and task planning (which leads to document proliferation) or embedding everything (which makes cross-entity task queries impossible), the system uses a **hybrid approach**:
+Rather than using a single document type for both audit logging and task planning (which leads to document proliferation) or embedding everything (which makes cross-entity task queries impossible), the system uses a hybrid approach:
 
-- **Completed events** are stored as compact `InventoryActionLogEntry` entries embedded in the entity's `actionLog` array. This means fetching an item returns its complete history — no secondary query needed.
+- **Completed events** are stored as compact `InventoryActionLogEntry` entries embedded in the entity's `actionLog` array. This means fetching an item returns its complete history with no secondary query.
 - **Planned tasks** are separate `InventoryTask` documents with their own lifecycle. This enables independent queries: "show me all overdue tasks", "tasks assigned to me", "pending disposal tasks for expiring reagents."
 
 When a planned task is completed, an `InventoryActionLogEntry` is appended to the target entity and the task document is marked `completed`. This ensures the audit trail always lives with the entity while tasks remain independently queryable.
@@ -183,15 +183,15 @@ The `status` lifecycle for tasks is: `planned` → `completed` | `skipped` | `ca
 
 ### 6. Grid-based positioning
 
-Storage equipment and containers can optionally define a grid layout (`rows` × `columns` × `levels`). Children placed inside specify their `GridPosition` — a `{row, column, level?, label?}` tuple. The system validates that positions are within bounds and unoccupied before placement.
+Storage equipment and containers can optionally define a grid layout (`rows` × `columns` × `levels`). Children placed inside specify their `GridPosition`, a `{row, column, level?, label?}` tuple. The system validates that positions are within bounds and unoccupied before placement.
 
 This models real-world lab storage accurately: a 96-tube box is an 8 × 12 grid, a rack with 5 shelves is a 1 × 1 × 5 grid, a nitrogen tank with 6 canisters arranged in 2 levels of 3 is a 1 × 3 × 2 grid. The optional `label` field allows human-readable names like "A3" or "Slot 7".
 
-When a grid is not defined (`rows`/`columns` are `null`), children are unstructured — they belong to the parent but have no specific position.
+When a grid is not defined (`rows`/`columns` are `null`), children are unstructured: they belong to the parent but have no specific position.
 
 ### 7. Templates as snapshot defaults
 
-Templates store default values (grid dimensions, acceptance rules, category, classification) that are applied at creation time. The created entity receives a copy of those defaults and a `templateId` reference for provenance. After creation, entity and template are independent — this is intentional. If templates used live inheritance, changing a template would retroactively alter the properties of hundreds of existing containers, which would be confusing and dangerous in a lab setting.
+Templates store default values (grid dimensions, acceptance rules, category, classification) that are applied at creation time. The created entity receives a copy of those defaults and a `templateId` reference for provenance. After creation, entity and template are independent, which is intentional. If templates used live inheritance, changing a template would retroactively alter the properties of hundreds of existing containers, which would be confusing and dangerous in a lab setting.
 
 ### 8. Category vs. classification (two-axis typing)
 
@@ -200,11 +200,11 @@ Items and containers both have a `classification` field, while items additionall
 - A **cryovial** (category) might contain a **sample** or a **reagent** (classification).
 - A **96-well plate** (category) might hold **samples**, **sequencing libraries**, or **reagents**.
 
-Acceptance rules on containers can filter by either axis — a sample box might accept any category but only `sample` classification, while a plate rack might accept only `plate96` and `plate384` categories regardless of classification.
+Acceptance rules on containers can filter by either axis: a sample box might accept any category but only `sample` classification, while a plate rack might accept only `plate96` and `plate384` categories regardless of classification.
 
 ### 9. Querying free capacity (location suggestions)
 
-A common lab task is _"I need to store 5 × 96-well plates — where is there room?"_ In a document database with a bottom-up tree (each child stores its parent, parents don't list children), answering this requires knowing both **what each container accepts** and **how full it currently is**. The system solves this with a two-query indexed approach rather than recursive traversal:
+A common lab task is _"I need to store 5 × 96-well plates, where is there room?"_ In a document database with a bottom-up tree (each child stores its parent, parents don't list children), answering this requires knowing both what each container accepts and how full it currently is. The system solves this with a two-query indexed approach rather than recursive traversal:
 
 1. **`capacity_by_accepted_category` view** — Indexes every active container by the `[childKind, type]` of each of its capacity entries (e.g. `['item', 'plate96']`). Each emitted value carries `free = total − stored` from the container's stored capacity counter.
 
@@ -212,7 +212,7 @@ A common lab task is _"I need to store 5 × 96-well plates — where is there ro
 
 The listings back the Move dialogs only. The mutations (`moveItem`, `moveContainer`, also used by barcode scans) validate independently, so a listing must never be stricter than the mutation.
 
-This approach is efficient because both queries hit B-tree indexes — O(log n) per key — and the join operates over a small candidate set. No recursive ancestry walking is needed.
+This approach is efficient because both queries hit B-tree indexes (O(log n) per key) and the join operates over a small candidate set. No recursive ancestry walking is needed.
 
 ### 10. Project references
 
@@ -227,37 +227,37 @@ projectRefs: {
 }
 ```
 
-The `projectRefs` field is `null` when no project association exists. It is intentionally an outbound-only link — the projects database is read-only to the application, so references are stored on the inventory side.
+The `projectRefs` field is `null` when no project association exists. It is intentionally an outbound-only link: the projects database is read-only to the application, so references are stored on the inventory side.
 
-**Reverse lookup**: The `by_project` CouchDB view indexes all `projectRefs` entries, emitting `[db, projectId]` as the key. Querying `key=["projects", "proj:P12345"]` returns every container and item linked to that project. Note that CouchDB does not support cross-database views — this view lives in the firn database and indexes the `projectRefs` field of inventory documents.
+**Reverse lookup**: The `by_project` CouchDB view indexes all `projectRefs` entries, emitting `[db, projectId]` as the key. Querying `key=["projects", "proj:P12345"]` returns every container and item linked to that project. Note that CouchDB does not support cross-database views, so this view lives in the firn database and indexes the `projectRefs` field of inventory documents.
 
 **Service and UI**: `ProjectLinkService` (`server/crud/inventory/projectLinks.server.ts`, tRPC `inventory.projectLinks`) exposes the reverse lookup (`getInventoryByProject`, used by the project page's *Inventory* tab) and best-effort batch `linkEntities` / `unlinkEntities` (used by `DialogLinkProject` and the tables' bulk bars). Two details are easy to get wrong:
 
-> ⚠️ **The `by_project` key is the project document `_id`, not the LIMS `project_id`.** Resolve it first with `ProjectService.getProjectByProjectId(projectId)._id`. The view also emits once per `projectRefs` entry, so a document linked twice appears twice — deduplicate by `_id`. Batch writes run sequentially to avoid `_rev` conflicts on the same document.
+> ⚠️ **The `by_project` key is the project document `_id`, not the LIMS `project_id`.** Resolve it first with `ProjectService.getProjectByProjectId(projectId)._id`. The view also emits once per `projectRefs` entry, so a document linked twice appears twice, so deduplicate by `_id`. Batch writes run sequentially to avoid `_rev` conflicts on the same document.
 
-While the inventory hierarchy uses typed `parent` references for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse — most inventory entities will not be linked to a project.
+While the inventory hierarchy uses typed `parent` references for its dense, single-database tree (see decision 4), project references use the generic `DocumentReference` mechanism because they cross database boundaries and are sparse: most inventory entities will not be linked to a project.
 
 ### 11. Equipment capacity: wire shape vs. stored shape
 
-Capacity restrictions on StorageEquipment exist in **two deliberately different representations**, and the conversion between them happens **exclusively server-side in the CRUD service**:
+Capacity restrictions on StorageEquipment exist in two deliberately different representations, and the conversion between them happens exclusively server-side in the CRUD service:
 
 - **Wire/form shape** (`schemas/inventory/equipment.ts`, `equipmentCapacitySchema`): `{ type: ContainerType, capacity: number }[]`. This is what the capacity editor UI produces and what `createEquipment`/`updateEquipment` tRPC procedures accept. It carries no occupancy state.
-- **Stored document shape** (`equipmentCapacityEntrySchema` → `EquipmentCapacityEntry[]`): the wire shape **plus a required, server-owned `stored` occupancy counter** per entry, e.g. `[{ type: 'box', stored: 3, capacity: 10 }]`. `stored` is bookkeeping maintained by `adjustStoredCount` and is never accepted from the client (the wire schema simply has no such field, and zod strips unknown keys).
+- **Stored document shape** (`equipmentCapacityEntrySchema` → `EquipmentCapacityEntry[]`): the wire shape plus a required, server-owned `stored` occupancy counter per entry, e.g. `[{ type: 'box', stored: 3, capacity: 10 }]`. `stored` is bookkeeping maintained by `adjustStoredCount` and is never accepted from the client (the wire schema simply has no such field, and zod strips unknown keys).
 
 `EquipmentService` converts on write (`validateAndJoinEquipmentCapacity` merges new limits with existing `stored` counts and initialises new categories with `stored: 0`); `displayCapacityToFormCapacity` in `app/utils/inventory/equipment.ts` drops `stored` again on read.
 
-The `stored` field being **required** is what makes the split compiler-enforced: raw wire input is missing `stored`, so storing it unconverted fails typechecking. An earlier design used `Partial<Record<ContainerType, …>>` — with all keys optional, the flat wire array was structurally assignable to it, and a bug where `createEquipment` stored raw form rows compiled cleanly and crashed the frontend at render time. When adding capacity-style fields to other entities (e.g. Containers), copy this pattern: stored shape = wire shape + at least one required server-owned field, converted in the CRUD service.
+Because `stored` is required, the compiler enforces the split: raw wire input is missing `stored`, so storing it unconverted fails typechecking. An earlier design used `Partial<Record<ContainerType, …>>`; with all keys optional, the flat wire array was structurally assignable to it, and a bug where `createEquipment` stored raw form rows compiled cleanly and crashed the frontend at render time. When adding capacity-style fields to other entities (e.g. Containers), copy this pattern: stored shape = wire shape + at least one required server-owned field, converted in the CRUD service.
 
-> ⚠️ **Related pitfall — index signatures disable these checks.** `BaseDocument` deliberately does **not** extend `CloudantV1.Document`, whose `[propName: string]: any` index signature would leak into every document interface. `Omit<T, …>` over a type with a string index signature collapses *all* properties to `any`, so the typed document literals in the CRUD services would silently stop being checked. Keep index signatures out of document types; where an external document really is open-shaped (LIMS projects), declare `[key: string]: unknown` explicitly — `unknown` still forces narrowing.
+> ⚠️ **Related pitfall: index signatures disable these checks.** `BaseDocument` deliberately does not extend `CloudantV1.Document`, whose `[propName: string]: any` index signature would leak into every document interface. `Omit<T, …>` over a type with a string index signature collapses *all* properties to `any`, so the typed document literals in the CRUD services would silently stop being checked. Keep index signatures out of document types; where an external document really is open-shaped (LIMS projects), declare `[key: string]: unknown` explicitly; `unknown` still forces narrowing.
 
 ### 12. Categorical storage temperature
 
-StorageEquipment, Container, and InventoryItem describe their temperature with a **category** rather than an arbitrary number. The canonical model lives in `schemas/inventory/temperature.ts` (a plain-TS + Zod module shared by both `server/` and `app/`):
+StorageEquipment, Container, and InventoryItem describe their temperature with a category rather than an arbitrary number. The canonical model lives in `schemas/inventory/temperature.ts` (a plain-TS + Zod module shared by both `server/` and `app/`):
 
 - **`temperatureCategory`** — a Zod enum: `liquid_nitrogen` (−196 °C), `deep_freezer` (−80 °C), `freezer` (−25 °C), `fridge` (+4 °C), `ambient` (~21 °C), `incubator` (+37 °C), and `other`. `TEMPERATURE_CATEGORY_CELSIUS` maps every non-`other` category to a representative °C used for display and sort ordering; `TEMPERATURE_CATEGORY_LABELS` supplies the UI labels.
 - **`temperatureCelsius`** — the original numeric field is retained but now only carries a value for the `other` bucket (a free custom temperature). `normalizeStoredCelsius(category, celsius)` is applied on every CRUD write so that predefined categories always store `null` and derive their °C from the category.
 
-**Compatibility** is category equality, not float equality. `temperaturesCompatible(child, parent)` returns `true` when the child has no explicit category (unspecified fits anywhere) or the categories match — and, for `other`, the free numeric values match too. `assertTemperatureCompatible` / `assertContainerTemperatureCompatible` enforce this on create and move; `updateContainer`/`updateItem` re-validate against the current parent when the temperature changes. `getMoveTargetsForItems` groups the selected items by category (a shared destination requires one distinct category, plus one numeric for `other`), filters candidate parents by `temperaturesCompatible`, and sorts by `resolveEffectiveCelsius` (coldest first) then name.
+**Compatibility** is category equality, not float equality. `temperaturesCompatible(child, parent)` returns `true` when the child has no explicit category (unspecified fits anywhere) or the categories match; for `other`, the free numeric values must match too. `assertTemperatureCompatible` / `assertContainerTemperatureCompatible` enforce this on create and move; `updateContainer`/`updateItem` re-validate against the current parent when the temperature changes. `getMoveTargetsForItems` groups the selected items by category (a shared destination requires one distinct category, plus one numeric for `other`), filters candidate parents by `temperaturesCompatible`, and sorts by `resolveEffectiveCelsius` (coldest first) then name.
 
 Use `formatTemperature(category, celsius)` for all display surfaces (cards, tables, dialogs) and `TEMPERATURE_CATEGORY_OPTIONS` / `resolveTemperatureCategoryFromSelect` (from `app/utils/inventory/temperature.ts`) for the form `NSelect` pickers. Equipment, container, and item creation/edit forms all expose the categorical selector plus a conditional custom-°C input for `other`.
 
@@ -298,9 +298,9 @@ partial edits.
 
 ### 14. Scanning a set of barcodes, not one barcode at a time
 
-The scanner workflow is built around a **set** of codes rather than a single scan.
-The user gathers what they are handling — some vials, the box they came out of,
-optionally an action card — and the whole set is interpreted together. The format
+The scanner workflow is built around a set of codes rather than a single scan.
+The user gathers what they are handling (some vials, the box they came out of,
+optionally an action card), and the whole set is interpreted together. The format
 and the action-card table are documented in `docs/barcodesAndQRCodes.md`.
 
 Interpretation happens in `server/crud/inventory/barcode-scan.server.ts`:
@@ -310,7 +310,7 @@ Interpretation happens in `server/crud/inventory/barcode-scan.server.ts`:
    duplicate codes are reported but never abort the usable part of the scan.
 2. **Resolve in one query.** Every entity code is looked up in a single multi-key
    query against the pre-existing `by_barcode` view. That view keys on the bare
-   barcode with no document type, which is exactly what makes uniqueness global —
+   barcode with no document type, which is exactly what makes uniqueness global,
    and why every resolved document must be type-checked afterwards.
 3. **Split into targets and context.**
 4. **Derive an action per target**, validated individually.
@@ -321,18 +321,18 @@ policy choice.
 
 #### Which container is the location?
 
-A scanned container is genuinely ambiguous: "check out this box" and "put these
+A scanned container is ambiguous: "check out this box" and "put these
 tubes back in this box" produce identical scans. The two are distinguished by the
 operation:
 
-- For **lifecycle actions** (the checkout/return toggle, dispose, reserve, …) the
+- For lifecycle actions (the checkout/return toggle, dispose, reserve, …) the
   context is where the entities already are, so a scanned container is the location
   exactly when it encloses something else in the set. A container that encloses
   nothing scanned is a target in its own right. Where both a container and its
-  equipment are scanned, the container wins — it names the exact shelf.
-- For **move and locate** the destination is by definition *not* the current parent,
-  so the enclosure test cannot identify it. The destination is instead the **last
-  location scanned**, which matches the physical workflow of gathering the entities
+  equipment are scanned, the container wins because it names the exact shelf.
+- For move and locate the destination is by definition not the current parent,
+  so the enclosure test cannot identify it. The destination is instead the last
+  location scanned, which matches the physical workflow of gathering the entities
   first and scanning the shelf they are going onto last.
 
 Because there is no materialised ancestry index, enclosure is determined by walking
@@ -341,8 +341,8 @@ the `parent` chain.
 #### Relocation is never implicit
 
 Scanning a container that is not a target's current parent produces a
-`parent_mismatch` **warning**, and the checkout or return still applies where the
-entity actually is. It does **not** move anything. Moving requires an explicit
+`parent_mismatch` warning, and the checkout or return still applies where the
+entity actually is. It does not move anything. Moving requires an explicit
 `move` card.
 
 This is deliberate. It is far too easy to keep adding to a scanned set across two
@@ -351,8 +351,8 @@ strength of a forgotten scan would be the worst possible failure mode for a free
 
 #### Move and locate bypass the status/action matrix
 
-`STATUS_ACTION_MATRIX` describes lifecycle transitions. `move` appears in **no**
-status row, because relocation is a dedicated workflow rather than a state change —
+`STATUS_ACTION_MATRIX` describes lifecycle transitions. `move` appears in no
+status row, because relocation is a dedicated workflow rather than a state change;
 gating it on the matrix would reject every move. Relocating actions are therefore
 checked against their own preconditions: `locate` requires the entity to be `lost`,
 and `move` requires it to be placed somewhere at all.
@@ -361,7 +361,7 @@ and `move` requires it to be placed somewhere at all.
 
 `resolveBarcodes` is a pure query returning a reviewable plan, so the UI can
 re-resolve after every additional scan. `applyBarcodeScan` accepts only the raw
-codes and **re-resolves them server-side** before executing. It never trusts a
+codes and re-resolves them server-side before executing. It never trusts a
 client-supplied plan: statuses can change between review and confirmation, and a
 forged plan would otherwise bypass the state machine entirely.
 
@@ -381,7 +381,7 @@ entry while the entity is reserved names the current holder
 
 Checking out (including the default bare-scan toggle, which now proposes `checkout`
 for a reserved entity) is allowed only for that holder. Anyone else is blocked with a
-message naming the holder and telling them to clear the reservation first — the block
+message naming the holder and telling them to clear the reservation first. The block
 exists so the two people talk to each other rather than one silently taking the item.
 Anyone may `unreserve` to clear a forgotten reservation.
 
@@ -396,7 +396,7 @@ what restricts it.
 
 Two different action cards, a move or locate without a destination, or a target in a
 status that forbids the action each produce an explicit error or a non-executable
-target carrying a human-readable reason — rather than a silently reinterpreted
+target carrying a human-readable reason, rather than a silently reinterpreted
 operation.
 
 #### Re-issuing a barcode orphans the printed label
@@ -406,6 +406,7 @@ Re-issue requires an explicit opt-in and is recorded in the entity's action log 
 stopped working.
 
 ## CRUD Service Organisation
+
 All database operations are implemented as service objects in `server/crud/inventory`:
 
 | File | Service | Responsibility |
