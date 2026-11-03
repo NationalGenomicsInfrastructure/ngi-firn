@@ -71,6 +71,7 @@
     "jose": "^6.2.15",
     "jsbarcode": "^3.12.3",
     "luxon": "^3.7.2",
+    "meilisearch": "^0.62.0",
     "nuxt": "^4.6.3",
     "nuxt-auth-utils": "^0.5.34",
     "pdfmake": "^0.3.13",

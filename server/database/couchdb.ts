@@ -280,6 +280,42 @@ export class CouchDBConnector {
   }
 
   /**
+   * Read the database _changes feed from a given sequence.
+   *
+   * Used by the search indexer to pull incremental mutations (including deletions and the full
+   * document body) since the last processed update sequence, so the Meilisearch indexes can be
+   * kept in sync without re-reading the whole database. `since` of `'0'` returns the full feed.
+   */
+  async getChanges<T extends CloudantV1.Document>(options?: {
+    since?: string
+    limit?: number
+    includeDocs?: boolean
+  }): Promise<{
+    lastSeq: string
+    pending: number
+    results: Array<{ id: string, seq?: string, deleted: boolean, doc: T | null }>
+  }> {
+    const response = await this.client.postChanges({
+      db: this.database,
+      since: options?.since ?? '0',
+      limit: options?.limit,
+      includeDocs: options?.includeDocs ?? true
+    })
+
+    const result = response.result
+    return {
+      lastSeq: (result.lastSeq as string | undefined) ?? '0',
+      pending: result.pending ?? 0,
+      results: result.results.map(row => ({
+        id: row.id as string,
+        seq: row.seq as string | undefined,
+        deleted: row.deleted === true,
+        doc: (row.doc as T | undefined) ?? null
+      }))
+    }
+  }
+
+  /**
    * Get multiple documents by ID using one request.
    * Returns documents in the same order as the input IDs, with null for missing docs.
    */

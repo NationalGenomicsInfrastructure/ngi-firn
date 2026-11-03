@@ -214,6 +214,9 @@ importers:
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
+      meilisearch:
+        specifier: ^0.62.0
+        version: 0.62.0
       nuxt:
         specifier: ^4.6.3
         version: 4.6.3(d4c377cccbc58bd6f81d38d55dcfb4a4)
@@ -4435,6 +4438,10 @@ packages:
 
   mdn-data@2.37.2:
     resolution: {integrity: sha512-rz9YOBGItdSbe7HcSArUbhiAv4SB/4DKRYg96CSFS2CcIYMbUvBtZlzA1NCbk2AdgbmYwMqwNblLpR441lLeiQ==}
+
+  meilisearch@0.62.0:
+    resolution: {integrity: sha512-/ETDW7mmWI2NcSmtJdTPhbjsIbs3VcuapszX5X6JhdHB0XbszPOhqd3EB2bEylL0HK7dgwh/4Z3MdyuycWVf5A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -10754,6 +10761,8 @@ snapshots:
   mdn-data@2.27.1: {}
 
   mdn-data@2.37.2: {}
+
+  meilisearch@0.62.0: {}
 
   merge-stream@2.0.0: {}
 
