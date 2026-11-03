@@ -6,7 +6,7 @@ import { z } from 'zod'
 export const createUserByAdminSchema = z.object({
   googleGivenName: z.string().min(1, { message: 'First name is required' }),
   googleFamilyName: z.string().min(1, { message: 'Last name is required' }),
-  googleEmail: z.email().refine(
+  googleEmail: z.string().email().refine(
     val => val.endsWith('@scilifelab.se'),
     { message: 'Email must be a scilifelab.se address' }
   ),

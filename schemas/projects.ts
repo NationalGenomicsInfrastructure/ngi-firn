@@ -47,7 +47,7 @@ export const projectDetailsLinkEntrySchema = z.object({
   title: StringOrUndefined,
   url: StringOrUndefined,
   desc: StringOrUndefined
-}).loose()
+}).passthrough()
 
 export type ProjectDetailsLinkEntrySchema = z.infer<typeof projectDetailsLinkEntrySchema>
 
@@ -109,7 +109,7 @@ export const projectDocumentSchema = z.object({
   invoice_spec_downloaded: NumberOrUndefined,
   customer_reference: StringOrUndefined,
   uppnex_id: StringOrUndefined
-}).loose()
+}).passthrough()
 
 export type ProjectDocumentSchema = z.infer<typeof projectDocumentSchema>
 
