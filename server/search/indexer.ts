@@ -92,6 +92,25 @@ async function ensureIndex(client: Meilisearch, name: string): Promise<void> {
 }
 
 /*
+ * Drop an index only if it exists, awaiting the delete task to completion.
+ *
+ * `client.deleteIndexIfExists()` enqueues an unconditional delete and only awaits the *enqueue*,
+ * so when the index is absent (e.g. the shadow on the first rebuild) Meilisearch accepts the task
+ * and then fails it during processing — logging a noisy "Index not found" ERROR. Checking first
+ * with `getIndex` (a plain GET, not a task) avoids that, and waiting for the delete task prevents
+ * a pending delete from racing the subsequent create of the same uid.
+ */
+async function dropIndexIfExists(client: Meilisearch, name: string): Promise<void> {
+  try {
+    await client.getIndex(name)
+  }
+  catch {
+    return
+  }
+  await client.deleteIndex(name).waitTask({ timeout: TASK_TIMEOUT_MS })
+}
+
+/*
  * Build a fresh shadow index from scratch and atomically swap it in for the live index, then
  * drop the shadow. Swapping two indexes is Meilisearch's supported way to replace a dataset with
  * zero windows of partial/empty results for searchers.
@@ -104,7 +123,7 @@ async function rebuildIndexWithSwap<T extends Record<string, unknown>>(
 ): Promise<void> {
   const shadowName = `${name}${SHADOW_INDEX_SUFFIX}`
 
-  await client.deleteIndexIfExists(shadowName)
+  await dropIndexIfExists(client, shadowName)
   await client.createIndex(shadowName, { primaryKey: SEARCH_PRIMARY_KEY }).waitTask({ timeout: TASK_TIMEOUT_MS })
 
   const shadow = client.index<T>(shadowName)
@@ -117,7 +136,7 @@ async function rebuildIndexWithSwap<T extends Record<string, unknown>>(
   /* The live index must exist for the swap to have two operands. */
   await ensureIndex(client, name)
   await client.swapIndexes([{ indexes: [name, shadowName], rename: false }]).waitTask({ timeout: TASK_TIMEOUT_MS })
-  await client.deleteIndexIfExists(shadowName)
+  await dropIndexIfExists(client, shadowName)
 }
 
 interface InventoryProjection {
