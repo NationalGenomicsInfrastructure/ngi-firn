@@ -65,17 +65,10 @@ async function onRebuild() {
       description="Inspect the global search index and trigger a full rebuild."
     />
 
-    <NCard card="outline-gray">
+    <NCard 
+    card="outline-gray"
+    title="Search index status">
       <div class="flex items-center justify-between gap-4 mb-4">
-        <div class="flex items-center gap-2">
-          <NIcon
-            name="i-lucide-search"
-            class="text-muted"
-          />
-          <h4 class="text-sm font-semibold">
-            Index status
-          </h4>
-        </div>
         <NBadge
           v-if="phaseMeta"
           :badge="phaseMeta.badge"

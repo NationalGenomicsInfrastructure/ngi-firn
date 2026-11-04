@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { createGlobalFilter, toSearchText } from '~/utils/table/globalFilter'
 import type { ColumnDef, Table } from '@tanstack/vue-table'
 import type { DisplayUserToAdmin } from '~~/types/auth'
 import { formatDate } from '~/utils/dates/formatting'
@@ -15,23 +14,6 @@ const pagination = ref({
 })
 
 const table = useTemplateRef<Table<DisplayUserToAdmin>>('table')
-
-const globalFilter = ref('')
-const globalFilterFn = createGlobalFilter<DisplayUserToAdmin>(row => toSearchText(
-  row.firnId,
-  row.googleId,
-  row.googleName,
-  row.googleGivenName,
-  row.googleFamilyName,
-  row.googleEmail,
-  row.githubId,
-  row.isAdmin ? 'administrator' : 'user',
-  row.allowLogin ? 'login allowed' : 'login blocked',
-  row.isRetired ? 'retired' : 'active'
-))
-watch(globalFilter, () => {
-  pagination.value.pageIndex = 0
-})
 
 const columns: ColumnDef<DisplayUserToAdmin>[] = [
   {
@@ -132,16 +114,9 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
     </NFormGroup>
   </div>
   <div class="w-full overflow-x-auto">
-    <TableSearchField
-      v-model="globalFilter"
-      label="Search users"
-      placeholder="Name, e-mail, ID…"
-    />
     <NTable
       ref="table"
       v-model:expanded="expanded"
-      v-model:global-filter="globalFilter"
-      :global-filter-fn="globalFilterFn"
       :loading="loading"
       :columns="columns"
       :pagination="pagination"
@@ -300,7 +275,7 @@ watch([includeWeekday, displayTime], ([weekday, time]) => {
         :page="(table?.getState().pagination.pageIndex ?? 0) + 1"
         :total="table?.getFilteredRowModel().rows.length"
         show-edges
-        :items-per-page="table?.getState().pagination.pageSize ?? 5"
+        :items-per-page="table?.getState().pagination.pageSize ?? 10"
         @update:page="table?.setPageIndex($event - 1)"
       />
     </div>

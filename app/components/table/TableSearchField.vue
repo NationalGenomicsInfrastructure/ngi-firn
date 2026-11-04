@@ -20,21 +20,22 @@ withDefaults(defineProps<{
 
 <template>
   <div class="flex flex-col gap-1 mb-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-    <div class="flex flex-col items-start sm:items-end">
-      <label
+    <div class="flex flex-col items-start sm:items-end w-40" >
+      <NLabel for="tableSearchField"
         class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium"
-      >{{ label }}</label>
+      >{{ label }}</NLabel>
       <span
         v-if="hint"
         class="text-xs text-muted"
       >{{ hint }}</span>
     </div>
     <NInput
+      id="tableSearchField"
       :model-value="model"
       :placeholder="placeholder"
       leading="i-lucide-search"
       :aria-label="label"
-      class="w-full sm:w-72"
+      class="w-full sm:w-72 my-2 focus-within:ring-2 focus-within:ring-primary-700 dark:focus-within:ring-primary-400"
       :una="{ inputWrapper: 'w-full' }"
       @update:model-value="model = ($event as string) ?? ''"
     >
