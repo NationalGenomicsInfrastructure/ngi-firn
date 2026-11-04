@@ -27,7 +27,7 @@ export type SearchEntityKind = 'room' | 'equipment' | 'container' | 'item'
  * (Meilisearch keys allow only `A-Z a-z 0-9 - _`); `sourceId` keeps the CouchDB `_id` for
  * server-side reconciliation and is never returned to the client.
  */
-export interface InventoryIndexDocument {
+export type InventoryIndexDocument = {
   id: string
   sourceId: string
   kind: SearchEntityKind
@@ -64,7 +64,7 @@ export interface InventoryIndexDocument {
  * link are indexed. `comments` concatenates the allowlisted free-text comment fields; sample
  * data, delivery paths and arbitrary document properties are deliberately excluded.
  */
-export interface ProjectIndexDocument {
+export type ProjectIndexDocument = {
   id: string
   docId: string
   projectId: string
@@ -153,9 +153,7 @@ export interface SearchProjectGroupPage {
   hasMore: boolean
 }
 
-export type SearchIndexPhase = 'initializing' | 'ready' | 'stale' | 'unavailable'
-
-/*
+export type SearchIndexPhase = 'initializing' | 'ready' | 'stale' | 'unavailable'/*
  * Freshness/availability of the search indexes. `phase` is the overall health; the booleans
  * disambiguate partial availability (e.g. inventory ready but the optional projects database
  * unreachable). Never represented as empty results — the UI must show this state explicitly.
@@ -166,7 +164,19 @@ export interface SearchIndexStatus {
   projectsReady: boolean
   projectsConfigured: boolean
   lastSyncedAt: string | null
+  /* Timestamp of the last successful full rebuild (null until the first one completes). */
+  lastRebuiltAt: string | null
   message: string | null
+}
+
+/*
+ * Result of an admin-triggered manual rebuild. The rebuild runs detached in the background, so
+ * this only reports whether the request was accepted or a rebuild was already in progress; the
+ * admin page then polls `status` to watch it complete.
+ */
+export interface SearchRebuildResult {
+  status: 'accepted' | 'already-running' | 'unavailable'
+  freshness: SearchIndexStatus
 }
 
 /*

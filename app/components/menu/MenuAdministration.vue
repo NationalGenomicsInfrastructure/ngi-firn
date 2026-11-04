@@ -30,6 +30,17 @@ const data = {
           url: '/administration/logs/user'
         }
       ]
+    },
+    {
+      title: 'Search',
+      url: '#',
+      icon: 'i-lucide-search',
+      items: [
+        {
+          title: 'Search maintenance',
+          url: '/administration/search'
+        }
+      ]
     }
   ]
 }

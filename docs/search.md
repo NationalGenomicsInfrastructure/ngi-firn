@@ -24,8 +24,14 @@ Vue  app/pages/inventory/search.vue
 - **Server module**: `server/search/` — `config`, `client`, `state`,
   `projections`, `indexer`, `service`.
 - **Indexing lifecycle**: a single Nitro plugin bootstraps a full rebuild, then
-  runs periodic incremental `_changes` syncs and full rebuilds. One active
-  indexer per deployment; multi-replica coordination is out of scope.
+  runs a frequent incremental `_changes` sync (freshness) and an infrequent full
+  rebuild (reconciles project grouping and prunes deletions). One active indexer
+  per deployment; multi-replica coordination is out of scope.
+- **Manual rebuild**: admins can force an immediate full rebuild from
+  `/administration/search` (Administration → Search → Search maintenance). It calls
+  the `inventory.search.rebuild` tRPC `adminProcedure`, which runs the rebuild
+  detached (the request returns immediately as `accepted`/`already-running`) and
+  reports index freshness, including the last full-rebuild time.
 - **Graceful degradation**: when `MEILISEARCH_HOST` is unset or the engine is
   unreachable, the feature reports an explicit `unavailable`/`stale` state and
   the rest of the application is unaffected.
@@ -40,7 +46,7 @@ See `.env.example`. Server-only variables:
 | `MEILISEARCH_API_KEY` | Master/API key. **Required** when the engine runs with `--env production`. Never exposed to the browser. |
 | `MEILISEARCH_INDEX_PREFIX` | Optional index namespace (default `firn`). Index names are additionally scoped by `CLOUDANT_DATABASE`. |
 | `MEILISEARCH_SYNC_INTERVAL_MS` | Optional incremental-sync interval (default 30000, min 2000). |
-| `MEILISEARCH_REBUILD_INTERVAL_MS` | Optional full-rebuild interval (default 600000, min 60000). |
+| `MEILISEARCH_REBUILD_INTERVAL_MS` | Optional full-rebuild interval (default 86400000 / 24h, min 60000). Inventory changes are rare; the incremental sync keeps the index fresh, and admins can rebuild on demand from `/administration/search`. |
 
 ## Running it
 

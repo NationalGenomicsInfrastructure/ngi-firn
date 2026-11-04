@@ -15,6 +15,7 @@ interface InternalSearchState {
   projectsReady: boolean
   projectsConfigured: boolean
   lastSyncedAt: string | null
+  lastRebuiltAt: string | null
   message: string | null
   /* CouchDB update sequence already reflected in the inventory index. */
   lastSeq: string | null
@@ -28,6 +29,7 @@ const state: InternalSearchState = {
   projectsReady: false,
   projectsConfigured: false,
   lastSyncedAt: null,
+  lastRebuiltAt: null,
   message: null,
   lastSeq: null,
   rebuilding: false,
@@ -41,6 +43,7 @@ export function getSearchState(): SearchIndexStatus {
     projectsReady: state.projectsReady,
     projectsConfigured: state.projectsConfigured,
     lastSyncedAt: state.lastSyncedAt,
+    lastRebuiltAt: state.lastRebuiltAt,
     message: state.message
   }
 }
@@ -76,6 +79,7 @@ export function markReady(partial: {
   state.projectsReady = partial.projectsReady
   state.lastSeq = partial.lastSeq
   state.lastSyncedAt = new Date().toISOString()
+  state.lastRebuiltAt = state.lastSyncedAt
   state.message = null
 }
 
@@ -104,6 +108,11 @@ export function beginRebuild(): boolean {
   return true
 }
 
+/* True while a full rebuild is in flight — lets callers report "already running". */
+export function isRebuilding(): boolean {
+  return state.rebuilding
+}
+
 export function endRebuild(): void {
   state.rebuilding = false
 }
@@ -127,6 +136,7 @@ export function resetSearchState(): void {
   state.projectsReady = false
   state.projectsConfigured = false
   state.lastSyncedAt = null
+  state.lastRebuiltAt = null
   state.message = null
   state.lastSeq = null
   state.rebuilding = false

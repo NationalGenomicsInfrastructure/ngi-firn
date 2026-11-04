@@ -61,9 +61,15 @@ export function incrementalSyncIntervalMs(): number {
   return Number.isFinite(parsed) && parsed >= 2000 ? parsed : 30_000
 }
 
+/*
+ * Full rebuild interval (ms). Inventory changes are infrequent and the incremental _changes sync
+ * keeps the index fresh between rebuilds, so the periodic full rebuild — which only reconciles
+ * project grouping and prunes deletions — runs rarely (default 24h). Admins can force an immediate
+ * rebuild from the search maintenance page. Overridable via env (minimum 1 minute).
+ */
 export function fullRebuildIntervalMs(): number {
   const parsed = Number(process.env.MEILISEARCH_REBUILD_INTERVAL_MS)
-  return Number.isFinite(parsed) && parsed >= 60_000 ? parsed : 600_000
+  return Number.isFinite(parsed) && parsed >= 60_000 ? parsed : 86_400_000
 }
 
 /* ------------------------------------------------------------------ */

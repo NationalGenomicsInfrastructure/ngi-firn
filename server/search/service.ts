@@ -20,14 +20,15 @@ import type {
   InventorySearchResponse,
   ProjectIndexDocument,
   SearchInventoryPage,
-  SearchProjectGroup
+  SearchProjectGroup,
+  SearchRebuildResult
 } from '../../types/search'
 import type { Index } from 'meilisearch'
 import type { InventorySearchInput, ProjectGroupInventoryInput } from '../../schemas/inventory/search'
 import { getSearchClient } from './client'
 import { inventoryIndexName, isSearchConfigured, projectIndexName } from './config'
 import { toInventoryHit, toProjectHit } from './projections'
-import { getSearchState } from './state'
+import { getSearchState, isRebuilding } from './state'
 
 /* Escape a value for use inside a double-quoted Meilisearch filter literal. */
 function quote(value: string): string {
@@ -234,5 +235,23 @@ export const SearchService = {
 
   getStatus() {
     return getSearchState()
+  },
+
+  /*
+   * Admin-triggered full rebuild. Fire-and-forget: a rebuild over the whole inventory can take a
+   * while, so we never await it inside the request. `rebuildAll` owns the re-entrancy guard, so a
+   * concurrent scheduled rebuild (or a second click) is reported as `already-running` here and
+   * safely no-ops there.
+   */
+  async requestRebuild(): Promise<SearchRebuildResult> {
+    if (!isSearchConfigured()) {
+      return { status: 'unavailable', freshness: getSearchState() }
+    }
+    if (isRebuilding()) {
+      return { status: 'already-running', freshness: getSearchState() }
+    }
+    const { rebuildAll } = await import('./indexer')
+    void rebuildAll()
+    return { status: 'accepted', freshness: getSearchState() }
   }
 }
