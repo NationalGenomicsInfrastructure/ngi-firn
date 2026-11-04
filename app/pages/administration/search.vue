@@ -24,8 +24,6 @@ const PHASE_META = {
 
 const phaseMeta = computed(() => status.value ? PHASE_META[status.value.phase] : null)
 
-const LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
-
 function yesNo(value: boolean | undefined): string {
   return value ? 'Yes' : 'No'
 }
@@ -65,102 +63,81 @@ async function onRebuild() {
       description="Inspect the global search index and trigger a full rebuild."
     />
 
-    <NCard 
-    card="outline-gray"
-    title="Search index status">
-      <div class="flex items-center justify-between gap-4 mb-4">
+    <NCard
+      card="outline-gray"
+      title="Overall search index health"
+    >
+      <NAlert
+        v-if="status?.message"
+        alert="border-gray"
+        title="Search index status"
+        description="`{{ status.message }}`"
+        icon="i-lucide-info"
+      />
+      <div class="flex items-left justify-left gap-4 mb-4">
         <NBadge
           v-if="phaseMeta"
+          size="2xl"
           :badge="phaseMeta.badge"
           :label="phaseMeta.label"
           :icon="phaseMeta.icon"
         />
       </div>
 
-      <p
-        v-if="status?.message"
-        class="text-sm text-muted mb-4"
-      >
-        {{ status.message }}
-      </p>
+      <NSeparator
+        class="text-2xl my-6 col-span-1 sm:col-span-2"
+        label="Index details"
+      />
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-boxes"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span :class="LABEL_STYLE">Inventory index</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ status ? yesNo(status.inventoryReady) : '—' }}
-          </p>
-        </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4 text-sm">
+        <IndicatorIconText
+          icon="i-lucide-boxes"
+          label="Inventory index"
+          :value="status ? yesNo(status.inventoryReady) : '—'"
+        />
 
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-folder-git-2"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span :class="LABEL_STYLE">Project index</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ status ? (status.projectsConfigured ? yesNo(status.projectsReady) : 'Not configured') : '—' }}
-          </p>
-        </div>
+        <IndicatorIconText
+          icon="i-lucide-folder-git-2"
+          label="Project index"
+          :value="status ? (status.projectsConfigured ? yesNo(status.projectsReady) : 'Not configured') : '—'"
+        />
 
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-refresh-cw"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span :class="LABEL_STYLE">Last synced</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ status?.lastSyncedAt ? formatDate(status.lastSyncedAt, { relative: true, time: true }) : '—' }}
-          </p>
-        </div>
+        <IndicatorIconText
+          icon="i-lucide-refresh-cw"
+          label="Last synced"
+          :value="status?.lastSyncedAt ? formatDate(status.lastSyncedAt, { relative: true, time: true }) : '—'"
+        />
 
-        <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <NIcon
-              name="i-lucide-hammer"
-              class="text-primary-400 dark:text-primary-600 text-xs"
-            />
-            <span :class="LABEL_STYLE">Last full rebuild</span>
-          </div>
-          <p class="font-medium pl-5">
-            {{ status?.lastRebuiltAt ? formatDate(status.lastRebuiltAt, { relative: true, time: true }) : '—' }}
-          </p>
-        </div>
+        <IndicatorIconText
+          icon="i-lucide-hammer"
+          label="Last full rebuild"
+          :value="status?.lastRebuiltAt ? formatDate(status.lastRebuiltAt, { relative: true, time: true }) : '—'"
+        />
       </div>
 
-      <NSeparator class="my-4" />
-
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap gap-3 justify-end my-8">
+        <NTooltip
+          tooltip="primary"
+          content="A rebuild runs in the background and reconciles project groupings and deletions. The index
+        stays searchable (as stale) while it runs."
+        >
+          <NButton
+            btn="soft-primary hover:outline-primary"
+            leading="i-lucide-hammer"
+            label="Rebuild index now"
+            :loading="isRebuilding"
+            :disabled="isRebuilding || status?.phase === 'unavailable'"
+            @click="onRebuild"
+          />
+        </NTooltip>
         <NButton
-          leading="i-lucide-hammer"
-          label="Rebuild index now"
-          :loading="isRebuilding"
-          :disabled="isRebuilding || status?.phase === 'unavailable'"
-          @click="onRebuild"
-        />
-        <NButton
-          btn="soft-gray"
+          btn="soft-primary hover:outline-primary"
           leading="i-lucide-refresh-cw"
           label="Refresh status"
           :loading="isStatusLoading"
           @click="refetch()"
         />
       </div>
-
-      <p class="text-xs text-muted mt-3">
-        A rebuild runs in the background and reconciles project groupings and deletions. The index
-        stays searchable (as stale) while it runs.
-      </p>
     </NCard>
   </div>
 </template>

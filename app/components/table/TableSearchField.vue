@@ -20,10 +20,13 @@ withDefaults(defineProps<{
 
 <template>
   <div class="flex flex-col gap-1 mb-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-    <div class="flex flex-col items-start sm:items-end w-40" >
-      <NLabel for="tableSearchField"
+    <div class="flex flex-col items-start sm:items-end w-40">
+      <NLabel
+        for="tableSearchField"
         class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium"
-      >{{ label }}</NLabel>
+      >
+        {{ label }}
+      </NLabel>
       <span
         v-if="hint"
         class="text-xs text-muted"

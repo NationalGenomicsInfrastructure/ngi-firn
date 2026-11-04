@@ -42,81 +42,87 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       description="Search the entire inventory and linked projects — rooms, equipment, containers, items and their project associations."
     />
 
-    <NInput
-      :model-value="queryInput"
-      placeholder="Search by name, barcode, lot number, project, location…"
-      leading="i-lucide-search"
-      size="lg"
-      aria-label="Search inventory and projects"
-      :una="{ inputWrapper: 'w-full' }"
-      @update:model-value="queryInput = ($event as string) ?? ''"
+    <NCard
+      card="soft-primary"
+      class="my-auto"
+      :_card-content="{ class: 'p-3' }"
     >
-      <template
-        v-if="queryInput"
-        #trailing
+      <NInput
+        :model-value="queryInput"
+        placeholder="Search by name, barcode, lot number, project, location…"
+        leading="i-lucide-search"
+        size="lg"
+        aria-label="Search inventory and projects"
+        :una="{ inputWrapper: 'w-full' }"
+        @update:model-value="queryInput = ($event as string) ?? ''"
       >
-        <NButton
-          label="i-lucide-x"
-          icon
-          btn="ghost-gray"
-          size="sm"
-          aria-label="Clear search"
-          @click="reset()"
-        />
-      </template>
-    </NInput>
+        <template
+          v-if="queryInput"
+          #trailing
+        >
+          <NButton
+            label="i-lucide-x"
+            icon
+            btn="ghost-gray"
+            size="sm"
+            aria-label="Clear search"
+            @click="reset()"
+          />
+        </template>
+      </NInput>
 
-    <div class="mt-4 flex flex-col gap-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Type</span>
-        <NButton
-          v-for="kind in SEARCH_KIND_FILTER_ORDER"
-          :key="kind"
-          size="xs"
-          :btn="kinds.includes(kind) ? 'solid-primary' : 'soft-gray'"
-          :leading="getSearchKindMeta(kind).icon"
-          :label="getSearchKindMeta(kind).label"
-          @click="toggleKind(kind)"
-        />
+      <div class="mt-4 flex flex-col gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Type</span>
+          <NButton
+            v-for="kind in SEARCH_KIND_FILTER_ORDER"
+            :key="kind"
+            size="xs"
+            :btn="kinds.includes(kind) ? 'solid-primary' : 'soft-gray'"
+            :leading="getSearchKindMeta(kind).icon"
+            :label="getSearchKindMeta(kind).label"
+            @click="toggleKind(kind)"
+          />
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Status</span>
+          <NButton
+            v-for="status in STATUS_FILTER_ORDER"
+            :key="status"
+            size="xs"
+            :btn="statuses.includes(status) ? 'solid-primary' : 'soft-gray'"
+            :leading="getContainerStatusMeta(status).icon"
+            :label="getContainerStatusMeta(status).label"
+            @click="toggleStatus(status)"
+          />
+        </div>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Status</span>
-        <NButton
-          v-for="status in STATUS_FILTER_ORDER"
-          :key="status"
-          size="xs"
-          :btn="statuses.includes(status) ? 'solid-primary' : 'soft-gray'"
-          :leading="getContainerStatusMeta(status).icon"
-          :label="getContainerStatusMeta(status).label"
-          @click="toggleStatus(status)"
-        />
-      </div>
-    </div>
+    </NCard>
+
+    <NSeparator
+      class="text-2xl mt-12 mb-6 col-span-1"
+      label="Results"
+    />
 
     <div class="mt-6">
       <InventorySearchStatusBanner :freshness="freshness" />
 
       <!-- Guidance before the first search -->
-      <NCard
+      <NAlert
         v-if="!hasQuery"
-        card="soft-gray"
-      >
-        <div class="flex items-center gap-2 text-sm text-muted">
-          <NIcon name="i-lucide-search" />
-          <span>Start typing to search across all inventory and linked projects.</span>
-        </div>
-      </NCard>
+        alert="border-gray"
+        title="Ready to search"
+        description="Start typing to search across all inventory and linked projects"
+        icon="i-lucide-search"
+      />
 
-      <!-- Error -->
-      <NCard
+      <NAlert
         v-else-if="isError"
-        card="soft-error"
-      >
-        <div class="flex items-center gap-2 text-sm">
-          <NIcon name="i-lucide-triangle-alert" />
-          <span>{{ error?.message ?? 'Search failed. Please try again.' }}</span>
-        </div>
-      </NCard>
+        alert="border-error"
+        title="Search failed"
+        :description="`${error?.message ?? 'Search failed. Please try again.'}`"
+        icon="i-lucide-alert-circle"
+      />
 
       <!-- Loading (first page) -->
       <div
@@ -130,20 +136,13 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       </div>
 
       <!-- Empty -->
-      <NCard
+      <NAlert
         v-else-if="showEmptyState"
-        card="soft-gray"
-      >
-        <div class="flex flex-col items-center gap-2 py-8 text-center text-muted">
-          <NIcon
-            name="i-lucide-search-x"
-            class="text-2xl"
-          />
-          <p class="text-sm">
-            No results for "{{ results?.query }}". Try a different term or clear the filters.
-          </p>
-        </div>
-      </NCard>
+        alert="border-error"
+        title="No results"
+        :description="`No results for '${results?.query ?? ''}'. Try a different term or clear the filters`"
+        icon="i-lucide-search-x"
+      />
 
       <!-- Results -->
       <div

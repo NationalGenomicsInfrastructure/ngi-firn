@@ -127,9 +127,9 @@ watch(includeWeekday, (isRelative) => {
   <div class="w-full overflow-x-auto">
     <TableSearchField
       v-model="globalFilter"
-      label="Search projects"
+      label="Filter projects"
       placeholder="ID, name, application, contact…"
-      hint="Searches loaded projects only"
+      hint="(only currently loaded)"
     />
     <NTable
       ref="table"
