@@ -29,6 +29,13 @@ const {
 
 const STATUS_FILTER_ORDER = inventoryStatusSchema.options as readonly InventoryStatusType[]
 
+const hasActiveFilters = computed(() => kinds.value.length > 0 || statuses.value.length > 0)
+
+function clearFilters() {
+  kinds.value = []
+  statuses.value = []
+}
+
 const hasProjectGroups = computed(() => (projectGroups.value?.groups.length ?? 0) > 0)
 const hasDirectMatches = computed(() => (directMatches.value?.hits.length ?? 0) > 0)
 const hasAnyResults = computed(() => hasProjectGroups.value || hasDirectMatches.value)
@@ -42,69 +49,98 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       description="Search the entire inventory and linked projects — rooms, equipment, containers, items and their project associations."
     />
 
-    <NCard
-      card="soft-primary"
-      class="my-auto"
-      :_card-content="{ class: 'p-3' }"
-    >
-      <NInput
-        :model-value="queryInput"
-        placeholder="Search by name, barcode, lot number, project, location…"
-        leading="i-lucide-search"
-        size="lg"
-        aria-label="Search inventory and projects"
-        :una="{ inputWrapper: 'w-full' }"
-        @update:model-value="queryInput = ($event as string) ?? ''"
-      >
-        <template
-          v-if="queryInput"
-          #trailing
+    <FilterBar label="Search filters">
+      <template #primary>
+        <NInput
+          :model-value="queryInput"
+          placeholder="Search by name, barcode, lot number, project, location…"
+          leading="i-lucide-search"
+          input="~"
+          size="lg"
+          aria-label="Search inventory and projects"
+          class="flex-1 text-lg"
+          :una="{ inputWrapper: 'w-full', input: 'h-14 bg-transparent text-lg ring-0 focus-visible:ring-0 shadow-none' }"
+          @update:model-value="queryInput = ($event as string) ?? ''"
         >
-          <NButton
-            label="i-lucide-x"
-            icon
-            btn="ghost-gray"
-            size="sm"
-            aria-label="Clear search"
-            @click="reset()"
-          />
-        </template>
-      </NInput>
+          <template
+            v-if="queryInput"
+            #trailing
+          >
+            <NButton
+              label="i-lucide-x"
+              icon
+              btn="ghost-gray"
+              size="sm"
+              aria-label="Clear search"
+              @click="reset()"
+            />
+          </template>
+        </NInput>
+      </template>
 
-      <div class="mt-4 flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-x-7 gap-y-3">
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Type</span>
+          <FilterLabel class="mr-1">
+            Type
+          </FilterLabel>
           <NButton
             v-for="kind in SEARCH_KIND_FILTER_ORDER"
             :key="kind"
             size="xs"
-            :btn="kinds.includes(kind) ? 'solid-primary' : 'soft-gray'"
+            class="rounded-full"
+            :btn="kinds.includes(kind) ? 'solid-primary' : 'outline-gray'"
             :leading="getSearchKindMeta(kind).icon"
             :label="getSearchKindMeta(kind).label"
+            :aria-pressed="kinds.includes(kind)"
             @click="toggleKind(kind)"
           />
         </div>
+        <div
+          class="hidden h-5 w-px bg-border sm:block"
+          aria-hidden="true"
+        />
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium">Status</span>
+          <FilterLabel class="mr-1">
+            Status
+          </FilterLabel>
           <NButton
             v-for="status in STATUS_FILTER_ORDER"
             :key="status"
             size="xs"
-            :btn="statuses.includes(status) ? 'solid-primary' : 'soft-gray'"
+            class="rounded-full"
+            :btn="statuses.includes(status) ? 'solid-primary' : 'outline-gray'"
             :leading="getContainerStatusMeta(status).icon"
             :label="getContainerStatusMeta(status).label"
+            :aria-pressed="statuses.includes(status)"
             @click="toggleStatus(status)"
           />
         </div>
+        <!-- Always rendered (just hidden) so toggling a filter never changes the bar's height. -->
+        <NButton
+          class="ml-auto"
+          :class="{ invisible: !hasActiveFilters }"
+          :disabled="!hasActiveFilters"
+          :aria-hidden="!hasActiveFilters"
+          :tabindex="hasActiveFilters ? 0 : -1"
+          btn="link-primary"
+          size="xs"
+          label="Clear filters"
+          @click="clearFilters"
+        />
       </div>
-    </NCard>
+    </FilterBar>
 
-    <NSeparator
-      class="text-2xl mt-12 mb-6 col-span-1"
-      label="Results"
-    />
+    <div class="mt-12 mb-6 flex items-baseline gap-3">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted">
+        Results
+      </h2>
+      <div
+        class="h-px flex-1 bg-border"
+        aria-hidden="true"
+      />
+    </div>
 
-    <div class="mt-6">
+    <div>
       <InventorySearchStatusBanner :freshness="freshness" />
 
       <!-- Guidance before the first search -->
@@ -151,12 +187,12 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       >
         <!-- Projects whose metadata matched, each with their linked inventory -->
         <section v-if="hasProjectGroups">
-          <div class="mb-3 flex items-center gap-2">
+          <div class="mb-4 flex items-center gap-2">
             <NIcon
               name="i-lucide-folder-git-2"
-              class="text-primary-500"
+              class="text-xl text-primary-700 dark:text-primary-400"
             />
-            <h2 class="text-lg font-semibold">
+            <h2 class="font-display text-xl font-semibold">
               Matching projects
             </h2>
             <NBadge
@@ -191,12 +227,12 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
 
         <!-- Inventory whose own text matched, grouped by project -->
         <section v-if="hasDirectMatches">
-          <div class="mb-3 flex items-center gap-2">
+          <div class="mb-4 flex items-center gap-2">
             <NIcon
               name="i-lucide-package-search"
-              class="text-primary-500"
+              class="text-xl text-primary-700 dark:text-primary-400"
             />
-            <h2 class="text-lg font-semibold">
+            <h2 class="font-display text-xl font-semibold">
               Matching inventory
             </h2>
             <NBadge

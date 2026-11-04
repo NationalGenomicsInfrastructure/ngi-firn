@@ -50,29 +50,40 @@ const groups = computed<DirectGroup[]>(() => {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="space-y-8">
     <div
       v-for="group in groups"
       :key="group.key"
     >
-      <div class="mb-2 flex items-center gap-2">
+      <div class="mb-3 flex items-center gap-3">
+        <ProjectNumberCircles
+          v-if="group.projectId"
+          :project-name="group.projectName"
+          size="sm"
+        />
         <NIcon
-          :name="group.projectId ? 'i-lucide-folder-git-2' : 'i-lucide-folder-x'"
-          class="text-primary-500"
+          v-else
+          name="i-lucide-folder-x"
+          class="text-lg text-muted"
         />
         <NuxtLink
           v-if="group.detailUrl"
           :to="group.detailUrl"
-          class="text-sm font-semibold hover:underline"
+          class="text-base font-semibold text-primary-700 hover:underline dark:text-primary-300"
         >
           {{ group.projectName }}
         </NuxtLink>
         <span
           v-else
-          class="text-sm font-semibold text-muted"
+          class="text-base font-semibold text-muted"
         >
           {{ group.projectName ?? 'Not linked to a project' }}
         </span>
+        <span class="text-xs text-muted">{{ group.hits.length }} {{ group.hits.length === 1 ? 'match' : 'matches' }}</span>
+        <div
+          class="h-px flex-1 bg-border"
+          aria-hidden="true"
+        />
       </div>
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-3 md:grid-cols-2">
         <InventorySearchHitCard

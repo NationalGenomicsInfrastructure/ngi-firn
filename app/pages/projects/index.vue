@@ -3,7 +3,7 @@ definePageMeta({
   layout: 'private'
 })
 
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-700 dark:text-primary-300 font-medium'
+const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wider font-semibold text-muted'
 
 const {
   statusValue,
@@ -32,18 +32,13 @@ const {
       description="View NGI projects in the database."
     />
 
-    <NCard
+    <FilterBar
       title="Find projects"
-      description="Search in StatusDB for projects matching your criteria."
-      card="soft-gray"
-      class="w-full"
-      :una="{
-        cardContent: 'space-y-4',
-        cardDescription: 'text-accent'
-      }"
+      description="Search StatusDB for projects matching your criteria."
+      icon="i-lucide-database"
     >
       <form
-        class="mb-6 flex flex-wrap items-end gap-4"
+        class="flex flex-wrap items-end gap-4"
         @submit.prevent="onValidating()"
       >
         <NFormField
@@ -106,12 +101,12 @@ const {
         <NButton
           type="submit"
           leading="i-lucide-search"
-          btn="soft-primary hover:outline-primary"
+          btn="solid-primary"
         >
           Search
         </NButton>
       </form>
-    </NCard>
+    </FilterBar>
 
     <NAlert
       v-if="isLoading"

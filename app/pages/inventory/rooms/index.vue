@@ -8,7 +8,7 @@ definePageMeta({
   layout: 'private'
 })
 
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-700 dark:text-primary-300 font-medium'
+const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wider font-semibold text-muted'
 const ANY_VALUE = 'any'
 const NO_FLOOR_VALUE = 'none'
 const formatEnumLabel = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
@@ -140,19 +140,23 @@ function clearFilters() {
 
     <div
       v-else
-      class="mt-6 space-y-4"
+      class="mt-6 space-y-8"
     >
-      <NCard
+      <FilterBar
         title="Filter rooms"
-        description="Find rooms matching your criteria."
-        card="soft-gray"
-        class="w-full"
-        :una="{
-          cardContent: 'space-y-4',
-          cardDescription: 'text-accent'
-        }"
+        :description="`Showing ${filteredRooms.length} of ${rooms.length} rooms`"
+        icon="i-lucide-filter"
       >
-        <div class="mb-6 flex flex-wrap items-end gap-4">
+        <template #actions>
+          <NButton
+            label="Clear filters"
+            btn="link-primary"
+            size="xs"
+            @click="clearFilters"
+          />
+        </template>
+
+        <div class="flex flex-wrap items-end gap-4">
           <NFormField
             name="roomType"
             label="Room type"
@@ -204,15 +208,8 @@ function clearFilters() {
               @update:model-value="(v: unknown) => setStatus((v as 'active' | 'inactive' | typeof ANY_VALUE | null | undefined) ?? 'active')"
             />
           </NFormField>
-
-          <NButton
-            label="Clear filters"
-            btn="soft-primary hover:outline-primary"
-            leading="i-lucide-filter-x"
-            @click="clearFilters"
-          />
         </div>
-      </NCard>
+      </FilterBar>
 
       <NAlert
         v-if="filteredRooms.length === 0"

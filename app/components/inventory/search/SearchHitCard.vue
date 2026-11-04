@@ -19,100 +19,117 @@ const locationPath = computed(() => props.hit.locationPath.join(' › '))
 </script>
 
 <template>
-  <NCard
-    card="outline-gray"
-    class="h-full"
+  <!-- The whole card is the link, so there is exactly one interactive target per hit. -->
+  <NuxtLink
+    :to="hit.detailUrl"
+    class="group flex h-full gap-3 rounded-xl border border-base bg-background p-4 text-inherit no-underline shadow-sm transition hover:border-primary-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:border-primary-500"
   >
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <NBadge
-            :badge="kindMeta.badge"
-            :label="kindMeta.label"
-            :leading="kindMeta.icon"
-            size="xs"
-          />
-          <NBadge
-            badge="outline"
-            :label="hit.slug"
-            size="xs"
-          />
-        </div>
-        <NuxtLink
-          :to="hit.detailUrl"
-          class="mt-2 block truncate text-base font-semibold hover:underline"
-        >
-          {{ hit.name }}
-        </NuxtLink>
-        <p
-          v-if="hit.label"
-          class="truncate text-xs text-muted"
-        >
-          {{ hit.label }}
-        </p>
-      </div>
-      <NButton
-        :to="hit.detailUrl"
-        btn="ghost-gray"
-        size="xs"
-        trailing="i-lucide-external-link"
-        label="Open"
-      />
-    </div>
-
-    <div class="mt-3 flex flex-wrap items-center gap-2">
-      <NBadge
-        v-if="subtypeLabel"
-        badge="soft-gray"
-        :label="subtypeLabel"
-        size="xs"
-      />
-      <NBadge
-        v-if="hit.classification"
-        badge="soft-primary"
-        :label="hit.classification"
-        size="xs"
-      />
-      <NBadge
-        v-if="statusMeta"
-        :badge="statusMeta.badge"
-        :label="statusMeta.label"
-        :leading="statusMeta.icon"
-        size="xs"
-      />
-      <NBadge
-        v-else-if="activeMeta"
-        :badge="activeMeta.badge"
-        :label="activeMeta.label"
-        :leading="activeMeta.icon"
-        size="xs"
-      />
-    </div>
-
     <div
-      v-if="hit.barcode"
-      class="mt-2 flex items-center gap-1.5 text-xs text-muted"
-    >
-      <NIcon name="i-lucide-scan-barcode" />
-      <span class="font-mono">{{ hit.barcode }}</span>
-    </div>
-
-    <div
-      v-if="locationPath"
-      class="mt-2 flex items-start gap-1.5 text-xs text-muted"
+      class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+      aria-hidden="true"
     >
       <NIcon
-        name="i-lucide-map-pin"
-        class="mt-0.5 shrink-0"
+        :name="kindMeta.icon"
+        class="text-xl m-1"
       />
-      <span class="truncate">{{ locationPath }}</span>
     </div>
 
-    <p
-      v-if="hit.description"
-      class="mt-2 line-clamp-2 text-xs text-muted"
-    >
-      {{ hit.description }}
-    </p>
-  </NCard>
+    <div class="min-w-0 flex-1">
+      <p class="truncate text-xs font-semibold uppercase tracking-wider text-muted">
+        {{ kindMeta.label }}<template v-if="subtypeLabel">
+          · {{ subtypeLabel }}
+        </template>
+      </p>
+      <h3 class="truncate text-base font-semibold group-hover:text-primary-700 dark:group-hover:text-primary-300">
+        {{ hit.name }}
+      </h3>
+      <p
+        v-if="hit.label"
+        class="truncate text-sm text-muted"
+      >
+        {{ hit.label }}
+      </p>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <NBadge
+          v-if="statusMeta"
+          :badge="statusMeta.badge"
+          :label="statusMeta.label"
+          :leading="statusMeta.icon"
+          size="xs"
+        />
+        <NBadge
+          v-else-if="activeMeta"
+          :badge="activeMeta.badge"
+          :label="activeMeta.label"
+          :leading="activeMeta.icon"
+          size="xs"
+        />
+        <NBadge
+          v-if="hit.classification"
+          badge="soft-primary"
+          :label="hit.classification"
+          size="xs"
+        />
+      </div>
+
+      <dl class="mt-3 space-y-1 text-xs text-muted">
+        <div class="flex items-center gap-1.5">
+          <dt class="sr-only">
+            Identifier
+          </dt>
+          <NIcon
+            name="i-lucide-hash"
+            class="shrink-0"
+          />
+          <dd class="truncate font-mono">
+            {{ hit.slug }}
+          </dd>
+        </div>
+        <div
+          v-if="hit.barcode"
+          class="flex items-center gap-1.5"
+        >
+          <dt class="sr-only">
+            Barcode
+          </dt>
+          <NIcon
+            name="i-lucide-scan-barcode"
+            class="shrink-0"
+          />
+          <dd class="truncate font-mono">
+            {{ hit.barcode }}
+          </dd>
+        </div>
+        <div
+          v-if="locationPath"
+          class="flex items-start gap-1.5"
+        >
+          <dt class="sr-only">
+            Location
+          </dt>
+          <NIcon
+            name="i-lucide-map-pin"
+            class="mt-0.5 shrink-0"
+          />
+          <dd class="truncate">
+            {{ locationPath }}
+          </dd>
+        </div>
+      </dl>
+
+      <p
+        v-if="hit.description"
+        class="mt-2 line-clamp-2 text-xs text-muted"
+      >
+        {{ hit.description }}
+      </p>
+    </div>
+
+    <NIcon
+      name="i-lucide-arrow-up-right"
+      class="shrink-0 text-lg text-muted opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100"
+      aria-hidden="true"
+    />
+  </NuxtLink>
 </template>

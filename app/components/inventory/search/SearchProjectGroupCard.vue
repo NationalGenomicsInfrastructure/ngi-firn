@@ -54,22 +54,26 @@ async function loadMore() {
 </script>
 
 <template>
-  <NCard card="soft-gray">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="min-w-0">
+  <NCard
+    card="outline-gray"
+    class="border-l-8 border-l-primary-700 shadow-sm dark:border-l-primary-500"
+    :_card-content="{ class: 'p-5 pt-5' }"
+  >
+    <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+      <ProjectNumberCircles
+        :project-name="project.projectName"
+        :status="project.status"
+      />
+      <div class="min-w-0 flex-1">
         <div class="flex flex-wrap items-center gap-2">
-          <NIcon
-            name="i-lucide-folder-git-2"
-            class="text-primary-500"
-          />
           <NuxtLink
             :to="project.detailUrl"
-            class="truncate text-base font-semibold hover:underline"
+            class="truncate text-lg font-semibold text-primary-700 hover:underline dark:text-primary-300"
           >
             {{ project.projectName }}
           </NuxtLink>
           <NBadge
-            badge="outline"
+            badge="soft-primary"
             :label="project.projectId"
             size="xs"
           />
@@ -82,7 +86,7 @@ async function loadMore() {
       </div>
       <div class="flex items-center gap-2">
         <NBadge
-          badge="soft-primary"
+          badge="soft-gray"
           :label="`${project.linkedCount} linked`"
           size="xs"
         />
