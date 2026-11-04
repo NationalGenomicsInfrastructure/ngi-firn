@@ -54,11 +54,7 @@ async function loadMore() {
 </script>
 
 <template>
-  <NCard
-    card="outline-gray"
-    class="border-l-8 border-l-primary-700 shadow-sm dark:border-l-primary-500"
-    :_card-content="{ class: 'p-5 pt-5' }"
-  >
+  <CardAccent>
     <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <ProjectNumberCircles
         :project-name="project.projectName"
@@ -130,5 +126,5 @@ async function loadMore() {
         @click="loadMore()"
       />
     </div>
-  </NCard>
+  </CardAccent>
 </template>

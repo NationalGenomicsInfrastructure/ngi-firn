@@ -321,13 +321,13 @@ All UnaUI components are prefixed with `N` (configured via `una: { prefix: 'N' }
 <p class="font-medium pl-5">{{ field.value ?? '—' }}</p>
 ```
 
-**Form label style** (define as a constant per component to avoid repetition):
+**Form label style**: use the shared, auto-imported constant `UI_LABEL_STYLE` (`app/utils/ui.ts`), do not re-type the class string:
 
-```ts
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
+```vue
+<NFormField label="Status" :una="{ formLabel: UI_LABEL_STYLE }" />
 ```
 
-Apply via `:una="{ formLabel: FORM_LABEL_STYLE }"` on `NFormField`. For descriptions also pass `formDescription: 'text-muted'`. Use `text-primary-700 dark:text-primary-300` instead when the background is gray (`card="soft-gray"`).
+For descriptions also pass `formDescription: 'text-muted'`. (Older components still define a local `FORM_LABEL_STYLE` with `text-primary-400`; replace it with `UI_LABEL_STYLE` when you touch them.)
 
 For **toggle controls and sliders**, use `NFormGroup` instead of `NFormField`:
 
@@ -446,6 +446,19 @@ Verify quickly with a UnoCSS generator over the real config: the generated CSS m
 ```vue
 <LazyFrontpageFooter hydrate-on-visible />
 ```
+
+### UI Style (look and feel)
+
+Full guide: `docs/ui-style.md`. Short version for new or reworked pages:
+
+- **Search/filter areas** use `<FilterBar>` (`#primary` slot for a search input, or `title`/`description`/`#actions` header for form-style filters). Do not wrap them in an `NCard`.
+- **Headings**: `<SectionHeading>` (`variant="rule"` for "Results" lines, `variant="section"` for categories). The display font (`font-display`, Alkatra) is only for page titles and section headings, never for names or data.
+- **Cards without a header** that carry the signature left edge use `<CardAccent>`. Do **not** put `border-l-8` on a bare `NCard`: Una drops the content's top padding when it expects a header, so the content touches the top edge.
+- **Project numbers** (`P.Name_45_11`) are rendered with `<ProjectNumberCircles>`. Project/entity names are regular font, `font-semibold text-primary-700 dark:text-primary-300`.
+- **Colour**: `primary-700` only for structure and state (left edge, active chips, main action, links). Open = blue, closed = gray. Always pair state colour with text or an icon.
+- **No layout jumps**: controls that appear conditionally (e.g. "Clear filters") stay in the layout and use `invisible`/`disabled`, they are not toggled with `v-if`.
+- Toggle chips: `size="xs"`, `rounded-full`, `solid-primary` when active, `outline-gray` otherwise, with `:aria-pressed`.
+- Class strings for dynamic UnoCSS classes must be literal or safelisted (see `uno.config.ts`).
 
 ### Custom Themes
 

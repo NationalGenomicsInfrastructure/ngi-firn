@@ -3,8 +3,6 @@ definePageMeta({
   layout: 'private'
 })
 
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wider font-semibold text-muted'
-
 const {
   statusValue,
   setStatusValue,
@@ -45,7 +43,7 @@ const {
           name="status"
           label="Status"
           class="min-w-[8rem]"
-          :una="{ formLabel: FORM_LABEL_STYLE }"
+          :una="{ formLabel: UI_LABEL_STYLE }"
         >
           <NSelect
             :model-value="statusValue"
@@ -63,7 +61,7 @@ const {
           name="ngi_project_id"
           label="Project ID"
           class="min-w-[10rem]"
-          :una="{ formLabel: FORM_LABEL_STYLE }"
+          :una="{ formLabel: UI_LABEL_STYLE }"
         >
           <NInput
             :model-value="projectIdPrefixValue ?? ''"
@@ -76,7 +74,7 @@ const {
           name="project_name_filter"
           label="Project Name"
           class="min-w-[10rem]"
-          :una="{ formLabel: FORM_LABEL_STYLE }"
+          :una="{ formLabel: UI_LABEL_STYLE }"
         >
           <NInput
             :model-value="projectNameFilterValue ?? ''"
@@ -89,7 +87,7 @@ const {
           name="application_filter"
           label="Application"
           class="min-w-[10rem]"
-          :una="{ formLabel: FORM_LABEL_STYLE }"
+          :una="{ formLabel: UI_LABEL_STYLE }"
         >
           <NInput
             :model-value="applicationFilterValue ?? ''"

@@ -8,7 +8,6 @@ definePageMeta({
   layout: 'private'
 })
 
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wider font-semibold text-muted'
 const ANY_VALUE = 'any'
 const NO_FLOOR_VALUE = 'none'
 const formatEnumLabel = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
@@ -160,7 +159,7 @@ function clearFilters() {
           <NFormField
             name="roomType"
             label="Room type"
-            :una="{ formLabel: FORM_LABEL_STYLE }"
+            :una="{ formLabel: UI_LABEL_STYLE }"
           >
             <NSelect
               :model-value="effectiveRoomType"
@@ -173,7 +172,7 @@ function clearFilters() {
           <NFormField
             name="building"
             label="Building"
-            :una="{ formLabel: FORM_LABEL_STYLE }"
+            :una="{ formLabel: UI_LABEL_STYLE }"
           >
             <NSelect
               :model-value="effectiveBuilding"
@@ -186,7 +185,7 @@ function clearFilters() {
           <NFormField
             name="floor"
             label="Floor"
-            :una="{ formLabel: FORM_LABEL_STYLE }"
+            :una="{ formLabel: UI_LABEL_STYLE }"
           >
             <NSelect
               :model-value="effectiveFloor"
@@ -199,7 +198,7 @@ function clearFilters() {
           <NFormField
             name="status"
             label="Status"
-            :una="{ formLabel: FORM_LABEL_STYLE }"
+            :una="{ formLabel: UI_LABEL_STYLE }"
           >
             <NSelect
               :model-value="effectiveStatus"

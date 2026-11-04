@@ -130,15 +130,10 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       </div>
     </FilterBar>
 
-    <div class="mt-12 mb-6 flex items-baseline gap-3">
-      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted">
-        Results
-      </h2>
-      <div
-        class="h-px flex-1 bg-border"
-        aria-hidden="true"
-      />
-    </div>
+    <SectionHeading
+      title="Results"
+      class="mt-12 mb-6"
+    />
 
     <div>
       <InventorySearchStatusBanner :freshness="freshness" />
@@ -187,20 +182,20 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       >
         <!-- Projects whose metadata matched, each with their linked inventory -->
         <section v-if="hasProjectGroups">
-          <div class="mb-4 flex items-center gap-2">
-            <NIcon
-              name="i-lucide-folder-git-2"
-              class="text-xl text-primary-700 dark:text-primary-400"
-            />
-            <h2 class="font-display text-xl font-semibold">
-              Matching projects
-            </h2>
-            <NBadge
-              badge="soft-gray"
-              :label="String(projectGroups?.total ?? 0)"
-              size="xs"
-            />
-          </div>
+          <SectionHeading
+            title="Matching projects"
+            variant="section"
+            icon="i-lucide-folder-git-2"
+            class="mb-4"
+          >
+            <template #badge>
+              <NBadge
+                badge="soft-gray"
+                :label="String(projectGroups?.total ?? 0)"
+                size="xs"
+              />
+            </template>
+          </SectionHeading>
           <div class="space-y-4">
             <InventorySearchProjectGroupCard
               v-for="group in projectGroups?.groups"
@@ -227,20 +222,20 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
 
         <!-- Inventory whose own text matched, grouped by project -->
         <section v-if="hasDirectMatches">
-          <div class="mb-4 flex items-center gap-2">
-            <NIcon
-              name="i-lucide-package-search"
-              class="text-xl text-primary-700 dark:text-primary-400"
-            />
-            <h2 class="font-display text-xl font-semibold">
-              Matching inventory
-            </h2>
-            <NBadge
-              badge="soft-gray"
-              :label="`${directMatches?.total ?? 0}${directMatches?.totalIsEstimated ? '+' : ''}`"
-              size="xs"
-            />
-          </div>
+          <SectionHeading
+            title="Matching inventory"
+            variant="section"
+            icon="i-lucide-package-search"
+            class="mb-4"
+          >
+            <template #badge>
+              <NBadge
+                badge="soft-gray"
+                :label="`${directMatches?.total ?? 0}${directMatches?.totalIsEstimated ? '+' : ''}`"
+                size="xs"
+              />
+            </template>
+          </SectionHeading>
           <InventorySearchDirectMatches
             v-if="directMatches"
             :page="directMatches"
