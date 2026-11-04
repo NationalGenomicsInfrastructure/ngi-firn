@@ -6,6 +6,7 @@
 .DS_Store
 .env*
 .history
+.meili_data
 .netlify
 .nuxt
 .output

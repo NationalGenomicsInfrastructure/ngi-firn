@@ -34,8 +34,9 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "nuxi dev",
-    "dev-https": "export NODE_EXTRA_CA_CERTS=\"$(mkcert -CAROOT)/rootCA.pem\" && nuxi dev",
-    "dev-build-node": "node --env-file=.env .output/server/index.mjs",
+    "dev:https": "export NODE_EXTRA_CA_CERTS=\"$(mkcert -CAROOT)/rootCA.pem\" && nuxi dev",
+    "dev:build-node": "node --env-file=.env .output/server/index.mjs",
+    "dev:with-search": "MEILI_DB_PATH=./.meili_data bash container_images/firn-entrypoint.sh pnpm exec nuxi dev",
     "build": "nuxi build",
     "build-analyze": "NITRO_ANALYZE=1 NITRO_DEBUG=1 nuxi build",
     "start": "node .output/server/index.mjs",

@@ -39,7 +39,7 @@ jobs:
       CLOUDANT_TEST_DATABASE: firn_test
       # Local, loopback-only Meilisearch for the global-search suite. The binary
       # version is pinned here - keep it in sync with the Dockerfiles.
-      MEILISEARCH_VERSION: v1.12.0
+      MEILISEARCH_VERSION: v1.56.1
       MEILISEARCH_HOST: http://127.0.0.1:7700
       MEILISEARCH_API_KEY: testsearchkey
       # Dedicated, disposable index namespace so cleanup never touches real indexes.

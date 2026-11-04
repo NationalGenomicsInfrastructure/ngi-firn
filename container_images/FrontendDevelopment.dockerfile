@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 
 # Pinned Meilisearch community binary for the local global-search engine. Verify
 # the release/checksum before bumping (see the production Dockerfile).
-ARG MEILISEARCH_VERSION=v1.12.0
+ARG MEILISEARCH_VERSION=v1.56.1
 RUN apt-get update \
     && apt-get install -y --no-install-recommends dumb-init ca-certificates curl \
     && arch="$(dpkg --print-architecture)" \

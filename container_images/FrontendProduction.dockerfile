@@ -46,8 +46,8 @@ FROM base AS production
 # verified against https://github.com/meilisearch/meilisearch/releases before
 # changing this value. When MEILISEARCH_SHA256 is supplied the download is
 # checksum-verified; leave it empty to skip (not recommended for releases).
-ARG MEILISEARCH_VERSION=v1.12.0
-ARG MEILISEARCH_SHA256=
+ARG MEILISEARCH_VERSION=v1.56.1
+ARG MEILISEARCH_SHA256=sha256:b2c7a647d4cdfdd7a901466bfd6797077b849e90f5eb2c0f5b1d05869592e27e
 
 # Install dumb-init (PID 1 signal/zombie handling) and the pinned Meilisearch
 # binary matching the image architecture.

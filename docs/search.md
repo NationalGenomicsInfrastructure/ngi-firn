@@ -46,11 +46,30 @@ See `.env.example`. Server-only variables:
 
 ### Local macOS development
 
-Install and run the binary separately, then point the app at it:
+The simplest option starts Meilisearch and the Nuxt dev server together, stopped
+together with a single Ctrl-C, by reusing the same supervisor script the
+containers use:
 
 ```bash
-# https://www.meilisearch.com/docs/learn/getting_started/installation
-meilisearch --db-path ./.meili_data --master-key <dev-key>
+pnpm dev:with-search
+```
+
+This runs `container_images/firn-entrypoint.sh` with `MEILI_DB_PATH=./.meili_data`
+(git-ignored) and `pnpm exec nuxi dev` as the supervised app. The script is
+bash-3.2 compatible, so it works with the stock macOS bash. The engine's data
+directory, dumps and snapshots are kept as siblings under that folder
+(`./.meili_data/data.ms`, `./.meili_data/dumps`, `./.meili_data/snapshots`).
+It starts in Meilisearch's `--env development` profile (no master key); set
+`MEILISEARCH_API_KEY` in the environment to run the hardened production profile.
+
+Prerequisite: a local `meilisearch` binary on `PATH`
+(<https://www.meilisearch.com/docs/learn/getting_started/installation>).
+
+To run the engine yourself instead (e.g. a long-lived instance), start it
+separately and point the app at it:
+
+```bash
+meilisearch --db-path ./.meili_data/data.ms --master-key <dev-key>
 # in .env
 MEILISEARCH_HOST=http://127.0.0.1:7700
 MEILISEARCH_API_KEY=<dev-key>
