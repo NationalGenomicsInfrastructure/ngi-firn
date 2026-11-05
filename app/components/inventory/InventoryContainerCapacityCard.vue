@@ -274,12 +274,12 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
       class="flex flex-wrap"
     >
       <!-- Summary -->
-      <div class="flex-1 basis-80 min-w-0 p-6 border-r border-gray-200 dark:border-gray-800">
+      <div class="flex-1 basis-40 min-w-0 p-6 flex items-center border-r border-gray-200 dark:border-gray-800">
         <div class="flex items-center gap-5">
-          <div class="relative size-24 shrink-0">
+          <div class="relative w-36 h-36 shrink-0">
             <svg
               viewBox="0 0 96 96"
-              class="size-full"
+              class="w-full h-full"
               role="img"
               :aria-label="`${grid.stored} of ${grid.total} positions occupied`"
             >
@@ -289,7 +289,7 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
                 :r="RING_RADIUS"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="10"
+                stroke-width="12"
                 class="text-gray-200 dark:text-gray-800"
               />
               <circle
@@ -298,7 +298,7 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
                 :r="RING_RADIUS"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="10"
+                stroke-width="12"
                 stroke-linecap="round"
                 :stroke-dasharray="ringDash"
                 transform="rotate(-90 48 48)"
@@ -306,15 +306,14 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
               />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-xl font-bold leading-none tabular-nums">{{ grid.percent }}%</span>
-              <span class="text-[11px] text-muted mt-0.5">full</span>
+              <span class="text-md font-bold leading-none tabular-nums">{{ grid.percent }}%</span>
             </div>
           </div>
           <div class="space-y-1">
             <div class="text-3xl font-bold leading-tight tabular-nums">
               {{ grid.stored }}<span class="text-lg font-medium text-muted"> / {{ grid.total }}</span>
             </div>
-            <p class="text-xs text-muted">
+            <p class="text-sm text-muted">
               positions occupied
             </p>
             <div class="flex items-center gap-2">
@@ -323,40 +322,16 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
                 v-if="STATUS_LABEL[grid.status]"
                 :label="STATUS_LABEL[grid.status]!"
                 :badge="STATUS_BADGE[grid.status]"
-                size="xs"
+                size="sm"
               />
             </div>
           </div>
-        </div>
-
-        <div class="mt-6 pt-5 border-t border-gray-200 dark:border-gray-800">
-          <p class="text-xs font-semibold uppercase tracking-wider text-muted mb-3">
-            Content
-          </p>
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <NIcon
-                :name="grid.icon"
-                class="text-primary-500 shrink-0"
-              />
-              <span class="text-sm font-medium truncate">{{ grid.label }}</span>
-            </div>
-            <span class="text-sm font-semibold tabular-nums">
-              {{ grid.stored }}<span class="font-normal text-muted"> / {{ grid.total }}</span>
-            </span>
-          </div>
-          <NProgress
-            :model-value="grid.stored"
-            :max="Math.max(grid.total, 1)"
-            :progress="STATUS_PROGRESS[grid.status]"
-            size="sm"
-          />
         </div>
       </div>
 
       <!-- Grid -->
-      <div class="flex-[1.4] basis-96 min-w-0 space-y-4 p-6 bg-gray-50 dark:bg-gray-950/40">
-        <p class="text-xs text-muted">
+      <div class="flex-[1.2] basis-96 min-w-0 space-y-4 p-6">
+        <p class="text-muted">
           Hover a cell for its occupant. Drag an occupied cell onto a free slot to move it.
         </p>
 
@@ -406,17 +381,6 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
           @drop="onDrop"
           @open="onOpenCell"
         />
-
-        <div class="flex items-center gap-4 pt-4 text-xs text-muted border-t border-gray-200 dark:border-gray-800">
-          <span class="flex items-center gap-1.5">
-            <span class="size-3 rounded-sm border border-primary-600 bg-primary-500 dark:bg-primary-600" />
-            Occupied
-          </span>
-          <span class="flex items-center gap-1.5">
-            <span class="size-3 rounded-sm border border-primary-200 dark:border-primary-800" />
-            Free
-          </span>
-        </div>
 
         <InventoryGridDragGhost />
         <DialogGridPlacement

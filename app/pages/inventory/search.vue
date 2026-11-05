@@ -141,7 +141,7 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       <!-- Guidance before the first search -->
       <NAlert
         v-if="!hasQuery"
-        alert="border-gray"
+        alert="border-emerald"
         title="Ready to search"
         description="Start typing to search across all inventory and linked projects"
         icon="i-lucide-search"
