@@ -75,7 +75,7 @@ function tooltip(row: number, column: number): string {
   const occupant = occupantAt(row, column)
   if (!occupant) return `${label} — free`
   const kind = occupant.type === 'container' ? 'container' : 'item'
-  return `${label} — ${occupant.slug ?? 'unnamed'} (${kind})`
+  return `${label} — ${occupant.name ?? 'unnamed'} (${kind})`
 }
 
 function onPointerDown(event: PointerEvent, row: number, column: number) {

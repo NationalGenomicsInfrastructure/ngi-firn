@@ -74,7 +74,7 @@ export function totalSlots(entry: ContainerCapacity | ContainerCapacityEntry): n
 }
 
 /* Value emitted by the grid_occupancy view for one occupied slot. */
-export type GridSlotValue = { slug: string | null, type: string }
+export type GridSlotValue = { slug: string | null, name?: string | null, type: string }
 
 /*
  * Whether a specific slot in a parent grid is already occupied, per the
@@ -101,6 +101,7 @@ export interface GridOccupancyCell {
   row: number
   column: number
   slug: string | null
+  name: string | null
   /* Document type of the occupant: a nested container or an inventory item. */
   type: 'container' | 'inventoryItem'
 }
@@ -124,6 +125,7 @@ export async function getGridOccupancy(parentDocumentId: string): Promise<GridOc
     row: row.key[2] as number,
     column: row.key[3] as number,
     slug: row.value.slug,
+    name: row.value.name ?? null,
     type: row.value.type as GridOccupancyCell['type']
   }))
 }
