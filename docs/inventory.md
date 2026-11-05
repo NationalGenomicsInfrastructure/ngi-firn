@@ -194,7 +194,7 @@ When a grid is not defined (`rows`/`columns` are `null`), children are unstructu
 **Pitfalls.**
 - The occupancy query key (`INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(slug)`) must be invalidated for both the old and the new parent in every mutation that moves, creates, locates, deletes or vacates a child. The optimistic updates do not cover it.
 - `gridLabel` (`app/utils/inventory/grid.ts`) must stay identical to `deriveGridLabel` (`server/crud/inventory/grid.server.ts`), so tooltips match the stored labels.
-- Dragging from a list onto a grid is supported by `useGridDrag().startDrag` (payload with `fromParentSlug: null`) but no list or table calls it yet.
+- Dragging from a list: the child tables (`TableContainerOverview`, `TableItemsOverview`) show a grip in the Name cell when `drag-source` is set (used on the container contents page, which also shows the grid). Drops from a list go through the same `DialogGridPlacement` confirmation.
 
 ### 7. Templates as snapshot defaults
 

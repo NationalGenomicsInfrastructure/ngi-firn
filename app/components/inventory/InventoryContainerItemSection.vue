@@ -61,6 +61,7 @@ const errorMessage = computed(() =>
         v-else
         :items="items"
         :loading="isLoading"
+        drag-source
       />
     </NTabsContent>
 

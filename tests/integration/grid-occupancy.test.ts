@@ -120,6 +120,6 @@ describe('same-parent re-slot', () => {
     await expect(ItemService.moveItem({
       itemSlug: [second.slug], newParentSlug: itemGrid.slug, newParentKind: 'container',
       position: { row: 2, column: 2, level: 1 }
-    }, user)).rejects.toThrow()
+    }, user)).rejects.toThrow(/occupied/i)
   })
 })

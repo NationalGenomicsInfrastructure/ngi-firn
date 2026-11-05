@@ -78,6 +78,7 @@ const childrenErrorMessage = computed(() => {
         :containers="children"
         :loading="isLoadingChildren"
         :show-parent="false"
+        drag-source
       />
     </NTabsContent>
 

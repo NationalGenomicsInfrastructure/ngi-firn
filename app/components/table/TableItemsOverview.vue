@@ -7,12 +7,16 @@ import type { ItemType } from '~~/schemas/inventory/items'
 import type { InventoryClassificationType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import { ITEM_TYPE_ICONS, ITEM_TYPE_LABELS } from '~/utils/inventory/item'
 import { getClassificationBadge, getContainerStatusMeta } from '~/utils/inventory/container'
+import { useGridDrag } from '~/composables/useGridDrag'
 import { formatDate } from '~/utils/dates/formatting'
 
-const props = withDefaults(defineProps<{ items: DisplayInventoryItem[], loading?: boolean, showParent?: boolean, unlinkProjectId?: string }>(), {
+const props = withDefaults(defineProps<{ items: DisplayInventoryItem[], loading?: boolean, showParent?: boolean, unlinkProjectId?: string, dragSource?: boolean }>(), {
   loading: false,
+  dragSource: false,
   showParent: true
 })
+
+const { startDrag } = useGridDrag()
 
 interface ItemRow {
   slug: string
@@ -200,6 +204,13 @@ async function handleUnlink() {
     >
       <template #name-cell="{ cell }">
         <div class="flex flex-wrap items-center gap-2">
+          <span
+            v-if="dragSource"
+            class="i-lucide-grip-vertical text-muted cursor-grab touch-none shrink-0"
+            title="Drag onto a grid cell to place"
+            aria-label="Drag onto a grid cell to place"
+            @pointerdown="startDrag($event, { kind: 'item', slug: cell.row.original.slug, label: cell.row.original.name, fromParentSlug: null })"
+          />
           <NuxtLink
             :to="itemUrl(cell.row.original.slug)"
             class="text-primary-400 dark:text-primary-600"

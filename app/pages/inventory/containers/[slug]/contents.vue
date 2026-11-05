@@ -82,6 +82,17 @@ const containerTypeLabel = computed(() =>
         <InventoryContainerCapacityBars :slug="slug" />
       </NCard>
 
+      <!-- Grid containers: interactive grid so list rows below can be dragged onto a cell. -->
+      <NCard
+        v-if="container.capacity?.some(entry => entry.layout === 'grid')"
+        card="soft-gray"
+      >
+        <InventoryContainerCapacityIndicator
+          :slug="container.slug"
+          :capacity="container.capacity"
+        />
+      </NCard>
+
       <InventoryContainerContainerSection :container="container" />
       <InventoryContainerItemSection :container="container" />
 

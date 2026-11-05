@@ -7,7 +7,10 @@ import type { ContainerType } from '~~/schemas/inventory/container'
 import type { InventoryClassificationType, InventoryStatusType } from '~~/schemas/inventory/metadata'
 import { CONTAINER_TYPE_LABELS, CONTAINER_TYPE_ICONS } from '~/utils/inventory/equipment'
 import { getContainerStatusMeta, getClassificationBadge, summarizeCapacity } from '~/utils/inventory/container'
+import { useGridDrag } from '~/composables/useGridDrag'
 import { formatDate } from '~/utils/dates/formatting'
+
+const { startDrag } = useGridDrag()
 
 const props = withDefaults(defineProps<{
   containers: DisplayContainer[]
@@ -16,8 +19,11 @@ const props = withDefaults(defineProps<{
   showParent?: boolean
   /* When set, the bulk bar offers unlinking the selection from this project. */
   unlinkProjectId?: string
+  /* Show a grip in the Name cell so rows can be dragged onto a grid cell. */
+  dragSource?: boolean
 }>(), {
   loading: false,
+  dragSource: false,
   showParent: true
 })
 
@@ -227,6 +233,13 @@ const canMoveSelection = computed(() =>
     >
       <template #name-cell="{ cell }">
         <div class="flex flex-wrap items-center gap-2">
+          <span
+            v-if="dragSource"
+            class="i-lucide-grip-vertical text-muted cursor-grab touch-none shrink-0"
+            title="Drag onto a grid cell to place"
+            aria-label="Drag onto a grid cell to place"
+            @pointerdown="startDrag($event, { kind: 'container', slug: cell.row.original.slug, label: cell.row.original.name, fromParentSlug: null })"
+          />
           <NuxtLink
             :to="containerUrl(cell.row.original.slug, 'contents')"
             class="text-primary-400 dark:text-primary-600"
