@@ -12,6 +12,7 @@
  *
  * OCCUPANCY QUERIES:
  * isSlotOccupied(parentDocumentId, position) - Check whether a specific grid slot is already occupied via the grid_occupancy view
+ * getGridOccupancy(parentDocumentId) - List every occupied slot of a parent grid in one range query
  */
 
 /*
@@ -92,6 +93,39 @@ export async function isSlotOccupied(
     }
   )
   return result.rows.length > 0
+}
+
+/* One occupied slot of a parent grid, as returned to the client. */
+export interface GridOccupancyCell {
+  level: number
+  row: number
+  column: number
+  slug: string | null
+  /* Document type of the occupant: a nested container or an inventory item. */
+  type: 'container' | 'inventoryItem'
+}
+
+/*
+ * All occupied slots of a parent grid in one range query on grid_occupancy
+ * (keys are [parentId, level, row, column], so the whole grid is one contiguous range).
+ */
+export async function getGridOccupancy(parentDocumentId: string): Promise<GridOccupancyCell[]> {
+  const result = await couchDB.queryView<unknown[], GridSlotValue>(
+    'firn-inventory',
+    'grid_occupancy',
+    {
+      startkey: [parentDocumentId],
+      endkey: [parentDocumentId, {}],
+      reduce: false
+    }
+  )
+  return result.rows.map(row => ({
+    level: row.key[1] as number,
+    row: row.key[2] as number,
+    column: row.key[3] as number,
+    slug: row.value.slug,
+    type: row.value.type as GridOccupancyCell['type']
+  }))
 }
 
 /*

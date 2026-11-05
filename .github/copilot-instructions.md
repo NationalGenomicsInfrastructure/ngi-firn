@@ -290,6 +290,14 @@ CouchDB documents must include:
 
 Document TypeScript interfaces extend `BaseDocument` from `server/database/couchdb.ts` and live in `types/`. All DB operations go through `CouchDBConnector` (`couchDB`) in `server/database/couchdb.ts`, with domain-specific service classes (e.g. `UserService` in `server/crud/users.server.ts`) on top.
 
+### Inventory grid occupancy
+
+Grid containers expose their exact occupied cells through `getGridOccupancy` (`InventoryCapacityGrid` + `INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(slug)`). Pitfalls:
+
+- Any mutation that moves, creates, locates, deletes or vacates a child of a grid container must invalidate the occupancy key for **both** the old and the new parent. Optimistic updates do not cover it.
+- `gridLabel` in `app/utils/inventory/grid.ts` must match `deriveGridLabel` in `server/crud/inventory/grid.server.ts` (positions are 1-based; `L2-` prefix above level 1).
+- Drag and drop uses pointer events (`app/composables/useGridDrag.ts`), not HTML5 DnD, so it works on touch. A same-parent move needs an explicit new `position`.
+
 ### Authentication
 
 - **Google OAuth** is mandatory; users must have a `@scilifelab.se` email.

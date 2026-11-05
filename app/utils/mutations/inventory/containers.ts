@@ -133,6 +133,7 @@ export const createContainer = defineMutation(() => {
       // The parent container's stored occupancy changed → refresh its capacity bars.
       if (input.parentKind === 'container') {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.parentSlug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(input.parentSlug), exact: true })
       }
     }
   })
@@ -206,8 +207,10 @@ export const updateContainer = defineMutation(() => {
       }
       // The container's own capacity limits may have changed → refresh its capacity bars.
       queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.containerSlug), exact: true })
+      queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(input.containerSlug), exact: true })
       if (data && data.slug !== input.containerSlug) {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(data.slug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(data.slug), exact: true })
       }
     }
   })
@@ -523,6 +526,10 @@ export const alterContainer = defineMutation(() => {
           key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parentSlug),
           exact: true
         })
+        queryCache.invalidateQueries({
+          key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(parentSlug),
+          exact: true
+        })
       }
       if (isVacatingAction(input.performedAction)) {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.all(), exact: true })
@@ -745,6 +752,7 @@ export const deleteContainer = defineMutation(() => {
       for (const parent of input.parents ?? []) {
         if (parent.kind === 'container') {
           queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parent.slug), exact: true })
+          queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(parent.slug), exact: true })
         }
       }
     }

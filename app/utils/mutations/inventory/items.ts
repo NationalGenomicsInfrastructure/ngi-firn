@@ -92,6 +92,7 @@ export const createItem = defineMutation(() => {
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
       if (input.parentKind === 'container') {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.parentSlug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(input.parentSlug), exact: true })
       }
     }
   })
@@ -201,9 +202,11 @@ export const moveItem = defineMutation(() => {
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
       for (const parentSlug of context?.parentContainerSlugs ?? []) {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parentSlug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(parentSlug), exact: true })
       }
       if (input.newParentKind === 'container') {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.newParentSlug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(input.newParentSlug), exact: true })
       }
     }
   })
@@ -232,6 +235,7 @@ export const locateItem = defineMutation(() => {
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
       if (input.newParentKind === 'container') {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(input.newParentSlug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(input.newParentSlug), exact: true })
       }
     }
   })
@@ -285,6 +289,7 @@ export const alterItem = defineMutation(() => {
         queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
         for (const parentSlug of context?.parentContainerSlugs ?? []) {
           queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parentSlug), exact: true })
+          queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(parentSlug), exact: true })
         }
       }
     }
@@ -416,6 +421,7 @@ export const deleteItem = defineMutation(() => {
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
       for (const parentSlug of context?.parentContainerSlugs ?? []) {
         queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.capacity(parentSlug), exact: true })
+        queryCache.invalidateQueries({ key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(parentSlug), exact: true })
       }
     }
   })

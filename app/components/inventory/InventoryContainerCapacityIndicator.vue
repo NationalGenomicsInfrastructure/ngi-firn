@@ -1,10 +1,19 @@
 <script setup lang="ts">
+import { useQuery as useQueryColada } from '@pinia/colada'
 import type { ContainerCapacityEntry } from '~~/schemas/inventory/container'
+import type { GridDragPayload, GridDropDetail } from '~/composables/useGridDrag'
 import { getChildTypeMeta } from '~/utils/inventory/item'
+import { gridOccupancyQuery } from '~/utils/queries/inventory/containers'
+import { cellKey, gridLabel, type GridCoordinate } from '~/utils/inventory/grid'
 
 const props = defineProps<{
+  /* Slug of the container whose capacity is shown; scopes the occupancy query and drops. */
+  slug: string
   capacity: ContainerCapacityEntry[] | null
 }>()
+
+const { showError } = useFirnToast()
+const router = useRouter()
 
 interface CountDisplayRow {
   key: string
@@ -16,7 +25,6 @@ interface CountDisplayRow {
 
 interface GridLevelData {
   level: number
-  filled: number
 }
 
 interface GridDisplay {
@@ -57,13 +65,10 @@ const grid = computed<GridDisplay | null>(() => {
   if (!entry || entry.layout !== 'grid') return null
 
   const meta = getChildTypeMeta(entry.childKind, entry.type)
-  const cellsPerLevel = entry.rows * entry.columns
-  const total = cellsPerLevel * entry.levels
+  const total = entry.rows * entry.columns * entry.levels
 
-  // Distribute the aggregate occupancy count level-major: fill level 1 fully, then level 2, …
   const levelsData: GridLevelData[] = Array.from({ length: entry.levels }, (_, levelIndex) => ({
-    level: levelIndex + 1,
-    filled: Math.max(0, Math.min(cellsPerLevel, entry.stored - levelIndex * cellsPerLevel))
+    level: levelIndex + 1
   }))
 
   return {
@@ -77,6 +82,38 @@ const grid = computed<GridDisplay | null>(() => {
     levelsData
   }
 })
+
+// Exact occupied cells (only fetched for grid containers).
+const { state: occupancyState } = useQueryColada(() => ({
+  ...gridOccupancyQuery(props.slug),
+  enabled: grid.value != null
+}))
+const cells = computed(() => occupancyState.value.status === 'success' ? occupancyState.value.data : [])
+
+const dragPayload = ref<GridDragPayload | null>(null)
+const dropTarget = ref<GridCoordinate | null>(null)
+const isPlacementOpen = ref(false)
+
+function onDrop(detail: GridDropDetail) {
+  const target: GridCoordinate = { level: detail.level, row: detail.row, column: detail.column }
+  const occupant = cells.value.find(cell => cellKey(cell) === cellKey(target))
+  if (occupant) {
+    if (occupant.slug !== detail.payload.slug) {
+      showError(`Slot ${gridLabel(target.row, target.column, target.level)} is already occupied.`, 'Cannot move here')
+    }
+    return
+  }
+  dragPayload.value = detail.payload
+  dropTarget.value = target
+  isPlacementOpen.value = true
+}
+
+function onOpenCell(cell: { slug: string | null, type: 'container' | 'inventoryItem' }) {
+  if (!cell.slug) return
+  router.push(cell.type === 'container'
+    ? `/inventory/containers/${cell.slug}/details`
+    : `/inventory/items/${cell.slug}/details`)
+}
 
 const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
 </script>
@@ -140,7 +177,7 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
       </div>
 
       <p class="text-xs text-muted italic">
-        Filled cells show the number of occupied slots, not their exact positions.
+        Hover a cell for its occupant. Drag an occupied cell onto a free slot to move it.
       </p>
 
       <!-- Multiple levels: tab switcher -->
@@ -166,7 +203,12 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
           <InventoryCapacityGrid
             :rows="grid.rows"
             :columns="grid.columns"
-            :filled="lvl.filled"
+            :level="lvl.level"
+            :parent-slug="slug"
+            :cells="cells"
+            mode="drag"
+            @drop="onDrop"
+            @open="onOpenCell"
           />
         </NTabsContent>
       </NTabs>
@@ -176,7 +218,19 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
         v-else
         :rows="grid.rows"
         :columns="grid.columns"
-        :filled="grid.levelsData[0]?.filled ?? 0"
+        :parent-slug="slug"
+        :cells="cells"
+        mode="drag"
+        @drop="onDrop"
+        @open="onOpenCell"
+      />
+
+      <InventoryGridDragGhost />
+      <DialogGridPlacement
+        v-model:open="isPlacementOpen"
+        :payload="dragPayload"
+        :parent-slug="slug"
+        :position="dropTarget"
       />
     </div>
   </div>

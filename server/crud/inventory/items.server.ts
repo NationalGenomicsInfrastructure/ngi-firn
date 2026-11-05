@@ -760,7 +760,18 @@ export const ItemService = {
         throw new Error(`Item with identifier "${slug}" not found.`)
       }
       if (item.parent?.id === newParent.doc._id) {
-        throw new Error(`Item "${slug}" is already stored in the selected parent.`)
+        // Same parent is only meaningful as a re-slot inside a grid: one item, explicit new position.
+        const requested = input.position
+        const isGridReslot = newParent.kind === 'container'
+          && newParent.doc.capacity?.some(entry => entry.layout === 'grid')
+          && input.itemSlug.length === 1
+          && requested != null
+          && !(requested.row === item.position?.row
+            && requested.column === item.position?.column
+            && (requested.level ?? 1) === (item.position?.level ?? 1))
+        if (!isGridReslot) {
+          throw new Error(`Item "${slug}" is already stored in the selected parent.`)
+        }
       }
       items.push(item)
     }

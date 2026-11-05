@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { GridPosition } from '~~/types/inventory'
 import { useQuery as useQueryColada } from '@pinia/colada'
 import { toTypedSchema } from '@vee-validate/zod'
 import {
@@ -234,6 +235,9 @@ async function nextFromStep1() {
   if (await validateStep(STEP1_FIELDS)) stepper.value?.nextStep()
 }
 
+// Optional explicit grid slot chosen in the slot picker (null → server auto-places).
+const chosenPosition = ref<GridPosition | null>(null)
+
 const onSubmit = handleSubmit(async (formValues) => {
   const result = await createItemAsync({
     ...formValues,
@@ -242,9 +246,11 @@ const onSubmit = handleSubmit(async (formValues) => {
     // authoritative.
     barcode: barcodeMode.value === 'existing' ? formValues.barcode : undefined,
     parentSlug: props.parentSlug,
-    parentKind: props.parentKind
+    parentKind: props.parentKind,
+    position: chosenPosition.value ?? undefined
   })
   if (result) {
+    chosenPosition.value = null
     resetForm()
     barcodeMode.value = 'generate'
     barcodeStepError.value = ''
@@ -369,6 +375,14 @@ async function onValidatingSubmit() {
                 />
               </NFormField>
             </NCard>
+
+            <!-- Only rendered for grid parents that accept this kind of child. -->
+            <InventoryGridSlotPicker
+              v-model="chosenPosition"
+              :parent-slug="parentSlug"
+              :parent-kind="parentKind"
+              child-kind="item"
+            />
             <div class="flex justify-end">
               <NButton
                 type="submit"

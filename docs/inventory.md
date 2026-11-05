@@ -189,6 +189,13 @@ This models real-world lab storage accurately: a 96-tube box is an 8 × 12 grid,
 
 When a grid is not defined (`rows`/`columns` are `null`), children are unstructured: they belong to the parent but have no specific position.
 
+**Exact occupancy in the UI.** The `getGridOccupancy` tRPC query (`containers` router) returns every occupied cell of a grid container (`level/row/column`, occupant `slug` and `type`) from one range query on the `grid_occupancy` view. `InventoryCapacityGrid` renders it in three modes: `view` (tooltips), `drag` (occupied cells are dragged with pointer events, which also work on touch, onto a free cell; a confirmation dialog `DialogGridPlacement` then calls `moveContainer`/`moveItem` with an explicit `position`) and `select` (choose a free cell, used by `InventoryGridSlotPicker` in the Add container / Add item steppers). Moving a child to another cell of the grid it is already in is allowed for both containers and items; swaps are not supported and dropping onto an occupied cell is rejected.
+
+**Pitfalls.**
+- The occupancy query key (`INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(slug)`) must be invalidated for both the old and the new parent in every mutation that moves, creates, locates, deletes or vacates a child. The optimistic updates do not cover it.
+- `gridLabel` (`app/utils/inventory/grid.ts`) must stay identical to `deriveGridLabel` (`server/crud/inventory/grid.server.ts`), so tooltips match the stored labels.
+- Dragging from a list onto a grid is supported by `useGridDrag().startDrag` (payload with `fromParentSlug: null`) but no list or table calls it yet.
+
 ### 7. Templates as snapshot defaults
 
 Templates store default values (grid dimensions, acceptance rules, category, classification) that are applied at creation time. The created entity receives a copy of those defaults and a `templateId` reference for provenance. After creation, entity and template are independent, which is intentional. If templates used live inheritance, changing a template would retroactively alter the properties of hundreds of existing containers, which would be confusing and dangerous in a lab setting.

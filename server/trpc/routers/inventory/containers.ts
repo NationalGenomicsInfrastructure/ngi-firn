@@ -6,6 +6,7 @@
  * getContainerBySlug - Fetch a single container by slug (recent action log, project slug/name hints)
  * getContainersByEquipment - List all containers inside a given piece of storage equipment
  * getContainersByParent - List direct children of a container parent
+ * getGridOccupancy - List the exact occupied slots (level/row/column + occupant slug/type) of a grid container
  * getContainerActionLog - Fetch the full action log for a container (on demand)
  * getContainerProjectRefs - Fetch fully resolved InventoryProjectRef[] for a container (on demand, fetches from projects DB)
  *
@@ -35,6 +36,7 @@ import {
   containerMoveTargetsSchema,
   containerMoveTargetsBatchSchema
 } from '~~/schemas/inventory/container'
+import type { GridOccupancyCell } from '../../../crud/inventory/grid.server'
 import type { AcceptedChildCapacity, ContainerMoveTarget, DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
 
 /*
@@ -108,6 +110,16 @@ export const containersRouter = createTRPCRouter({
     .query(async ({ input }): Promise<ContainerMoveTarget[]> => {
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
       return await ContainerService.getMoveTargetsForContainers(input.containerSlug)
+    }),
+
+  getGridOccupancy: authedProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ input }): Promise<GridOccupancyCell[]> => {
+      const { ContainerService } = await import('../../../crud/inventory/containers.server')
+      const { getGridOccupancy } = await import('../../../crud/inventory/grid.server')
+      const container = await ContainerService.getContainerBySlug(input.slug)
+      if (!container) return []
+      return await getGridOccupancy(container._id)
     }),
 
   getContainerActionLog: authedProcedure

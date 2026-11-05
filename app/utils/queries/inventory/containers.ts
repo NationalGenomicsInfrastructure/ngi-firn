@@ -1,4 +1,5 @@
 import type { AcceptedChildCapacity, ContainerMoveTarget, DisplayContainer, DisplayInventoryActionLogEntry, InventoryProjectRef } from '~~/types/inventory'
+import type { GridOccupancyCell } from '~~/server/crud/inventory/grid.server'
 import type { ContainerParentKindType } from '~~/schemas/inventory/container'
 import { defineQueryOptions } from '@pinia/colada'
 
@@ -12,6 +13,9 @@ export const INVENTORY_CONTAINERS_QUERY_KEYS = {
   byParent: (parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'by-parent', parentSlug] as const,
   detailBySlug: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'detail', 'slug', slug] as const,
   capacity: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'capacity'] as const,
+  // Exact occupied cells of a grid container (level/row/column + occupant). Must be invalidated for
+  // BOTH the old and the new parent on every move/locate/create/delete/alter.
+  occupancy: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'occupancy'] as const,
   actionLog: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'action-log'] as const,
   projectRefs: (slug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.detailBySlug(slug), 'project-refs'] as const,
   acceptedChildren: (parentKind: ContainerParentKindType, parentSlug: string) => [...INVENTORY_CONTAINERS_QUERY_KEYS.root, 'accepted-children', parentKind, parentSlug] as const,
@@ -49,6 +53,17 @@ export const containerCapacitySummaryQuery = defineQueryOptions(
     query: (): Promise<AcceptedChildCapacity[]> => {
       const { $trpc } = useNuxtApp()
       return $trpc.inventory.containers.getAcceptedChildren.query({ parentSlug: slug, parentKind: 'container' })
+    }
+  })
+)
+
+// Exact occupied cells of a grid container (one range query on the grid_occupancy view).
+export const gridOccupancyQuery = defineQueryOptions(
+  (slug: string) => ({
+    key: INVENTORY_CONTAINERS_QUERY_KEYS.occupancy(slug),
+    query: (): Promise<GridOccupancyCell[]> => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.inventory.containers.getGridOccupancy.query({ slug })
     }
   })
 )
