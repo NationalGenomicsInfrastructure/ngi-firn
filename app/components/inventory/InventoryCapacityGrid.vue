@@ -20,11 +20,16 @@ const props = withDefaults(defineProps<{
   mode?: 'view' | 'drag' | 'select'
   /* Select mode: how many cells may be selected at once (1 behaves like a radio group). */
   maxSelect?: number
+  /* 'lg' renders roomier cells (card view); 'sm' is the compact default. */
+  size?: 'sm' | 'lg'
 }>(), {
   level: 1,
   mode: 'view',
-  maxSelect: 1
+  maxSelect: 1,
+  size: 'sm'
 })
+
+const lg = computed(() => props.size === 'lg')
 
 const emit = defineEmits<{
   drop: [detail: GridDropDetail]
@@ -140,11 +145,12 @@ function cursorClass(row: number, column: number): string {
     <div class="inline-block select-none">
       <!-- Column header -->
       <div class="flex">
-        <div class="w-6 h-5 shrink-0" />
+        <div :class="lg ? 'w-7 h-6 shrink-0' : 'w-6 h-5 shrink-0'" />
         <div
           v-for="col in colNumbers"
           :key="`col-${col}`"
-          class="w-6 h-5 shrink-0 flex items-center justify-center text-[10px] font-medium text-muted tabular-nums"
+          class="shrink-0 flex items-center justify-center font-medium text-muted tabular-nums"
+          :class="lg ? 'w-10 h-6 text-xs' : 'w-6 h-5 text-[10px]'"
         >
           {{ col }}
         </div>
@@ -156,13 +162,17 @@ function cursorClass(row: number, column: number): string {
         :key="`row-${row}`"
         class="flex"
       >
-        <div class="w-6 h-6 shrink-0 flex items-center justify-center text-[10px] font-medium text-muted">
+        <div
+          class="shrink-0 flex items-center justify-center font-medium text-muted"
+          :class="lg ? 'w-7 h-10 text-xs' : 'w-6 h-6 text-[10px]'"
+        >
           {{ rowToLetters(row) }}
         </div>
         <div
           v-for="col in colNumbers"
           :key="`cell-${row}-${col}`"
-          class="w-6 h-6 shrink-0 p-0.5"
+          class="shrink-0"
+          :class="lg ? 'w-10 h-10 p-1' : 'w-6 h-6 p-0.5'"
           data-grid-cell
           :data-grid-id="parentSlug"
           :data-level="level"
@@ -172,8 +182,8 @@ function cursorClass(row: number, column: number): string {
         >
           <NTooltip :content="tooltip(row, col)">
             <div
-              class="w-full h-full rounded-sm border transition-colors"
-              :class="[cellClass(row, col), cursorClass(row, col)]"
+              class="w-full h-full border transition-colors"
+              :class="[lg ? 'rounded-md' : 'rounded-sm', cellClass(row, col), cursorClass(row, col)]"
               :role="mode === 'select' ? 'checkbox' : undefined"
               :aria-checked="mode === 'select' ? isSelected(row, col) : undefined"
               :aria-label="tooltip(row, col)"

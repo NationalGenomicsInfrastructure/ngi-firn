@@ -139,6 +139,7 @@ const infoFields = computed(() => {
 
       <NCard
         card="outline-gray"
+        class="border-t-6 border-t-primary-100 dark:border-t-primary-900"
         :_card-content="{ class: 'space-y-4 py-4' }"
       >
         <header class="flex flex-wrap items-center justify-between gap-3">
@@ -195,13 +196,6 @@ const infoFields = computed(() => {
             :class="field.label === 'Description' ? 'sm:col-span-2' : undefined"
           />
         </div>
-
-        <NSeparator />
-
-        <InventoryContainerCapacityIndicator
-          :slug="container.slug"
-          :capacity="container.capacity"
-        />
 
         <NSeparator />
 

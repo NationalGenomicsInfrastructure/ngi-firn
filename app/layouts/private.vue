@@ -10,7 +10,14 @@ watch(loggedIn, () => {
 const route = useRoute()
 const breadcrumbItems = computed(() => {
   const paths = route.path.split('/').filter(Boolean)
-  return paths.map((path, index) => ({
+  let decodedPath = paths
+  try {
+    decodedPath = paths.map(decodeURIComponent)
+  }
+  catch {
+    // Fallback in case of malformed percent-encoding in the URL
+  }
+  return decodedPath.map((path, index) => ({
     label: path.charAt(0).toUpperCase() + path.slice(1),
     to: `/${paths.slice(0, index + 1).join('/')}`
   }))
