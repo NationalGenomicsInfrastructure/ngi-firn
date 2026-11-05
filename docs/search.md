@@ -1,8 +1,7 @@
 # Global search (Meilisearch)
 
 NGI Firn's global inventory/project search (`/inventory/search`) is backed by a
-self-hosted **Meilisearch** Community Edition instance. Meilisearch holds only
-**derived** data projected from CouchDB — it is never a source of truth, audit
+self-hosted **Meilisearch** Community Edition instance. Meilisearch holds only copies of data from CouchDB — it is never a source of truth, audit
 trail, or the target of navigation/actions. It can be rebuilt from CouchDB at any
 time.
 
@@ -43,7 +42,7 @@ See `.env.example`. Server-only variables:
 | Variable | Purpose |
 |----------|---------|
 | `MEILISEARCH_HOST` | Engine URL. Unset disables search. Container default `http://127.0.0.1:7700`. |
-| `MEILISEARCH_API_KEY` | Master/API key. **Required** when the engine runs with `--env production`. Never exposed to the browser. |
+| `MEILISEARCH_API_KEY` | Master/API key. **Required** for `pnpm dev:with-search` and both containers. Never exposed to the browser. |
 | `MEILISEARCH_INDEX_PREFIX` | Optional index namespace (default `firn`). Index names are additionally scoped by `CLOUDANT_DATABASE`. |
 | `MEILISEARCH_SYNC_INTERVAL_MS` | Optional incremental-sync interval (default 30000, min 2000). |
 | `MEILISEARCH_REBUILD_INTERVAL_MS` | Optional full-rebuild interval (default 86400000 / 24h, min 60000). Inventory changes are rare; the incremental sync keeps the index fresh, and admins can rebuild on demand from `/administration/search`. |
@@ -65,8 +64,12 @@ This runs `container_images/firn-entrypoint.sh` with `MEILI_DB_PATH=./.meili_dat
 bash-3.2 compatible, so it works with the stock macOS bash. The engine's data
 directory, dumps and snapshots are kept as siblings under that folder
 (`./.meili_data/data.ms`, `./.meili_data/dumps`, `./.meili_data/snapshots`).
-It starts in Meilisearch's `--env development` profile (no master key); set
-`MEILISEARCH_API_KEY` in the environment to run the hardened production profile.
+The command loads `.env` before starting either process; exported environment
+variables take precedence. Set `MEILISEARCH_API_KEY` in `.env` or export it
+(generate a strong key with `openssl rand -base64 32`). The supervisor always
+passes this key via `--master-key` and uses Meilisearch's `--env production`
+profile, even while Nuxt runs in development mode. A missing or empty key aborts
+startup instead of running an unauthenticated engine.
 
 Prerequisite: a local `meilisearch` binary on `PATH`
 (<https://www.meilisearch.com/docs/learn/getting_started/installation>).
@@ -88,6 +91,7 @@ alongside Nuxt via `container_images/firn-entrypoint.sh` (with `dumb-init` as
 PID 1 for signal forwarding and zombie reaping). Meilisearch binds to
 `127.0.0.1:7700` **only** and is never published; its index lives in the
 dedicated `ngi_firn_meili_data` volume mounted at `/data/meili`.
+Both images require `MEILISEARCH_API_KEY` in their runtime environment.
 
 The pinned version is `MEILISEARCH_VERSION` in both Dockerfiles and the CI
 workflow — keep them in sync. **Verify the release and its checksum** against

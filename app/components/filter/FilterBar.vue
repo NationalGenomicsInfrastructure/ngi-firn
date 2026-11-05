@@ -28,7 +28,7 @@ withDefaults(defineProps<{
   <section
     :aria-label="label ?? title"
     :class="UI_ACCENT_EDGE"
-    class="overflow-hidden rounded-2xl border border-base bg-background shadow-sm transition focus-within:ring-4 focus-within:ring-primary-500/15 focus-within:shadow-lg mb-8"
+    class="overflow-hidden rounded-lg border border-base bg-background shadow-sm transition focus-within:ring-4 focus-within:ring-primary-500/15 focus-within:shadow-lg mb-8"
   >
     <div
       v-if="$slots.primary"

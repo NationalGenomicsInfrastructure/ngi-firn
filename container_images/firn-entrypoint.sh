@@ -20,6 +20,11 @@
 
 set -uo pipefail
 
+if [[ -z "${MEILISEARCH_API_KEY:-}" ]]; then
+  echo "MEILISEARCH_API_KEY is required to start Meilisearch (including development). Set it in .env for pnpm dev:with-search, or export it." >&2
+  exit 1
+fi
+
 MEILI_HTTP_ADDR="127.0.0.1:7700"
 # $MEILI_DB_PATH is the writable ROOT (the container volume / local folder). The
 # engine's data directory, dumps and snapshots are kept as SIBLINGS under it —
@@ -35,15 +40,6 @@ mkdir -p "$MEILI_ROOT" "$MEILI_DUMP_DIR" "$MEILI_SNAPSHOT_DIR"
 # Make the application talk to the local engine unless an external host was
 # explicitly configured (e.g. a managed Meilisearch cluster).
 export MEILISEARCH_HOST="${MEILISEARCH_HOST:-http://127.0.0.1:7700}"
-
-# Meilisearch refuses to boot in `--env production` without a master key. When a
-# key is provided we run hardened production mode; otherwise fall back to the
-# development profile so local/staging images still start (search stays private
-# either way because it only listens on loopback).
-MEILI_ENV_ARGS=(--env development)
-if [[ -n "${MEILISEARCH_API_KEY:-}" ]]; then
-  MEILI_ENV_ARGS=(--env production --master-key "$MEILISEARCH_API_KEY")
-fi
 
 MEILI_PID=""
 APP_PID=""
@@ -61,7 +57,8 @@ meilisearch \
   --dump-dir "$MEILI_DUMP_DIR" \
   --snapshot-dir "$MEILI_SNAPSHOT_DIR" \
   --no-analytics \
-  "${MEILI_ENV_ARGS[@]}" &
+  --env production \
+  --master-key "$MEILISEARCH_API_KEY" &
 MEILI_PID=$!
 
 "$@" &

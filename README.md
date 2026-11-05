@@ -51,6 +51,7 @@ This name was chosen for the application as it aptly reflects the cold storage c
 #### Functionality
 
 - [Inventory](docs/inventory.md)
+- [Searching the inventory](docs/search.md)
 
 ### Running the application
 
