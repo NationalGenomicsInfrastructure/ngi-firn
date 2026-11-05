@@ -2,7 +2,7 @@
 import { useQuery as useQueryColada } from '@pinia/colada'
 import type { ContainerCapacityEntry } from '~~/schemas/inventory/container'
 import type { AcceptedChildCapacity } from '~~/types/inventory'
-import type { GridDragPayload, GridDropDetail } from '~/composables/useGridDrag'
+import { useGridDrag, type GridDragPayload, type GridDropDetail } from '~/composables/useGridDrag'
 import { getChildTypeMeta } from '~/utils/inventory/item'
 import { containerCapacitySummaryQuery, gridOccupancyQuery } from '~/utils/queries/inventory/containers'
 import { cellKey, gridLabel, type GridCoordinate } from '~/utils/inventory/grid'
@@ -121,6 +121,35 @@ const levelTabs = computed(() => {
   }))
 })
 
+// Cross-level moves: hovering a level tab while dragging switches to that level after a short delay.
+const TAB_HOVER_DELAY_MS = 400
+const activeTab = ref('level-1')
+const { pointer, isDragging } = useGridDrag()
+let tabHoverTimer: ReturnType<typeof setTimeout> | null = null
+let hoveredTab: string | null = null
+
+function clearTabHover() {
+  if (tabHoverTimer) clearTimeout(tabHoverTimer)
+  tabHoverTimer = null
+  hoveredTab = null
+}
+
+watch([pointer, isDragging], () => {
+  if (!isDragging.value) return clearTabHover()
+  const trigger = document.elementFromPoint(pointer.value.x, pointer.value.y)
+    ?.closest<HTMLElement>('[data-level-tab]')
+  const value = trigger?.dataset.levelTab ?? null
+  if (value === hoveredTab) return
+  clearTabHover()
+  if (!value || value === activeTab.value) return
+  hoveredTab = value
+  tabHoverTimer = setTimeout(() => {
+    activeTab.value = value
+    clearTabHover()
+  }, TAB_HOVER_DELAY_MS)
+})
+onBeforeUnmount(clearTabHover)
+
 const dragPayload = ref<GridDragPayload | null>(null)
 const dropTarget = ref<GridCoordinate | null>(null)
 const isPlacementOpen = ref(false)
@@ -150,33 +179,37 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
 </script>
 
 <template>
-  <section
+  <NCard
     v-if="!isEmpty"
-    class="overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 border-t-6 border-t-primary-100 dark:border-t-primary-900"
+    card="outline-gray"
+    class="overflow-hidden bg-white dark:bg-gray-900 border-t-6 border-t-primary-100 dark:border-t-primary-900"
+    :_card-header="{ class: '!p-0 border-b border-gray-200 dark:border-gray-800' }"
+    :_card-content="{ class: '!p-0' }"
   >
-    <!-- Header -->
-    <header class="flex flex-wrap items-center justify-between gap-3 px-6 py-5 border-b border-gray-200 dark:border-gray-800">
-      <div class="flex items-center gap-3">
-        <NIcon
-          name="i-lucide-package-open"
-          class="text-primary-500 text-xl"
-        />
-        <div>
-          <h4 class="text-base font-semibold leading-tight">
-            Occupancy and capacity
-          </h4>
-          <p class="text-sm text-muted mt-0.5">
-            <template v-if="grid">
-              {{ grid.levels > 1 ? `${grid.rows} × ${grid.columns} × ${grid.levels}` : `${grid.rows} × ${grid.columns}` }}
-              · {{ grid.total }} positions · {{ grid.label }}
-            </template>
-            <template v-else>
-              Capacity per type
-            </template>
-          </p>
+    <template #header>
+      <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5 w-full">
+        <div class="flex items-center gap-3">
+          <NIcon
+            name="i-lucide-package-open"
+            class="text-primary-500 text-xl"
+          />
+          <div>
+            <h4 class="text-base font-semibold leading-tight">
+              Occupancy and capacity
+            </h4>
+            <p class="text-sm text-muted mt-0.5">
+              <template v-if="grid">
+                {{ grid.levels > 1 ? `${grid.rows} × ${grid.columns} × ${grid.levels}` : `${grid.rows} × ${grid.columns}` }}
+                · {{ grid.total }} positions · {{ grid.label }}
+              </template>
+              <template v-else>
+                Capacity per type
+              </template>
+            </p>
+          </div>
         </div>
       </div>
-    </header>
+    </template>
 
     <!-- Count layout -->
     <div
@@ -329,13 +362,14 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
 
         <NTabs
           v-if="grid.levels > 1"
-          default-value="level-1"
+          v-model="activeTab"
         >
           <NTabsList>
             <NTabsTrigger
               v-for="tab in levelTabs"
               :key="`trigger-${tab.level}`"
               :value="`level-${tab.level}`"
+              :data-level-tab="`level-${tab.level}`"
             >
               Level {{ tab.level }}
               <span class="ml-1 text-xs text-muted tabular-nums">{{ tab.stored }}/{{ tab.total }}</span>
@@ -393,5 +427,5 @@ const isEmpty = computed(() => !props.capacity || props.capacity.length === 0)
         />
       </div>
     </div>
-  </section>
+  </NCard>
 </template>
