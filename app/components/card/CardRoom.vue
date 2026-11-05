@@ -23,8 +23,8 @@ const isAdmin = computed(() => user.value?.isAdminClientside ?? false)
 <template>
   <NCard
     card="outline-gray"
-    class="h-full flex flex-col border-l-6 border-l-primary-700 dark:border-l-primary-500"
-    :class="linkToDetails ? 'transition-colors hover:border-primary-400 dark:hover:border-primary-500' : undefined"
+    class="h-full flex flex-col border-t-6 border-t-primary-100 dark:border-t-primary-900"
+    :class="linkToDetails ? 'transition-colors hover:border-primary-200 dark:hover:border-primary-700' : undefined"
     :_card-content="{ class: 'flex flex-1 flex-col min-h-0' }"
   >
     <div class="flex flex-1 flex-col py-4 min-h-0">

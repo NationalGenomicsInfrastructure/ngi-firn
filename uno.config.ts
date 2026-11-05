@@ -64,6 +64,13 @@ export default defaultConfig({
     'alert-border-amber',
     'alert-border-red',
     'alert-border-indigo',
+    'alert-border-error',
+    '[alert~="border-primary"]',
+    '[alert~="border-emerald"]',
+    '[alert~="border-amber"]',
+    '[alert~="border-red"]',
+    '[alert~="border-indigo"]',
+    '[alert~="border-error"]',
     // Badge colour variants bound dynamically (e.g. FLAG_META / ACTION_TYPE_META in
     // app/utils/inventory/actionLog.ts, ROOM_TYPE_BADGE_STYLES in app/utils/inventory/room.ts).
     // NBadge (@una-ui) applies the variant as a `badge="solid-<color>"` ATTRIBUTE, not a class,

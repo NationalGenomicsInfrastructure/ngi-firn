@@ -49,7 +49,7 @@ const infoFields = computed(() => [
 <template>
   <NCard
     card="outline-gray"
-    class="h-full flex flex-col transition-colors hover:border-primary-400 dark:hover:border-primary-500"
+    class="h-full flex flex-col border-t-6 border-t-primary-100 dark:border-t-primary-900 transition-colors hover:border-primary-200 dark:hover:border-primary-700"
     :_card-content="{ class: 'flex flex-1 flex-col min-h-0' }"
   >
     <div class="flex flex-1 flex-col py-4 min-h-0">

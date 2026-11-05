@@ -57,14 +57,14 @@
     "db:views:projects": "tsx scripts/pull-project-views.ts"
   },
   "dependencies": {
-    "@ibm-cloud/cloudant": "^0.12.26",
+    "@ibm-cloud/cloudant": "^0.12.27",
     "@nuxthub/core": "^0.10.12",
     "@pinia/colada": "^1.4.9",
     "@pinia/colada-nuxt": "^1.2.1",
     "@pinia/nuxt": "^1.0.3",
     "@tanstack/vue-table": "^8.21.3",
-    "@trpc/client": "^11.22.1",
-    "@trpc/server": "^11.22.1",
+    "@trpc/client": "^11.24.0",
+    "@trpc/server": "^11.24.0",
     "@una-ui/nuxt": "0.67.10",
     "@vee-validate/zod": "^4.15.1",
     "@vueuse/core": "^15.0.0",
@@ -73,7 +73,7 @@
     "jsbarcode": "^3.12.3",
     "luxon": "^3.7.2",
     "meilisearch": "^0.62.0",
-    "nuxt": "^4.6.3",
+    "nuxt": "^4.6.4",
     "nuxt-auth-utils": "^0.5.34",
     "pdfmake": "^0.3.13",
     "pinia": "^4.1.0",
@@ -85,7 +85,7 @@
   },
   "devDependencies": {
     "@antithesishq/bombadil": "0.7.10",
-    "@iconify-json/lucide": "^1.2.150",
+    "@iconify-json/lucide": "^1.2.151",
     "@iconify-json/radix-icons": "^1.2.6",
     "@iconify-json/simple-icons": "^1.2.101",
     "@iconify-json/tabler": "^1.2.43",
@@ -106,7 +106,7 @@
     "unocss": "66.12.0",
     "vitest": "^5.1.0",
     "vue-tsc": "~3.2.9",
-    "wrangler": "^4.156.2"
+    "wrangler": "^4.157.0"
   },
   "packageManager": "pnpm@12.16.1"
 }

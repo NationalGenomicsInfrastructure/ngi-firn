@@ -17,28 +17,26 @@ const banner = computed(() => {
   }
   switch (freshness.phase) {
     case 'unavailable':
-      return { icon: 'i-lucide-cloud-off', card: 'soft-error', text: freshness.message ?? 'Search is currently unavailable.' }
+      return { icon: 'i-lucide-cloud-off', card: 'border-error', text: freshness.message ?? 'Search is currently unavailable.' }
     case 'initializing':
-      return { icon: 'i-lucide-loader', card: 'soft-yellow', text: 'The search index is still being built. Results may be incomplete.' }
+      return { icon: 'i-lucide-loader', card: 'border-amber', text: 'The search index is still being built. Results may be incomplete.' }
     case 'stale':
-      return { icon: 'i-lucide-clock-alert', card: 'soft-yellow', text: freshness.message ?? 'Search results may be slightly out of date.' }
+      return { icon: 'i-lucide-clock-alert', card: 'border-emerald', text: freshness.message ?? 'Search results may be slightly out of date.' }
     default:
       return freshness.projectsConfigured
         ? null
-        : { icon: 'i-lucide-info', card: 'soft-gray', text: 'Project links are not available; only direct inventory matches are shown.' }
+        : { icon: 'i-lucide-info', card: 'border-gray', text: 'Project links are not available; only direct inventory matches are shown.' }
   }
 })
 </script>
 
 <template>
-  <NCard
+  <NAlert
     v-if="banner"
-    :card="banner.card"
+    :alert="banner.card"
     class="mb-4"
-  >
-    <div class="flex items-center gap-2 text-sm">
-      <NIcon :name="banner.icon" />
-      <span>{{ banner.text }}</span>
-    </div>
-  </NCard>
+    title="Search Status"
+    :description="banner.text"
+    :icon="banner.icon"
+  />
 </template>
