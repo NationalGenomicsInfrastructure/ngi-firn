@@ -18,8 +18,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ done: [] }>()
 
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
-
 // Fixed height keeps the dialog (and the tab bar) from jumping when switching tabs.
 const TAB_CONTENT_STYLE = 'pt-4 h-[28rem] max-h-[55vh] overflow-y-auto'
 
@@ -30,18 +28,15 @@ const DIALOG_CONTENT_STYLE = 'top-[8vh] translate-y-0 max-h-[84vh] overflow-y-au
 const isOpen = ref(false)
 
 const {
-  projectIdPrefixValue,
-  setProjectIdPrefixValue,
-  projectNameFilterValue,
-  setProjectNameFilterValue,
+  queryInput,
   isLoading,
   isError,
   error,
   responseData,
-  scanTruncated,
-  scanAtMax,
-  retrieveMore,
-  onValidating,
+  results,
+  isDegraded,
+  canShowMore,
+  showMore,
   reset
 } = useProjectSearch({ enabled: isOpen })
 const { linkEntitiesToProject, isLoading: isLinking } = useLinkMutation()
@@ -60,7 +55,7 @@ const activeTab = computed({
 })
 
 const count = computed(() => props.entities.length)
-const projects = computed(() => responseData.value?.available ? responseData.value.items : [])
+const projects = computed(() => results.value?.items ?? [])
 
 const alreadyLinked = computed(() => selectedProjectId.value
   ? props.entities.filter(entity => entity.projectRefs?.some(ref => ref.slug === selectedProjectId.value)).length
@@ -176,50 +171,22 @@ function onDialogOpenChange(open: boolean) {
           value="search"
           :class="[TAB_CONTENT_STYLE, 'space-y-4']"
         >
-          <form
-            class="flex flex-wrap items-end gap-4"
-            @submit.prevent="onValidating()"
-          >
-            <NFormField
-              name="ngi_project_id"
-              label="Project ID"
-              class="min-w-[8rem] flex-1"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
-            >
-              <NInput
-                :model-value="projectIdPrefixValue ?? ''"
-                placeholder="e.g. P12345"
-                @update:model-value="(v: unknown) => setProjectIdPrefixValue((v as string) ?? '')"
-              />
-            </NFormField>
-            <NFormField
-              name="project_name_filter"
-              label="Project name"
-              class="min-w-[8rem] flex-1"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
-            >
-              <NInput
-                :model-value="projectNameFilterValue ?? ''"
-                placeholder="e.g. P.Långstrump_45_11"
-                @update:model-value="(v: unknown) => setProjectNameFilterValue((v as string) ?? '')"
-              />
-            </NFormField>
-            <NButton
-              type="submit"
-              label="Search"
-              leading="i-lucide-search"
-              btn="soft-primary hover:outline-primary"
-            />
-          </form>
-
-          <NAlert
-            v-if="isLoading"
-            alert="border-gray"
-            title="Loading projects..."
-            icon="i-lucide-loader-2"
+          <NInput
+            :model-value="queryInput"
+            placeholder="Project ID, name, application, people…"
+            leading="i-lucide-search"
+            aria-label="Search projects"
+            @update:model-value="queryInput = ($event as string) ?? ''"
           />
+
+          <p
+            v-if="isDegraded"
+            class="text-xs text-muted"
+          >
+            Search index unavailable: matching project ID prefixes and names only.
+          </p>
           <NAlert
-            v-else-if="isError"
+            v-if="isError"
             alert="border-error"
             title="Error loading projects"
             :description="error != null ? String(error) : 'Something went wrong. Please try again.'"
@@ -232,7 +199,13 @@ function onDialogOpenChange(open: boolean) {
             description="Please try again later."
             icon="i-lucide-database-off"
           />
-          <template v-else-if="responseData?.available">
+          <NAlert
+            v-else-if="isLoading && !responseData"
+            alert="border-gray"
+            title="Loading projects..."
+            icon="i-lucide-loader-2"
+          />
+          <template v-else-if="results">
             <p
               v-if="projects.length === 0"
               class="text-sm text-muted"
@@ -272,19 +245,16 @@ function onDialogOpenChange(open: boolean) {
               </li>
             </ul>
             <div
-              v-if="scanTruncated"
-              class="flex flex-wrap items-center gap-3 text-sm text-muted"
+              v-if="canShowMore"
+              class="flex justify-center"
             >
-              <span>
-                {{ scanAtMax ? 'There may be more matches than we can scan. Refine the search to see the rest.' : 'More projects may match further down the list.' }}
-              </span>
               <NButton
-                v-if="!scanAtMax"
                 size="sm"
                 btn="soft-primary"
                 leading="i-lucide-chevrons-down"
-                label="Retrieve more"
-                @click="retrieveMore()"
+                label="Show more"
+                :loading="isLoading"
+                @click="showMore()"
               />
             </div>
           </template>

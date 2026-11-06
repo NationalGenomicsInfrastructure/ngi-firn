@@ -11,7 +11,7 @@ time.
 CouchDB (inventory + read-only projects DB)
   │  rebuild / _changes sync  (server/search/indexer.ts, server/plugins/search-indexer.ts)
   ▼
-Meilisearch  (two indexes: inventory + projects, scoped by env + source DB)
+Meilisearch  (three indexes: inventory, linked_projects, project_catalog; scoped by env + source DB)
   ▲
   │  SearchService (server/search/service.ts) — bounded, filtered queries
 tRPC  inventory.search.{search,projectGroupInventory,status}  (authedProcedure)
@@ -31,9 +31,41 @@ Vue  app/pages/inventory/search.vue
   the `inventory.search.rebuild` tRPC `adminProcedure`, which runs the rebuild
   detached (the request returns immediately as `accepted`/`already-running`) and
   reports index freshness, including the last full-rebuild time.
+- **Project catalog (`/projects`)**: a third index, `…__project_catalog`, holds *every*
+  project (not only those with inventory links, unlike the `…__linked_projects` index used by the
+  inventory search). It powers the "Find projects" page and the "Link to project" dialog through
+  `projects.search` / `projects.filterOptions` (`firnUserProcedure`). See below.
 - **Graceful degradation**: when `MEILISEARCH_HOST` is unset or the engine is
   unreachable, the feature reports an explicit `unavailable`/`stale` state and
   the rest of the application is unaffected.
+
+## Project catalog
+
+- **Source**: the `project/summary` view of the projects DB, paged **without `include_docs`**
+  (`ProjectService.summaryRowPages`). The summary value is sample-free; full project documents embed
+  every sample and must never be bulk-loaded.
+- **Status** is taken from the view *key* (`open` iff LIMS-sourced without `close_date`), not from
+  `status_fields.status`, so the facet always matches the CouchDB path.
+- **Freshness**: a second `_changes` cursor follows the projects DB (`lastProjectsSeq`, own
+  `syncProjectCatalogChanges()` timer, same interval as the inventory sync). The feed is read without
+  docs; changed ids are resolved to summary rows via `firn-projects/doc_project_ids`. A full rebuild
+  (with the inventory rebuild) reconciles everything.
+- **App-owned views**: `server/database/couchdb-views/firn-projects.json` is upserted into the
+  *otherwise read-only* projects DB by `ensureProjectsViews()` (startup, `init-db`, catalog
+  rebuild). It never throws; if the credentials cannot write there, add the design doc manually.
+  Views: `coordinators`, `lab_responsibles`, `bioinfo_responsibles` (`_count`, `group=true`; fallback
+  dropdown values) and `doc_project_ids` (doc id → project id; incremental sync).
+- **Field allowlist**: only named fields are indexed (see `toProjectCatalogDocument`); sample data,
+  delivery paths, links, order details and arbitrary properties are not. Other databases can be
+  added later by enriching the projection.
+- **Organism is search-only**: it is free text in the projects DB (sometimes whole paragraphs), so it
+  is indexed as a searchable attribute but is deliberately neither a filter nor a facet.
+- **Tuning**: no typo tolerance on `projectId` (P12345 must not match P12346; prefix search still
+  works), `_` and `.` are separator tokens, `pagination.maxTotalHits` is raised to 20 000.
+- **Fallback**: when the catalog is not servable, `projects.search` answers from the CouchDB
+  summary view (free text → ID prefix `P123` or name substring; exact multi-value people/application
+  filters over the scan window) and returns `source: 'couchdb'`; the page shows a "basic search"
+  banner. The dropdown values then come from the `firn-projects` views.
 
 ## Configuration
 

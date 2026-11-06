@@ -3,7 +3,10 @@ import type {
   ProjectSingleResultSchema,
   ProjectListResultSchema,
   ProjectListWithDetailsResultSchema,
-  ListProjectsSummaryInputSchema
+  ListProjectsSummaryInputSchema,
+  ProjectSearchResultSchema,
+  ProjectFilterOptionsResultSchema,
+  SearchProjectsInputSchema
 } from '~~/schemas/projects'
 import type { FirnProjectBookmark } from '~~/types/projects-firn'
 import { defineQueryOptions } from '@pinia/colada'
@@ -14,6 +17,9 @@ export const PROJECTS_QUERY_KEYS = {
   available: () => [...PROJECTS_QUERY_KEYS.root, 'available'] as const,
   summaries: (params?: ListProjectsSummaryInputSchema) => [...PROJECTS_QUERY_KEYS.root, 'summaries', params ?? {}] as const,
   summariesWithDetails: (params?: ListProjectsSummaryInputSchema) => [...PROJECTS_QUERY_KEYS.root, 'summariesWithDetails', params ?? {}] as const,
+  /** Meilisearch-backed (CouchDB fallback) project search; embeds a stable serialization of the debounced request. */
+  search: (params: SearchProjectsInputSchema) => [...PROJECTS_QUERY_KEYS.root, 'search', JSON.stringify(params)] as const,
+  filterOptions: () => [...PROJECTS_QUERY_KEYS.root, 'filterOptions'] as const,
   /** Single project by project_id (public identifier, used in URLs). */
   project: (projectId: string) => [...PROJECTS_QUERY_KEYS.root, 'project', projectId] as const,
   /** Project bookmarks for the current user. */
@@ -54,6 +60,27 @@ export const projectSummariesQueryWithDetails = defineQueryOptions(
 )
 
 export type ProjectSummariesQueryWithDetailsResult = ProjectListWithDetailsResultSchema
+
+// Query for the full-text project search (catalog index, degrading to the CouchDB summary view)
+export const projectSearchQuery = defineQueryOptions(
+  (params: SearchProjectsInputSchema) => ({
+    key: PROJECTS_QUERY_KEYS.search(params),
+    query: (): Promise<ProjectSearchResultSchema> => {
+      const { $trpc } = useNuxtApp()
+      return $trpc.projects.search.query(params)
+    }
+  })
+)
+
+// Unique coordinators / lab & bioinfo responsibles / applications for the filter dropdowns
+export const projectFilterOptionsQuery = defineQueryOptions({
+  key: PROJECTS_QUERY_KEYS.filterOptions(),
+  query: (): Promise<ProjectFilterOptionsResultSchema> => {
+    const { $trpc } = useNuxtApp()
+    return $trpc.projects.filterOptions.query()
+  },
+  staleTime: 5 * 60 * 1000
+})
 
 // Query for a single project by project_id (public identifier, e.g. URL slug)
 export const projectQuery = defineQueryOptions(

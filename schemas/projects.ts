@@ -5,6 +5,10 @@ import { StringOrUndefined, NumberOrUndefined, DateStringOrUndefined } from './b
 // Search / listing (summary view row value)
 // =============================================================================
 
+/* Markers wrapped around matched terms in catalog-search highlights (control chars; split client-side, never rendered as HTML). */
+export const SEARCH_HIGHLIGHT_PRE = '\u0001'
+export const SEARCH_HIGHLIGHT_POST = '\u0002'
+
 export const projectSummaryListItemSchema = z.object({
   project_id: z.string(),
   project_name: z.string().optional(),
@@ -16,7 +20,17 @@ export const projectSummaryListItemSchema = z.object({
   affiliation: z.string().optional(),
   contact: z.string().optional(),
   priority: z.string().nullable().optional(),
-  modification_time: z.string().optional()
+  modification_time: z.string().optional(),
+  organism: z.string().nullable().optional(),
+  coordinator: z.string().nullable().optional(),
+  lab_responsible: z.string().nullable().optional(),
+  bioinfo_responsible: z.string().nullable().optional(),
+  /* Only present for Meilisearch results: matched terms wrapped in SEARCH_HIGHLIGHT_PRE/POST. */
+  highlights: z.object({
+    project_name: z.string().optional(),
+    application: z.string().optional(),
+    snippet: z.string().optional()
+  }).optional()
 }).strict()
 
 export type ProjectSummaryListItemSchema = z.infer<typeof projectSummaryListItemSchema>
@@ -217,3 +231,62 @@ export const projectListWithDetailsResultSchema = z.discriminatedUnion('availabl
 ])
 
 export type ProjectListWithDetailsResultSchema = z.infer<typeof projectListWithDetailsResultSchema>
+
+// =============================================================================
+// Project search (Meilisearch catalog with CouchDB fallback)
+// =============================================================================
+
+const filterValuesSchema = z.array(z.string().trim().min(1).max(200)).max(50).optional()
+
+/** Input for projects.search: one free-text query plus structured, multi-select filters (OR within a field, AND across fields). */
+export const searchProjectsInputSchema = z.object({
+  query: z.string().trim().max(200).default(''),
+  status: z.enum(['open', 'closed']).optional(),
+  applications: filterValuesSchema,
+  coordinators: filterValuesSchema,
+  labResponsibles: filterValuesSchema,
+  bioinfoResponsibles: filterValuesSchema,
+  /** Page window; the UI raises it ("Show more") instead of paging by offset. */
+  limit: z.number().int().min(1).max(1000).default(100),
+  /** CouchDB fallback only: scan depth, raised by "Retrieve more". Clamped server-side. */
+  scan_limit: z.number().int().positive().optional()
+}).strict()
+
+export type SearchProjectsInputSchema = z.input<typeof searchProjectsInputSchema>
+export type SearchProjectsInput = z.output<typeof searchProjectsInputSchema>
+
+export const projectSearchResultSchema = z.discriminatedUnion('available', [
+  z.object({
+    available: z.literal(true),
+    /** `meilisearch` = catalog index; `couchdb` = degraded fallback over the summary view. */
+    source: z.enum(['meilisearch', 'couchdb']),
+    items: z.array(projectSummaryListItemSchema),
+    total: z.number(),
+    totalIsEstimated: z.boolean(),
+    /** More results exist beyond `limit` (Meilisearch) or beyond the scanned window (CouchDB). */
+    hasMore: z.boolean(),
+    /** CouchDB fallback only. */
+    scan_at_max: z.boolean().optional()
+  }),
+  z.object({ available: z.literal(false) })
+])
+
+export type ProjectSearchResultSchema = z.infer<typeof projectSearchResultSchema>
+
+export const projectFilterOptionSchema = z.object({ value: z.string(), count: z.number() })
+
+export type ProjectFilterOptionSchema = z.infer<typeof projectFilterOptionSchema>
+
+export const projectFilterOptionsResultSchema = z.discriminatedUnion('available', [
+  z.object({
+    available: z.literal(true),
+    source: z.enum(['meilisearch', 'couchdb']),
+    applications: z.array(projectFilterOptionSchema),
+    coordinators: z.array(projectFilterOptionSchema),
+    labResponsibles: z.array(projectFilterOptionSchema),
+    bioinfoResponsibles: z.array(projectFilterOptionSchema)
+  }),
+  z.object({ available: z.literal(false) })
+])
+
+export type ProjectFilterOptionsResultSchema = z.infer<typeof projectFilterOptionsResultSchema>

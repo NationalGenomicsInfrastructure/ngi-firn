@@ -45,8 +45,14 @@ export function inventoryIndexName(): string {
   return `${indexScope()}__inventory`
 }
 
-export function projectIndexName(): string {
-  return `${indexScope()}__projects`
+/* Only projects with at least one explicit inventory link; serves the inventory search's project groups. */
+export function linkedProjectIndexName(): string {
+  return `${indexScope()}__linked_projects`
+}
+
+/* All-projects catalog backing `/projects` (distinct from the link-scoped `linked_projects` index above). */
+export function projectCatalogIndexName(): string {
+  return `${indexScope()}__project_catalog`
 }
 
 /* Suffix used for the transient shadow index built during an atomic rebuild+swap. */
@@ -101,7 +107,7 @@ export const INVENTORY_FILTERABLE_ATTRIBUTES = [
 
 export const INVENTORY_SORTABLE_ATTRIBUTES = ['updatedAtTs', 'name']
 
-export const PROJECT_SEARCHABLE_ATTRIBUTES = [
+export const LINKED_PROJECT_SEARCHABLE_ATTRIBUTES = [
   'projectId',
   'projectName',
   'application',
@@ -118,6 +124,43 @@ export const PROJECT_SEARCHABLE_ATTRIBUTES = [
   'comments'
 ]
 
-export const PROJECT_FILTERABLE_ATTRIBUTES = ['projectId', 'docId', 'status']
+export const LINKED_PROJECT_FILTERABLE_ATTRIBUTES = ['projectId', 'docId', 'status']
 
-export const PROJECT_SORTABLE_ATTRIBUTES = ['linkedCount', 'projectName']
+export const LINKED_PROJECT_SORTABLE_ATTRIBUTES = ['linkedCount', 'projectName']
+
+/* ------------------------------------------------------------------ */
+/* Project catalog index settings (`/projects`)                         */
+/* ------------------------------------------------------------------ */
+
+/* Order matters: Meilisearch ranks earlier attributes higher. */
+export const CATALOG_SEARCHABLE_ATTRIBUTES = [
+  'projectId',
+  'projectName',
+  'application',
+  'organism',
+  'affiliation',
+  'contact',
+  'coordinator',
+  'labResponsible',
+  'bioinfoResponsible',
+  'customerReference',
+  'referenceGenome',
+  'projectDescription',
+  'comments'
+]
+
+export const CATALOG_FILTERABLE_ATTRIBUTES = [
+  'status',
+  'application',
+  'affiliation',
+  'priority',
+  'coordinator',
+  'labResponsible',
+  'bioinfoResponsible'
+]
+
+export const CATALOG_SORTABLE_ATTRIBUTES = ['modificationTs', 'openDateTs', 'projectId', 'noSamples']
+
+/* Upper bound for reachable hits (Meilisearch defaults to 1000) and distinct facet values. */
+export const CATALOG_MAX_TOTAL_HITS = 20_000
+export const CATALOG_MAX_VALUES_PER_FACET = 5000

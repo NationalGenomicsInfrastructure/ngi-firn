@@ -9,6 +9,11 @@
  * getProjectByProjectId(projectId) - Fetch a single project by project_id (uses project_id view)
  * listProjectsSummary(options) - List/search via summary view, top-level fields only (lean)
  * listProjectsSummaryWithDetails(options) - Same as above with full view value (details, order_details, etc.)
+ * listFilterOptionsFromViews() - Unique coordinators / lab / bioinfo responsibles via the app-owned firn-projects views
+ *
+ * SEARCH INDEXING (used by server/search/indexer.ts):
+ * summaryRowPages(status, pageSize) - Page the whole summary view without include_docs (sample-free rows)
+ * getSummaryRowsByDocIds(docIds) - Resolve changed document ids to their current summary rows
  *
  * INVENTORY CROSS-REFERENCES:
  * buildProjectDocumentRef(projectId) - Build a DocumentReference (with slug/name hints) for a project, keyed by its LIMS project_id
@@ -29,6 +34,8 @@ import type { DocumentReference, DocumentReferenceMap } from '../../types/refere
 export const PROJECTS_DB_NAME = process.env.CLOUDANT_PROJECTS_DATABASE || 'projects'
 const MAX_PAGE_SIZE = 200
 const PROJECT_DESIGN_DOC = 'project'
+/** App-owned helper views, deployed by ensureProjectsViews() (see server/database/couchdb-views/firn-projects.json). */
+const FIRN_PROJECTS_DESIGN_DOC = 'firn-projects'
 
 /**
  * Number of summary view rows scanned per status when a project_name/application filter is active.
@@ -61,13 +68,36 @@ function resolveScanLimit(requested: number | undefined, pageLimit: number): num
 function matchesSummaryFilters(
   value: SummaryViewValue,
   nameFilter?: string,
-  applicationFilter?: string
+  applicationFilter?: string,
+  exact?: ExactSummaryFilters
 ): boolean {
   if (nameFilter && (value.project_name ?? '').toLowerCase().indexOf(nameFilter) < 0)
     return false
   if (applicationFilter && (value.application ?? '').toLowerCase().indexOf(applicationFilter) < 0)
     return false
+  if (exact) {
+    if (exact.applications?.length && !exact.applications.includes(value.application ?? ''))
+      return false
+    if (exact.coordinators?.length && !exact.coordinators.includes(value.details?.project_coordinator ?? ''))
+      return false
+    if (exact.labResponsibles?.length && !exact.labResponsibles.includes(value.project_summary?.lab_responsible ?? ''))
+      return false
+    if (exact.bioinfoResponsibles?.length && !exact.bioinfoResponsibles.includes(value.project_summary?.bioinfo_responsible ?? ''))
+      return false
+  }
   return true
+}
+
+/** Exact-match, multi-value filters (OR within a field, AND across fields) used by the search fallback. */
+export interface ExactSummaryFilters {
+  applications?: string[]
+  coordinators?: string[]
+  labResponsibles?: string[]
+  bioinfoResponsibles?: string[]
+}
+
+function hasExactFilters(exact?: ExactSummaryFilters): boolean {
+  return !!exact && Object.values(exact).some(values => Array.isArray(values) && values.length > 0)
 }
 
 /** DTO for list/search: fields needed to display and filter by project_name, project_id, application. */
@@ -83,6 +113,10 @@ export interface ProjectSummaryListItem {
   contact?: string
   priority?: string | null
   modification_time?: string
+  organism?: string | null
+  coordinator?: string | null
+  lab_responsible?: string | null
+  bioinfo_responsible?: string | null
   [key: string]: unknown
 }
 
@@ -139,6 +173,7 @@ export const ProjectService = {
     ngi_project_id?: string
     project_name_filter?: string
     application_filter?: string
+    exact?: ExactSummaryFilters
     scan_limit?: number
     limit?: number
     skip?: number
@@ -148,7 +183,7 @@ export const ProjectService = {
       const limit = Math.min(options?.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE)
       const skip = options?.skip ?? 0
       const prefix = options?.ngi_project_id ?? ''
-      const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim())
+      const hasFilters = !!(options?.project_name_filter?.trim() || options?.application_filter?.trim() || hasExactFilters(options?.exact))
       const project_name_filter = options?.project_name_filter?.trim().toLowerCase()
       const application_filter = options?.application_filter?.trim().toLowerCase()
       const scanLimit = resolveScanLimit(options?.scan_limit, limit)
@@ -168,7 +203,11 @@ export const ProjectService = {
           affiliation: v.affiliation,
           contact: v.contact,
           priority: v.priority ?? undefined,
-          modification_time: v.modification_time
+          modification_time: v.modification_time,
+          organism: v.details?.organism,
+          coordinator: v.details?.project_coordinator,
+          lab_responsible: v.project_summary?.lab_responsible,
+          bioinfo_responsible: v.project_summary?.bioinfo_responsible
         }
       }
 
@@ -192,7 +231,7 @@ export const ProjectService = {
         let total_rows = result.total_rows
         let scan_truncated = false
         if (hasFilters) {
-          rows = rows.filter(r => matchesSummaryFilters(r.value, project_name_filter, application_filter))
+          rows = rows.filter(r => matchesSummaryFilters(r.value, project_name_filter, application_filter, options?.exact))
           // With filters the view total is meaningless; report matches found within the scanned window.
           total_rows = rows.length
           scan_truncated = result.rows.length >= fetchLimit
@@ -248,7 +287,7 @@ export const ProjectService = {
       let total_rows = (openResult.total_rows ?? 0) + (closedResult.total_rows ?? 0)
       let scan_truncated = false
       if (hasFilters) {
-        rows = rows.filter(r => matchesSummaryFilters(r.value, project_name_filter, application_filter))
+        rows = rows.filter(r => matchesSummaryFilters(r.value, project_name_filter, application_filter, options?.exact))
         // With filters the view totals are meaningless; report matches found within the scanned window.
         total_rows = rows.length
         scan_truncated = openResult.rows.length >= fetchLimit || closedResult.rows.length >= fetchLimit
@@ -395,6 +434,103 @@ export const ProjectService = {
     catch {
       return { items: [], total_rows: undefined, offset: undefined }
     }
+  },
+
+  /**
+   * Page through the whole `project/summary` view for one status, newest-key-agnostic, WITHOUT
+   * include_docs. Rows carry the sample-free summary value only; full project documents embed every
+   * sample and can be very large, so they must never be bulk-loaded here. Keyset paging
+   * (startkey + skip 1) keeps each page O(pageSize) regardless of depth.
+   */
+  async* summaryRowPages(
+    status: 'open' | 'closed',
+    pageSize = 500
+  ): AsyncGenerator<Array<{ id?: string, key: SummaryViewKey, value: SummaryViewValue }>> {
+    let startkey: SummaryViewKey = [status, '']
+    let skip = 0
+    for (;;) {
+      const result = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+        PROJECT_DESIGN_DOC,
+        'summary',
+        { startkey, endkey: [status, '\uffff'] as SummaryViewKey, limit: pageSize, skip, include_docs: false }
+      )
+      if (result.rows.length === 0) {
+        return
+      }
+      yield result.rows
+      if (result.rows.length < pageSize) {
+        return
+      }
+      startkey = result.rows[result.rows.length - 1]!.key
+      skip = 1
+    }
+  },
+
+  /**
+   * Resolve project document ids (from the _changes feed) to their current summary rows.
+   * Uses the app-owned `firn-projects/doc_project_ids` view (doc id -> project_id), then fetches the
+   * rows for both possible statuses. Ids without a project (deleted or non-project docs) come back in
+   * `missingDocIds` so the caller can remove them from the index. Returns null when the helper view
+   * is unavailable, so callers can fall back to waiting for the next full rebuild.
+   */
+  async getSummaryRowsByDocIds(docIds: string[]): Promise<{
+    rows: Array<{ id?: string, key: SummaryViewKey, value: SummaryViewValue }>
+    missingDocIds: string[]
+  } | null> {
+    if (docIds.length === 0) {
+      return { rows: [], missingDocIds: [] }
+    }
+    try {
+      const idRows = await projectsDB.queryView<string, string>(
+        FIRN_PROJECTS_DESIGN_DOC,
+        'doc_project_ids',
+        { keys: docIds }
+      )
+      const projectIdByDocId = new Map(idRows.rows.map(row => [row.key, row.value]))
+      const missingDocIds = docIds.filter(id => !projectIdByDocId.has(id))
+      const keys = [...new Set(projectIdByDocId.values())]
+        .flatMap(projectId => [['open', projectId], ['closed', projectId]] as SummaryViewKey[])
+      if (keys.length === 0) {
+        return { rows: [], missingDocIds }
+      }
+      const summary = await projectsDB.queryView<SummaryViewKey, SummaryViewValue, ProjectsDbDocument>(
+        PROJECT_DESIGN_DOC,
+        'summary',
+        { keys, include_docs: false }
+      )
+      return { rows: summary.rows, missingDocIds }
+    }
+    catch {
+      return null
+    }
+  },
+
+  /**
+   * Unique coordinators / lab responsibles / bioinfo responsibles (with project counts) from the
+   * app-owned `firn-projects` views. Returns empty lists when the views are not (yet) deployed.
+   */
+  async listFilterOptionsFromViews(): Promise<{
+    coordinators: Array<{ value: string, count: number }>
+    labResponsibles: Array<{ value: string, count: number }>
+    bioinfoResponsibles: Array<{ value: string, count: number }>
+  }> {
+    const read = async (view: string): Promise<Array<{ value: string, count: number }>> => {
+      try {
+        const result = await projectsDB.queryView<string, number>(FIRN_PROJECTS_DESIGN_DOC, view, { group: true })
+        return result.rows
+          .map(row => ({ value: String(row.key), count: Number(row.value) }))
+          .sort((a, b) => a.value.localeCompare(b.value))
+      }
+      catch {
+        return []
+      }
+    }
+    const [coordinators, labResponsibles, bioinfoResponsibles] = await Promise.all([
+      read('coordinators'),
+      read('lab_responsibles'),
+      read('bioinfo_responsibles')
+    ])
+    return { coordinators, labResponsibles, bioinfoResponsibles }
   },
 
   /**

@@ -5,11 +5,13 @@ import {
   makeSearchSafeId,
   toInventoryHit,
   toInventoryIndexDocument,
-  toProjectIndexDocument,
+  toProjectCatalogDocument,
+  toProjectCatalogItem,
+  toLinkedProjectIndexDocument,
   type StoredInventoryDoc
 } from '../../server/search/projections'
 import type { Container, InventoryItem, Room, StorageEquipment } from '../../types/inventory'
-import type { ProjectsDbDocument } from '../../types/projects'
+import type { ProjectsDbDocument, SummaryViewValue } from '../../types/projects'
 
 /*
  * Pure unit tests for the search projection layer. These exercise the denormalization logic
@@ -143,7 +145,7 @@ describe('toInventoryIndexDocument', () => {
   })
 })
 
-describe('toProjectIndexDocument', () => {
+describe('toLinkedProjectIndexDocument', () => {
   const projectDoc = {
     _id: 'project:abc',
     project_id: 'A.Doe_23_01',
@@ -168,7 +170,7 @@ describe('toProjectIndexDocument', () => {
   } as unknown as ProjectsDbDocument
 
   it('extracts nested and top-level fields', () => {
-    const projected = toProjectIndexDocument(projectDoc, 3)
+    const projected = toLinkedProjectIndexDocument(projectDoc, 3)
     expect(projected.projectId).toBe('A.Doe_23_01')
     expect(projected.status).toBe('Ongoing')
     expect(projected.organism).toBe('Homo sapiens')
@@ -178,7 +180,7 @@ describe('toProjectIndexDocument', () => {
   })
 
   it('concatenates allowlisted comment fields', () => {
-    const projected = toProjectIndexDocument(projectDoc, 1)
+    const projected = toLinkedProjectIndexDocument(projectDoc, 1)
     expect(projected.comments).toContain('rush order')
     expect(projected.comments).toContain('all good')
   })
@@ -187,7 +189,7 @@ describe('toProjectIndexDocument', () => {
     const bare = {
       _id: 'project:x', project_id: 'X_1', project_name: 'X', status_fields: { status: 'Closed' }, details: {}
     } as unknown as ProjectsDbDocument
-    expect(toProjectIndexDocument(bare, 0).comments).toBeNull()
+    expect(toLinkedProjectIndexDocument(bare, 0).comments).toBeNull()
   })
 })
 
@@ -205,5 +207,85 @@ describe('hit converters', () => {
     expect(hit.detailUrl).toBe('/inventory/containers/rack-7/details')
     expect(hit.projectIds).toEqual(['A.Doe_23_01'])
     expect(hit.subtype).toBe('rack')
+  })
+})
+
+describe('project catalog projection', () => {
+  const summaryValue = {
+    project_id: 'P12345',
+    project_name: 'P.Långstrump_45_11',
+    application: 'WGS de novo',
+    affiliation: 'Uppsala University',
+    contact: 'pippi@example.org',
+    priority: 'High',
+    no_samples: 12,
+    open_date: '2024-03-01',
+    modification_time: '2024-05-02T10:00:00.000Z',
+    reference_genome: 'hg38',
+    details: {
+      organism: 'Homo sapiens',
+      project_coordinator: 'Ada Coordinator',
+      customer_project_description: 'Long reads',
+      project_comment: 'rush order',
+      links: '{"secret":"not indexed"}'
+    },
+    project_summary: {
+      lab_responsible: 'Lab Lena',
+      bioinfo_responsible: 'Bio Bo',
+      comments: 'all good'
+    },
+    order_details: { fields: { secret_token: 'abc' } }
+  } as unknown as SummaryViewValue
+
+  it('derives status from the summary view key, not from document fields', () => {
+    const open = toProjectCatalogDocument({ id: 'doc1', key: ['open', 'P12345'], value: summaryValue })
+    const closed = toProjectCatalogDocument({ id: 'doc1', key: ['closed', 'P12345'], value: summaryValue })
+    expect(open?.status).toBe('open')
+    expect(closed?.status).toBe('closed')
+  })
+
+  it('projects the people and filter fields', () => {
+    const doc = toProjectCatalogDocument({ id: 'doc1', key: ['open', 'P12345'], value: summaryValue })!
+    expect(doc.projectId).toBe('P12345')
+    expect(doc.coordinator).toBe('Ada Coordinator')
+    expect(doc.labResponsible).toBe('Lab Lena')
+    expect(doc.bioinfoResponsible).toBe('Bio Bo')
+    expect(doc.organism).toBe('Homo sapiens')
+    expect(doc.noSamples).toBe(12)
+    expect(doc.comments).toContain('rush order')
+    expect(doc.comments).toContain('all good')
+    expect(doc.id).toBe(makeSearchSafeId('doc1'))
+  })
+
+  it('mirrors dates as epoch milliseconds and falls back to 0', () => {
+    const doc = toProjectCatalogDocument({ id: 'doc1', key: ['open', 'P12345'], value: summaryValue })!
+    expect(doc.modificationTs).toBe(Date.parse('2024-05-02T10:00:00.000Z'))
+    expect(doc.openDateTs).toBe(Date.parse('2024-03-01'))
+    const bare = toProjectCatalogDocument({
+      id: 'doc2', key: ['closed', 'P2'], value: { project_id: 'P2', project_name: 'B.B_1_1' } as SummaryViewValue
+    })!
+    expect(bare.modificationTs).toBe(0)
+    expect(bare.openDateTs).toBe(0)
+  })
+
+  it('never indexes arbitrary details, order details or links', () => {
+    const doc = toProjectCatalogDocument({ id: 'doc1', key: ['open', 'P12345'], value: summaryValue })!
+    const serialized = JSON.stringify(doc)
+    expect(serialized).not.toContain('secret')
+    expect(serialized).not.toContain('abc')
+  })
+
+  it('skips rows without a project id, name or document id', () => {
+    expect(toProjectCatalogDocument({ id: '', key: ['open', 'P1'], value: summaryValue })).toBeNull()
+    expect(toProjectCatalogDocument({ id: 'd', key: ['open', 'P1'], value: {} as SummaryViewValue })).toBeNull()
+  })
+
+  it('only emits highlights when a match marker is present', () => {
+    const doc = toProjectCatalogDocument({ id: 'doc1', key: ['open', 'P12345'], value: summaryValue })!
+    expect(toProjectCatalogItem(doc, { projectName: 'P.Långstrump_45_11' }).highlights).toBeUndefined()
+    const item = toProjectCatalogItem(doc, { projectName: '\u0001P.Långstrump\u0002_45_11', comments: 'no match here' })
+    expect(item.highlights?.project_name).toContain('\u0001')
+    expect(item.highlights?.snippet).toBeUndefined()
+    expect(item.lab_responsible).toBe('Lab Lena')
   })
 })

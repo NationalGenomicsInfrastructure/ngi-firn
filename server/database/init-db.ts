@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { DateTime } from 'luxon'
 import { couchDB, generateCouchDocId } from './couchdb'
-import { ensureViews } from '../crud/views'
+import { ensureViews, ensureProjectsViews } from '../crud/views'
 import { UserService } from '../crud/users.server'
 import type { FirnUser } from '../../types/auth'
 
@@ -27,6 +27,11 @@ export async function initializeDatabase() {
     // Ensure all CouchDB views (design documents) are in place
     await ensureViews()
     console.log('Views ensured')
+
+    // App-owned helper views in the shared projects DB (soft-fails if it cannot be written)
+    if (await ensureProjectsViews()) {
+      console.log('Projects views ensured')
+    }
 
     // Check if we need to create the first admin user
     const adminUsersResult = await couchDB.queryView<boolean, null, FirnUser>(

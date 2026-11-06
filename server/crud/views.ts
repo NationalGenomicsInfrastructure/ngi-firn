@@ -31,6 +31,34 @@ export async function ensureViews(): Promise<void> {
   }
 }
 
+/*
+ * Ensure the app-owned `firn-projects` design document exists in the shared projects database.
+ *
+ * The projects database is otherwise read-only for this app (its data and views are maintained
+ * elsewhere), so this is the single, deliberate exception: one `firn-`prefixed design doc with
+ * lightweight helper views. It never throws — if the credentials cannot write there, the search
+ * degrades (filter dropdowns fall back to the search index) and the view can be added manually from
+ * `server/database/couchdb-views/firn-projects.json`.
+ */
+export async function ensureProjectsViews(): Promise<boolean> {
+  try {
+    const designDoc = await loadDesignDoc(['server', 'database', 'couchdb-views', 'firn-projects.json'], '_design/firn-projects')
+    if (!designDoc) {
+      return false
+    }
+    const projectsDB = couchDB.withDatabase(PROJECTS_DB_NAME)
+    if (!(await projectsDB.getDatabaseInformation())) {
+      return false
+    }
+    await upsertDesignDoc(designDoc, projectsDB)
+    return true
+  }
+  catch (error) {
+    console.warn('⚠️  Could not upsert _design/firn-projects into the projects database; add it manually if needed:', error instanceof Error ? error.message : error)
+    return false
+  }
+}
+
 /* Local cache directory for design docs pulled from the read-only projects database. */
 const PROJECTS_VIEWS_DIR = ['server', 'database', 'couchdb-views', 'projects']
 

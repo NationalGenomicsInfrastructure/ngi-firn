@@ -17,17 +17,20 @@
 
 import type {
   InventoryIndexDocument,
+  ProjectCatalogIndexDocument,
   InventorySearchResponse,
-  ProjectIndexDocument,
+  LinkedProjectIndexDocument,
   SearchInventoryPage,
   SearchProjectGroup,
   SearchRebuildResult
 } from '../../types/search'
 import type { Index } from 'meilisearch'
 import type { InventorySearchInput, ProjectGroupInventoryInput } from '../../schemas/inventory/search'
+import type { ProjectFilterOptionSchema, SearchProjectsInput } from '../../schemas/projects'
+import { SEARCH_HIGHLIGHT_POST, SEARCH_HIGHLIGHT_PRE } from '../../schemas/projects'
 import { getSearchClient } from './client'
-import { inventoryIndexName, isSearchConfigured, projectIndexName } from './config'
-import { toInventoryHit, toProjectHit } from './projections'
+import { inventoryIndexName, isSearchConfigured, projectCatalogIndexName, linkedProjectIndexName } from './config'
+import { toInventoryHit, toProjectCatalogItem, toProjectHit } from './projections'
 import { getSearchState, isRebuilding } from './state'
 
 /* Escape a value for use inside a double-quoted Meilisearch filter literal. */
@@ -109,6 +112,25 @@ function isServable(): boolean {
   return phase === 'ready' || phase === 'stale'
 }
 
+/* The /projects catalog is independent of inventory health: it only needs its own index built. */
+function isCatalogServable(): boolean {
+  return isSearchConfigured() && getSearchState().catalogReady
+}
+
+export interface ProjectCatalogSearchResult {
+  items: ReturnType<typeof toProjectCatalogItem>[]
+  total: number
+  totalIsEstimated: boolean
+  hasMore: boolean
+}
+
+export interface ProjectCatalogFilterOptions {
+  applications: ProjectFilterOptionSchema[]
+  coordinators: ProjectFilterOptionSchema[]
+  labResponsibles: ProjectFilterOptionSchema[]
+  bioinfoResponsibles: ProjectFilterOptionSchema[]
+}
+
 export const SearchService = {
   async searchInventory(input: InventorySearchInput): Promise<InventorySearchResponse> {
     const client = getSearchClient()
@@ -117,7 +139,7 @@ export const SearchService = {
     }
 
     const inventoryIdx = client.index<InventoryIndexDocument>(inventoryIndexName())
-    const projectIdx = client.index<ProjectIndexDocument>(projectIndexName())
+    const projectIdx = client.index<LinkedProjectIndexDocument>(linkedProjectIndexName())
     const state = getSearchState()
 
     const commonFilters = {
@@ -193,7 +215,7 @@ export const SearchService = {
 
   /* Bounded project-index lookup resolving the distinct project ids on a set of inventory hits. */
   async resolveProjectLookup(
-    projectIdx: Index<ProjectIndexDocument>,
+    projectIdx: Index<LinkedProjectIndexDocument>,
     hits: InventoryIndexDocument[]
   ): Promise<Record<string, { projectName: string, detailUrl: string }>> {
     const ids = [...new Set(hits.flatMap(hit => hit.projectIds))]
@@ -231,6 +253,86 @@ export const SearchService = {
       limit: input.limit
     }))
     return toInventoryPage(res, input.offset, input.limit)
+  },
+
+  /*
+   * Full-text + faceted search over the all-projects catalog. Returns null when the catalog cannot
+   * serve (engine unset/unreachable/not yet built) so the caller can fall back to CouchDB.
+   * Filters: OR within a field, AND across fields. Always tie-breaks by newest modification.
+   */
+  async searchProjects(input: SearchProjectsInput): Promise<ProjectCatalogSearchResult | null> {
+    const client = getSearchClient()
+    if (!client || !isCatalogServable()) {
+      return null
+    }
+    const filter: string[] = []
+    if (input.status) {
+      filter.push(`status = ${quote(input.status)}`)
+    }
+    const multi: Array<[string, string[] | undefined]> = [
+      ['application', input.applications],
+      ['coordinator', input.coordinators],
+      ['labResponsible', input.labResponsibles],
+      ['bioinfoResponsible', input.bioinfoResponsibles]
+    ]
+    for (const [field, values] of multi) {
+      if (values && values.length > 0) {
+        filter.push(inClause(field, values))
+      }
+    }
+
+    try {
+      const res = await client.index<ProjectCatalogIndexDocument>(projectCatalogIndexName()).search(input.query, {
+        filter,
+        limit: input.limit,
+        offset: 0,
+        sort: ['modificationTs:desc'],
+        attributesToHighlight: ['projectName', 'application', 'comments', 'projectDescription'],
+        attributesToCrop: ['comments', 'projectDescription'],
+        cropLength: 30,
+        highlightPreTag: SEARCH_HIGHLIGHT_PRE,
+        highlightPostTag: SEARCH_HIGHLIGHT_POST
+      })
+      const raw = readTotals(res)
+      return {
+        items: raw.hits.map(hit => toProjectCatalogItem(hit, hit._formatted)),
+        total: raw.total,
+        totalIsEstimated: raw.totalIsEstimated,
+        hasMore: raw.hits.length < raw.total
+      }
+    }
+    catch (error) {
+      console.error('Project catalog search failed; falling back to CouchDB:', error)
+      return null
+    }
+  },
+
+  /* Unique filter values (with project counts) for the /projects dropdowns, from catalog facets. */
+  async getProjectFilterOptions(): Promise<ProjectCatalogFilterOptions | null> {
+    const client = getSearchClient()
+    if (!client || !isCatalogServable()) {
+      return null
+    }
+    try {
+      const res = await client.index<ProjectCatalogIndexDocument>(projectCatalogIndexName()).search('', {
+        limit: 0,
+        facets: ['application', 'coordinator', 'labResponsible', 'bioinfoResponsible']
+      })
+      const options = (field: string): ProjectFilterOptionSchema[] =>
+        Object.entries(res.facetDistribution?.[field] ?? {})
+          .map(([value, count]) => ({ value, count }))
+          .sort((a, b) => a.value.localeCompare(b.value))
+      return {
+        applications: options('application'),
+        coordinators: options('coordinator'),
+        labResponsibles: options('labResponsible'),
+        bioinfoResponsibles: options('bioinfoResponsible')
+      }
+    }
+    catch (error) {
+      console.error('Project catalog filter options failed:', error)
+      return null
+    }
   },
 
   getStatus() {

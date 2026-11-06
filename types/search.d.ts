@@ -64,7 +64,7 @@ export type InventoryIndexDocument = {
  * link are indexed. `comments` concatenates the allowlisted free-text comment fields; sample
  * data, delivery paths and arbitrary document properties are deliberately excluded.
  */
-export type ProjectIndexDocument = {
+export type LinkedProjectIndexDocument = {
   id: string
   docId: string
   projectId: string
@@ -83,6 +83,40 @@ export type ProjectIndexDocument = {
   comments: string | null
   /* Distinct linked inventory records; drives group eligibility and ordering. */
   linkedCount: number
+}
+
+/*
+ * One project as indexed in the project *catalog* index that backs `/projects`. Unlike
+ * `LinkedProjectIndexDocument` (link-scoped, inventory search only), the catalog contains every project in
+ * the projects database. Built from the `project/summary` view row; no sample-level data, delivery
+ * paths or arbitrary document properties.
+ */
+export type ProjectCatalogIndexDocument = {
+  id: string
+  docId: string
+  projectId: string
+  projectName: string
+  /* Derived exactly like the `project/summary` view key: open iff LIMS-sourced without close_date. */
+  status: 'open' | 'closed'
+  application: string | null
+  affiliation: string | null
+  organism: string | null
+  referenceGenome: string | null
+  projectDescription: string | null
+  customerReference: string | null
+  contact: string | null
+  coordinator: string | null
+  labResponsible: string | null
+  bioinfoResponsible: string | null
+  priority: string | null
+  comments: string | null
+  noSamples: number | null
+  openDate: string | null
+  closeDate: string | null
+  modificationTime: string | null
+  /* Epoch-millisecond mirrors used as sortable attributes (0 when absent). */
+  openDateTs: number
+  modificationTs: number
 }
 
 /* ------------------------------------------------------------------ */
@@ -163,6 +197,9 @@ export interface SearchIndexStatus {
   inventoryReady: boolean
   projectsReady: boolean
   projectsConfigured: boolean
+  /* The all-projects catalog index backing `/projects` is built and servable. */
+  catalogReady: boolean
+  catalogLastSyncedAt: string | null
   lastSyncedAt: string | null
   /* Timestamp of the last successful full rebuild (null until the first one completes). */
   lastRebuiltAt: string | null

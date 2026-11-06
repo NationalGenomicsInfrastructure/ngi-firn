@@ -65,6 +65,10 @@ const globalFilterFn = createGlobalFilter<FormattedProjectSummary>(row => toSear
   row.affiliation,
   row.contact,
   row.priority,
+  row.organism,
+  row.coordinator,
+  row.lab_responsible,
+  row.bioinfo_responsible,
   row.status,
   row.no_samples
 ))
@@ -156,8 +160,12 @@ watch(includeWeekday, (isRelative) => {
         {{ cell.row.original.open_dateFormatted }}
       </template>
       <template #project_name-cell="{ cell }">
+        <ProjectHighlightedText
+          v-if="cell.row.original.highlights?.project_name"
+          :text="cell.row.original.highlights.project_name"
+        />
         <span
-          v-if="cell.row.original.projectNameFragments?.length"
+          v-else-if="cell.row.original.projectNameFragments?.length"
           class="inline-flex flex-wrap items-baseline gap-x-0.5"
         >
           <span class="prose prose-primary">{{ cell.row.original.projectNameFragments[0] }}</span>
@@ -169,6 +177,21 @@ watch(includeWeekday, (isRelative) => {
             <span class="prose-sm tabular-nums text-primary-300 dark:text-primary-200">{{ cell.row.original.projectNameFragments[3] }}</span>
           </template>
         </span>
+        <p
+          v-if="cell.row.original.highlights?.snippet"
+          class="mt-1 max-w-md text-xs text-muted"
+        >
+          <ProjectHighlightedText :text="cell.row.original.highlights.snippet" />
+        </p>
+      </template>
+      <template #application-cell="{ cell }">
+        <ProjectHighlightedText
+          v-if="cell.row.original.highlights?.application"
+          :text="cell.row.original.highlights.application"
+        />
+        <template v-else>
+          {{ cell.row.original.application ?? '' }}
+        </template>
       </template>
       <template #status-cell="{ cell }">
         <div class="flex flex-row items-center gap-2 flex-shrink-0">
@@ -233,6 +256,26 @@ watch(includeWeekday, (isRelative) => {
                   icon="i-lucide-user"
                   label="Contact"
                   :value="row.original.contact ?? '—'"
+                />
+                <IndicatorIconText
+                  icon="i-lucide-dna"
+                  label="Organism"
+                  :value="row.original.organism ?? '—'"
+                />
+                <IndicatorIconText
+                  icon="i-lucide-user-cog"
+                  label="Coordinator"
+                  :value="row.original.coordinator ?? '—'"
+                />
+                <IndicatorIconText
+                  icon="i-lucide-flask-conical"
+                  label="Lab responsible"
+                  :value="row.original.lab_responsible ?? '—'"
+                />
+                <IndicatorIconText
+                  icon="i-lucide-terminal"
+                  label="Bioinfo responsible"
+                  :value="row.original.bioinfo_responsible ?? '—'"
                 />
                 <IndicatorIconText
                   icon="i-lucide-signal"

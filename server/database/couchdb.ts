@@ -655,8 +655,8 @@ export async function loadDesignDoc(pathParts: string[], fallbackId: string): Pr
 }
 
 /* Helper function to upsert a CouchDB design document while preserving current revision control. */
-export async function upsertDesignDoc(designDoc: ViewsDocument): Promise<void> {
-  const existing = await couchDB.getDesignDocument<ViewsDocument & CloudantV1.DesignDocument>(designDoc._id)
+export async function upsertDesignDoc(designDoc: ViewsDocument, connector: CouchDBConnector = couchDB): Promise<void> {
+  const existing = await connector.getDesignDocument<ViewsDocument & CloudantV1.DesignDocument>(designDoc._id)
 
   if (existing && existing._rev) {
     const nextDoc = {
@@ -666,11 +666,11 @@ export async function upsertDesignDoc(designDoc: ViewsDocument): Promise<void> {
       _rev: existing._rev
     }
 
-    await couchDB.putDesignDocument(designDoc._id, nextDoc as CloudantV1.DesignDocument)
+    await connector.putDesignDocument(designDoc._id, nextDoc as CloudantV1.DesignDocument)
     return
   }
 
-  await couchDB.putDesignDocument(designDoc._id, designDoc as unknown as CloudantV1.DesignDocument)
+  await connector.putDesignDocument(designDoc._id, designDoc as unknown as CloudantV1.DesignDocument)
 }
 
 // Export types for use in other modules

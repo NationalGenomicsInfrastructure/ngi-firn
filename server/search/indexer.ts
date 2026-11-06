@@ -20,37 +20,52 @@ import type { Meilisearch, Settings } from 'meilisearch'
 import { couchDB } from '../database/couchdb'
 import { PROJECTS_DB_NAME, ProjectService } from '../crud/projects.server'
 import type { ProjectsDbDocument } from '../../types/projects'
-import type { InventoryIndexDocument, ProjectIndexDocument } from '../../types/search'
+import type { InventoryIndexDocument, ProjectCatalogIndexDocument, LinkedProjectIndexDocument } from '../../types/search'
+import { ensureProjectsViews } from '../crud/views'
 import { getSearchClient } from './client'
 import {
+  CATALOG_FILTERABLE_ATTRIBUTES,
+  CATALOG_MAX_TOTAL_HITS,
+  CATALOG_MAX_VALUES_PER_FACET,
+  CATALOG_SEARCHABLE_ATTRIBUTES,
+  CATALOG_SORTABLE_ATTRIBUTES,
   INVENTORY_FILTERABLE_ATTRIBUTES,
   INVENTORY_SEARCHABLE_ATTRIBUTES,
   INVENTORY_SORTABLE_ATTRIBUTES,
-  PROJECT_FILTERABLE_ATTRIBUTES,
-  PROJECT_SEARCHABLE_ATTRIBUTES,
-  PROJECT_SORTABLE_ATTRIBUTES,
+  LINKED_PROJECT_FILTERABLE_ATTRIBUTES,
+  LINKED_PROJECT_SEARCHABLE_ATTRIBUTES,
+  LINKED_PROJECT_SORTABLE_ATTRIBUTES,
   SEARCH_PRIMARY_KEY,
   SHADOW_INDEX_SUFFIX,
   inventoryIndexName,
   isSearchConfigured,
-  projectIndexName
+  projectCatalogIndexName,
+  linkedProjectIndexName
 } from './config'
 import {
   makeSearchSafeId,
   toInventoryIndexDocument,
-  toProjectIndexDocument,
+  toProjectCatalogDocument,
+  toLinkedProjectIndexDocument,
   type StoredInventoryDoc
 } from './projections'
 import {
+  beginCatalogSync,
   beginRebuild,
   beginSync,
+  endCatalogSync,
   endRebuild,
   endSync,
+  getLastProjectsSeq,
   getLastSeq,
+  markCatalogReady,
+  markCatalogUnavailable,
   markReady,
   markStale,
   markUnavailable,
+  setLastProjectsSeq,
   setLastSeq,
+  touchCatalogSynced,
   touchSynced
 } from './state'
 
@@ -76,10 +91,25 @@ const INVENTORY_SETTINGS: Settings = {
   sortableAttributes: INVENTORY_SORTABLE_ATTRIBUTES
 }
 
-const PROJECT_SETTINGS: Settings = {
-  searchableAttributes: PROJECT_SEARCHABLE_ATTRIBUTES,
-  filterableAttributes: PROJECT_FILTERABLE_ATTRIBUTES,
-  sortableAttributes: PROJECT_SORTABLE_ATTRIBUTES
+const LINKED_PROJECT_SETTINGS: Settings = {
+  searchableAttributes: LINKED_PROJECT_SEARCHABLE_ATTRIBUTES,
+  filterableAttributes: LINKED_PROJECT_FILTERABLE_ATTRIBUTES,
+  sortableAttributes: LINKED_PROJECT_SORTABLE_ATTRIBUTES
+}
+
+/*
+ * Catalog settings. `projectId` has typo tolerance disabled so P12345 never fuzzy-matches P12346
+ * (prefix matching on the last query word still lets "P123" find P12345). `_` and `.` split project
+ * names such as "P.Långstrump_45_11" into separate tokens.
+ */
+const CATALOG_SETTINGS: Settings = {
+  searchableAttributes: CATALOG_SEARCHABLE_ATTRIBUTES,
+  filterableAttributes: CATALOG_FILTERABLE_ATTRIBUTES,
+  sortableAttributes: CATALOG_SORTABLE_ATTRIBUTES,
+  typoTolerance: { disableOnAttributes: ['projectId'] },
+  separatorTokens: ['_', '.'],
+  pagination: { maxTotalHits: CATALOG_MAX_TOTAL_HITS },
+  faceting: { maxValuesPerFacet: CATALOG_MAX_VALUES_PER_FACET, sortFacetValuesBy: { '*': 'alpha' } }
 }
 
 async function ensureIndex(client: Meilisearch, name: string): Promise<void> {
@@ -169,9 +199,9 @@ function projectAllInventory(docs: StoredInventoryDoc[]): InventoryProjection {
   return { indexDocuments, linkCountByProjectDocId }
 }
 
-async function buildProjectIndexDocuments(
+async function buildLinkedProjectIndexDocuments(
   linkCountByProjectDocId: Map<string, number>
-): Promise<{ documents: ProjectIndexDocument[], available: boolean }> {
+): Promise<{ documents: LinkedProjectIndexDocument[], available: boolean }> {
   const projectDocIds = [...linkCountByProjectDocId.keys()]
   if (projectDocIds.length === 0) {
     /* No links at all: treat projects as available only if the DB is reachable. */
@@ -186,12 +216,12 @@ async function buildProjectIndexDocuments(
   const projectsDB = couchDB.withDatabase(PROJECTS_DB_NAME)
   const fetched = await projectsDB.getDocumentsByIds<ProjectsDbDocument>(projectDocIds)
 
-  const documents: ProjectIndexDocument[] = []
+  const documents: LinkedProjectIndexDocument[] = []
   for (const doc of fetched) {
     if (!doc || typeof doc.project_id !== 'string' || typeof doc.project_name !== 'string') {
       continue
     }
-    documents.push(toProjectIndexDocument(doc, linkCountByProjectDocId.get(doc._id) ?? 0))
+    documents.push(toLinkedProjectIndexDocument(doc, linkCountByProjectDocId.get(doc._id) ?? 0))
   }
 
   return { documents, available: true }
@@ -221,11 +251,11 @@ export async function rebuildAll(): Promise<void> {
     const inventoryDocs = allDocs.filter(isInventoryDoc)
 
     const { indexDocuments, linkCountByProjectDocId } = projectAllInventory(inventoryDocs)
-    const { documents: projectDocuments, available: projectsReady } = await buildProjectIndexDocuments(linkCountByProjectDocId)
+    const { documents: projectDocuments, available: projectsReady } = await buildLinkedProjectIndexDocuments(linkCountByProjectDocId)
 
     await rebuildIndexWithSwap(client, inventoryIndexName(), INVENTORY_SETTINGS, indexDocuments)
     if (projectsReady) {
-      await rebuildIndexWithSwap(client, projectIndexName(), PROJECT_SETTINGS, projectDocuments)
+      await rebuildIndexWithSwap(client, linkedProjectIndexName(), LINKED_PROJECT_SETTINGS, projectDocuments)
     }
 
     markReady({ projectsConfigured: projectsReady, projectsReady, lastSeq: capturedSeq })
@@ -233,6 +263,9 @@ export async function rebuildAll(): Promise<void> {
       `🔎 Search index rebuilt: ${indexDocuments.length} inventory, ${projectDocuments.length} project document(s)`
       + `${projectsReady ? '' : ' (projects database unavailable)'}`
     )
+
+    /* The /projects catalog is independent: its failure must never degrade inventory search. */
+    await rebuildProjectCatalog(client)
   }
   catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -241,6 +274,139 @@ export async function rebuildAll(): Promise<void> {
   }
   finally {
     endRebuild()
+  }
+}
+
+/*
+ * Full rebuild of the all-projects catalog index (backs `/projects`).
+ *
+ * Reads the `project/summary` view page by page WITHOUT include_docs: rows are sample-free, whereas
+ * full project documents embed every sample and are far too large to bulk-load. Only the small
+ * projected documents are accumulated in memory. The projects-DB update sequence is captured before
+ * reading so racing edits are re-applied by the next incremental sync. Never throws.
+ */
+async function rebuildProjectCatalog(client: Meilisearch): Promise<void> {
+  try {
+    const projectsDB = couchDB.withDatabase(PROJECTS_DB_NAME)
+    const info = await projectsDB.getDatabaseInformation()
+    if (!info) {
+      markCatalogUnavailable()
+      return
+    }
+    const capturedSeq = info.updateSeq ?? null
+
+    /* Make sure the app-owned helper views exist (soft-fails when the DB cannot be written). */
+    await ensureProjectsViews()
+
+    const documents: ProjectCatalogIndexDocument[] = []
+    for (const status of ['open', 'closed'] as const) {
+      for await (const rows of ProjectService.summaryRowPages(status)) {
+        for (const row of rows) {
+          const projected = toProjectCatalogDocument({ id: row.id ?? '', key: row.key, value: row.value })
+          if (projected) {
+            documents.push(projected)
+          }
+        }
+      }
+    }
+
+    await rebuildIndexWithSwap(client, projectCatalogIndexName(), CATALOG_SETTINGS, documents)
+    markCatalogReady(capturedSeq)
+    console.log(`🔎 Project catalog rebuilt: ${documents.length} project(s)`)
+  }
+  catch (error) {
+    /* Keep a previously built catalog servable; just report the failure. */
+    console.error('Project catalog rebuild failed:', error)
+  }
+}
+
+let warnedMissingCatalogView = false
+
+/*
+ * Incremental catalog sync from the projects DB `_changes` feed (its own cursor, separate from the
+ * inventory one). The feed is read WITHOUT docs; changed document ids are resolved to current
+ * summary rows via the `firn-projects/doc_project_ids` helper view. Ids that no longer resolve to a
+ * project (deleted) are removed from the index. If the helper view is missing, the cursor is left
+ * untouched and the next full rebuild reconciles.
+ */
+export async function syncProjectCatalogChanges(): Promise<void> {
+  if (!isSearchConfigured()) {
+    return
+  }
+  const client = getSearchClient()
+  const since = getLastProjectsSeq()
+  if (!client || since === null) {
+    return
+  }
+  if (!beginCatalogSync()) {
+    return
+  }
+
+  try {
+    const projectsDB = couchDB.withDatabase(PROJECTS_DB_NAME)
+    const catalogIdx = client.index<ProjectCatalogIndexDocument>(projectCatalogIndexName())
+
+    let cursor = since
+    for (let page = 0; page < 50; page++) {
+      const changes = await projectsDB.getChanges<CloudantV1.Document>({ since: cursor, limit: 500, includeDocs: false })
+
+      const deletions = new Set<string>()
+      const changedDocIds = new Set<string>()
+      for (const change of changes.results) {
+        if (change.id.startsWith('_design/')) {
+          continue
+        }
+        if (change.deleted) {
+          deletions.add(makeSearchSafeId(change.id))
+        }
+        else {
+          changedDocIds.add(change.id)
+        }
+      }
+
+      const upserts: ProjectCatalogIndexDocument[] = []
+      if (changedDocIds.size > 0) {
+        const resolved = await ProjectService.getSummaryRowsByDocIds([...changedDocIds])
+        if (!resolved) {
+          if (!warnedMissingCatalogView) {
+            warnedMissingCatalogView = true
+            console.warn('Project catalog sync paused: _design/firn-projects/doc_project_ids is unavailable. The next full rebuild will reconcile.')
+          }
+          return
+        }
+        warnedMissingCatalogView = false
+        for (const row of resolved.rows) {
+          const projected = toProjectCatalogDocument({ id: row.id ?? '', key: row.key, value: row.value })
+          if (projected) {
+            upserts.push(projected)
+          }
+        }
+        for (const missing of resolved.missingDocIds) {
+          deletions.add(makeSearchSafeId(missing))
+        }
+      }
+
+      if (deletions.size > 0) {
+        await catalogIdx.deleteDocuments([...deletions]).waitTask({ timeout: TASK_TIMEOUT_MS })
+      }
+      for (const batch of chunk(upserts, INDEXING_BATCH_SIZE)) {
+        await catalogIdx.addDocuments(batch).waitTask({ timeout: TASK_TIMEOUT_MS })
+      }
+
+      cursor = changes.lastSeq
+      setLastProjectsSeq(cursor)
+      if (changes.results.length === 0 || changes.pending === 0) {
+        break
+      }
+    }
+
+    touchCatalogSynced()
+  }
+  catch (error) {
+    console.error('Project catalog incremental sync failed:', error)
+  }
+  finally {
+    endCatalogSync()
   }
 }
 

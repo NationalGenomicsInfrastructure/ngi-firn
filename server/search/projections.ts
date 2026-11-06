@@ -9,10 +9,13 @@
  */
 
 import type { Container, InventoryItem, Room, StorageEquipment } from '../../types/inventory'
-import type { ProjectsDbDocument } from '../../types/projects'
+import type { ProjectsDbDocument, SummaryViewValue } from '../../types/projects'
+import type { ProjectSummaryListItemSchema } from '../../schemas/projects'
+import { SEARCH_HIGHLIGHT_POST, SEARCH_HIGHLIGHT_PRE } from '../../schemas/projects'
 import type {
   InventoryIndexDocument,
-  ProjectIndexDocument,
+  ProjectCatalogIndexDocument,
+  LinkedProjectIndexDocument,
   SearchEntityKind,
   SearchInventoryHit,
   SearchProjectHit
@@ -233,7 +236,7 @@ export function toInventoryIndexDocument(
 }
 
 /* Read a (possibly nested) string field from an open-shaped projects document. */
-function projectString(doc: ProjectsDbDocument, path: string[]): string | null {
+function projectString(doc: object, path: string[]): string | null {
   let current: unknown = doc
   for (const key of path) {
     if (current == null || typeof current !== 'object') {
@@ -245,10 +248,10 @@ function projectString(doc: ProjectsDbDocument, path: string[]): string | null {
 }
 
 /* Project a projects-DB document into its Meilisearch index document. */
-export function toProjectIndexDocument(
+export function toLinkedProjectIndexDocument(
   doc: ProjectsDbDocument,
   linkedCount: number
-): ProjectIndexDocument {
+): LinkedProjectIndexDocument {
   const comments = [
     projectString(doc, ['details', 'project_comment']),
     projectString(doc, ['project_summary', 'comments'])
@@ -272,6 +275,71 @@ export function toProjectIndexDocument(
     bioinfoResponsible: projectString(doc, ['project_summary', 'bioinfo_responsible']),
     comments: comments.length > 0 ? comments : null,
     linkedCount
+  }
+}
+
+/* Epoch ms for a date-ish string; 0 when absent/unparseable so sort stays total. */
+function toEpochMs(value: string | null): number {
+  if (!value) {
+    return 0
+  }
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+/* A `project/summary` view row: key is [status, project_id], `id` is the CouchDB document id. */
+export interface CatalogSourceRow {
+  id: string
+  key: [string, string] | unknown
+  value: SummaryViewValue
+}
+
+/*
+ * Project one `project/summary` view row into a catalog document. Reads only allowlisted fields
+ * from the (sample-free) summary value. Status comes from the view key, so the facet always agrees
+ * with the CouchDB view that the fallback path uses (open iff LIMS-sourced without close_date).
+ */
+export function toProjectCatalogDocument(row: CatalogSourceRow): ProjectCatalogIndexDocument | null {
+  const value = row.value
+  const [keyStatus, keyProjectId] = Array.isArray(row.key) ? row.key as [string, string] : [undefined, undefined]
+  const projectId = nullableString(value.project_id) ?? nullableString(keyProjectId)
+  const projectName = nullableString(value.project_name)
+  if (!row.id || !projectId || !projectName) {
+    return null
+  }
+
+  const comments = [
+    projectString(value, ['details', 'project_comment']),
+    projectString(value, ['project_summary', 'comments'])
+  ].filter((entry): entry is string => entry !== null).join('\n\n')
+
+  const openDate = nullableString(value.open_date)
+  const modificationTime = nullableString(value.modification_time)
+
+  return {
+    id: makeSearchSafeId(row.id),
+    docId: row.id,
+    projectId,
+    projectName,
+    status: keyStatus === 'open' ? 'open' : 'closed',
+    application: nullableString(value.application) ?? projectString(value, ['details', 'application']),
+    affiliation: nullableString(value.affiliation),
+    organism: projectString(value, ['details', 'organism']),
+    referenceGenome: nullableString(value.reference_genome) ?? projectString(value, ['details', 'reference_genome']),
+    projectDescription: projectString(value, ['details', 'customer_project_description']),
+    customerReference: nullableString(value.customer_reference),
+    contact: nullableString(value.contact),
+    coordinator: projectString(value, ['details', 'project_coordinator']),
+    labResponsible: projectString(value, ['project_summary', 'lab_responsible']),
+    bioinfoResponsible: projectString(value, ['project_summary', 'bioinfo_responsible']),
+    priority: nullableString(value.priority),
+    comments: comments.length > 0 ? comments : null,
+    noSamples: typeof value.no_samples === 'number' ? value.no_samples : null,
+    openDate,
+    closeDate: nullableString(value.close_date),
+    modificationTime,
+    openDateTs: toEpochMs(openDate),
+    modificationTs: toEpochMs(modificationTime)
   }
 }
 
@@ -301,7 +369,7 @@ export function toInventoryHit(doc: InventoryIndexDocument): SearchInventoryHit 
   }
 }
 
-export function toProjectHit(doc: ProjectIndexDocument): SearchProjectHit {
+export function toProjectHit(doc: LinkedProjectIndexDocument): SearchProjectHit {
   return {
     projectId: doc.projectId,
     projectName: doc.projectName,
@@ -320,3 +388,44 @@ export function toProjectHit(doc: ProjectIndexDocument): SearchProjectHit {
     detailUrl: buildProjectDetailUrl(doc.projectId)
   }
 }
+
+function highlighted(value: unknown): string | undefined {
+  return typeof value === 'string' && value.includes(SEARCH_HIGHLIGHT_PRE) ? value : undefined
+}
+
+/*
+ * Catalog document → the same snake_case list item the CouchDB path returns, so the table renders
+ * both sources identically. `formatted` is Meilisearch's `_formatted` payload (highlight markers).
+ */
+export function toProjectCatalogItem(
+  doc: ProjectCatalogIndexDocument,
+  formatted?: Partial<Record<keyof ProjectCatalogIndexDocument, unknown>>
+): ProjectSummaryListItemSchema {
+  const highlights = {
+    project_name: highlighted(formatted?.projectName),
+    application: highlighted(formatted?.application),
+    snippet: highlighted(formatted?.comments) ?? highlighted(formatted?.projectDescription)
+  }
+  const hasHighlights = Object.values(highlights).some(value => value !== undefined)
+
+  return {
+    project_id: doc.projectId,
+    project_name: doc.projectName,
+    application: doc.application,
+    open_date: doc.openDate ?? undefined,
+    close_date: doc.closeDate ?? undefined,
+    status: doc.status,
+    no_samples: doc.noSamples ?? undefined,
+    affiliation: doc.affiliation ?? undefined,
+    contact: doc.contact ?? undefined,
+    priority: doc.priority,
+    modification_time: doc.modificationTime ?? undefined,
+    organism: doc.organism,
+    coordinator: doc.coordinator,
+    lab_responsible: doc.labResponsible,
+    bioinfo_responsible: doc.bioinfoResponsible,
+    ...(hasHighlights && { highlights })
+  }
+}
+
+export { SEARCH_HIGHLIGHT_POST, SEARCH_HIGHLIGHT_PRE }

@@ -298,6 +298,16 @@ Grid containers expose their exact occupied cells through `getGridOccupancy` (`I
 - `gridLabel` in `app/utils/inventory/grid.ts` must match `deriveGridLabel` in `server/crud/inventory/grid.server.ts` (positions are 1-based; `L2-` prefix above level 1).
 - Drag and drop uses pointer events (`app/composables/useGridDrag.ts`), not HTML5 DnD, so it works on touch. A same-parent move needs an explicit new `position`.
 
+### Project search pitfalls (Meilisearch)
+
+- There are **two** project indexes: `…__linked_projects` is link-scoped (only projects with inventory links; used by `/inventory/search`), `…__project_catalog` holds all projects (used by `/projects`). Do not widen the first one.
+- Project status = `project/summary` **view key** (`open` iff LIMS-sourced without `close_date`), not `status_fields.status`.
+- Never use `include_docs` to bulk-read the projects DB (project docs embed all samples). Page the `summary` view instead.
+- The projects DB is read-only except for the app-owned `_design/firn-projects` (`server/database/couchdb-views/firn-projects.json`). Do not write other documents there.
+- `/projects` must keep working without Meilisearch: `projects.search` falls back to CouchDB (`source: 'couchdb'`). Keep both paths in sync when adding filters.
+- `organism` is free text (sometimes paragraphs): keep it searchable only, never a filter/facet.
+- Highlights use control-character markers (`SEARCH_HIGHLIGHT_PRE/POST`) rendered by `ProjectHighlightedText`, never `v-html`.
+
 ### Authentication
 
 - **Google OAuth** is mandatory; users must have a `@scilifelab.se` email.

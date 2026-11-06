@@ -103,6 +103,18 @@ async function onRebuild() {
         />
 
         <IndicatorIconText
+          icon="i-lucide-folder-search"
+          label="Project catalog (/projects)"
+          :value="status ? yesNo(status.catalogReady) : '—'"
+        />
+
+        <IndicatorIconText
+          icon="i-lucide-refresh-cw-off"
+          label="Catalog last synced"
+          :value="status?.catalogLastSyncedAt ? formatDate(status.catalogLastSyncedAt, { relative: true, time: true }) : '—'"
+        />
+
+        <IndicatorIconText
           icon="i-lucide-refresh-cw"
           label="Last synced"
           :value="status?.lastSyncedAt ? formatDate(status.lastSyncedAt, { relative: true, time: true }) : '—'"

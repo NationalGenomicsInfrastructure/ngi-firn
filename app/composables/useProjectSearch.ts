@@ -1,166 +1,119 @@
-import { toTypedSchema } from '@vee-validate/zod'
 import { useQuery } from '@pinia/colada'
-import * as z from 'zod'
-import type { ListProjectsSummaryInputSchema } from '~~/schemas/projects'
-import { projectSummariesQuery } from '~/utils/queries/projects'
+import type { ProjectSearchResultSchema, SearchProjectsInputSchema } from '~~/schemas/projects'
+import { projectFilterOptionsQuery, projectSearchQuery } from '~/utils/queries/projects'
 
 export type ProjectSearchStatus = 'any' | 'open' | 'closed'
 
-export interface ProjectSearchFormValues {
-  status: ProjectSearchStatus
-  ngi_project_id?: string
-  project_name_filter?: string
-  application_filter?: string
-}
-
-// How deep the server scans for name/application matches per "Retrieve more" click.
+const DEBOUNCE_MS = 350
+// Results per request; "Show more" widens the window by one page at a time.
+const PAGE_SIZE = 100
+// CouchDB fallback only: how much deeper each "Show more" scans the summary view.
 const SCAN_STEP = 1000
 
-const searchFormSchema = toTypedSchema(z.object({
-  status: z.enum(['any', 'open', 'closed']),
-  ngi_project_id: z.string().optional().refine(v => !v || /^P[0-9]+$/.test(v), { message: 'P followed by digits (e.g. P1, P00017)' }),
-  project_name_filter: z.string().optional().refine(
-    v => !v || /^[\p{Lu}]\.[\p{L}]+(?:_[0-9]{2}(?:_[0-9]+)?)?$/u.test(v),
-    { message: 'Format: Capital.Name_YY_NN' }
-  ),
-  application_filter: z.string().optional()
-}))
-
 /**
- * Form state, debounced validation and the summaries query behind the project search.
- * Shared by the projects overview page and the "link to project" dialog.
+ * Form state, debounced query and the project-search query behind `/projects` and the
+ * "link to project" dialog.
+ *
+ * One free-text box (ID, name and everything else that is indexed) is combined with structured,
+ * multi-select filters. The text is debounced before it reaches the server; filter changes apply
+ * immediately. Any change to the criteria resets the result window. When the search engine is
+ * unavailable the server answers from CouchDB and reports `source: 'couchdb'` (see `isDegraded`).
  */
 export function useProjectSearch(options: { enabled?: MaybeRefOrGetter<boolean> } = {}) {
-  const { handleSubmit, validate, errors, resetForm } = useForm({
-    validationSchema: searchFormSchema,
-    initialValues: {
-      status: 'any' as const,
-      ngi_project_id: '',
-      project_name_filter: '',
-      application_filter: ''
-    }
-  })
+  const queryInput = ref('')
+  const debouncedQuery = ref('')
+  const status = ref<ProjectSearchStatus>('any')
+  const applications = ref<string[]>([])
+  const coordinators = ref<string[]>([])
+  const labResponsibles = ref<string[]>([])
+  const bioinfoResponsibles = ref<string[]>([])
 
-  // Bind fields explicitly so form state updates on input (NFormField + NSelect/NInput may not sync otherwise)
-  const { value: statusValue, setValue: setStatusValue } = useField<ProjectSearchStatus>('status')
-  const { value: projectIdPrefixValue, setValue: setProjectIdPrefixValue } = useField<string>('ngi_project_id')
-  const { value: projectNameFilterValue, setValue: setProjectNameFilterValue } = useField<string>('project_name_filter')
-  const { value: applicationFilterValue, setValue: setApplicationFilterValue } = useField<string>('application_filter')
+  // Number of "Show more" clicks since the criteria last changed.
+  const extraPages = ref(0)
 
-  // Applied search params (set on submit or when the inputs become valid); the query uses these
-  const searchParams = ref<ListProjectsSummaryInputSchema & { status?: 'open' | 'closed' }>({})
+  const applyQueryDebounced = useDebounceFn((value: string) => {
+    debouncedQuery.value = value.trim()
+    extraPages.value = 0
+  }, DEBOUNCE_MS)
+  watch(queryInput, value => applyQueryDebounced(value))
+  watch([status, applications, coordinators, labResponsibles, bioinfoResponsibles], () => {
+    extraPages.value = 0
+  }, { deep: true })
 
-  // Raised on demand via "Retrieve more"; reset to undefined (server default) on every new search.
-  const scanLimit = ref<number | undefined>(undefined)
+  const appliedInput = computed<SearchProjectsInputSchema>(() => ({
+    query: debouncedQuery.value,
+    ...(status.value !== 'any' && { status: status.value }),
+    ...(applications.value.length > 0 && { applications: applications.value }),
+    ...(coordinators.value.length > 0 && { coordinators: coordinators.value }),
+    ...(labResponsibles.value.length > 0 && { labResponsibles: labResponsibles.value }),
+    ...(bioinfoResponsibles.value.length > 0 && { bioinfoResponsibles: bioinfoResponsibles.value }),
+    limit: PAGE_SIZE * (extraPages.value + 1),
+    ...(extraPages.value > 0 && { scan_limit: extraPages.value * SCAN_STEP })
+  }))
 
-  const queryParams = computed<ListProjectsSummaryInputSchema>(() => {
-    const p = searchParams.value
-    const out: ListProjectsSummaryInputSchema = {}
-    if (p.status === 'open' || p.status === 'closed') out.status = p.status
-    if (p.ngi_project_id?.trim()) out.ngi_project_id = p.ngi_project_id.trim()
-    if (p.project_name_filter?.trim()) out.project_name_filter = p.project_name_filter.trim()
-    if (p.application_filter?.trim()) out.application_filter = p.application_filter.trim()
-    if (scanLimit.value != null) out.scan_limit = scanLimit.value
-    if (p.limit != null) out.limit = p.limit
-    if (p.skip != null) out.skip = p.skip
-    return out
-  })
+  const enabled = computed(() => toValue(options.enabled ?? true))
 
   const { state, asyncStatus } = useQuery(() => ({
-    ...projectSummariesQuery(queryParams.value),
-    enabled: toValue(options.enabled ?? true)
+    ...projectSearchQuery(appliedInput.value),
+    enabled: enabled.value,
+    // Keep the previous results on screen while a refined search is in flight.
+    placeholderData: (previous: ProjectSearchResultSchema | undefined) => previous
+  }))
+
+  const { state: filterOptionsState } = useQuery(() => ({
+    ...projectFilterOptionsQuery,
+    enabled: enabled.value
   }))
 
   const isLoading = computed(() => asyncStatus.value === 'loading')
   const isError = computed(() => state.value.status === 'error')
   const error = computed(() => state.value.status === 'error' ? state.value.error : undefined)
-  const responseData = computed(() => state.value.status === 'success' ? state.value.data : undefined)
-  // True when a name/application filter scan filled its window; more matches may exist beyond the shown set.
-  const scanTruncated = computed(() => responseData.value?.available === true && responseData.value.scan_truncated === true)
-  // True when the scan has reached its hard ceiling; we can no longer offer to scan deeper.
-  const scanAtMax = computed(() => responseData.value?.available === true && responseData.value.scan_at_max === true)
+  const responseData = computed(() => state.value.data)
+  const results = computed(() => responseData.value?.available ? responseData.value : undefined)
+  const filterOptions = computed(() =>
+    filterOptionsState.value.status === 'success' && filterOptionsState.value.data.available
+      ? filterOptionsState.value.data
+      : undefined
+  )
 
-  // "Retrieve more": scan one step deeper. The server clamps to its ceiling and signals scan_at_max when reached.
-  function retrieveMore() {
-    scanLimit.value = (scanLimit.value ?? 0) + SCAN_STEP
+  // True when results come from the CouchDB fallback (search engine down or index still building).
+  const isDegraded = computed(() => results.value?.source === 'couchdb')
+  const hasActiveCriteria = computed(() => Object.keys(appliedInput.value).some(key => !['query', 'limit', 'scan_limit'].includes(key)) || debouncedQuery.value.length > 0)
+  // The fallback cannot scan deeper once it has hit its ceiling.
+  const canShowMore = computed(() => !!results.value?.hasMore && !results.value.scan_at_max)
+
+  function showMore() {
+    extraPages.value += 1
   }
-
-  function applySearchValues(values: ProjectSearchFormValues) {
-    // New search criteria: start scanning shallow again.
-    scanLimit.value = undefined
-    searchParams.value = {
-      ...(values.status && values.status !== 'any' && { status: values.status }),
-      ...(values.ngi_project_id?.trim() && { ngi_project_id: values.ngi_project_id.trim() }),
-      ...(values.project_name_filter?.trim() && { project_name_filter: values.project_name_filter.trim() }),
-      ...(values.application_filter?.trim() && { application_filter: values.application_filter.trim() })
-    }
-  }
-
-  const onSearchSubmit = handleSubmit((values: ProjectSearchFormValues) => {
-    applySearchValues(values)
-  })
-
-  // Run validation, focus first error field, then run submit (so errors show in UI and submit only runs when valid)
-  async function onValidating() {
-    await validate()
-
-    const firstErrorField = Object.keys(errors.value)[0]
-    if (firstErrorField) {
-      const firstErrorFieldElement = document.querySelector(`[name=${firstErrorField}]`) as HTMLElement
-      if (firstErrorFieldElement) {
-        firstErrorFieldElement.focus()
-        firstErrorFieldElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
-    }
-
-    onSearchSubmit()
-  }
-
-  function getCurrentFormValues(): ProjectSearchFormValues {
-    return {
-      status: statusValue.value ?? 'any',
-      ngi_project_id: projectIdPrefixValue.value ?? undefined,
-      project_name_filter: projectNameFilterValue.value ?? undefined,
-      application_filter: applicationFilterValue.value ?? undefined
-    }
-  }
-
-  // Debounce search trigger to prevent API calls with invalid input into the search fields.
-  const searchTriggerDebounce = useDebounceFn(() => {
-    validate().then((result) => {
-      if (result.valid) {
-        applySearchValues(getCurrentFormValues())
-      }
-    })
-  }, 400)
-
-  watch([projectIdPrefixValue, projectNameFilterValue, applicationFilterValue], () => {
-    searchTriggerDebounce()
-  }, { deep: true })
 
   function reset() {
-    resetForm()
-    scanLimit.value = undefined
-    searchParams.value = {}
+    queryInput.value = ''
+    debouncedQuery.value = ''
+    status.value = 'any'
+    applications.value = []
+    coordinators.value = []
+    labResponsibles.value = []
+    bioinfoResponsibles.value = []
+    extraPages.value = 0
   }
 
   return {
-    statusValue,
-    setStatusValue,
-    projectIdPrefixValue,
-    setProjectIdPrefixValue,
-    projectNameFilterValue,
-    setProjectNameFilterValue,
-    applicationFilterValue,
-    setApplicationFilterValue,
+    queryInput,
+    status,
+    applications,
+    coordinators,
+    labResponsibles,
+    bioinfoResponsibles,
+    filterOptions,
     isLoading,
     isError,
     error,
     responseData,
-    scanTruncated,
-    scanAtMax,
-    retrieveMore,
-    onValidating,
+    results,
+    isDegraded,
+    hasActiveCriteria,
+    canShowMore,
+    showMore,
     reset
   }
 }

@@ -4,22 +4,23 @@ definePageMeta({
 })
 
 const {
-  statusValue,
-  setStatusValue,
-  projectIdPrefixValue,
-  setProjectIdPrefixValue,
-  projectNameFilterValue,
-  setProjectNameFilterValue,
-  applicationFilterValue,
-  setApplicationFilterValue,
+  queryInput,
+  status,
+  applications,
+  coordinators,
+  labResponsibles,
+  bioinfoResponsibles,
+  filterOptions,
   isLoading,
   isError,
   error,
   responseData,
-  scanTruncated,
-  scanAtMax,
-  retrieveMore,
-  onValidating
+  results,
+  isDegraded,
+  hasActiveCriteria,
+  canShowMore,
+  showMore,
+  reset
 } = useProjectSearch()
 </script>
 
@@ -30,127 +31,138 @@ const {
       description="View NGI projects in the database."
     />
 
-    <FilterBar
-      title="Find projects"
-      description="Search StatusDB for projects matching your criteria."
-      icon="i-lucide-database"
-    >
-      <form
-        class="flex flex-wrap items-end gap-4"
-        @submit.prevent="onValidating()"
-      >
-        <NFormField
-          name="status"
-          label="Status"
-          class="min-w-[8rem]"
-          :una="{ formLabel: UI_LABEL_STYLE }"
+    <FilterBar label="Find projects">
+      <template #primary>
+        <NInput
+          :model-value="queryInput"
+          placeholder="Search by project ID, name, application, organism, people, comments…"
+          leading="i-lucide-search"
+          input="~"
+          size="lg"
+          aria-label="Search projects"
+          class="flex-1 text-lg"
+          :una="{ inputWrapper: 'w-full', input: 'h-14 bg-transparent text-lg ring-0 focus-visible:ring-0 shadow-none' }"
+          @update:model-value="queryInput = ($event as string) ?? ''"
         >
+          <template
+            v-if="queryInput"
+            #trailing
+          >
+            <NButton
+              label="i-lucide-x"
+              icon
+              btn="ghost-gray"
+              size="sm"
+              aria-label="Clear search"
+              @click="queryInput = ''"
+            />
+          </template>
+        </NInput>
+      </template>
+
+      <div class="flex flex-wrap items-end gap-4">
+        <div class="flex flex-col gap-1 min-w-[8rem]">
+          <FilterLabel>Status</FilterLabel>
           <NSelect
-            :model-value="statusValue"
-            placeholder="Any"
+            :model-value="status"
             :items="[
               { value: 'any', label: 'Any' },
               { value: 'open', label: 'Open' },
               { value: 'closed', label: 'Closed' }
             ]"
             by="value"
-            @update:model-value="(v: unknown) => setStatusValue(v as 'any' | 'open' | 'closed')"
+            aria-label="Status"
+            @update:model-value="(v: unknown) => status = v as 'any' | 'open' | 'closed'"
           />
-        </NFormField>
-        <NFormField
-          name="ngi_project_id"
-          label="Project ID"
-          class="min-w-[10rem]"
-          :una="{ formLabel: UI_LABEL_STYLE }"
-        >
-          <NInput
-            :model-value="projectIdPrefixValue ?? ''"
-            placeholder="e.g. P12345"
-            class="bg-background"
-            @update:model-value="(v: unknown) => setProjectIdPrefixValue((v as string) ?? '')"
-          />
-        </NFormField>
-        <NFormField
-          name="project_name_filter"
-          label="Project Name"
-          class="min-w-[10rem]"
-          :una="{ formLabel: UI_LABEL_STYLE }"
-        >
-          <NInput
-            :model-value="projectNameFilterValue ?? ''"
-            placeholder="e.g. P.Långstrump_45_11"
-            class="bg-background"
-            @update:model-value="(v: unknown) => setProjectNameFilterValue((v as string) ?? '')"
-          />
-        </NFormField>
-        <NFormField
-          name="application_filter"
+        </div>
+        <FilterMultiSelect
+          v-if="filterOptions?.applications.length"
+          v-model="applications"
           label="Application"
-          class="min-w-[10rem]"
-          :una="{ formLabel: UI_LABEL_STYLE }"
-        >
-          <NInput
-            :model-value="applicationFilterValue ?? ''"
-            placeholder="Filter by application"
-            class="bg-background"
-            @update:model-value="(v: unknown) => setApplicationFilterValue((v as string) ?? '')"
-          />
-        </NFormField>
+          placeholder="Any"
+          :options="filterOptions.applications"
+        />
+        <FilterMultiSelect
+          v-if="filterOptions?.coordinators.length"
+          v-model="coordinators"
+          label="Coordinator"
+          placeholder="Any"
+          :options="filterOptions.coordinators"
+        />
+        <FilterMultiSelect
+          v-if="filterOptions?.labResponsibles.length"
+          v-model="labResponsibles"
+          label="Lab responsible"
+          placeholder="Any"
+          :options="filterOptions.labResponsibles"
+        />
+        <FilterMultiSelect
+          v-if="filterOptions?.bioinfoResponsibles.length"
+          v-model="bioinfoResponsibles"
+          label="Bioinfo responsible"
+          placeholder="Any"
+          :options="filterOptions.bioinfoResponsibles"
+        />
         <NButton
-          type="submit"
-          leading="i-lucide-search"
-          btn="solid-primary"
-        >
-          Search
-        </NButton>
-      </form>
+          v-if="hasActiveCriteria"
+          btn="ghost-gray"
+          leading="i-lucide-filter-x"
+          label="Clear all"
+          @click="reset()"
+        />
+      </div>
     </FilterBar>
 
     <NAlert
-      v-if="isLoading"
-      alert="border-gray"
-      title="Loading projects..."
-      description="Fetching project list from the database."
-      icon="i-lucide-loader-2"
-      class="mt-6"
+      v-if="isDegraded"
+      alert="border-amber"
+      title="Basic search only"
+      description="The search index is not available right now, so results come straight from the database: free text matches project ID prefixes and names only, and long result lists may be incomplete."
+      icon="i-lucide-cloud-off"
+      class="mb-4"
     />
+
     <NAlert
-      v-else-if="isError"
+      v-if="isError"
       alert="border-error"
       title="Error loading projects"
       :description="error != null ? String(error) : 'Something went wrong. Please try again.'"
       icon="i-lucide-alert-circle"
       class="mt-6"
     />
+    <NAlert
+      v-else-if="isLoading && !responseData"
+      alert="border-gray"
+      title="Loading projects..."
+      description="Fetching project list from the database."
+      icon="i-lucide-loader-2"
+      class="mt-6"
+    />
     <div
-      v-else-if="responseData && responseData.available"
+      v-else-if="results"
       class="mt-6"
     >
-      <div
-        v-if="scanTruncated"
-        class="mb-4 flex flex-wrap items-center gap-3"
-      >
-        <NAlert
-          :alert="scanAtMax ? 'border-warning' : 'border-info'"
-          title="Showing the first matches only"
-          :description="scanAtMax
-            ? 'There may be more matches than we can scan. Refine the project name or application, or narrow by project ID, to see the rest.'
-            : 'More projects may match your filter further down the list.'"
-          icon="i-lucide-list-filter"
-          class="grow"
-        />
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <p class="text-sm text-muted grow">
+          {{ results.totalIsEstimated ? 'About' : '' }}
+          <span class="font-semibold">{{ results.total.toLocaleString() }}</span>
+          {{ results.total === 1 ? 'project' : 'projects' }}
+          <template v-if="results.hasMore">
+            · showing the first {{ results.items.length.toLocaleString() }}
+          </template>
+        </p>
         <NButton
-          v-if="!scanAtMax"
+          v-if="canShowMore"
           btn="soft-primary"
           leading="i-lucide-chevrons-down"
           :loading="isLoading"
-          @click="retrieveMore()"
+          @click="showMore()"
         >
-          Retrieve more
+          Show more
         </NButton>
       </div>
       <TableProjectSummaryDisplay
-        :projects="responseData.items"
+        :projects="results.items"
         :loading="isLoading"
       />
     </div>

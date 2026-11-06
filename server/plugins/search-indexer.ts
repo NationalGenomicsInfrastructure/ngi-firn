@@ -14,7 +14,7 @@ import {
   incrementalSyncIntervalMs,
   isSearchConfigured
 } from '../search/config'
-import { rebuildAll, syncInventoryChanges } from '../search/indexer'
+import { rebuildAll, syncInventoryChanges, syncProjectCatalogChanges } from '../search/indexer'
 
 export default defineNitroPlugin((nitroApp) => {
   if (!isSearchConfigured()) {
@@ -31,6 +31,7 @@ export default defineNitroPlugin((nitroApp) => {
       return
     }
     timers.push(setInterval(() => void syncInventoryChanges(), incrementalSyncIntervalMs()))
+    timers.push(setInterval(() => void syncProjectCatalogChanges(), incrementalSyncIntervalMs()))
     timers.push(setInterval(() => void rebuildAll(), fullRebuildIntervalMs()))
   })
 

@@ -1,0 +1,21 @@
+{
+  "_id": "_design/firn-projects",
+  "language": "javascript",
+  "views": {
+    "coordinators": {
+      "map": "function (doc) {\n  if (doc.project_id && doc.details && typeof doc.details.project_coordinator === 'string' && doc.details.project_coordinator.trim()) {\n    emit(doc.details.project_coordinator.trim(), null);\n  }\n}",
+      "reduce": "_count"
+    },
+    "lab_responsibles": {
+      "map": "function (doc) {\n  if (doc.project_id && doc.project_summary && typeof doc.project_summary.lab_responsible === 'string' && doc.project_summary.lab_responsible.trim()) {\n    emit(doc.project_summary.lab_responsible.trim(), null);\n  }\n}",
+      "reduce": "_count"
+    },
+    "bioinfo_responsibles": {
+      "map": "function (doc) {\n  if (doc.project_id && doc.project_summary && typeof doc.project_summary.bioinfo_responsible === 'string' && doc.project_summary.bioinfo_responsible.trim()) {\n    emit(doc.project_summary.bioinfo_responsible.trim(), null);\n  }\n}",
+      "reduce": "_count"
+    },
+    "doc_project_ids": {
+      "map": "function (doc) {\n  if (doc.project_id) {\n    emit(doc._id, doc.project_id);\n  }\n}"
+    }
+  }
+}
