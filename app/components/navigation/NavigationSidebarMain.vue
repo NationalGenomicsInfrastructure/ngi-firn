@@ -5,24 +5,28 @@ const data = {
       title: 'Dashboard',
       url: '/firn',
       icon: 'i-lucide-home',
+      tooltip: 'Dashboard',
       isActive: false
     },
     {
       title: 'Cold Storage Inventory',
       url: '/inventory',
       icon: 'i-lucide-snowflake',
+      tooltip: 'Track objects in our laboratory.',
       isActive: false
     },
     {
       title: 'Projects information',
       url: '/projects',
       icon: 'i-lucide-dna',
+      tooltip: 'View our projects\' metadata',
       isActive: false
     },
     {
       title: 'Tasks',
       url: '/tasks',
       icon: 'i-lucide-clipboard-list',
+      tooltip: 'Keep track of your tasks',
       isActive: false
     }
   ]
@@ -35,8 +39,10 @@ const activeMenu = computed(() => {
   return firstLevelNav
 })
 
+const isActive = (item: { url: string }) => item.url === `/${activeMenu.value}`
+
 const activeTitle = computed(() => {
-  const title = data.navMain.find(item => item.url === activeMenu.value)?.title || activeMenu.value || ''
+  const title = data.navMain.find(item => item.url === `/${activeMenu.value}`)?.title || activeMenu.value || ''
   return title.charAt(0).toUpperCase() + title.slice(1)
 })
 
@@ -64,18 +70,30 @@ const { setOpen } = useSidebar()
                 v-for="item in data.navMain"
                 :key="item.title"
               >
-                <NSidebarMenuButton
-                  :tooltip="h('div', { hidden: false }, item.title)"
-                  class="soft hover:text-primary-500/50 focus:outline-primary-50 dark:focus:outline-primary-500 active:outline-primary text-primary-50 dark:text-primary-400"
-                  style="background-color: transparent;"
-                  @click="() => {
-                    setOpen(true)
-                    navigateTo(item.url)
-                  }"
+                <NTooltip
+                  :disabled="isActive(item)"
+                  :_tooltip-content="{ side: 'right', align: 'center' }"
                 >
-                  <NIcon :name="item.icon" />
-                  <span>{{ item.title }}</span>
-                </NSidebarMenuButton>
+                  <NSidebarMenuButton
+                    :is-active="isActive(item)"
+                    class="soft hover:text-primary-500/50 focus:outline-primary-50 dark:focus:outline-primary-500 active:outline-primary text-primary-50 dark:text-primary-400"
+                    style="background-color: transparent;"
+                    @click="() => {
+                      setOpen(true)
+                      navigateTo(item.url)
+                    }"
+                  >
+                    <NIcon :name="item.icon" />
+                    <span>{{ item.title }}</span>
+                  </NSidebarMenuButton>
+                  <template #content>
+                    <NavigationTooltip
+                      :title="item.title"
+                      :tooltip="item.tooltip"
+                      :icon="item.icon"
+                    />
+                  </template>
+                </NTooltip>
               </NSidebarMenuItem>
             </NSidebarMenu>
           </NSidebarGroupContent>
