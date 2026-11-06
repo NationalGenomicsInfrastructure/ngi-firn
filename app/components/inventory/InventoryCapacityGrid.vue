@@ -85,7 +85,7 @@ function onPointerDown(event: PointerEvent, row: number, column: number) {
   startDrag(event, {
     kind: occupant.type === 'container' ? 'container' : 'item',
     slug: occupant.slug,
-    label: occupant.slug,
+    label: occupant.name ?? occupant.slug,
     fromParentSlug: props.parentSlug
   })
 }
