@@ -41,7 +41,7 @@ jobs:
       # version is pinned here - keep it in sync with the Dockerfiles.
       MEILISEARCH_VERSION: v1.56.1
       MEILISEARCH_HOST: http://127.0.0.1:7700
-      MEILISEARCH_API_KEY: testsearchkey
+      MEILISEARCH_API_KEY: testsearchkey-gEFn9STRgW1Z2USaMF12YzBtDT9mLqkexZ17djAVG-w
       # Dedicated, disposable index namespace so cleanup never touches real indexes.
       MEILISEARCH_INDEX_PREFIX: firn_ci
 

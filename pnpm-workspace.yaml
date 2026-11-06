@@ -2,6 +2,8 @@ shamefullyHoist: true
 strictPeerDependencies: false
 overrides:
   '@una-ui/nuxt>@nuxt/kit': ^4.6.3
+  # Reka 2.11's toast object prop collides with UnaUI 0.67's toast variant string.
+  '@una-ui/nuxt>reka-ui': 2.10.5
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
