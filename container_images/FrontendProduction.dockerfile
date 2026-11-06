@@ -42,12 +42,16 @@ RUN pnpm run build
 # STAGE: Final production stage
 FROM base AS production
 
-# Pinned Meilisearch community binary. The exact release and its checksum MUST be
-# verified against https://github.com/meilisearch/meilisearch/releases before
-# changing this value. When MEILISEARCH_SHA256 is supplied the download is
-# checksum-verified; leave it empty to skip (not recommended for releases).
+# Pinned Meilisearch community binary. The exact release and its per-architecture
+# checksums MUST be verified against
+# https://github.com/meilisearch/meilisearch/releases before changing these
+# values. Provide the plain hex SHA-256 for each architecture (an optional
+# "sha256:" prefix is tolerated and stripped). The checksum for the image's
+# target architecture is mandatory: an empty value for that architecture aborts
+# the build.
 ARG MEILISEARCH_VERSION=v1.56.1
-ARG MEILISEARCH_SHA256=sha256:b2c7a647d4cdfdd7a901466bfd6797077b849e90f5eb2c0f5b1d05869592e27e
+ARG MEILISEARCH_SHA256_AMD64=b2c7a647d4cdfdd7a901466bfd6797077b849e90f5eb2c0f5b1d05869592e27e
+ARG MEILISEARCH_SHA256_ARM64=f73987f92b094fd15b79956f9bfc9e8fc7294ad6ad610ebf8a4403c170890726
 
 # Install dumb-init (PID 1 signal/zombie handling) and the pinned Meilisearch
 # binary matching the image architecture.
@@ -55,15 +59,17 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends dumb-init ca-certificates curl \
     && arch="$(dpkg --print-architecture)" \
     && case "$arch" in \
-         amd64) meili_arch="amd64" ;; \
-         arm64) meili_arch="aarch64" ;; \
+         amd64) meili_arch="amd64"; meili_sha256="${MEILISEARCH_SHA256_AMD64}" ;; \
+         arm64) meili_arch="aarch64"; meili_sha256="${MEILISEARCH_SHA256_ARM64}" ;; \
          *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
        esac \
+    && meili_sha256="${meili_sha256#sha256:}" \
+    && if [ -z "$meili_sha256" ]; then \
+         echo "Missing MEILISEARCH_SHA256 checksum for architecture: $arch" >&2; exit 1; \
+       fi \
     && curl -fsSL -o /usr/local/bin/meilisearch \
          "https://github.com/meilisearch/meilisearch/releases/download/${MEILISEARCH_VERSION}/meilisearch-linux-${meili_arch}" \
-    && if [ -n "$MEILISEARCH_SHA256" ]; then \
-         echo "${MEILISEARCH_SHA256}  /usr/local/bin/meilisearch" | sha256sum -c -; \
-       fi \
+    && echo "${meili_sha256}  /usr/local/bin/meilisearch" | sha256sum -c - \
     && chmod +x /usr/local/bin/meilisearch \
     && apt-get purge -y curl \
     && apt-get autoremove -y \
