@@ -1372,15 +1372,14 @@ async function resolvePlacement(
     }
   }
 
-  // No slot requested: auto-pick the first free slot, row-major. This is a PLANNED
-  // placement — the reserved slot is intended to later drive an InventoryTask so lab
-  // staff can confirm the container was physically put there.
-  // TODO: emit that confirmation task once the task workflow exists.
-  const plannedPosition = await findFirstFreeGridSlot(parent.doc._id, entry)
-  if (!plannedPosition) {
+  // No slot requested: auto-pick the first free slot, row-major, and place the child
+  // immediately. This is ordinary immediate placement, not a planned task: the task
+  // workflow (types/productivity.d.ts) only reserves slots when a task step is activated.
+  const chosenPosition = await findFirstFreeGridSlot(parent.doc._id, entry)
+  if (!chosenPosition) {
     throw new Error(`Grid container "${parent.doc.slug}" is full; no free slot for a "${containerType}".`)
   }
-  return plannedPosition
+  return chosenPosition
 }
 
 /*

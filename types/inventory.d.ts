@@ -27,7 +27,8 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  * StorageEquipment - Freezers/fridges/shelves/cabinets within a room (+ hardware details)
  * Container - Nested storage units with acceptance constraints and capacity
  * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
- * InventoryTask - Planned task document (checkout-return reminders, expiry disposal, etc.)
+ *
+ * (The planned-task domain lives in types/productivity.d.ts — see TaskDocument et al.)
  *
  * CLIENT-SAFE PROJECTIONS:
  * DisplayRoom - Strips CouchDB-internal fields from a Room before sending to the client
@@ -35,7 +36,7 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  * DisplayContainer - Strips CouchDB-internal fields from a Container; replaces parent ref with human-readable stub
  *
  * UTILITY TYPES:
- * InventoryTaskStatus - Allowed task lifecycle states ('planned' | 'completed' | 'skipped' | 'cancelled')
+ * (none)
  */
 
 /* Allowed hierarchy node types used by parent references and location paths. */
@@ -475,46 +476,12 @@ export interface DisplayInventoryItem {
   updatedAt: string
 }
 
-export type InventoryTaskStatus = 'planned' | 'completed' | 'skipped' | 'cancelled'
-
 /*
- * Planned task document for scheduled lab operations (e.g. return reminders, expiry disposal).
- * Tasks are mutable while planned and can be assigned, rescheduled, or cancelled.
- * When a task is completed, an ActionLogEntry is appended to the target entity's
- * embedded actionLog and the task status is set to 'completed'.
- * Unlike ActionLogEntry (which is embedded), InventoryTask is its own CouchDB document
- * to support independent queries: overdue tasks, tasks by assignee, pending disposals.
+ * The planned-task domain now lives in `types/productivity.d.ts` (TaskDocument, TaskStepDocument,
+ * TaskActivationDocument, …). The earlier single-action `InventoryTask` draft was consolidated
+ * into that model and removed to avoid two incompatible task features. The embedded action log
+ * still carries `linkedTaskId` to correlate a receipt with the task step that produced it.
  */
-export interface InventoryTask extends BaseDocument {
-  type: 'inventoryTask'
-  schema: 1
-  slug: string
-  actionType: InventoryActionType
-  status: InventoryTaskStatus
-  /* Target entity this task applies to. */
-  target: TypedDocumentReference<StorageEquipment | Container | InventoryItem>
-  /* Who created this task. */
-  createdBy: TypedDocumentReference<FirnUser>
-  /* Who should perform it (null = unassigned). */
-  assignedTo: TypedDocumentReference<FirnUser> | null
-  /* Who actually completed/skipped/cancelled it. */
-  completedBy: TypedDocumentReference<FirnUser> | null
-  /* When the task was created. */
-  plannedAt: string
-  /* When the task is due (null = no deadline). */
-  dueAt: string | null
-  /* When it was completed/skipped/cancelled. */
-  completedAt: string | null
-  /* Location context for move/checkout/return tasks. */
-  fromParent: TypedDocumentReference<LocationEntity> | null
-  toParent: TypedDocumentReference<LocationEntity> | null
-  fromPosition: GridPosition | null
-  toPosition: GridPosition | null
-  /* Links paired tasks, e.g. checkout → auto-created return task. */
-  linkedTask: TypedDocumentReference<InventoryTask> | null
-  description: string | null
-  notes: string | null
-}
 
 /*
  * BARCODE SCANNING
