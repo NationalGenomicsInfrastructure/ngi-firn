@@ -76,7 +76,12 @@ const { setOpen } = useSidebar()
                 >
                   <NSidebarMenuButton
                     :is-active="isActive(item)"
-                    class="soft hover:text-primary-500/50 focus:outline-primary-50 dark:focus:outline-primary-500 active:outline-primary text-primary-50 dark:text-primary-400"
+                    class="soft hover:text-primary-500/50
+                    focus:outline-primary-50 focus:text-primary-50
+                    dark:focus:outline-primary-400 dark:focus:text-primary-400
+                    active:outline-primary-50 active:text-primary-50
+                    dark:active:outline-primary-400 dark:active:text-primary-400
+                    text-primary-50 dark:text-primary-400"
                     style="background-color: transparent;"
                     @click="() => {
                       setOpen(true)
