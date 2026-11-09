@@ -19,7 +19,8 @@ export async function ensureViews(): Promise<void> {
   const designDocs = await Promise.all([
     loadDesignDoc(['server', 'database', 'couchdb-views', 'firn-users.json'], '_design/firn-users'),
     loadDesignDoc(['server', 'database', 'couchdb-views', 'firn-inventory.json'], '_design/firn-inventory'),
-    loadDesignDoc(['server', 'database', 'couchdb-views', 'firn-inventory-actions.json'], '_design/firn-inventory-actions')
+    loadDesignDoc(['server', 'database', 'couchdb-views', 'firn-inventory-actions.json'], '_design/firn-inventory-actions'),
+    loadDesignDoc(['server', 'database', 'couchdb-views', 'firn-tasks.json'], '_design/firn-tasks')
   ])
 
   for (const designDoc of designDocs) {

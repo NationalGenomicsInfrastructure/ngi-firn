@@ -1,0 +1,57 @@
+{
+  "_id": "_design/firn-tasks",
+  "language": "javascript",
+  "views": {
+    "by_slug": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.slug) { emit(doc.slug, null); } }"
+    },
+    "by_owner": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.managingOwner && doc.managingOwner.kind === 'user' && doc.managingOwner.user && doc.managingOwner.user.id) { emit(doc.managingOwner.user.id, null); } }"
+    },
+    "by_responsible": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.responsibleUsers) { for (var i = 0; i < doc.responsibleUsers.length; i++) { var r = doc.responsibleUsers[i]; if (r && r.id) { emit(r.id, null); } } } }"
+    },
+    "by_viewer": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.viewers) { for (var i = 0; i < doc.viewers.length; i++) { var v = doc.viewers[i]; if (v && v.id) { emit(v.id, null); } } } }"
+    },
+    "by_visibility_status": {
+      "map": "function (doc) { if (doc.type === 'task') { emit([doc.visibility, doc.status], null); } }"
+    },
+    "pool": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.visibility === 'public' && doc.status === 'open' && !doc.archivedAt && (!doc.responsibleUsers || doc.responsibleUsers.length === 0)) { emit(doc.dueDate || doc.createdAt, null); } }"
+    },
+    "by_status_due": {
+      "map": "function (doc) { if (doc.type === 'task') { emit([doc.status, doc.dueDate || ''], null); } }"
+    },
+    "by_project": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.projectRefs) { for (var i = 0; i < doc.projectRefs.length; i++) { var p = doc.projectRefs[i]; if (p && p.id) { emit(p.id, null); } } } }"
+    },
+    "by_inventory": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.inventoryRefs) { for (var i = 0; i < doc.inventoryRefs.length; i++) { var r = doc.inventoryRefs[i]; if (r && r.id) { emit(r.id, null); } } } }"
+    },
+    "cleanup_by_scope": {
+      "map": "function (doc) { if (doc.type === 'task' && doc.cleanupScope) { emit([doc.cleanupScope.kind, doc.cleanupScope.ref ? doc.cleanupScope.ref.id : '', doc.cleanupScope.generation], null); } }"
+    },
+    "steps_by_task": {
+      "map": "function (doc) { if (doc.type === 'taskStep' && doc.task && doc.task.id) { emit([doc.task.id, doc.order], null); } }"
+    },
+    "steps_by_target": {
+      "map": "function (doc) { if (doc.type === 'taskStep' && doc.payload && doc.payload.kind === 'inventory' && doc.payload.target && doc.payload.target.ref && doc.payload.target.ref.id) { emit(doc.payload.target.ref.id, null); } }"
+    },
+    "steps_by_state": {
+      "map": "function (doc) { if (doc.type === 'taskStep') { emit([doc.task.id, doc.state], null); } }"
+    },
+    "activations_by_task": {
+      "map": "function (doc) { if (doc.type === 'taskActivation' && doc.task && doc.task.id) { emit([doc.task.id, doc.state], null); } }"
+    },
+    "operations_by_key": {
+      "map": "function (doc) { if (doc.type === 'taskOperation' && doc.operationId) { emit(doc.operationId, null); } }"
+    },
+    "reminders_by_item": {
+      "map": "function (doc) { if (doc.type === 'expiryReminder' && doc.item && doc.item.id) { emit(doc.item.id, null); } }"
+    },
+    "reminders_by_occurrence": {
+      "map": "function (doc) { if (doc.type === 'expiryReminder' && doc.occurrenceId) { emit(doc.occurrenceId, null); } }"
+    }
+  }
+}
