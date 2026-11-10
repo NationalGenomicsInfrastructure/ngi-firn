@@ -45,7 +45,107 @@ import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, 
 import type { FirnProjectBookmark } from '../../types/projects-firn'
 import type { TodoDocument } from '../../types/productivity'
 import type { TypedDocumentReference } from '../../types/references'
+import type { SerializedUserRef } from '../../types/inventory'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
+
+// =============================================================================================
+// Shared user-reference helpers
+//
+// Single home for turning a FirnUser into the compact stored reference used across documents
+// (action logs, task actors/sharing) and into the client-safe display stub that never leaks the
+// CouchDB _id. Previously duplicated in server/crud/inventory/relations.server.ts and
+// server/crud/tasks/common.ts; both now import these.
+// =============================================================================================
+
+/* Placeholder stub used when a stored user reference can no longer be resolved to a document. */
+export const UNKNOWN_USER_REF: SerializedUserRef = { firnId: '', name: 'Unknown user', avatar: null }
+
+/* Build the compact stored reference to a user (logical `firn` db, resolved later by _id). */
+export function toUserRef(user: FirnUser): TypedDocumentReference<FirnUser> {
+  return { db: 'firn', id: user._id, type: 'firnUser' }
+}
+
+/* Map a resolved FirnUser to its client-safe display stub (never exposes the _id). */
+export function toSerializedUserRef(user: FirnUser): SerializedUserRef {
+  const name = user.googleName?.trim()
+    || [user.googleGivenName, user.googleFamilyName].filter(Boolean).join(' ').trim()
+    || user.githubName?.trim()
+    || user.firnId
+  return { firnId: user.firnId, name, avatar: user.googleAvatar ?? user.githubAvatar ?? null }
+}
+
+/* A FirnUser may participate in shared/collaborative features only when active and approved. */
+export function isActiveApprovedUser(user: FirnUser): boolean {
+  return user.allowLogin === true && user.isRetired !== true
+}
+
+/*
+ * Batch-resolve stored user references into client-safe display stubs, preserving input order.
+ * Unresolvable references collapse to the shared "Unknown user" stub rather than being dropped.
+ */
+export async function resolveUserRefs(refs: TypedDocumentReference<FirnUser>[]): Promise<SerializedUserRef[]> {
+  const ids = [...new Set(refs.map(r => r.id).filter((id): id is string => typeof id === 'string'))]
+  if (ids.length === 0) return []
+  const docs = await couchDB.getDocumentsByIds<FirnUser>(ids)
+  const map = new Map<string, SerializedUserRef>()
+  for (const doc of docs) {
+    if (doc && doc.type === 'firnUser') map.set(doc._id, toSerializedUserRef(doc))
+  }
+  return refs.map(r => (r.id ? map.get(r.id) : undefined) ?? UNKNOWN_USER_REF)
+}
+
+/* Resolve one stored user id to a display name (neutral fallback when missing/unresolvable). */
+export async function resolveUserDisplayName(userId: string | null | undefined): Promise<string> {
+  if (!userId) return UNKNOWN_USER_REF.name
+  const doc = await couchDB.getDocument<FirnUser>(userId)
+  if (doc && doc.type === 'firnUser') return toSerializedUserRef(doc).name
+  return UNKNOWN_USER_REF.name
+}
+
+/* Outcome of resolving a set of firnIds: approved/active users plus the ids that failed. */
+export interface ResolveUsersByFirnIdsResult {
+  users: FirnUser[]
+  missing: string[]
+  inactive: string[]
+}
+
+/*
+ * Resolve a set of firnIds to active, approved FirnUser documents via the `by_firnId` view.
+ * Returns users in input order (deduplicated) and reports unknown/inactive ids separately so the
+ * caller decides how to surface them. Never throws on a missing/inactive user.
+ */
+export async function resolveUsersByFirnIds(firnIds: string[]): Promise<ResolveUsersByFirnIdsResult> {
+  const distinct = [...new Set(firnIds.filter(id => typeof id === 'string' && id.length > 0))]
+  if (distinct.length === 0) return { users: [], missing: [], inactive: [] }
+
+  const rows = (await couchDB.queryView<string, null, FirnUser>('firn-users', 'by_firnId', {
+    keys: distinct,
+    include_docs: true
+  })).rows
+
+  const byFirnId = new Map<string, FirnUser>()
+  for (const row of rows) {
+    const doc = row.doc
+    if (doc && doc.type === 'firnUser' && doc.firnId) byFirnId.set(doc.firnId, doc)
+  }
+
+  const users: FirnUser[] = []
+  const missing: string[] = []
+  const inactive: string[] = []
+  for (const firnId of distinct) {
+    const user = byFirnId.get(firnId)
+    if (!user) {
+      missing.push(firnId)
+      continue
+    }
+    if (!isActiveApprovedUser(user)) {
+      inactive.push(firnId)
+      continue
+    }
+    users.push(user)
+  }
+  return { users, missing, inactive }
+}
 
 function userToRef(user: FirnUser): TypedDocumentReference<FirnUser> {
   return { db: couchDB.database, id: user._id }

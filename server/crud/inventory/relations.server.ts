@@ -20,38 +20,21 @@ import type {
   DisplayInventoryActionLogEntry,
   InventoryActionLogEntry,
   Room,
-  SerializedUserRef,
   StorageEquipment
 } from '../../../types/inventory'
 import type { FirnUser } from '../../../types/auth'
 import type { TypedDocumentReference } from '../../../types/references'
 import { couchDB } from '../../database/couchdb'
+import { UNKNOWN_USER_REF, resolveUserDisplayName, toSerializedUserRef, toUserRef } from '../users.server'
 
 /* Build a TypedDocumentReference from a parent entity for the `parent` field. */
 export function toParentRef<T extends Room | StorageEquipment | Container>(entity: T): TypedDocumentReference<T> {
   return { db: 'firn', id: entity._id, type: entity.type } as TypedDocumentReference<T>
 }
 
-/* Build a TypedDocumentReference from a FirnUser for the Action log entries. */
-export function toUserRef<T extends FirnUser>(entity: T): TypedDocumentReference<T> {
-  return { db: 'firn', id: entity._id, type: entity.type } as TypedDocumentReference<T>
-}
-
-/* Placeholder stub used when a log entry's user document can no longer be resolved. */
-const UNKNOWN_USER_REF: SerializedUserRef = { firnId: '', name: 'Unknown user', avatar: null }
-
-/* Map a resolved FirnUser document to its client-safe display stub (never exposes the _id). */
-function toSerializedUserRef(user: FirnUser): SerializedUserRef {
-  const name = user.googleName?.trim()
-    || [user.googleGivenName, user.googleFamilyName].filter(Boolean).join(' ').trim()
-    || user.githubName?.trim()
-    || user.firnId
-  return {
-    firnId: user.firnId,
-    name,
-    avatar: user.googleAvatar ?? user.githubAvatar ?? null
-  }
-}
+// Re-exported from UserService so existing inventory call sites keep importing from here while the
+// canonical implementation lives in server/crud/users.server.ts.
+export { resolveUserDisplayName, toUserRef }
 
 /*
  * Enrich a list of stored action log entries into their client-safe projection.
@@ -69,7 +52,7 @@ export async function resolveActionLogUsers(
   )]
 
   const userDocs = await couchDB.getDocumentsByIds<FirnUser>(distinctIds)
-  const userMap = new Map<string, SerializedUserRef>()
+  const userMap = new Map<string, DisplayInventoryActionLogEntry['firnUser']>()
   for (const doc of userDocs) {
     if (doc && doc.type === 'firnUser') {
       userMap.set(doc._id, toSerializedUserRef(doc))
@@ -80,18 +63,6 @@ export async function resolveActionLogUsers(
     ...rest,
     firnUser: (firnUser?.id ? userMap.get(firnUser.id) : undefined) ?? UNKNOWN_USER_REF
   }))
-}
-
-/*
- * Resolve one stored user id to a display name. Used for messages that name a user
- * (e.g. the holder of a reservation) without exposing the CouchDB _id. Falls back to
- * a neutral label when the id is missing or the user can no longer be resolved.
- */
-export async function resolveUserDisplayName(userId: string | null | undefined): Promise<string> {
-  if (!userId) return UNKNOWN_USER_REF.name
-  const doc = await couchDB.getDocument<FirnUser>(userId)
-  if (doc && doc.type === 'firnUser') return toSerializedUserRef(doc).name
-  return UNKNOWN_USER_REF.name
 }
 
 /* Count direct children of one parent document using the inventory reduce view. */

@@ -21,24 +21,28 @@ import type {
   TaskStepDocument,
   TaskVisibility
 } from '../../../types/productivity'
+import { ForbiddenError } from '../../auth/errors'
+import {
+  assertCanManageTask,
+  assertCanReadTask,
+  resolveTaskRole
+} from '../../auth/taskPolicy'
+import {
+  isActiveApprovedUser,
+  resolveUserRefs,
+  toUserRef
+} from '../users.server'
 import {
   TaskConflictError,
-  TaskForbiddenError,
   TaskNotFoundError,
   TaskValidationError,
-  assertCanManage,
-  assertCanRead,
   clampPageSize,
   computeQuadrant,
   computeUrgency,
   isCouchConflict,
-  isActiveApprovedUser,
-  resolveUserRefs,
   resolveUsersByFirnIds,
-  resolveViewerRole,
   summarizeProgress,
   toDisplayActor,
-  toUserRef,
   userActor
 } from './common'
 
@@ -119,7 +123,7 @@ export const TaskService = {
 
   async createTask(actor: FirnUser, input: CreateTaskInput): Promise<TaskDocument> {
     if (!isActiveApprovedUser(actor)) {
-      throw new TaskForbiddenError('Only approved, active users can create tasks.')
+      throw new ForbiddenError('Only approved, active users can create tasks.')
     }
     const title = input.title?.trim()
     if (!title) throw new TaskValidationError('A task title is required.')
@@ -172,7 +176,7 @@ export const TaskService = {
   async requireReadableTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.getTaskDocBySlug(slug)
     if (!task) throw new TaskNotFoundError()
-    assertCanRead(task, actor)
+    assertCanReadTask(task, actor)
     return task
   },
 
@@ -204,7 +208,7 @@ export const TaskService = {
 
   async updateMetadata(actor: FirnUser, slug: string, patch: UpdateTaskMetadataInput): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     if (patch.expectedEditVersion !== undefined && patch.expectedEditVersion !== task.editVersion) {
       throw new TaskConflictError('The task was edited since you loaded it; please reload and retry.')
     }
@@ -225,7 +229,7 @@ export const TaskService = {
 
   async setSharing(actor: FirnUser, slug: string, input: SetSharingInput): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
 
     const ownerId = task.managingOwner.kind === 'user' ? task.managingOwner.user.id : null
     let responsibleUsers = task.responsibleUsers
@@ -259,7 +263,7 @@ export const TaskService = {
   /* Publish a draft task so colleagues can see and (if public and unassigned) claim it. */
   async publishTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     if (task.status !== 'draft') return task
     const updated: TaskDocument = {
       ...task,
@@ -272,7 +276,7 @@ export const TaskService = {
 
   async transferOwnership(actor: FirnUser, slug: string, newOwnerFirnId: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     const [newOwner] = await resolveUsersByFirnIds([newOwnerFirnId])
     if (!newOwner) throw new TaskValidationError('The new owner could not be resolved.')
 
@@ -291,7 +295,7 @@ export const TaskService = {
 
   async archiveTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     if (task.archivedAt) return task
     const updated: TaskDocument = {
       ...task,
@@ -304,7 +308,7 @@ export const TaskService = {
 
   async cancelTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     if (task.status === 'cancelled') return task
     const now = DateTime.now().toISO()
     const updated: TaskDocument = {
@@ -327,19 +331,19 @@ export const TaskService = {
    */
   async claimTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
     if (!isActiveApprovedUser(actor)) {
-      throw new TaskForbiddenError('Only approved, active users can claim tasks.')
+      throw new ForbiddenError('Only approved, active users can claim tasks.')
     }
     const task = await TaskService.getTaskDocBySlug(slug)
     if (!task) throw new TaskNotFoundError()
-    if (task.visibility !== 'public') throw new TaskForbiddenError('Only public tasks can be claimed.')
+    if (task.visibility !== 'public') throw new ForbiddenError('Only public tasks can be claimed.')
     if (task.status !== 'open' || task.archivedAt) {
-      throw new TaskForbiddenError('This task is not available to claim.')
+      throw new ForbiddenError('This task is not available to claim.')
     }
     if (task.responsibleUsers.length > 0) {
       throw new TaskConflictError('This task has already been claimed.')
     }
     if (TaskService.isOwnerId(task, actor._id)) {
-      throw new TaskForbiddenError('You already own this task.')
+      throw new ForbiddenError('You already own this task.')
     }
 
     const updated: TaskDocument = {
@@ -363,7 +367,7 @@ export const TaskService = {
   async releaseResponsibility(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
     if (!task.responsibleUsers.some(r => r.id === actor._id)) {
-      throw new TaskForbiddenError('You are not responsible for this task.')
+      throw new ForbiddenError('You are not responsible for this task.')
     }
     const updated: TaskDocument = {
       ...task,
@@ -395,7 +399,7 @@ export const TaskService = {
     const docs = (await couchDB.getDocumentsByIds<TaskDocument>([...ids]))
       .filter((d): d is TaskDocument => !!d && d.type === 'task')
       .filter(d => options.includeArchived ? true : !d.archivedAt)
-      .filter(d => resolveViewerRole(d, actor) !== null)
+      .filter(d => resolveTaskRole(d, actor) !== null)
 
     return TaskService.paginateAndProject(actor, docs, options)
   },
@@ -431,7 +435,7 @@ export const TaskService = {
     const docs = (await couchDB.getDocumentsByIds<TaskDocument>(ids))
       .filter((d): d is TaskDocument => !!d && d.type === 'task')
       .filter(d => options.includeArchived ? true : !d.archivedAt)
-      .filter(d => resolveViewerRole(d, actor) !== null)
+      .filter(d => resolveTaskRole(d, actor) !== null)
     return TaskService.paginateAndProject(actor, docs, options)
   },
 
@@ -518,7 +522,7 @@ export const TaskService = {
         ? task.inventoryRefs.map(r => refToEntityStub(r, inventoryKind(r.type)))
         : null,
       progress: summarizeProgress(steps),
-      viewerRole: resolveViewerRole(task, actor) ?? 'public',
+      viewerRole: resolveTaskRole(task, actor) ?? 'public',
       editVersion: task.editVersion,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,

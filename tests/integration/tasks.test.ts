@@ -21,7 +21,8 @@ import { ContainerService } from '../../server/crud/inventory/containers.server'
 import { ItemService } from '../../server/crud/inventory/items.server'
 import { TaskService } from '../../server/crud/tasks/tasks.server'
 import { TaskStepService } from '../../server/crud/tasks/steps.server'
-import { TaskAccessError, TaskConflictError, TaskForbiddenError, TaskValidationError } from '../../server/crud/tasks/common'
+import { TaskConflictError, TaskValidationError } from '../../server/crud/tasks/common'
+import { AuthorizationError, ForbiddenError } from '../../server/auth/errors'
 import type { TaskStepPayload } from '../../types/productivity'
 import type { FirnUser } from '../../types/auth'
 import type { Container, InventoryItem } from '../../types/inventory'
@@ -187,7 +188,7 @@ describe('Access control and sharing', () => {
     const task = await makeTask(owner, { title: 'BCTEST Shared task' })
 
     await expect(TaskService.requireReadableTask(stranger, task.slug))
-      .rejects.toBeInstanceOf(TaskAccessError)
+      .rejects.toBeInstanceOf(AuthorizationError)
 
     await TaskService.setSharing(owner, task.slug, {
       responsibleFirnIds: [colleagueA.firnId],
@@ -199,7 +200,7 @@ describe('Access control and sharing', () => {
     expect((await TaskService.getDisplayTask(colleagueB, task.slug)).viewerRole).toBe('viewer')
     // Still private: an unshared stranger cannot read.
     await expect(TaskService.requireReadableTask(stranger, task.slug))
-      .rejects.toBeInstanceOf(TaskAccessError)
+      .rejects.toBeInstanceOf(AuthorizationError)
   })
 
   it('lets only the owner perform structural edits', async () => {
@@ -207,7 +208,7 @@ describe('Access control and sharing', () => {
     await TaskService.setSharing(owner, task.slug, { viewerFirnIds: [colleagueB.firnId] })
 
     await expect(addSteps(colleagueB, task.slug, [{ payload: textStep('Sneaky') }]))
-      .rejects.toBeInstanceOf(TaskForbiddenError)
+      .rejects.toBeInstanceOf(ForbiddenError)
 
     const steps = await addSteps(owner, task.slug, [{ payload: textStep('Legit') }])
     expect(steps).toHaveLength(1)
@@ -221,7 +222,7 @@ describe('Access control and sharing', () => {
     expect(moved.viewerRole).toBe('owner')
 
     await expect(TaskService.setSharing(owner, task.slug, { viewerFirnIds: [] }))
-      .rejects.toBeInstanceOf(TaskAccessError)
+      .rejects.toBeInstanceOf(AuthorizationError)
     // New owner can still manage.
     const reshared = await TaskService.setSharing(colleagueA, task.slug, { viewerFirnIds: [colleagueB.firnId] })
     expect(reshared.viewers).toHaveLength(1)
@@ -256,7 +257,7 @@ describe('Pool and claiming', () => {
     const task = await makeTask(owner, { title: 'BCTEST Private unclaimable' })
     await TaskService.publishTask(owner, task.slug)
     await expect(TaskService.claimTask(colleagueA, task.slug))
-      .rejects.toBeInstanceOf(TaskForbiddenError)
+      .rejects.toBeInstanceOf(ForbiddenError)
   })
 })
 

@@ -22,12 +22,12 @@ import type {
   TaskStepDocument,
   TaskStepPayload
 } from '../../../types/productivity'
+import { ForbiddenError } from '../../auth/errors'
+import { assertCanManageTask } from '../../auth/taskPolicy'
+import { resolveUserRefs } from '../users.server'
 import {
-  TaskForbiddenError,
   TaskNotFoundError,
-  TaskValidationError,
-  assertCanManage,
-  resolveUserRefs
+  TaskValidationError
 } from './common'
 import { TaskService } from './tasks.server'
 
@@ -134,7 +134,7 @@ export const TaskStepService = {
 
   async addSteps(actor: FirnUser, slug: string, definitions: StepDefinitionInput[]): Promise<TaskStepDocument[]> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     if (definitions.length === 0) return []
 
     const existing = await TaskService.getStepsForTask(task._id)
@@ -184,12 +184,12 @@ export const TaskStepService = {
     patch: { payload?: TaskStepPayload, dependsOn?: string[] }
   ): Promise<TaskStepDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     const steps = await TaskService.getStepsForTask(task._id)
     const step = steps.find(s => s.stepId === stepId)
     if (!step) throw new TaskNotFoundError('Step not found.')
     if (step.state !== 'planned') {
-      throw new TaskForbiddenError('Only planned steps can be edited; create a corrective step instead.')
+      throw new ForbiddenError('Only planned steps can be edited; create a corrective step instead.')
     }
 
     const nextDependsOn = patch.dependsOn !== undefined ? [...new Set(patch.dependsOn)] : step.dependsOn
@@ -216,12 +216,12 @@ export const TaskStepService = {
 
   async removePlannedStep(actor: FirnUser, slug: string, stepId: string): Promise<void> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     const steps = await TaskService.getStepsForTask(task._id)
     const step = steps.find(s => s.stepId === stepId)
     if (!step) throw new TaskNotFoundError('Step not found.')
     if (step.state !== 'planned') {
-      throw new TaskForbiddenError('Only unexecuted planned steps can be removed; cancel executed work instead.')
+      throw new ForbiddenError('Only unexecuted planned steps can be removed; cancel executed work instead.')
     }
     // Removing a step that others depend on would dangle their dependencies.
     const dependents = steps.filter(s => s.stepId !== stepId && s.dependsOn.includes(stepId))
@@ -235,7 +235,7 @@ export const TaskStepService = {
 
   async reorderSteps(actor: FirnUser, slug: string, orderedStepIds: string[]): Promise<TaskStepDocument[]> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    assertCanManage(task, actor)
+    assertCanManageTask(task, actor)
     const steps = await TaskService.getStepsForTask(task._id)
     const byId = new Map(steps.map(s => [s.stepId, s]))
     if (orderedStepIds.length !== steps.length || !orderedStepIds.every(id => byId.has(id))) {
