@@ -17,6 +17,8 @@ import type { FirnUser } from '../../../types/auth'
 import type { Container, InventoryItem } from '../../../types/inventory'
 import type { TypedDocumentReference } from '../../../types/references'
 import type {
+  DisplayTaskBatchResult,
+  DisplayTaskBatchStepResult,
   DisplayTaskStep,
   TaskActivationDocument,
   TaskDocument,
@@ -38,6 +40,7 @@ import { ContainerService } from '../inventory/containers.server'
 import { toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { TaskStepService } from './steps.server'
+import { findActivation, toDisplayActivation } from './activation.server'
 import {
   TaskConflictError,
   TaskNotFoundError,
@@ -63,6 +66,16 @@ interface StepExecutionInputBase {
 
 export type ConfirmStepInput = StepExecutionInputBase
 export type SkipStepInput = StepExecutionInputBase
+
+/** Confirm several held steps of one activation in dependency order. */
+export interface ConfirmBatchInput {
+  activationId: string
+  operationId: string
+  source: TaskExecutionSource
+  reportedAt?: string | null
+  /* Explicit steps to confirm; omit to confirm every still-held step of the activation. */
+  stepIds?: string[]
+}
 
 export const TaskExecutionService = {
   /*
@@ -120,6 +133,42 @@ export const TaskExecutionService = {
       },
       execute: () => skip(actor, activation, step, input)
     })
+  },
+
+  /*
+   * Confirm a set of held steps (or every remaining held step) of one activation in dependency
+   * order, returning a per-step disposition. A step blocked by an unresolved prerequisite or an
+   * execution failure is reported and does not abort the rest of the batch. The task is never marked
+   * completed here. Each step is confirmed under a derived per-step operation id, so the physical
+   * work is independently idempotent and a retried batch never double-applies it.
+   */
+  async confirmBatch(actor: FirnUser, taskSlug: string, input: ConfirmBatchInput): Promise<DisplayTaskBatchResult> {
+    const task = await TaskService.requireReadableTask(actor, taskSlug)
+    assertCanExecuteTask(task, actor)
+    const activation = await findActivation(task._id, input.activationId)
+    if (!activation) throw new TaskNotFoundError()
+    if (activation.state !== 'active') {
+      throw new TaskValidationError(`Activation is ${activation.state}; only an active activation can be executed.`)
+    }
+    if (activation.executor.id !== actor._id) {
+      throw new TaskValidationError('Only the colleague who activated this work may execute its steps.')
+    }
+
+    const taskRef: TypedDocumentReference<TaskDocument> = { db: 'firn', id: task._id, type: 'task' }
+    const activationRef: TypedDocumentReference<TaskActivationDocument> = {
+      db: 'firn',
+      id: activation._id,
+      type: 'taskActivation'
+    }
+    const requested = input.stepIds ? [...input.stepIds].sort() : null
+    return runOperation<DisplayTaskBatchResult>({
+      operationId: input.operationId,
+      kind: 'confirm',
+      task: taskRef,
+      activation: activationRef,
+      payload: { taskId: task._id, activationId: activation.activationId, stepIds: requested, batch: true },
+      execute: () => confirmBatch(actor, task, activation.activationId, input)
+    })
   }
 }
 
@@ -156,19 +205,6 @@ async function loadExecutionContext(
   }
 
   return { task, activation, step }
-}
-
-/* Fetch a specific activation of a task by its public activationId. */
-async function findActivation(taskId: string, activationId: string): Promise<TaskActivationDocument | null> {
-  const rows = (await couchDB.queryView<[string, string], null, TaskActivationDocument>(
-    'firn-tasks',
-    'activations_by_task',
-    { startkey: [taskId, ''], endkey: [taskId, '\ufff0'], include_docs: true }
-  )).rows
-  const doc = rows
-    .map(r => r.doc)
-    .find((d): d is TaskActivationDocument => !!d && d.type === 'taskActivation' && d.activationId === activationId)
-  return doc ?? null
 }
 
 /* Core confirmation: idempotent physical execution + hold consumption + outcome recording. */
@@ -258,6 +294,115 @@ async function skip(
   return TaskStepService.toDisplayStep(updatedStep)
 }
 
+/* Core batch confirmation: confirm each targeted held step in dependency order, collecting results. */
+async function confirmBatch(
+  actor: FirnUser,
+  task: TaskDocument,
+  activationId: string,
+  input: ConfirmBatchInput
+): Promise<DisplayTaskBatchResult> {
+  const results: DisplayTaskBatchStepResult[] = []
+  const requested = input.stepIds ? new Set(input.stepIds) : null
+
+  // Re-read the activation each iteration so dependency checks see prior confirmations.
+  let activation = await findActivation(task._id, activationId)
+  if (!activation) throw new TaskNotFoundError()
+
+  const steps = await TaskService.getStepsForTask(task._id)
+  const stepById = new Map(steps.map(s => [s.stepId, s]))
+  const manifestIds = new Set(activation.manifest.map(e => e.stepId))
+  const targetIds = orderStepsByDependency(
+    activation.manifest
+      .map(e => e.stepId)
+      .filter(id => !requested || requested.has(id)),
+    stepById
+  )
+
+  for (const stepId of targetIds) {
+    const step = stepById.get(stepId)
+    if (!step) {
+      results.push({ stepId, status: 'failed', message: 'Step no longer exists.' })
+      continue
+    }
+    if (step.state === 'completed' || step.state === 'skipped' || step.state === 'cancelled') {
+      results.push({ stepId, status: 'already_resolved', message: null })
+      continue
+    }
+    const blockedBy = firstUnresolvedDependency(step, activation, manifestIds)
+    if (blockedBy) {
+      results.push({ stepId, status: 'blocked', message: `Waiting on prerequisite ${blockedBy}.` })
+      continue
+    }
+
+    const stepInput: ConfirmStepInput = {
+      stepId,
+      activationId,
+      // Derived, deterministic per-step id: idempotent across batch retries via the action receipt.
+      operationId: `${input.operationId}:${stepId}`,
+      source: input.source,
+      reportedAt: input.reportedAt ?? null,
+      notes: null
+    }
+    try {
+      await confirm(actor, task, activation, step, stepInput)
+      results.push({ stepId, status: 'completed', message: null })
+    }
+    catch (error) {
+      results.push({ stepId, status: 'failed', message: error instanceof Error ? error.message : String(error) })
+    }
+
+    // Refresh for the next step's dependency view and for the final projection.
+    const refreshed = await findActivation(task._id, activationId)
+    if (refreshed) activation = refreshed
+    const freshStep = await couchDB.getDocument<TaskStepDocument>(step._id)
+    if (freshStep) stepById.set(stepId, freshStep)
+  }
+
+  const activationDisplay = await toDisplayActivation(activation, task.slug)
+  return { activationId, taskSlug: task.slug, results, activation: activationDisplay }
+}
+
+/* The first prerequisite (within this activation) that has not completed, or null when all are met. */
+function firstUnresolvedDependency(
+  step: TaskStepDocument,
+  activation: TaskActivationDocument,
+  manifestIds: Set<string>
+): string | null {
+  for (const depId of step.dependsOn) {
+    if (!manifestIds.has(depId)) continue
+    const entry = activation.manifest.find(e => e.stepId === depId)
+    if (entry && entry.state !== 'completed') return depId
+  }
+  return null
+}
+
+/* Topologically order step ids so each step follows its in-set prerequisites; order breaks ties. */
+function orderStepsByDependency(stepIds: string[], stepById: Map<string, TaskStepDocument>): string[] {
+  const inSet = new Set(stepIds)
+  const ordered: string[] = []
+  const placed = new Set<string>()
+  const visiting = new Set<string>()
+
+  const visit = (id: string): void => {
+    if (placed.has(id) || visiting.has(id)) return
+    visiting.add(id)
+    const step = stepById.get(id)
+    if (step) {
+      const deps = [...step.dependsOn].filter(d => inSet.has(d))
+      deps.sort((a, b) => (stepById.get(a)?.order ?? 0) - (stepById.get(b)?.order ?? 0))
+      for (const dep of deps) visit(dep)
+    }
+    visiting.delete(id)
+    placed.add(id)
+    ordered.push(id)
+  }
+
+  for (const id of [...stepIds].sort((a, b) => (stepById.get(a)?.order ?? 0) - (stepById.get(b)?.order ?? 0))) {
+    visit(id)
+  }
+  return ordered
+}
+
 /*
  * A confirmation requires every prerequisite to have genuinely completed. A skipped prerequisite is
  * not treated as physically performed, so downstream confirmation is blocked for replan or skip.
@@ -330,7 +475,7 @@ function destinationParentKind(type: string | undefined): 'equipment' | 'contain
 }
 
 /* Idempotently release a skipped inventory step's target hold and any destination claim it held. */
-async function releaseStepHolds(
+export async function releaseStepHolds(
   payload: TaskInventoryStepPayload,
   activationId: string,
   stepId: string,
@@ -372,7 +517,7 @@ function buildOutcome(
 }
 
 /* Persist a step's terminal state and outcome, retrying once on a concurrent edit. */
-async function writeStepOutcome(
+export async function writeStepOutcome(
   step: TaskStepDocument,
   state: TaskStepDocument['state'],
   outcome: TaskStepOutcome
@@ -399,7 +544,7 @@ async function writeStepOutcome(
  * released. When every manifest entry is terminal the activation is finished. Best-effort with a
  * short CAS retry; the authoritative step state already persisted above.
  */
-async function finishActivationEntry(
+export async function finishActivationEntry(
   activation: TaskActivationDocument,
   stepId: string,
   state: 'completed' | 'skipped'

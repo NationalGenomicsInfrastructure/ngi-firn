@@ -564,6 +564,33 @@ export interface DisplayTaskActivation {
   finishedAt: string | null
 }
 
+/*
+ * Per-step disposition returned by a batch confirmation. `already_resolved` covers a step that was
+ * terminal before the batch ran; `blocked` covers an unmet dependency; `failed`/`needs_reconciliation`
+ * surface execution errors without aborting the remaining steps.
+ */
+export type TaskBatchStepStatus
+  = | 'completed'
+    | 'skipped'
+    | 'already_resolved'
+    | 'blocked'
+    | 'failed'
+    | 'needs_reconciliation'
+
+export interface DisplayTaskBatchStepResult {
+  stepId: string
+  status: TaskBatchStepStatus
+  message: string | null
+}
+
+/* Result of a batch confirmation: per-step outcomes plus the refreshed activation projection. */
+export interface DisplayTaskBatchResult {
+  activationId: string
+  taskSlug: string
+  results: DisplayTaskBatchStepResult[]
+  activation: DisplayTaskActivation
+}
+
 // ---------------------------------------------------------------------------------------------
 // DEPRECATED — legacy ToDo draft
 // ---------------------------------------------------------------------------------------------

@@ -61,6 +61,22 @@ interface PlannedClaim {
 
 const INVENTORY_ITEM_TYPE = 'inventoryItem'
 
+/* Fetch a specific activation of a task by its public activationId, or null when absent. */
+export async function findActivation(
+  taskId: string,
+  activationId: string
+): Promise<TaskActivationDocument | null> {
+  const rows = (await couchDB.queryView<[string, string], null, TaskActivationDocument>(
+    'firn-tasks',
+    'activations_by_task',
+    { startkey: [taskId, ''], endkey: [taskId, '\ufff0'], include_docs: true }
+  )).rows
+  const doc = rows
+    .map(r => r.doc)
+    .find((d): d is TaskActivationDocument => !!d && d.type === 'taskActivation' && d.activationId === activationId)
+  return doc ?? null
+}
+
 export const TaskActivationService = {
   /*
    * Activate `stepIds` (plus their unresolved prerequisite closure) of an open, assigned task,
@@ -179,18 +195,34 @@ async function activate(
     throw error
   }
 
-  const [executorRef] = await resolveUserRefs([executor])
-  const displaySteps = await Promise.all(heldSteps.map(step => TaskStepService.toDisplayStep(step)))
+  return toDisplayActivation(activationDoc, task.slug, heldSteps)
+}
+
+/*
+ * Project an activation document into its client-safe display form. `heldSteps` optionally supplies
+ * the already-loaded step documents (as during activation); otherwise the manifest's steps are
+ * re-read from the task.
+ */
+export async function toDisplayActivation(
+  activation: TaskActivationDocument,
+  taskSlug: string,
+  knownSteps?: TaskStepDocument[]
+): Promise<DisplayTaskActivation> {
+  const [executorRef] = await resolveUserRefs([activation.executor])
+  const manifestIds = new Set(activation.manifest.map(entry => entry.stepId))
+  const steps = knownSteps
+    ?? (await TaskService.getStepsForTask(activation.task.id)).filter(step => manifestIds.has(step.stepId))
+  const displaySteps = await Promise.all(steps.map(step => TaskStepService.toDisplayStep(step)))
   return {
-    activationId,
-    taskSlug: task.slug,
+    activationId: activation.activationId,
+    taskSlug,
     executor: executorRef,
-    state: activationDoc.state,
-    activationVersion: activationDoc.activationVersion,
+    state: activation.state,
+    activationVersion: activation.activationVersion,
     steps: displaySteps,
-    createdAt: activationDoc.createdAt,
-    updatedAt: activationDoc.updatedAt,
-    finishedAt: activationDoc.finishedAt
+    createdAt: activation.createdAt,
+    updatedAt: activation.updatedAt,
+    finishedAt: activation.finishedAt
   }
 }
 
