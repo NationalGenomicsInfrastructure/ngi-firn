@@ -50,3 +50,20 @@ export function assertCanManageTask(task: TaskDocument, actor: FirnUser): void {
   assertCanReadTask(task, actor)
   if (!isTaskOwner(task, actor)) throw new ForbiddenError('Only the task owner can manage this task.')
 }
+
+/* True when the actor may activate and execute a task's work (managing owner or responsible). */
+export function canExecuteTask(task: TaskDocument, actor: FirnUser): boolean {
+  return isTaskOwner(task, actor) || isTaskResponsible(task, actor)
+}
+
+/*
+ * Throw unless the actor may activate/execute the task's work. Viewers and public readers cannot;
+ * only the managing owner or a responsible colleague may acquire holds and confirm steps. The
+ * activation separately binds a single executor, so being eligible here is not a bypass of that.
+ */
+export function assertCanExecuteTask(task: TaskDocument, actor: FirnUser): void {
+  assertCanReadTask(task, actor)
+  if (!canExecuteTask(task, actor)) {
+    throw new ForbiddenError('Only the task owner or a responsible colleague can carry out this task.')
+  }
+}
