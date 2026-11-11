@@ -317,7 +317,8 @@ export type TaskReservationState = 'pending' | 'held' | 'consumed' | 'released'
  */
 export interface TaskReservationClaim {
   stepId: string
-  resource: TypedDocumentReference<Container | InventoryItem | StorageEquipment | Room>
+  /* The held resource. Never a room: rooms carry no capacity and are never a step target. */
+  resource: TypedDocumentReference<Container | InventoryItem | StorageEquipment>
   claimKind: TaskReservationKind
   /* Exact cell for a gridCell claim; null otherwise. */
   position: GridPosition | null

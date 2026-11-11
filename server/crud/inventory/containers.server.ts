@@ -662,6 +662,7 @@ export const ContainerService = {
       status: 'available',
       actionLog: [registrationLogEntry],
       activeFlags: [],
+      reservations: null,
       createdAt: now,
       updatedAt: now
     }

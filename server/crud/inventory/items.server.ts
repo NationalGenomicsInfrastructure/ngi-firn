@@ -617,6 +617,7 @@ export const ItemService = {
         notes: `Created in parent "${parent.doc.name}".`
       }],
       activeFlags: [],
+      reservations: null,
       createdAt: now,
       updatedAt: now
     }

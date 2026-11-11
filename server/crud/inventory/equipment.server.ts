@@ -227,6 +227,7 @@ export const EquipmentService = {
       model: input.model ?? null,
       serialNumber: input.serialNumber ?? null,
       isActive: input.isActive ?? true,
+      reservations: null,
       createdAt: now,
       updatedAt: now
     }

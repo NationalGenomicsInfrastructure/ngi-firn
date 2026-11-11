@@ -28,6 +28,11 @@ import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
  * Container - Nested storage units with acceptance constraints and capacity
  * InventoryItem - Trackable sample/reagent/library with lab-specific fields and lifecycle
  *
+ * PHYSICAL HOLDS (task reservation state):
+ * InventoryReservationState - Server-owned task-hold ledger embedded on every resource document
+ * InventoryTargetHold / InventoryGridCellClaim / InventoryCapacityClaim / InventoryStructuralGuard
+ *   - the four task-owned claim shapes, each with a durable state, operationId and fencing generation
+ *
  * (The planned-task domain lives in types/productivity.d.ts — see TaskDocument et al.)
  *
  * CLIENT-SAFE PROJECTIONS:
@@ -155,6 +160,104 @@ export interface InventoryTrackedField {
  */
 export type SerializedEntityRef = { slug: string, name: string, kind: 'container' | 'equipment' | 'item' | 'project' | 'room' | 'task' | 'template' }
 
+/*
+ * PHYSICAL HOLDS (task reservation state)
+ * ***************************************
+ *
+ * Server-owned reservation state embedded on inventory resource documents and arbitrated by the
+ * bearing document's `_rev` (CAS): every competing writer must claim through the same authoritative
+ * document, so a view query or a check-then-write can never bypass a hold. Holds are NOT a lifecycle
+ * status and NOT a physical occupant — they coexist with available/in_use/reserved/expired/lost and
+ * with the existing status-based "ordinary" reservation (see activeReservationOwnerId). Acquiring or
+ * releasing a hold never changes an object's status, placement or the physical `stored` counter.
+ *
+ * Three claim shapes live here:
+ *  - a single object-level target hold (the held item/container is a step's target),
+ *  - parent-side allocation claims (exact grid cells and category/count capacity),
+ *  - structural guards that stabilize a held subtree/path against incompatible edits.
+ *
+ * Each claim carries a durable `state` and the `operationId` that last transitioned it, so a retried
+ * consume/release is idempotent, and a fencing `generation` so a stale recovery worker cannot
+ * overwrite a newer activation generation (advanced on handover).
+ */
+
+/* Durable lifecycle of a single task-owned inventory hold; mirrors productivity TaskReservationState. */
+export type InventoryHoldState = 'pending' | 'held' | 'consumed' | 'released'
+
+/*
+ * Object-level lock: this item/container is the target of an activated step. Only the recorded
+ * activation's sole executor may mutate the object until the hold is consumed or released; every
+ * other (ordinary) write is refused with a generic reservation conflict that never leaks task data.
+ */
+export interface InventoryTargetHold {
+  activationId: string
+  stepId: string
+  /* Public firnId of the sole executor permitted to act on the held object. */
+  executorFirnId: string
+  /* Fencing generation; advances on handover so a stale worker cannot overwrite a newer one. */
+  generation: number
+  state: InventoryHoldState
+  /* Operation that last transitioned this hold, for idempotent consume/release. */
+  operationId: string | null
+}
+
+/* A task-owned claim on one exact grid cell of a parent grid container. */
+export interface InventoryGridCellClaim {
+  activationId: string
+  stepId: string
+  position: GridPosition
+  generation: number
+  state: InventoryHoldState
+  operationId: string | null
+}
+
+/* A task-owned claim on count/category capacity of a parent (container or equipment). */
+export interface InventoryCapacityClaim {
+  activationId: string
+  stepId: string
+  /* Container or item category whose free capacity is reserved. */
+  category: string
+  /* Number of slots reserved (usually 1). */
+  count: number
+  generation: number
+  state: InventoryHoldState
+  operationId: string | null
+}
+
+/*
+ * Scope of a structural guard: 'subtree' stabilizes the resource and everything under it against
+ * moves/deletes/deactivation; 'definition' stabilizes capacity/grid/type/temperature/acceptance edits
+ * that could invalidate held work. A guard protects only the held path, never unrelated siblings.
+ */
+export type InventoryStructuralGuardScope = 'subtree' | 'definition'
+
+/* A task-owned structural guard protecting held work that depends on this resource/subtree. */
+export interface InventoryStructuralGuard {
+  activationId: string
+  stepId: string
+  scope: InventoryStructuralGuardScope
+  generation: number
+  state: InventoryHoldState
+  operationId: string | null
+}
+
+/*
+ * Aggregated server-owned reservation state embedded on an inventory resource document (a container,
+ * storage-equipment or item — never a room). `null` means no task holds (the common case). New
+ * documents initialize this explicitly (emptyReservationState); legacy documents without the field
+ * are normalized at the service read/write boundary.
+ */
+export interface InventoryReservationState {
+  /* Object-level lock when this item/container is itself a step target. */
+  targetHold: InventoryTargetHold | null
+  /* Parent-side exact-cell claims (grid containers). */
+  gridCells: InventoryGridCellClaim[]
+  /* Parent-side category/count capacity claims (containers and equipment). */
+  capacityClaims: InventoryCapacityClaim[]
+  /* Structural guards protecting held work on this resource/subtree. */
+  structuralGuards: InventoryStructuralGuard[]
+}
+
 /* Top-level physical location. Rooms are hierarchy roots for storage equipment. */
 export interface Room extends BaseDocument {
   type: 'room'
@@ -220,6 +323,8 @@ export interface StorageEquipment extends BaseDocument {
   model: string | null
   serialNumber: string | null
   isActive: boolean
+  /* Server-owned task hold state (capacity/grid claims, structural guards). null = no holds. */
+  reservations: InventoryReservationState | null
   createdAt: string
   updatedAt: string
 }
@@ -286,6 +391,8 @@ export interface Container extends BaseDocument {
   actionLog: InventoryActionLogEntry[]
   activeFlags: InventoryActiveFlag[] | null
   status: InventoryStatusType
+  /* Server-owned task hold state (target hold, capacity/grid claims, structural guards). null = none. */
+  reservations: InventoryReservationState | null
 }
 
 /*
@@ -440,6 +547,8 @@ export interface InventoryItem extends BaseDocument {
   actionLog: InventoryActionLogEntry[]
   /* Active flags: Colored highlights that allow marking important states or issues. */
   activeFlags: InventoryActiveFlag[] | null
+  /* Server-owned task hold state (target hold when the item is a step target). null = no holds. */
+  reservations: InventoryReservationState | null
   createdAt: string
   updatedAt: string
 }
