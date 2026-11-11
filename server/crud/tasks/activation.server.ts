@@ -156,7 +156,7 @@ async function activate(
 
   const now = new Date().toISOString()
   const executor = toUserRef(actor)
-  const activationDoc: TaskActivationDocument = {
+  const draft: Omit<TaskActivationDocument, '_rev'> = {
     _id: generateCouchDocId('task-activation'),
     type: 'taskActivation',
     schema: 1,
@@ -173,13 +173,13 @@ async function activate(
     finishedAt: null
   }
 
-  let createdActivation = false
+  let activationDoc: TaskActivationDocument | null = null
   const heldSteps: TaskStepDocument[] = []
   try {
-    const created = await couchDB.createDocument(activationDoc)
-    activationDoc._id = created.id
-    activationDoc._rev = created.rev
-    createdActivation = true
+    const created = await couchDB.createDocument(draft)
+    const readBack = await couchDB.getDocument<TaskActivationDocument>(created.id)
+    if (!readBack) throw new Error('Failed to read back the created activation.')
+    activationDoc = readBack
 
     for (const step of toActivate) {
       heldSteps.push(await setStepState(step, 'held'))
@@ -189,7 +189,7 @@ async function activate(
     // Preparation failed after holds were acquired: release this attempt's protections and mark the
     // half-built activation cancelled so it is never presented as executable.
     await releaseClaims(plannedClaims, activationId, operationId)
-    if (createdActivation) {
+    if (activationDoc) {
       await cancelActivationDoc(activationDoc)
     }
     throw error
@@ -209,6 +209,7 @@ export async function toDisplayActivation(
   knownSteps?: TaskStepDocument[]
 ): Promise<DisplayTaskActivation> {
   const [executorRef] = await resolveUserRefs([activation.executor])
+  if (!executorRef) throw new Error('Failed to resolve the activation executor.')
   const manifestIds = new Set(activation.manifest.map(entry => entry.stepId))
   const steps = knownSteps
     ?? (await TaskService.getStepsForTask(activation.task.id)).filter(step => manifestIds.has(step.stepId))

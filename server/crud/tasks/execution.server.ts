@@ -190,7 +190,10 @@ async function loadExecutionContext(
   const activation = await findActivation(task._id, input.activationId)
   if (!activation) throw new TaskNotFoundError()
   if (activation.task.id !== task._id) throw new TaskValidationError('Activation does not belong to this task.')
-  if (activation.state !== 'active') {
+  // `finished` is accepted so an idempotent retry of the last step of an activation (which flips it
+  // to finished) can still reach runOperation's replay; the per-step state guard below prevents any
+  // real re-execution.
+  if (activation.state !== 'active' && activation.state !== 'finished') {
     throw new TaskValidationError(`Activation is ${activation.state}; only an active activation can be executed.`)
   }
   if (activation.executor.id !== actor._id) {

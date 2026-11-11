@@ -86,7 +86,7 @@ async function createOperation<T>(
   fingerprint: string
 ): Promise<TaskOperationDocument> {
   const now = new Date().toISOString()
-  const doc: TaskOperationDocument = {
+  const doc: Omit<TaskOperationDocument, '_rev'> = {
     _id: generateCouchDocId('task-op'),
     type: 'taskOperation',
     schema: 1,
@@ -103,7 +103,7 @@ async function createOperation<T>(
   }
   try {
     const result = await couchDB.createDocument(doc)
-    return { ...doc, _id: result.id, _rev: result.rev }
+    return { ...doc, _rev: result.rev }
   }
   catch (error) {
     // A concurrent request created the same operation first; adopt it rather than double-running.
