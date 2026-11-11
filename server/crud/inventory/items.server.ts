@@ -14,7 +14,12 @@ import {
 import { ProjectService } from '../projects.server'
 import { BarcodeService } from './barcodes.server'
 import { resolveActionLogUsers, resolveUserDisplayName, toParentRef, toUserRef } from './relations.server'
-import { assertTargetWritable } from './reservations.server'
+import {
+  type InventoryExecutionContext,
+  assertTargetWritable,
+  executionAllowance,
+  executionReceiptFields
+} from './reservations.server'
 import type {
   Container,
   DisplayInventoryActionLogEntry,
@@ -276,7 +281,7 @@ async function moveItemOne(
   requestedPosition: GridPosition | null,
   firnUser: FirnUser,
   logComment: string | null | undefined,
-  options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
+  options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType, execution?: InventoryExecutionContext } = {}
 ): Promise<InventoryItem> {
   const formerParent = await ContainerService.resolveParentRef(existing.parent)
   if (existing.parent && !formerParent) {
@@ -313,7 +318,8 @@ async function moveItemOne(
       notes: logComment ?? (actionType === 'locate'
         ? `Located and returned to storage.`
         : `Moved item.`),
-      changes
+      changes,
+      ...(options.execution ? executionReceiptFields(options.execution, now) : {})
     }
   ]
 
@@ -756,7 +762,7 @@ export const ItemService = {
   },
 
   /* Move one or more items to one shared parent, rolling back completed moves on failure. */
-  async moveItem(input: MoveItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem[]> {
+  async moveItem(input: MoveItemSchemaInput, firnUser: FirnUser, execution?: InventoryExecutionContext): Promise<InventoryItem[]> {
     const newParent = await resolveItemParent(input.newParentSlug, input.newParentKind)
     const items: InventoryItem[] = []
     for (const slug of input.itemSlug) {
@@ -764,7 +770,7 @@ export const ItemService = {
       if (!item) {
         throw new Error(`Item with identifier "${slug}" not found.`)
       }
-      assertTargetWritable(item)
+      assertTargetWritable(item, executionAllowance(execution))
       if (item.parent?.id === newParent.doc._id) {
         // Same parent is only meaningful as a re-slot inside a grid: one item, explicit new position.
         const requested = input.position
@@ -786,7 +792,7 @@ export const ItemService = {
     const moved: { before: InventoryItem, after: InventoryItem }[] = []
     try {
       for (const item of items) {
-        const after = await moveItemOne(item, newParent, items.length === 1 ? input.position ?? null : null, firnUser, input.logComment)
+        const after = await moveItemOne(item, newParent, items.length === 1 ? input.position ?? null : null, firnUser, input.logComment, { execution })
         moved.push({ before: item, after })
       }
     }
@@ -805,7 +811,7 @@ export const ItemService = {
   },
 
   /* Return lost items to storage and restore their available status. */
-  async locateItem(input: LocateItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem[]> {
+  async locateItem(input: LocateItemSchemaInput, firnUser: FirnUser, execution?: InventoryExecutionContext): Promise<InventoryItem[]> {
     const newParent = await resolveItemParent(input.newParentSlug, input.newParentKind)
     const items: InventoryItem[] = []
     for (const slug of input.itemSlug) {
@@ -816,7 +822,7 @@ export const ItemService = {
       if (item.status !== 'lost') {
         throw new Error(`Item "${slug}" cannot be located because it is "${item.status}", not "lost".`)
       }
-      assertTargetWritable(item)
+      assertTargetWritable(item, executionAllowance(execution))
       items.push(item)
     }
     assertBatchCapacityAvailable(newParent, items)
@@ -830,7 +836,7 @@ export const ItemService = {
           items.length === 1 ? input.position ?? null : null,
           firnUser,
           input.logComment,
-          { actionType: 'locate', newStatus: 'available' }
+          { actionType: 'locate', newStatus: 'available', execution }
         )
         placed.push({ before: item, after })
       }
@@ -850,7 +856,7 @@ export const ItemService = {
   },
 
   /* Apply non-dedicated lifecycle actions and append an immutable audit entry. */
-  async alterItem(input: AlterItemSchemaInput, firnUser: FirnUser): Promise<InventoryItem[]> {
+  async alterItem(input: AlterItemSchemaInput, firnUser: FirnUser, execution?: InventoryExecutionContext): Promise<InventoryItem[]> {
     if (!isAlterAction(input.performedAction)) {
       throw new Error(`Action "${input.performedAction}" must use its dedicated item workflow.`)
     }
@@ -877,7 +883,7 @@ export const ItemService = {
         }
       }
       // Planned task work holds this item: ordinary lifecycle actions must go through the task.
-      assertTargetWritable(item)
+      assertTargetWritable(item, executionAllowance(execution))
       items.push(item)
     }
 
@@ -920,7 +926,8 @@ export const ItemService = {
           flag: input.performedAction === 'flag' || input.performedAction === 'unflag'
             ? input.flagKind ?? undefined
             : undefined,
-          changes: changes.length > 0 ? changes : undefined
+          changes: changes.length > 0 ? changes : undefined,
+          ...(execution ? executionReceiptFields(execution, updated.updatedAt) : {})
         }
       ]
 

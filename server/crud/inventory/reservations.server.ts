@@ -430,6 +430,46 @@ export interface HoldEnforcementOptions {
 }
 
 /*
+ * Server-only context passed by a task activation's execution into an ordinary inventory mutation
+ * so it writes through its own holds and stamps the resulting action-log entry as a task receipt.
+ * Never constructed from client input: the executing task service builds it from a validated
+ * activation + step + operation.
+ */
+export interface InventoryExecutionContext {
+  activationId: string
+  stepId: string
+  taskId: string
+  operationId: string
+  /* Executor-reported occurrence time; null falls back to the server recording time. */
+  reportedAt: string | null
+  source: 'scanner' | 'paper' | 'online'
+}
+
+/* Enforcement options that let an execution context's own activation write through its holds. */
+export function executionAllowance(execution?: InventoryExecutionContext): HoldEnforcementOptions {
+  return execution ? { allowActivationId: execution.activationId } : {}
+}
+
+/* The task-receipt fields to merge into an action-log entry produced by a task execution. */
+export function executionReceiptFields(execution: InventoryExecutionContext, recordedAt: string): {
+  linkedTaskId: string
+  linkedStepId: string
+  linkedActivationId: string
+  operationId: string
+  reportedAt: string
+  source: 'scanner' | 'paper' | 'online'
+} {
+  return {
+    linkedTaskId: execution.taskId,
+    linkedStepId: execution.stepId,
+    linkedActivationId: execution.activationId,
+    operationId: execution.operationId,
+    reportedAt: execution.reportedAt ?? recordedAt,
+    source: execution.source
+  }
+}
+
+/*
  * Refuse an ordinary write to an object that carries a live target hold owned by a different
  * activation. The owning execution passes `allowActivationId` to act on its own held target.
  */

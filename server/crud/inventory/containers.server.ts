@@ -54,10 +54,13 @@ import {
 } from './relations.server'
 import { EquipmentService } from './equipment.server'
 import {
+  type InventoryExecutionContext,
   assertCountCapacityNotOverHeld,
   assertGridCellUnheld,
   assertNoBlockingStructuralGuard,
-  assertTargetWritable
+  assertTargetWritable,
+  executionAllowance,
+  executionReceiptFields
 } from './reservations.server'
 import { BarcodeService } from './barcodes.server'
 import {
@@ -896,7 +899,7 @@ export const ContainerService = {
    * An explicit `position` is only honoured for a single-container request; batches are
    * auto-placed into the first free slots (enforced by moveContainerSchema).
    */
-  async moveContainer(input: MoveContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
+  async moveContainer(input: MoveContainerSchemaInput, firnUser: FirnUser, execution?: InventoryExecutionContext): Promise<Container[]> {
     const newParent = await ContainerService.resolveParent(input.newParentSlug, input.newParentKind)
 
     // ---- Phase 1: validate every container before touching anything ----
@@ -921,8 +924,8 @@ export const ContainerService = {
       }
 
       // A container held or guarded by planned task work cannot be moved by ordinary operations.
-      assertTargetWritable(existing)
-      assertNoBlockingStructuralGuard(existing)
+      assertTargetWritable(existing, executionAllowance(execution))
+      assertNoBlockingStructuralGuard(existing, executionAllowance(execution))
 
       containers.push(existing)
     }
@@ -937,7 +940,7 @@ export const ContainerService = {
 
     try {
       for (const existing of containers) {
-        const after = await moveContainerOne(existing, newParent, requestedPosition, firnUser, input.logComment)
+        const after = await moveContainerOne(existing, newParent, requestedPosition, firnUser, input.logComment, { execution })
         moved.push({ before: existing, after })
       }
     }
@@ -972,7 +975,7 @@ export const ContainerService = {
    * and the target's aggregate capacity is checked BEFORE any write; committed placements are
    * rolled back best-effort if a later step fails.
    */
-  async locateContainer(input: LocateContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
+  async locateContainer(input: LocateContainerSchemaInput, firnUser: FirnUser, execution?: InventoryExecutionContext): Promise<Container[]> {
     // ---- Phase 1: validate every container before touching anything ----
     const containers: Container[] = []
     for (const slug of input.containerSlug) {
@@ -983,7 +986,7 @@ export const ContainerService = {
       if (existing.status !== 'lost') {
         throw new Error(`Container "${slug}" cannot be located because it is "${existing.status}", not "lost".`)
       }
-      assertTargetWritable(existing)
+      assertTargetWritable(existing, executionAllowance(execution))
       containers.push(existing)
     }
 
@@ -1025,7 +1028,8 @@ export const ContainerService = {
       for (const existing of containers) {
         const after = await moveContainerOne(existing, newParent, requestedPosition, firnUser, input.logComment, {
           actionType: 'locate',
-          newStatus: 'available'
+          newStatus: 'available',
+          execution
         })
         placed.push({ before: existing, after })
       }
@@ -1063,7 +1067,7 @@ export const ContainerService = {
    * limited to a rare concurrent `_rev` conflict mid-batch, reconcilable per the documented
    * CouchDB constraints.
    */
-  async alterContainer(input: AlterContainerSchemaInput, firnUser: FirnUser): Promise<Container[]> {
+  async alterContainer(input: AlterContainerSchemaInput, firnUser: FirnUser, execution?: InventoryExecutionContext): Promise<Container[]> {
     if (!isAlterAction(input.performedAction)) {
     // These actions are not meant to be supported by alterContainer; they have dedicated functions
       // (register, modify, move, locate). Providing them would pass the typecheck, though, since it
@@ -1101,8 +1105,8 @@ export const ContainerService = {
         }
       }
       // Planned task work holds this container: ordinary lifecycle actions must go through the task.
-      assertTargetWritable(existing)
-      assertNoBlockingStructuralGuard(existing)
+      assertTargetWritable(existing, executionAllowance(execution))
+      assertNoBlockingStructuralGuard(existing, executionAllowance(execution))
       existingContainers.push(existing)
     }
 
@@ -1156,7 +1160,8 @@ export const ContainerService = {
         flag: input.performedAction === 'flag' || input.performedAction === 'unflag'
           ? input.flagKind ?? undefined
           : undefined,
-        changes: changes.length > 0 ? changes : undefined
+        changes: changes.length > 0 ? changes : undefined,
+        ...(execution ? executionReceiptFields(execution, updatedContainer.updatedAt) : {})
       }
 
       updatedContainer.actionLog = [...existing.actionLog, changelogEntry]
@@ -1599,7 +1604,7 @@ async function moveContainerOne(
   requestedPosition: GridPosition | null,
   firnUser: FirnUser,
   logComment: string | null | undefined,
-  options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType } = {}
+  options: { actionType?: InventoryActionType, newStatus?: InventoryStatusType, execution?: InventoryExecutionContext } = {}
 ): Promise<Container> {
   const formerParent = await ContainerService.resolveParentRef(existing.parent)
   if (existing.parent && !formerParent) {
@@ -1638,7 +1643,8 @@ async function moveContainerOne(
     notes: logComment ?? (actionType === 'locate'
       ? `Located and returned to storage.`
       : `Moved container.`),
-    changes
+    changes,
+    ...(options.execution ? executionReceiptFields(options.execution, now) : {})
   }
 
   movedContainer.actionLog = [...existing.actionLog, changelogEntry]

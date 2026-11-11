@@ -109,6 +109,14 @@ export interface InventoryActionLogEntry {
   changes?: InventoryActionChangeRecord[]
   /* Reference to the InventoryTask document that triggered this log entry, if any. */
   linkedTaskId?: string
+  /* Task-execution receipt: the step/activation/operation that produced this physical change. */
+  linkedStepId?: string
+  linkedActivationId?: string
+  operationId?: string
+  /* Executor-reported occurrence time (may be backdated for paper work); distinct from timestamp. */
+  reportedAt?: string
+  /* How the confirmation reached the server (mirrors productivity.TaskExecutionSource). */
+  source?: 'scanner' | 'paper' | 'online'
 }
 
 /*
