@@ -77,7 +77,7 @@ async function storedCount(slug: string): Promise<number | undefined> {
 describe('getGridOccupancy', () => {
   it('returns the exact occupied cells of a grid in one query', async () => {
     const cells = await getGridOccupancy(rack._id)
-    expect(cells).toEqual([{ level: 1, row: 1, column: 1, slug: inner.slug, type: 'container' }])
+    expect(cells).toEqual([{ level: 1, row: 1, column: 1, slug: inner.slug, name: inner.name, type: 'container' }])
   })
 })
 
