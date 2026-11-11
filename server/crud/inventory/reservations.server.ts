@@ -255,12 +255,12 @@ export function readCountCapacity(
       const entry = parent.capacity?.find(capacityEntry => capacityEntry.type === category)
       return entry ? { capacity: entry.capacity, stored: entry.stored } : null
     }
-    const entry = parent.itemCapacity?.find(capacityEntry => capacityEntry.type === category)
+    const entry = parent.itemCapacity?.find(capacityEntry => capacityEntry.category === category)
     return entry ? { capacity: entry.capacity, stored: entry.stored } : null
   }
   const entry = parent.capacity?.find(
     (capacityEntry): capacityEntry is Extract<ContainerCapacityEntry, { layout: 'count' }> =>
-      capacityEntry.layout === 'count' && capacityEntry.childKind === childKind && capacityEntry.type === category
+      capacityEntry.layout === 'count' && capacityEntry.type === category
   )
   return entry ? { capacity: entry.capacity, stored: entry.stored } : null
 }

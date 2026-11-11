@@ -53,6 +53,12 @@ import {
   toUserRef
 } from './relations.server'
 import { EquipmentService } from './equipment.server'
+import {
+  assertCountCapacityNotOverHeld,
+  assertGridCellUnheld,
+  assertNoBlockingStructuralGuard,
+  assertTargetWritable
+} from './reservations.server'
 import { BarcodeService } from './barcodes.server'
 import {
   buildAlterActionNotes,
@@ -539,6 +545,11 @@ export const ContainerService = {
       )
     }
 
+    // Reject occupying capacity that a planned task hold already reserves (physical + held ≤ capacity).
+    if (delta > 0) {
+      assertCountCapacityNotOverHeld(container, category, 'container', newStored)
+    }
+
     return {
       container: await writeCapacity(container, entry.type, newStored),
       atCapacity: newStored === entry.capacity
@@ -581,6 +592,11 @@ export const ContainerService = {
       throw new Error(
         `Slot (row ${position.row}, column ${position.column}, level ${position.level ?? 1}) in "${container.slug}" is already occupied.`
       )
+    }
+
+    // Reject occupying a grid cell reserved for planned task work.
+    if (delta > 0) {
+      assertGridCellUnheld(container, position)
     }
 
     const total = totalSlots(entry)
@@ -701,6 +717,9 @@ export const ContainerService = {
     if (!existing) {
       throw new Error(`Container with identifier "${updates.containerSlug}" not found.`)
     }
+    // Refuse to edit a container that planned task work has reserved or structurally guarded.
+    assertTargetWritable(existing)
+    assertNoBlockingStructuralGuard(existing)
     const nextContainerType = updates.containerType ?? existing.containerType
     const containerTypeChanged = nextContainerType !== existing.containerType
     const parent = containerTypeChanged && existing.parent
@@ -841,6 +860,10 @@ export const ContainerService = {
           throw new Error(`Cannot delete container "${slug}" because it still contains child inventory.`)
         }
 
+        // A container held or structurally guarded by planned task work cannot be deleted directly.
+        assertTargetWritable(existing)
+        assertNoBlockingStructuralGuard(existing)
+
         await couchDB.deleteDocument(existing._id, existing._rev)
 
         // Free the slot/count this container held on its parent.
@@ -896,6 +919,10 @@ export const ContainerService = {
           throw new Error('A container cannot be moved into one of its own descendants.')
         }
       }
+
+      // A container held or guarded by planned task work cannot be moved by ordinary operations.
+      assertTargetWritable(existing)
+      assertNoBlockingStructuralGuard(existing)
 
       containers.push(existing)
     }
@@ -956,6 +983,7 @@ export const ContainerService = {
       if (existing.status !== 'lost') {
         throw new Error(`Container "${slug}" cannot be located because it is "${existing.status}", not "lost".`)
       }
+      assertTargetWritable(existing)
       containers.push(existing)
     }
 
@@ -1072,6 +1100,9 @@ export const ContainerService = {
           throw new Error(reservationBlockedMessage('container', existing.name, ownerName))
         }
       }
+      // Planned task work holds this container: ordinary lifecycle actions must go through the task.
+      assertTargetWritable(existing)
+      assertNoBlockingStructuralGuard(existing)
       existingContainers.push(existing)
     }
 

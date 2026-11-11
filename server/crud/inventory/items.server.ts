@@ -14,6 +14,7 @@ import {
 import { ProjectService } from '../projects.server'
 import { BarcodeService } from './barcodes.server'
 import { resolveActionLogUsers, resolveUserDisplayName, toParentRef, toUserRef } from './relations.server'
+import { assertTargetWritable } from './reservations.server'
 import type {
   Container,
   DisplayInventoryActionLogEntry,
@@ -647,6 +648,8 @@ export const ItemService = {
     if (!existing) {
       throw new Error(`Item with identifier "${updates.itemSlug}" not found.`)
     }
+    // Refuse to edit an item reserved by planned task work; changes must go through the task.
+    assertTargetWritable(existing)
 
     // Resolve the requested temperature (undefined = untouched, null = cleared),
     // normalizing the numeric so it only persists for the `other` category. When it
@@ -740,6 +743,7 @@ export const ItemService = {
         if (!existing) {
           throw new Error(`Item with identifier "${slug}" not found.`)
         }
+        assertTargetWritable(existing)
         await couchDB.deleteDocument(existing._id, existing._rev)
         await adjustParentRefOccupancy(existing.parent, existing.position, existing.category, -1)
         deleted.push(existing)
@@ -760,6 +764,7 @@ export const ItemService = {
       if (!item) {
         throw new Error(`Item with identifier "${slug}" not found.`)
       }
+      assertTargetWritable(item)
       if (item.parent?.id === newParent.doc._id) {
         // Same parent is only meaningful as a re-slot inside a grid: one item, explicit new position.
         const requested = input.position
@@ -811,6 +816,7 @@ export const ItemService = {
       if (item.status !== 'lost') {
         throw new Error(`Item "${slug}" cannot be located because it is "${item.status}", not "lost".`)
       }
+      assertTargetWritable(item)
       items.push(item)
     }
     assertBatchCapacityAvailable(newParent, items)
@@ -870,6 +876,8 @@ export const ItemService = {
           throw new Error(reservationBlockedMessage('inventory_item', item.name, ownerName))
         }
       }
+      // Planned task work holds this item: ordinary lifecycle actions must go through the task.
+      assertTargetWritable(item)
       items.push(item)
     }
 

@@ -34,6 +34,7 @@ import {
 } from './relations.server'
 import { RoomService } from './rooms.server'
 import { BarcodeService } from './barcodes.server'
+import { assertCountCapacityNotOverHeld, assertNoBlockingStructuralGuard } from './reservations.server'
 import type {
   DisplayStorageEquipment,
   Room,
@@ -254,6 +255,9 @@ export const EquipmentService = {
       throw new Error(`Equipment with identifier "${updates.equipmentSlug}" not found.`)
     }
 
+    // Capacity/temperature/layout edits must not invalidate planned task work guarding this equipment.
+    assertNoBlockingStructuralGuard(existing)
+
     // Strip request-only identifiers so they are not persisted into the document.
     const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, itemCapacity, barcode, ...updatedFields } = updates
 
@@ -312,6 +316,8 @@ export const EquipmentService = {
       throw new Error(`Cannot delete equipment "${equipment.equipmentSlug}" because it still contains child inventory.`)
     }
 
+    assertNoBlockingStructuralGuard(existing)
+
     await couchDB.deleteDocument(existing._id, existing._rev)
     return existing
   },
@@ -328,6 +334,8 @@ export const EquipmentService = {
     if (!targetRoom) {
       throw new Error(`Target room with identifier "${input.newRoomSlug}" not found.`)
     }
+
+    assertNoBlockingStructuralGuard(equipment)
 
     const now = new Date().toISOString()
     const movedEquipment: StorageEquipment = {
@@ -383,6 +391,11 @@ export const EquipmentService = {
       )
     }
 
+    // Reject occupying container capacity that a planned task hold already reserves.
+    if (delta > 0) {
+      assertCountCapacityNotOverHeld(equipment, category, 'container', newStored)
+    }
+
     const updatedEquipment: StorageEquipment = {
       ...equipment,
       capacity: (equipment.capacity ?? []).map(capacityEntry =>
@@ -409,6 +422,10 @@ export const EquipmentService = {
     const stored = entry.stored + delta
     if (stored < 0 || stored > entry.capacity) {
       throw new Error(`Cannot store ${delta > 0 ? 'another' : 'fewer'} "${category}" item in equipment "${equipment.slug}".`)
+    }
+    // Reject occupying item capacity that a planned task hold already reserves.
+    if (delta > 0) {
+      assertCountCapacityNotOverHeld(equipment, category, 'item', stored)
     }
     const updated: StorageEquipment = {
       ...equipment,
