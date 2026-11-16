@@ -1,9 +1,9 @@
 /*
  * Shared helpers for the task domain services (server/crud/tasks).
  *
- * Holds task-domain glue reused by the task and step services: CouchDB write-conflict detection,
- * task-actor builders, firnId resolution with task-appropriate validation errors, priority
- * (urgency/quadrant) computation in the Europe/Stockholm timezone and progress aggregation.
+ * Holds task-domain glue reused by the task and step services: task-actor builders, firnId
+ * resolution with task-appropriate validation errors, priority (urgency/quadrant) computation in
+ * the Europe/Stockholm timezone and progress aggregation.
  *
  * User-reference resolution lives in UserService (server/crud/users.server.ts); task access
  * control (who may read/manage) lives in the resource policy at server/auth/taskPolicy.ts. This
@@ -58,12 +58,6 @@ export class TaskConflictError extends Error {
     super(message)
     this.name = 'TaskConflictError'
   }
-}
-
-/* True when an error is a CouchDB document update conflict (HTTP 409). */
-export function isCouchConflict(error: unknown): boolean {
-  const err = error as { code?: number, status?: number, statusCode?: number }
-  return err?.code === 409 || err?.status === 409 || err?.statusCode === 409
 }
 
 /* Build a system TaskActor for automated (e.g. cleanup) tasks. */

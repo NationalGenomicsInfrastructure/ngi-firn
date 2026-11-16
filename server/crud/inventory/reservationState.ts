@@ -32,7 +32,7 @@ import type {
 export type HoldableResource = Container | InventoryItem | StorageEquipment
 
 /* An explicit empty reservation ledger used when initializing a brand-new document. */
-export function emptyReservationState(): InventoryReservationState {
+function emptyReservationState(): InventoryReservationState {
   return { targetHold: null, gridCells: [], capacityClaims: [] }
 }
 
@@ -51,7 +51,7 @@ export function normalizeReservations(state: InventoryReservationState | null | 
 
 /* Whether a claim/hold is still live (occupies a hold slot). Released claims are inert. */
 export function isLiveState(state: InventoryHoldLikeState): boolean {
-  return state === 'pending' || state === 'held' || state === 'consumed'
+  return state === 'held' || state === 'consumed'
 }
 
 /* Narrow structural type shared by every claim/hold `state` field. */

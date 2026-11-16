@@ -28,7 +28,7 @@ import type {
   TaskStepOutcome,
   TaskStepResult
 } from '../../../types/productivity'
-import { assertCanExecuteTask } from '../../auth/taskPolicy'
+import { assertCanExecuteTask, assertIsActivationExecutor } from '../../auth/taskPolicy'
 import { type InventoryExecutionContext, consumeTargetHold } from '../inventory/reservations.server'
 import { ItemService } from '../inventory/items.server'
 import { ContainerService } from '../inventory/containers.server'
@@ -145,6 +145,7 @@ export const TaskExecutionService = {
   async confirmBatch(actor: FirnUser, taskSlug: string, input: ConfirmBatchInput): Promise<DisplayTaskBatchResult> {
     const task = await TaskService.requireReadableTask(actor, taskSlug)
     assertCanExecuteTask(task, actor)
+    assertTaskExecutable(task)
     const activation = await findActivation(task._id, input.activationId)
     if (!activation) throw new TaskNotFoundError()
     // `finished` is accepted so a retried batch whose first response was lost (and which finished the
@@ -152,9 +153,7 @@ export const TaskExecutionService = {
     if (activation.state !== 'active' && activation.state !== 'finished') {
       throw new TaskValidationError(`Activation is ${activation.state}; only an active activation can be executed.`)
     }
-    if (activation.executor.id !== actor._id) {
-      throw new TaskValidationError('Only the colleague who activated this work may execute its steps.')
-    }
+    assertIsActivationExecutor(activation, actor)
 
     const taskRef: TypedDocumentReference<TaskDocument> = { db: 'firn', id: task._id, type: 'task' }
     const activationRef: TypedDocumentReference<TaskActivationDocument> = {
@@ -176,6 +175,12 @@ export const TaskExecutionService = {
   }
 }
 
+/* Defence in depth: steps of a cancelled or archived task are never executed. */
+function assertTaskExecutable(task: TaskDocument): void {
+  if (task.status === 'cancelled') throw new TaskValidationError('This task was cancelled; its steps can no longer be executed.')
+  if (task.archivedAt) throw new TaskValidationError('This task is archived; its steps can no longer be executed.')
+}
+
 interface ExecutionContext {
   task: TaskDocument
   activation: TaskActivationDocument
@@ -191,6 +196,8 @@ async function loadExecutionContext(
   const task = await TaskService.requireReadableTask(actor, taskSlug)
   assertCanExecuteTask(task, actor)
 
+  assertTaskExecutable(task)
+
   const activation = await findActivation(task._id, input.activationId)
   if (!activation) throw new TaskNotFoundError()
   if (activation.task.id !== task._id) throw new TaskValidationError('Activation does not belong to this task.')
@@ -200,9 +207,7 @@ async function loadExecutionContext(
   if (activation.state !== 'active' && activation.state !== 'finished') {
     throw new TaskValidationError(`Activation is ${activation.state}; only an active activation can be executed.`)
   }
-  if (activation.executor.id !== actor._id) {
-    throw new TaskValidationError('Only the colleague who activated this work may execute its steps.')
-  }
+  assertIsActivationExecutor(activation, actor)
 
   const steps = await TaskService.getStepsForTask(task._id)
   const step = steps.find(s => s.stepId === input.stepId)
@@ -250,24 +255,8 @@ async function confirm(
     return TaskStepService.toDisplayStep(cancelled ?? step)
   }
 
-  const execution: InventoryExecutionContext = {
-    activationId: activation.activationId,
-    stepId: step.stepId,
-    taskId: task._id,
-    operationId: input.operationId,
-    reportedAt: input.reportedAt ?? null,
-    source: input.source
-  }
-
   const targetId = payload.target.ref.id
-  // Receipt-based recovery: if this step of this activation already stamped the target, the physical
-  // action committed on an earlier attempt and must not be applied again (the services are not
-  // idempotent). The receipt is matched by activation and step, not by operation id, so a retry
-  // under a NEW operation id cannot re-apply it either.
-  const alreadyApplied = await targetHasReceipt(targetId, activation.activationId, step.stepId)
-  if (!alreadyApplied) {
-    await applyInventoryAction(payload, actor, execution)
-  }
+  await applyStepActionOnce(actor, task, activation, step.stepId, payload, input)
 
   const holdCtx = {
     activationId: activation.activationId,
@@ -287,6 +276,35 @@ async function confirm(
   await refreshActivationState(activation._id)
   return TaskStepService.toDisplayStep(updatedStep)
 }
+
+/*
+ * Apply a step's stored inventory action exactly once. Receipt-based: if this step of this activation
+ * already stamped the target, the physical action committed on an earlier attempt and is not applied
+ * again (the inventory services are not idempotent). The receipt is matched by activation and step,
+ * not by operation id, so a retry under a NEW operation id cannot re-apply it either. Shared by
+ * confirmation and by reconciliation of work declared physically done.
+ */
+export async function applyStepActionOnce(
+  actor: FirnUser,
+  task: TaskDocument,
+  activation: TaskActivationDocument,
+  stepId: string,
+  payload: TaskInventoryStepPayload,
+  input: { operationId: string, source: TaskExecutionSource, reportedAt?: string | null }
+): Promise<void> {
+  if (await targetHasReceipt(payload.target.ref.id, activation.activationId, stepId)) return
+  await applyInventoryAction(payload, actor, {
+    activationId: activation.activationId,
+    stepId,
+    taskId: task._id,
+    operationId: input.operationId,
+    reportedAt: input.reportedAt ?? null,
+    source: input.source
+  })
+}
+
+/* The id of the first inventory document a payload refers to that no longer exists, or null. */
+export { firstMissingResource }
 
 /* Core skip: record a deliberate non-execution and release the step's own holds. */
 async function skip(

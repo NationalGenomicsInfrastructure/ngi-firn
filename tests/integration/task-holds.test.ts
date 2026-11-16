@@ -33,9 +33,12 @@ let roomId: string
 let equip: StorageEquipment
 let source: Container
 
+// Operation documents are keyed by operation id, so ids must not repeat across runs: a document
+// left behind by an interrupted run would otherwise be mistaken for a replay.
+const RUN_ID = Math.random().toString(36).slice(2, 10)
 let opSeq = 0
 function opId(prefix = 'op'): string {
-  const id = `OP-HOLD-${prefix}-${opSeq++}`
+  const id = `OP-HOLD-${RUN_ID}-${prefix}-${opSeq++}`
   usedOpIds.push(id)
   return id
 }

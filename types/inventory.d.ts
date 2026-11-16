@@ -81,8 +81,8 @@ export interface InventoryActionChangeRecord {
  * Compact audit log entry embedded directly in entity documents.
  * Each entry records one handling event (checkout, return, move, etc.).
  * Entries are append-only and immutable once written — they are the audit trail.
- * Planned tasks live as separate InventoryTask documents; when a task is
- * completed, a log entry is appended here and the task is marked done.
+ * Planned work lives in task step documents (see TaskStepDocument); when a step is
+ * completed, a log entry is appended here and the step is marked done.
  */
 /*
  * A single active flag on an inventory entity (container, and later items).
@@ -107,7 +107,7 @@ export interface InventoryActionLogEntry {
   flag?: InventoryFlagType
   /* Structured change records (e.g. update before/after pairs), if applicable. */
   changes?: InventoryActionChangeRecord[]
-  /* Reference to the InventoryTask document that triggered this log entry, if any. */
+  /* Id of the task whose step or activation triggered this log entry, if any. */
   linkedTaskId?: string
   /* Task-execution receipt: the step/activation/operation that produced this physical change. */
   linkedStepId?: string
@@ -135,7 +135,7 @@ export interface DisplayInventoryActionLogEntry {
   flag?: InventoryFlagType
   /* Structured change records (e.g. update before/after pairs), if applicable. */
   changes?: InventoryActionChangeRecord[]
-  /* Reference to the InventoryTask document that triggered this log entry, if any. */
+  /* Id of the task whose step or activation triggered this log entry, if any. */
   linkedTaskId?: string
 }
 
@@ -177,7 +177,7 @@ export type SerializedEntityRef = { slug: string, name: string, kind: 'container
  */
 
 /* Durable lifecycle of a single task-owned inventory hold; mirrors productivity TaskReservationState. */
-export type InventoryHoldState = 'pending' | 'held' | 'consumed' | 'released'
+export type InventoryHoldState = 'held' | 'consumed' | 'released'
 
 /*
  * Object-level lock: this item/container is the target of an activated step. Only the recorded
@@ -225,9 +225,9 @@ export interface InventoryCapacityClaim {
 
 /*
  * Aggregated server-owned reservation state embedded on an inventory resource document (a container,
- * storage-equipment or item — never a room). `null` means no task holds (the common case). New
- * documents initialize this explicitly (emptyReservationState); legacy documents without the field
- * are normalized at the service read/write boundary.
+ * storage-equipment or item — never a room). `null` means no task holds (the common case), and a
+ * ledger with nothing live collapses back to `null`; documents without the field are normalized at
+ * the service read/write boundary.
  */
 export interface InventoryReservationState {
   /* Object-level lock when this item/container is itself a step target. */

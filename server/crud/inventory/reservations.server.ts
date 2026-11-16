@@ -18,7 +18,7 @@
  * protecting until release); release drops it.
  */
 
-import { couchDB } from '~~/server/database/couchdb'
+import { couchDB, isCouchConflict } from '~~/server/database/couchdb'
 import type { ContainerCapacityEntry } from '~~/schemas/inventory/container'
 import type { FirnUser } from '../../../types/auth'
 import type { TypedDocumentReference } from '../../../types/references'
@@ -76,12 +76,6 @@ export interface HoldClaimContext {
 /* Target-hold context additionally records the sole executor allowed to act on the held object. */
 export interface TargetHoldContext extends HoldClaimContext {
   executor: TypedDocumentReference<FirnUser>
-}
-
-/* Whether a CouchDB error is a document-revision (409) conflict. */
-export function isCouchConflict(error: unknown): boolean {
-  const err = error as { code?: number, status?: number, statusCode?: number } | null
-  return err?.code === 409 || err?.status === 409 || err?.statusCode === 409
 }
 
 type ApplyResult<T> = { doc: T, changed: boolean }

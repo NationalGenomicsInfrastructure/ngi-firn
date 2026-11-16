@@ -83,6 +83,12 @@ export function generateCouchDocId(prefix: string): string {
   return `${safePrefix}-${timestamp}-${random}`
 }
 
+/* True when an error is a CouchDB document update conflict (HTTP 409). */
+export function isCouchConflict(error: unknown): boolean {
+  const err = error as { code?: number, status?: number, statusCode?: number } | null
+  return err?.code === 409 || err?.status === 409 || err?.statusCode === 409
+}
+
 /**
  * Generate a slug from a name string.
  * The slug is lowercased, spaces are replaced with hyphens, and a random 7-character alphanumeric suffix is appended to ensure uniqueness.

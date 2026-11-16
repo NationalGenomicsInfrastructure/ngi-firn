@@ -26,6 +26,7 @@ import { TaskActivationService, findActivation } from '../../server/crud/tasks/a
 import { TaskExecutionService } from '../../server/crud/tasks/execution.server'
 import { TaskRecoveryService } from '../../server/crud/tasks/recovery.server'
 import { TaskValidationError } from '../../server/crud/tasks/common'
+import { AuthorizationError, ForbiddenError } from '../../server/auth/errors'
 import { operationDocId } from '../../server/crud/tasks/operations.server'
 import type { Container, InventoryItem, StorageEquipment } from '../../types/inventory'
 import type { FirnUser } from '../../types/auth'
@@ -42,9 +43,12 @@ let equip: StorageEquipment
 let boxA: Container
 let boxB: Container
 
+// Operation documents are keyed by operation id, so ids must not repeat across runs: a document
+// left behind by an interrupted run would otherwise be mistaken for a replay.
+const RUN_ID = Math.random().toString(36).slice(2, 10)
 let opSeq = 0
 function opId(prefix = 'op'): string {
-  const id = `OP-EXEC-${prefix}-${opSeq++}`
+  const id = `OP-EXEC-${RUN_ID}-${prefix}-${opSeq++}`
   usedOpIds.push(id)
   return id
 }
@@ -172,7 +176,7 @@ beforeAll(async () => {
   boxA = await ContainerService.createContainer({
     containerType: 'Compartment', classification: 'Sample', name: 'BCTEST Box A',
     parentSlug: equip.slug, parentKind: 'equipment',
-    capacity: [{ layout: 'count', childKind: 'item', type: 'cryovial', capacity: 20 }]
+    capacity: [{ layout: 'count', childKind: 'item', type: 'cryovial', capacity: 60 }]
   }, owner)
   createdIds.push(boxA._id)
 
@@ -454,8 +458,8 @@ describe('cancellation', () => {
       itemSlug: [vial.slug], performedAction: 'checkout'
     } as Parameters<typeof ItemService.alterItem>[0], owner)).rejects.toThrow(/reserved/i)
 
-    // Reconcile the step as completed: this records the disposition and releases the retained hold
-    // without re-applying the physical action (it already happened in the real world).
+    // Reconcile the step as completed: the checkout happened in the real world but was never
+    // recorded, so reconciliation applies it to the inventory and releases the retained hold.
     const reconciled = await TaskRecoveryService.reconcile(owner, slug, {
       activationId, operationId: opId('reconcile'),
       resolutions: [{ stepId: steps[0]!.stepId, result: 'completed' }]
@@ -467,11 +471,62 @@ describe('cancellation', () => {
     const activation = await findActivation(taskId, activationId)
     expect(activation?.reservationManifest.every(claim => claim.state === 'released')).toBe(true)
 
-    // Hold released by reconciliation: ordinary checkout now succeeds.
-    const checked = await ItemService.alterItem({
-      itemSlug: [vial.slug], performedAction: 'checkout'
+    // The inventory now shows the vial as checked out, exactly once, stamped as this step's receipt.
+    const reconciledVial = await ItemService.getItemBySlug(vial.slug)
+    expect(reconciledVial?.status).toBe('in_use')
+    expect((reconciledVial?.actionLog ?? []).filter(entry => entry.linkedStepId === steps[0]!.stepId)).toHaveLength(1)
+
+    // Hold released by reconciliation: an ordinary return now succeeds.
+    const returned = await ItemService.alterItem({
+      itemSlug: [vial.slug], performedAction: 'return'
     } as Parameters<typeof ItemService.alterItem>[0], owner)
-    expect(checked[0]?.status).toBe('in_use')
+    expect(returned[0]?.status).toBe('available')
+  })
+
+  it('moves the item when a move declared performed is reconciled as completed, and not when skipped', async () => {
+    const moved = await makeVial('BCTEST Reconcile Moved')
+    const stayed = await makeVial('BCTEST Reconcile Stayed')
+    const { slug, steps, activationId } = await makeActiveTask(
+      'BCTEST Reconcile move', [moveStep(moved, boxB), moveStep(stayed, boxB)]
+    )
+    await TaskRecoveryService.cancelActivation(owner, slug, {
+      activationId, operationId: opId('cancel-move'), reason: 'Moved by hand',
+      declarations: steps.map(s => ({ stepId: s.stepId, physicallyPerformed: true }))
+    })
+
+    const reconciled = await TaskRecoveryService.reconcile(owner, slug, {
+      activationId, operationId: opId('reconcile-move'),
+      resolutions: [
+        { stepId: steps[0]!.stepId, result: 'completed' },
+        { stepId: steps[1]!.stepId, result: 'skipped' }
+      ]
+    })
+    expect(reconciled.state).toBe('finished')
+    expect((await ItemService.getItemBySlug(moved.slug))?.parent?.id).toBe(boxB._id)
+    expect((await ItemService.getItemBySlug(stayed.slug))?.parent?.id).toBe(boxA._id)
+    expect((await ContainerService.getContainerBySlug(boxB.slug))?.reservations ?? null).toBeNull()
+  })
+
+  it('refuses to cancel or archive a task while its activation is in progress', async () => {
+    const vial = await makeVial('BCTEST Task Cancel Blocked')
+    const { slug, steps, activationId } = await makeActiveTask('BCTEST Task cancel blocked', [checkoutStep(vial)])
+
+    await expect(TaskService.cancelTask(owner, slug)).rejects.toThrow(/in progress/i)
+    await expect(TaskService.archiveTask(owner, slug)).rejects.toThrow(/in progress/i)
+
+    // Once the activation is cancelled explicitly, the task can be cancelled, and then nothing runs.
+    await TaskRecoveryService.cancelActivation(owner, slug, {
+      activationId, operationId: opId('cancel-for-task'), reason: 'Abandon',
+      declarations: [{ stepId: steps[0]!.stepId, physicallyPerformed: false }]
+    })
+    const cancelled = await TaskService.cancelTask(owner, slug)
+    expect(cancelled.status).toBe('cancelled')
+
+    await expect(TaskExecutionService.confirmStep(owner, slug, {
+      stepId: steps[0]!.stepId, activationId, operationId: opId('after-task-cancel'), source: 'online'
+    })).rejects.toThrow(/cancelled/i)
+    await expect(TaskStepService.addSteps(owner, slug, [{ payload: checkoutStep(vial) }]))
+      .rejects.toThrow(/cancelled task/i)
   })
 
   it('requires a declaration for every live step before cancelling', async () => {
@@ -634,5 +689,66 @@ describe('handover', () => {
     await expect(TaskRecoveryService.handover(owner, slug, {
       activationId, operationId: opId('handover-bad'), toExecutorFirnId: colleague.firnId, acknowledged: false
     })).rejects.toBeInstanceOf(TaskValidationError)
+  })
+})
+
+describe('Task authorization', () => {
+  it('rejects confirmation by a responsible colleague who is not the executor', async () => {
+    const vial = await makeVial('BCTEST Authz NonExecutor')
+    const { slug, activationId, steps } = await makeActiveTask(
+      'BCTEST Authz non-executor',
+      [checkoutStep(vial)],
+      async (taskSlug) => {
+        await TaskService.setSharing(owner, taskSlug, { responsibleFirnIds: [colleague.firnId] })
+      }
+    )
+
+    await expect(TaskExecutionService.confirmStep(colleague, slug, {
+      stepId: steps[0]!.stepId, activationId, operationId: opId('non-exec'), source: 'online'
+    })).rejects.toBeInstanceOf(ForbiddenError)
+  })
+
+  it('refuses to remove the executor of a live activation from the task until it is cancelled', async () => {
+    const vial = await makeVial('BCTEST Authz Revoke')
+    const task = await TaskService.createTask(owner, { title: 'BCTEST Authz revoke', responsibleFirnIds: [colleague.firnId] })
+    createdIds.push(task._id)
+    createdTaskIds.push(task._id)
+    const steps = await TaskStepService.addSteps(owner, task.slug, [{ payload: checkoutStep(vial) }])
+    for (const step of steps) createdIds.push(step._id)
+    await TaskService.publishTask(owner, task.slug)
+    const activation = await TaskActivationService.activateSteps(colleague, task.slug, {
+      stepIds: steps.map(s => s.stepId),
+      operationId: opId('act')
+    })
+
+    await expect(TaskService.setSharing(owner, task.slug, { responsibleFirnIds: [] }))
+      .rejects.toThrow(/currently executing activated work/i)
+    await expect(TaskService.setSharing(owner, task.slug, { responsibleFirnIds: [] }))
+      .rejects.toBeInstanceOf(TaskValidationError)
+    await expect(TaskService.releaseResponsibility(colleague, task.slug))
+      .rejects.toBeInstanceOf(TaskValidationError)
+
+    await TaskRecoveryService.cancelActivation(colleague, task.slug, {
+      activationId: activation.activationId,
+      operationId: opId('cancel'),
+      reason: 'Authorization test',
+      declarations: steps.map(s => ({ stepId: s.stepId, physicallyPerformed: false }))
+    })
+
+    const updated = await TaskService.setSharing(owner, task.slug, { responsibleFirnIds: [] })
+    expect(updated.responsibleUsers).toHaveLength(0)
+  })
+
+  it('lets an inactive or unapproved account read nothing', async () => {
+    const task = await TaskService.createTask(owner, { title: 'BCTEST Authz inactive', visibility: 'public' })
+    createdIds.push(task._id)
+    createdTaskIds.push(task._id)
+
+    await expect(TaskService.requireReadableTask(owner, task.slug)).resolves.toBeDefined()
+    // Even the owner of a public task loses access once the account is retired or login is revoked.
+    await expect(TaskService.requireReadableTask({ ...owner, isRetired: true }, task.slug))
+      .rejects.toBeInstanceOf(AuthorizationError)
+    await expect(TaskService.requireReadableTask({ ...owner, allowLogin: false }, task.slug))
+      .rejects.toBeInstanceOf(AuthorizationError)
   })
 })

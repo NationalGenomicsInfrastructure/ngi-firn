@@ -29,7 +29,7 @@ import {
   TaskNotFoundError,
   TaskValidationError
 } from './common'
-import { TaskService } from './tasks.server'
+import { TaskService, inventoryKind, refToEntityStub } from './tasks.server'
 
 /** A step definition as supplied by a caller (server assigns id/order/state/version). */
 export interface StepDefinitionInput {
@@ -39,6 +39,13 @@ export interface StepDefinitionInput {
 
 function generateStepId(): string {
   return `stp_${DateTime.now().toMillis().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+/* A cancelled or completed task is closed: no steps are added to it or changed on it. */
+function assertTaskAcceptsStepEdits(task: { status: string }): void {
+  if (task.status === 'cancelled' || task.status === 'completed') {
+    throw new TaskValidationError(`Steps of a ${task.status} task can no longer be added or changed.`)
+  }
 }
 
 /* Validate a single step payload's runtime shape (the compiler enforces it for typed callers). */
@@ -139,6 +146,7 @@ export const TaskStepService = {
   async addSteps(actor: FirnUser, slug: string, definitions: StepDefinitionInput[]): Promise<TaskStepDocument[]> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
+    assertTaskAcceptsStepEdits(task)
     if (definitions.length === 0) return []
 
     const existing = await TaskService.getStepsForTask(task._id)
@@ -189,6 +197,7 @@ export const TaskStepService = {
   ): Promise<TaskStepDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
+    assertTaskAcceptsStepEdits(task)
     const steps = await TaskService.getStepsForTask(task._id)
     const step = steps.find(s => s.stepId === stepId)
     if (!step) throw new TaskNotFoundError('Step not found.')
@@ -361,7 +370,7 @@ function projectPayload(payload: TaskStepPayload): DisplayTaskStepPayload {
       title: payload.title,
       body: payload.body,
       contextRefs: payload.contextRefs
-        ? payload.contextRefs.map(r => ({ slug: r.slug ?? r.id, name: r.name ?? r.slug ?? r.id, kind: 'container' as const }))
+        ? payload.contextRefs.map(r => refToEntityStub(r, r.db === 'projects' || r.type === 'project' ? 'project' : inventoryKind(r.type)))
         : null
     }
   }

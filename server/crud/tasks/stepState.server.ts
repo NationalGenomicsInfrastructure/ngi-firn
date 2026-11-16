@@ -10,7 +10,7 @@
  * the task services use it to record outcomes, and the inventory services reach it (through
  * invalidation.server.ts) when a delete has to cancel task steps, without creating an import cycle.
  */
-import { couchDB } from '../../database/couchdb'
+import { couchDB, isCouchConflict } from '../../database/couchdb'
 import type {
   TaskActivationDocument,
   TaskInventoryStepPayload,
@@ -24,7 +24,7 @@ import {
   releaseParentClaimsForStep,
   releaseTargetHold
 } from '../inventory/reservations.server'
-import { TaskConflictError, isCouchConflict } from './common'
+import { TaskConflictError } from './common'
 
 /* Every step document of a task, in checklist order. */
 export async function loadStepsForTask(taskId: string): Promise<TaskStepDocument[]> {

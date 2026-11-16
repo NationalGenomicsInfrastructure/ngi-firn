@@ -10,7 +10,7 @@
  */
 import { DateTime } from 'luxon'
 
-import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
+import { couchDB, generateCouchDocId, generateSlug, isCouchConflict } from '../../database/couchdb'
 import type { FirnUser } from '../../../types/auth'
 import type { DocumentReference, TypedDocumentReference } from '../../../types/references'
 import type { Container, InventoryItem, Room, SerializedEntityRef, StorageEquipment } from '../../../types/inventory'
@@ -22,15 +22,19 @@ import type {
   TaskVisibility
 } from '../../../types/productivity'
 import { ForbiddenError } from '../../auth/errors'
+import { loadActivationsForTask } from './stepState.server'
 import {
+  assertCanClaimTask,
   assertCanManageTask,
   assertCanReadTask,
+  assertCanReleaseResponsibility,
   resolveTaskRole
 } from '../../auth/taskPolicy'
 import {
   isActiveApprovedUser,
   resolveUserRefs,
-  toUserRef
+  toUserRef,
+  UNKNOWN_USER_REF
 } from '../users.server'
 import {
   TaskConflictError,
@@ -39,7 +43,6 @@ import {
   clampPageSize,
   computeQuadrant,
   computeUrgency,
-  isCouchConflict,
   resolveUsersByFirnIds,
   summarizeProgress,
   toDisplayActor,
@@ -112,8 +115,51 @@ function dedupeInventoryRefs(refs: TaskInventoryRef[] | null | undefined): TaskI
 }
 
 /* Project a reference's stored hint fields into a client-safe entity stub. */
-function refToEntityStub(ref: DocumentReference, kind: SerializedEntityRef['kind']): SerializedEntityRef {
+export function refToEntityStub(ref: DocumentReference, kind: SerializedEntityRef['kind']): SerializedEntityRef {
   return { slug: ref.slug ?? ref.id, name: ref.name ?? ref.slug ?? ref.id, kind }
+}
+
+/*
+ * A task with work in flight cannot be cancelled or archived out from under its executor: its
+ * activation still holds inventory and someone may be mid-way through the physical work. The
+ * activation has to be cancelled first, which asks per step whether it was physically performed, so
+ * holds are never released blindly.
+ */
+async function assertNoLiveActivation(task: TaskDocument, verb: 'cancelled' | 'archived'): Promise<void> {
+  const live = (await loadActivationsForTask(task._id))
+    .some(activation => activation.state === 'active' || activation.state === 'needs_reconciliation')
+  if (live) {
+    throw new TaskValidationError(
+      `This task has activated work in progress and cannot be ${verb}. Cancel or finish the activation first.`
+    )
+  }
+}
+
+function ownerIdOf(task: TaskDocument): string | null {
+  return task.managingOwner.kind === 'user' ? task.managingOwner.user.id : null
+}
+
+/*
+ * Refuse a sharing or ownership change that would leave the executor of live work without the
+ * right to execute it. After the change the executor must still be the owner or responsible; if
+ * not, the activation has to be handed over or cancelled first.
+ */
+async function assertExecutorsKeepTheirRight(
+  task: TaskDocument,
+  nextResponsible: { id: string }[],
+  nextOwnerId: string | null
+): Promise<void> {
+  const live = (await loadActivationsForTask(task._id))
+    .filter(activation => activation.state === 'active' || activation.state === 'needs_reconciliation')
+  for (const activation of live) {
+    const id = activation.executor.id
+    if (id === nextOwnerId || nextResponsible.some(r => r.id === id)) continue
+    const [ref] = await resolveUserRefs([activation.executor])
+    const who = ref && ref.name !== UNKNOWN_USER_REF.name ? ref.name : 'This colleague'
+    throw new TaskValidationError(
+      `${who} is currently executing activated work on this task. Hand the activation over or cancel it first.`
+    )
+  }
 }
 
 export const TaskService = {
@@ -231,7 +277,7 @@ export const TaskService = {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
 
-    const ownerId = task.managingOwner.kind === 'user' ? task.managingOwner.user.id : null
+    const ownerId = ownerIdOf(task)
     let responsibleUsers = task.responsibleUsers
     let viewers = task.viewers
     if (input.responsibleFirnIds !== undefined) {
@@ -248,6 +294,8 @@ export const TaskService = {
     // A user cannot be both responsible and a read-only viewer; responsibility wins.
     const responsibleIds = new Set(responsibleUsers.map(r => r.id))
     viewers = viewers.filter(v => !responsibleIds.has(v.id))
+
+    await assertExecutorsKeepTheirRight(task, responsibleUsers, ownerId)
 
     const updated: TaskDocument = {
       ...task,
@@ -281,6 +329,11 @@ export const TaskService = {
     if (!newOwner) throw new TaskValidationError('The new owner could not be resolved.')
 
     const newOwnerRef = toUserRef(newOwner)
+    await assertExecutorsKeepTheirRight(
+      task,
+      task.responsibleUsers.filter(r => r.id !== newOwnerRef.id),
+      newOwnerRef.id
+    )
     const updated: TaskDocument = {
       ...task,
       managingOwner: userActor(newOwner),
@@ -297,6 +350,7 @@ export const TaskService = {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
     if (task.archivedAt) return task
+    await assertNoLiveActivation(task, 'archived')
     const updated: TaskDocument = {
       ...task,
       archivedAt: DateTime.now().toISO(),
@@ -310,6 +364,7 @@ export const TaskService = {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
     if (task.status === 'cancelled') return task
+    await assertNoLiveActivation(task, 'cancelled')
     const now = DateTime.now().toISO()
     const updated: TaskDocument = {
       ...task,
@@ -330,20 +385,11 @@ export const TaskService = {
    * exactly one of several concurrent claimants wins; the loser receives a TaskConflictError.
    */
   async claimTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
-    if (!isActiveApprovedUser(actor)) {
-      throw new ForbiddenError('Only approved, active users can claim tasks.')
-    }
     const task = await TaskService.getTaskDocBySlug(slug)
     if (!task) throw new TaskNotFoundError()
-    if (task.visibility !== 'public') throw new ForbiddenError('Only public tasks can be claimed.')
-    if (task.status !== 'open' || task.archivedAt) {
-      throw new ForbiddenError('This task is not available to claim.')
-    }
+    assertCanClaimTask(task, actor)
     if (task.responsibleUsers.length > 0) {
       throw new TaskConflictError('This task has already been claimed.')
-    }
-    if (TaskService.isOwnerId(task, actor._id)) {
-      throw new ForbiddenError('You already own this task.')
     }
 
     const updated: TaskDocument = {
@@ -366,12 +412,12 @@ export const TaskService = {
 
   async releaseResponsibility(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
-    if (!task.responsibleUsers.some(r => r.id === actor._id)) {
-      throw new ForbiddenError('You are not responsible for this task.')
-    }
+    assertCanReleaseResponsibility(task, actor)
+    const remaining = task.responsibleUsers.filter(r => r.id !== actor._id)
+    await assertExecutorsKeepTheirRight(task, remaining, ownerIdOf(task))
     const updated: TaskDocument = {
       ...task,
-      responsibleUsers: task.responsibleUsers.filter(r => r.id !== actor._id),
+      responsibleUsers: remaining,
       editVersion: task.editVersion + 1,
       updatedAt: DateTime.now().toISO()
     }
@@ -442,10 +488,6 @@ export const TaskService = {
   // -------------------------------------------------------------------------
   // Internal helpers
   // -------------------------------------------------------------------------
-
-  isOwnerId(task: TaskDocument, userId: string): boolean {
-    return task.managingOwner.kind === 'user' && task.managingOwner.user.id === userId
-  },
 
   /* Write an updated task guarding against concurrent edits via its _rev. */
   async writeWithCas(previous: TaskDocument, updated: TaskDocument): Promise<TaskDocument> {
@@ -534,7 +576,7 @@ export const TaskService = {
 }
 
 /* Map an inventory document discriminator to a SerializedEntityRef kind. */
-function inventoryKind(type: string | undefined): SerializedEntityRef['kind'] {
+export function inventoryKind(type: string | undefined): SerializedEntityRef['kind'] {
   switch (type) {
     case 'inventoryItem': return 'item'
     case 'container': return 'container'

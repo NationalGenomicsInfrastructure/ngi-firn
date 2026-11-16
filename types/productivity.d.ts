@@ -310,7 +310,7 @@ export type TaskActivationState
 export type TaskReservationKind = 'target' | 'capacity' | 'gridCell'
 
 /* Durable lifecycle of a single reservation claim; supports idempotent consume/release. */
-export type TaskReservationState = 'pending' | 'held' | 'consumed' | 'released'
+export type TaskReservationState = 'held' | 'consumed' | 'released'
 
 /*
  * One task-owned hold recorded in an activation's reservation manifest. The authoritative

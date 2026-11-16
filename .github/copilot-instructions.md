@@ -298,6 +298,18 @@ Grid containers expose their exact occupied cells through `getGridOccupancy` (`I
 - `gridLabel` in `app/utils/inventory/grid.ts` must match `deriveGridLabel` in `server/crud/inventory/grid.server.ts` (positions are 1-based; `L2-` prefix above level 1).
 - Drag and drop uses pointer events (`app/composables/useGridDrag.ts`), not HTML5 DnD, so it works on touch. A same-parent move needs an explicit new `position`.
 
+### Tasks and reservations
+
+Task steps, activations and inventory holds interact; see `docs/tasks-and-reservations.md`. Pitfalls:
+
+- The step document is the only source of step state. Activation state is derived via `refreshActivationState`; its manifest is an immutable snapshot. Never write step state elsewhere, or the copies drift apart.
+- Claim identity is (activation, step). Grid-cell and capacity claims are excluded only for the step that owns them; a target hold is shared by all steps of one activation via `stepIds`. Otherwise two steps can take the same slot.
+- Code that places inventory must be hold-aware: use `findFirstFreeUnheldGridSlot` / `allocatableCount` / `allocatableGridSlots` and pass `executionAllowance(execution)` through the occupancy adjusters. Never release a reservation before the write it protects has committed, or another request can take the slot.
+- Deleting inventory is never blocked by task state. Delete paths call `invalidateStepsAfterDelete`, which cancels the referring steps and their dependents. Claims only block occupying a slot.
+- Operation documents have the id `task-op:<operationId>`, so a workflow body must be resume-safe. Physical actions are deduplicated by the inventory action receipt (activation + step), not by operation id.
+- `server/crud/inventory` must not import the task services. It may import `server/crud/tasks/invalidation.server.ts`, which (with `stepState.server.ts`) avoids importing the inventory services; this prevents import cycles.
+- Permission checks for tasks belong in `server/auth/taskPolicy.ts`, not inline in services.
+
 ### Project search pitfalls (Meilisearch)
 
 - There are **two** project indexes: `…__linked_projects` is link-scoped (only projects with inventory links; used by `/inventory/search`), `…__project_catalog` holds all projects (used by `/projects`). Do not widen the first one.

@@ -14,7 +14,7 @@
  */
 import { createHash } from 'node:crypto'
 
-import { couchDB } from '../../database/couchdb'
+import { couchDB, isCouchConflict } from '../../database/couchdb'
 import type { TypedDocumentReference } from '../../../types/references'
 import type {
   TaskActivationDocument,
@@ -23,7 +23,7 @@ import type {
   TaskOperationKind,
   TaskOperationState
 } from '../../../types/productivity'
-import { TaskConflictError, isCouchConflict } from './common'
+import { TaskConflictError } from './common'
 
 /* Deterministic fingerprint binding an operationId to the exact request it first ran. */
 export function fingerprintPayload(payload: unknown): string {

@@ -10,7 +10,7 @@
  * The hold primitives are individually idempotent and the whole workflow is wrapped in a
  * TaskOperationDocument, so a retried activation replays its stored result instead of re-acquiring.
  */
-import { couchDB, generateCouchDocId } from '../../database/couchdb'
+import { couchDB, generateCouchDocId, isCouchConflict } from '../../database/couchdb'
 import type { FirnUser } from '../../../types/auth'
 import type { TypedDocumentReference } from '../../../types/references'
 import type { Container, GridPosition, InventoryItem, StorageEquipment } from '../../../types/inventory'
@@ -40,7 +40,7 @@ import { invalidateStepsForDeletedResource } from './invalidation.server'
 import { resolveUserRefs, toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { TaskStepService } from './steps.server'
-import { TaskConflictError, TaskValidationError, isCouchConflict } from './common'
+import { TaskConflictError, TaskValidationError } from './common'
 import { runOperation } from './operations.server'
 
 /** Input to activate a selected subset of a task's steps. */

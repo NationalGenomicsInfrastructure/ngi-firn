@@ -9,13 +9,14 @@
  *    its holds are retained until explicitly reconciled. Never a blind deletion.
  *  - handover: the current executor passes an activation to another responsible colleague, advancing
  *    the activation version (invalidating earlier paper exports) and re-stamping the live holds.
- *  - reconcile: resolve a needs_reconciliation activation step by step, recording the true outcome
- *    (completed or skipped) and releasing the retained holds.
+ *  - reconcile: resolve a needs_reconciliation activation step by step. A step declared completed has
+ *    its stored inventory action applied (so the record matches where the object physically is); a
+ *    step declared skipped leaves the inventory untouched. Either way the retained holds are released.
  *
  * Every workflow is wrapped in a TaskOperationDocument so retries are idempotent. No automatic
  * timeout ever releases a physical hold; abandonment is always an explicit, recorded human action.
  */
-import { couchDB } from '../../database/couchdb'
+import { couchDB, isCouchConflict } from '../../database/couchdb'
 import type { FirnUser } from '../../../types/auth'
 import type { TypedDocumentReference } from '../../../types/references'
 import type {
@@ -25,23 +26,21 @@ import type {
   TaskStepDocument,
   TaskStepResult
 } from '../../../types/productivity'
-import { isTaskOwner } from '../../auth/taskPolicy'
-import { ForbiddenError } from '../../auth/errors'
-import {
-  acquireTargetHold,
-  consumeTargetHold,
-  releaseTargetHold
-} from '../inventory/reservations.server'
+import { assertCanRecoverActivation, assertIsActivationExecutor, canBeExecutor } from '../../auth/taskPolicy'
+import { acquireTargetHold, consumeTargetHold } from '../inventory/reservations.server'
 import { toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { findActivation, toDisplayActivation } from './activation.server'
 import {
+  applyStepActionOnce,
   executablePayload,
+  firstMissingResource,
   refreshActivationState,
   releaseStepHolds,
   writeStepOutcome
 } from './execution.server'
-import { TaskConflictError, TaskNotFoundError, TaskValidationError, isCouchConflict, resolveUsersByFirnIds } from './common'
+import { invalidateStepsForDeletedResource } from './invalidation.server'
+import { TaskConflictError, TaskNotFoundError, TaskValidationError, resolveUsersByFirnIds } from './common'
 import { runOperation } from './operations.server'
 
 /* Per-step declaration of what physically happened, required to cancel an activation. */
@@ -163,13 +162,8 @@ async function loadRecoveryContext(
   if (!activation) throw new TaskNotFoundError()
   if (activation.task.id !== task._id) throw new TaskValidationError('Activation does not belong to this task.')
 
-  const isExecutor = activation.executor.id === actor._id
-  if (auth.executorOnly && !isExecutor) {
-    throw new ForbiddenError('Only the current executor can perform this action.')
-  }
-  if (auth.executorOrOwner && !isExecutor && !isTaskOwner(task, actor)) {
-    throw new ForbiddenError('Only the executor or the task owner can perform this action.')
-  }
+  if (auth.executorOnly) assertIsActivationExecutor(activation, actor, 'Only the current executor can perform this action.')
+  if (auth.executorOrOwner) assertCanRecoverActivation(task, activation, actor)
   return { task, activation }
 }
 
@@ -269,8 +263,7 @@ async function handover(
 
   const [newExecutor] = await resolveUsersByFirnIds([input.toExecutorFirnId])
   if (!newExecutor) throw new TaskValidationError('The new executor could not be resolved.')
-  const isResponsible = task.responsibleUsers.some(r => r.id === newExecutor._id) || isTaskOwner(task, newExecutor)
-  if (!isResponsible) {
+  if (!canBeExecutor(task, newExecutor)) {
     throw new TaskValidationError('The new executor must be a responsible colleague on this task.')
   }
 
@@ -334,19 +327,41 @@ async function reconcile(
 
     const result: TaskStepResult = resolution.result === 'completed' ? 'completed' : 'skipped'
     const payload = executablePayload(activation, step)
+    let receiptLogRef: TypedDocumentReference | null = null
     if (payload.kind === 'inventory') {
-      // Release the retained holds now that the true disposition is recorded. For a completed step
-      // the physical change already exists; reconciliation does not re-apply it.
-      const holdCtx = {
-        activationId,
-        stepId: step.stepId,
-        generation: activation.activationVersion,
-        operationId: input.operationId
+      // Inventory deleted in the meantime cancels the step instead of being reconciled.
+      const missingId = await firstMissingResource(payload)
+      if (missingId) {
+        await invalidateStepsForDeletedResource(missingId, actor)
+        continue
       }
       if (resolution.result === 'completed') {
-        await consumeTargetHold(payload.target.ref.id, holdCtx)
-        await releaseTargetHold(payload.target.ref.id, holdCtx)
+        // The work was physically done outside the confirm flow, so the inventory record does not
+        // show it yet. Apply the step's stored action now (once: guarded by the action receipt), so
+        // the object's recorded location and status match where it really is. If the action cannot be
+        // applied the step stays in needs_reconciliation with its holds, and the caller sees why.
+        try {
+          await applyStepActionOnce(actor, task, activation, step.stepId, payload, {
+            operationId: `${input.operationId}:${step.stepId}`,
+            source: 'online'
+          })
+        }
+        catch (error) {
+          await refreshActivationState(activation._id)
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new TaskValidationError(
+            `Step ${step.stepId} could not be recorded as completed: ${reason} Resolve this, or reconcile the step as skipped and correct the inventory by hand.`
+          )
+        }
+        await consumeTargetHold(payload.target.ref.id, {
+          activationId,
+          stepId: step.stepId,
+          generation: activation.activationVersion,
+          operationId: input.operationId
+        })
+        receiptLogRef = { db: 'firn', id: payload.target.ref.id, type: payload.target.ref.type }
       }
+      // Release the retained holds now that the true disposition is recorded.
       await releaseStepHolds(payload, activationId, step.stepId, activation.activationVersion, input.operationId)
     }
 
@@ -358,7 +373,7 @@ async function reconcile(
       source: 'online',
       notes: null,
       operationId: input.operationId,
-      receiptLogRef: null,
+      receiptLogRef,
       failureReason: null
     })
   }
