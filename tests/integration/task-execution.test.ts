@@ -13,7 +13,7 @@
  * Cases share one base fixture and create their own throwaway task/steps/items, so the
  * suite runs sequentially (see vitest.config.ts).
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { couchDB } from '../../server/database/couchdb'
 import { UserService } from '../../server/crud/users.server'
@@ -26,6 +26,7 @@ import { TaskActivationService, findActivation } from '../../server/crud/tasks/a
 import { TaskExecutionService } from '../../server/crud/tasks/execution.server'
 import { TaskRecoveryService } from '../../server/crud/tasks/recovery.server'
 import { TaskValidationError } from '../../server/crud/tasks/common'
+import { operationDocId } from '../../server/crud/tasks/operations.server'
 import type { Container, InventoryItem, StorageEquipment } from '../../types/inventory'
 import type { FirnUser } from '../../types/auth'
 import type { TaskStepPayload } from '../../types/productivity'
@@ -193,13 +194,8 @@ afterAll(async () => {
     )).rows
     for (const row of rows) if (row.doc?._id) createdIds.push(row.doc._id)
   }
-  for (const base of usedOpIds) {
-    const rows = (await couchDB.queryView<string, null, { _id: string, _rev: string }>(
-      'firn-tasks', 'operations_by_key',
-      { startkey: base, endkey: `${base}\ufff0`, include_docs: true }
-    )).rows
-    for (const row of rows) if (row.doc?._id) createdIds.push(row.doc._id)
-  }
+  // Operation documents are keyed by their operation id (batch per-step ids never get a document).
+  for (const id of usedOpIds) createdIds.push(operationDocId(id))
   await cleanupFixture(createdIds)
 })
 
@@ -318,6 +314,113 @@ describe('batch confirmation', () => {
   })
 })
 
+describe('retries', () => {
+  it('runs the body once when the same operation id arrives twice at the same time', async () => {
+    const vial = await makeVial('BCTEST Concurrent Vial')
+    const { slug, steps, activationId } = await makeActiveTask('BCTEST Concurrent', [checkoutStep(vial)])
+    const request = { stepId: steps[0]!.stepId, activationId, operationId: opId('concurrent'), source: 'online' as const }
+
+    const outcomes = await Promise.allSettled([
+      TaskExecutionService.confirmStep(owner, slug, request),
+      TaskExecutionService.confirmStep(owner, slug, request)
+    ])
+    // At least one request wins; the other either replays its result or is told to retry.
+    expect(outcomes.some(o => o.status === 'fulfilled')).toBe(true)
+    for (const outcome of outcomes) {
+      if (outcome.status === 'rejected') expect(String(outcome.reason)).toMatch(/still running/i)
+    }
+
+    const item = await ItemService.getItemBySlug(vial.slug)
+    expect(item?.status).toBe('in_use')
+    expect((item?.actionLog ?? []).filter(entry => entry.linkedStepId === steps[0]!.stepId)).toHaveLength(1)
+
+    // Once it has finished, the same request simply replays.
+    const replay = await TaskExecutionService.confirmStep(owner, slug, request)
+    expect(replay.state).toBe('completed')
+  })
+
+  it('replays a batch whose first response was lost after it finished the activation', async () => {
+    const vial = await makeVial('BCTEST Batch Replay')
+    const { slug, taskId, activationId } = await makeActiveTask('BCTEST Batch replay', [checkoutStep(vial)])
+    const request = { activationId, operationId: opId('batch-replay'), source: 'online' as const }
+
+    const first = await TaskExecutionService.confirmBatch(owner, slug, request)
+    expect((await findActivation(taskId, activationId))?.state).toBe('finished')
+
+    const replay = await TaskExecutionService.confirmBatch(owner, slug, request)
+    expect(replay.results).toEqual(first.results)
+  })
+
+  it('re-runs a partially failed batch without applying the committed action twice', async () => {
+    const vial = await makeVial('BCTEST Batch Partial')
+    const other = await makeVial('BCTEST Batch Partial Other')
+    const { slug, steps, taskId, activationId } = await makeActiveTask(
+      'BCTEST Batch partial', [checkoutStep(vial), checkoutStep(other)]
+    )
+    const failing = steps[0]!
+
+    // The checkout of the first vial commits, but recording the step outcome then fails.
+    const original = couchDB.updateDocument.bind(couchDB)
+    const spy = vi.spyOn(couchDB, 'updateDocument').mockImplementation(async (id, doc, rev) => {
+      if (id === failing._id && (doc as { state?: string }).state === 'completed') {
+        throw new Error('Simulated outcome failure')
+      }
+      return original(id, doc as never, rev)
+    })
+    const firstOp = opId('batch-partial')
+    let first: Awaited<ReturnType<typeof TaskExecutionService.confirmBatch>>
+    try {
+      first = await TaskExecutionService.confirmBatch(owner, slug, { activationId, operationId: firstOp, source: 'online' })
+    }
+    finally {
+      spy.mockRestore()
+    }
+    const byStep = new Map(first.results.map(r => [r.stepId, r.status]))
+    expect(byStep.get(failing.stepId)).toBe('failed')
+    expect(byStep.get(steps[1]!.stepId)).toBe('completed')
+    expect((await ItemService.getItemBySlug(vial.slug))?.status).toBe('in_use')
+
+    // Retrying the SAME operation runs again (it is not a replay of the partial result) and finishes
+    // the step without checking the vial out a second time.
+    const retry = await TaskExecutionService.confirmBatch(owner, slug, { activationId, operationId: firstOp, source: 'online' })
+    expect(retry.results.find(r => r.stepId === failing.stepId)?.status).toBe('completed')
+    const receipts = ((await ItemService.getItemBySlug(vial.slug))?.actionLog ?? [])
+      .filter(entry => entry.linkedStepId === failing.stepId)
+    expect(receipts).toHaveLength(1)
+    expect((await findActivation(taskId, activationId))?.state).toBe('finished')
+  })
+
+  it('does not re-apply a committed action when the retry uses a new operation id', async () => {
+    const vial = await makeVial('BCTEST New Op Retry')
+    const { slug, steps, activationId } = await makeActiveTask('BCTEST New op retry', [checkoutStep(vial)])
+    const step = steps[0]!
+
+    const original = couchDB.updateDocument.bind(couchDB)
+    const spy = vi.spyOn(couchDB, 'updateDocument').mockImplementation(async (id, doc, rev) => {
+      if (id === step._id && (doc as { state?: string }).state === 'completed') {
+        throw new Error('Simulated outcome failure')
+      }
+      return original(id, doc as never, rev)
+    })
+    try {
+      await expect(TaskExecutionService.confirmStep(owner, slug, {
+        stepId: step.stepId, activationId, operationId: opId('new-op-1'), source: 'online'
+      })).rejects.toThrow(/Simulated outcome failure/)
+    }
+    finally {
+      spy.mockRestore()
+    }
+
+    const retried = await TaskExecutionService.confirmStep(owner, slug, {
+      stepId: step.stepId, activationId, operationId: opId('new-op-2'), source: 'online'
+    })
+    expect(retried.state).toBe('completed')
+    const receipts = ((await ItemService.getItemBySlug(vial.slug))?.actionLog ?? [])
+      .filter(entry => entry.linkedStepId === step.stepId)
+    expect(receipts).toHaveLength(1)
+  })
+})
+
 describe('cancellation', () => {
   it('releases holds and cancels steps when nothing was physically performed', async () => {
     const vial = await makeVial('BCTEST Cancel Clean')
@@ -359,8 +462,10 @@ describe('cancellation', () => {
     })
     expect(reconciled.state).toBe('finished')
 
+    // The step document is the single source of step state; the activation's claims are released.
+    expect((await TaskStepService.listSteps(owner, slug))[0]?.state).toBe('completed')
     const activation = await findActivation(taskId, activationId)
-    expect(activation?.manifest[0]?.state).toBe('completed')
+    expect(activation?.reservationManifest.every(claim => claim.state === 'released')).toBe(true)
 
     // Hold released by reconciliation: ordinary checkout now succeeds.
     const checked = await ItemService.alterItem({
@@ -379,6 +484,106 @@ describe('cancellation', () => {
   })
 })
 
+describe('activation state follows the step documents', () => {
+  it('finishes the activation when two steps are reconciled in one request', async () => {
+    const first = await makeVial('BCTEST Reconcile Two A')
+    const second = await makeVial('BCTEST Reconcile Two B')
+    const { slug, steps, taskId, activationId } = await makeActiveTask(
+      'BCTEST Reconcile two', [checkoutStep(first), checkoutStep(second)]
+    )
+
+    await TaskRecoveryService.cancelActivation(owner, slug, {
+      activationId, operationId: opId('cancel-two'), reason: 'Done by hand',
+      declarations: steps.map(s => ({ stepId: s.stepId, physicallyPerformed: true }))
+    })
+    const reconciled = await TaskRecoveryService.reconcile(owner, slug, {
+      activationId, operationId: opId('reconcile-two'),
+      resolutions: steps.map(s => ({ stepId: s.stepId, result: 'skipped' as const }))
+    })
+    expect(reconciled.state).toBe('finished')
+    expect(reconciled.steps.map(s => s.state)).toEqual(['skipped', 'skipped'])
+
+    const activation = await findActivation(taskId, activationId)
+    expect(activation?.reservationManifest.every(claim => claim.state === 'released')).toBe(true)
+  })
+
+  it('leaves needs_reconciliation after a mixed cancel once the performed step is reconciled', async () => {
+    const done = await makeVial('BCTEST Mixed Done')
+    const untouched = await makeVial('BCTEST Mixed Untouched')
+    const { slug, steps, activationId } = await makeActiveTask(
+      'BCTEST Mixed cancel', [checkoutStep(done), checkoutStep(untouched)]
+    )
+
+    const cancelled = await TaskRecoveryService.cancelActivation(owner, slug, {
+      activationId, operationId: opId('cancel-mixed'), reason: 'Half done',
+      declarations: [
+        { stepId: steps[0]!.stepId, physicallyPerformed: true },
+        { stepId: steps[1]!.stepId, physicallyPerformed: false }
+      ]
+    })
+    expect(cancelled.state).toBe('needs_reconciliation')
+
+    const reconciled = await TaskRecoveryService.reconcile(owner, slug, {
+      activationId, operationId: opId('reconcile-mixed'),
+      resolutions: [{ stepId: steps[0]!.stepId, result: 'skipped' }]
+    })
+    expect(reconciled.state).toBe('finished')
+  })
+
+  it('refuses to cancel a finished activation', async () => {
+    const vial = await makeVial('BCTEST Cancel Finished')
+    const { slug, steps, taskId, activationId } = await makeActiveTask('BCTEST Cancel finished', [checkoutStep(vial)])
+    await TaskExecutionService.confirmStep(owner, slug, {
+      stepId: steps[0]!.stepId, activationId, operationId: opId('finish'), source: 'online'
+    })
+    expect((await findActivation(taskId, activationId))?.state).toBe('finished')
+
+    await expect(TaskRecoveryService.cancelActivation(owner, slug, {
+      activationId, operationId: opId('cancel-finished'), reason: 'Too late', declarations: []
+    })).rejects.toBeInstanceOf(TaskValidationError)
+    expect((await findActivation(taskId, activationId))?.state).toBe('finished')
+  })
+
+  it('returns steps to planned and releases holds when activation fails half-way', async () => {
+    const first = await makeVial('BCTEST Rollback A')
+    const second = await makeVial('BCTEST Rollback B')
+    const task = await TaskService.createTask(owner, { title: 'BCTEST Activation rollback' })
+    createdIds.push(task._id)
+    createdTaskIds.push(task._id)
+    const steps = await TaskStepService.addSteps(owner, task.slug, [
+      { payload: checkoutStep(first) }, { payload: checkoutStep(second) }
+    ])
+    for (const step of steps) createdIds.push(step._id)
+    await TaskService.publishTask(owner, task.slug)
+
+    // Fail the write that marks the second step held, after the first one succeeded.
+    const original = couchDB.updateDocument.bind(couchDB)
+    const spy = vi.spyOn(couchDB, 'updateDocument').mockImplementation(async (id, doc, rev) => {
+      if (id === steps[1]!._id && (doc as { state?: string }).state === 'held') {
+        throw new Error('Simulated database failure')
+      }
+      return original(id, doc as never, rev)
+    })
+    try {
+      await expect(TaskActivationService.activateSteps(owner, task.slug, {
+        stepIds: steps.map(s => s.stepId), operationId: opId('act-fail')
+      })).rejects.toThrow(/Simulated database failure/)
+    }
+    finally {
+      spy.mockRestore()
+    }
+
+    const after = await TaskStepService.listSteps(owner, task.slug)
+    expect(after.map(s => s.state)).toEqual(['planned', 'planned'])
+
+    // Nothing is stuck: the same steps can be activated again.
+    const retry = await TaskActivationService.activateSteps(owner, task.slug, {
+      stepIds: steps.map(s => s.stepId), operationId: opId('act-retry')
+    })
+    expect(retry.state).toBe('active')
+  })
+})
+
 describe('handover', () => {
   it('advances the version, swaps the executor and keeps the hold, so only the new executor can confirm', async () => {
     const vial = await makeVial('BCTEST Handover Vial')
@@ -391,7 +596,7 @@ describe('handover', () => {
     )
 
     const handed = await TaskRecoveryService.handover(owner, slug, {
-      activationId, operationId: opId('handover'), toExecutorId: colleague._id, acknowledged: true
+      activationId, operationId: opId('handover'), toExecutorFirnId: colleague.firnId, acknowledged: true
     })
     expect(handed.activationVersion).toBe(2)
 
@@ -427,7 +632,7 @@ describe('handover', () => {
     )
 
     await expect(TaskRecoveryService.handover(owner, slug, {
-      activationId, operationId: opId('handover-bad'), toExecutorId: colleague._id, acknowledged: false
+      activationId, operationId: opId('handover-bad'), toExecutorFirnId: colleague.firnId, acknowledged: false
     })).rejects.toBeInstanceOf(TaskValidationError)
   })
 })

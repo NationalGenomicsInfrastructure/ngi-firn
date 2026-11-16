@@ -34,7 +34,13 @@ import {
 } from './relations.server'
 import { RoomService } from './rooms.server'
 import { BarcodeService } from './barcodes.server'
-import { assertCountCapacityNotOverHeld, assertNoBlockingStructuralGuard } from './reservations.server'
+import {
+  type HoldEnforcementOptions,
+  assertCapacityEditKeepsClaims,
+  assertCountCapacityNotOverHeld
+} from './reservations.server'
+import { invalidateStepsAfterDelete } from '../tasks/invalidation.server'
+import type { FirnUser } from '../../../types/auth'
 import type {
   DisplayStorageEquipment,
   Room,
@@ -255,9 +261,6 @@ export const EquipmentService = {
       throw new Error(`Equipment with identifier "${updates.equipmentSlug}" not found.`)
     }
 
-    // Capacity/temperature/layout edits must not invalidate planned task work guarding this equipment.
-    assertNoBlockingStructuralGuard(existing)
-
     // Strip request-only identifiers so they are not persisted into the document.
     const { equipmentSlug: _equipmentSlug, parentSlug: _parentSlug, capacity, itemCapacity, barcode, ...updatedFields } = updates
 
@@ -296,14 +299,22 @@ export const EquipmentService = {
       updatedEquipment.temperatureCelsius
     )
 
+    // A capacity edit may not drop below what is stored plus reserved for planned task work.
+    if (capacity || itemCapacity) {
+      assertCapacityEditKeepsClaims(existing, updatedEquipment)
+    }
+
     const result = await couchDB.updateDocument(updatedEquipment._id, updatedEquipment, existing._rev)
     updatedEquipment._rev = result.rev
 
     return updatedEquipment
   },
 
-  /* Delete equipment only when no direct child containers/items remain. */
-  async deleteEquipment(equipment: DeleteEquipmentInput): Promise<StorageEquipment> {
+  /*
+   * Delete equipment only when no direct child containers/items remain. Planned task work never
+   * blocks the delete; open task steps with this equipment as destination are cancelled instead.
+   */
+  async deleteEquipment(equipment: DeleteEquipmentInput, firnUser?: FirnUser): Promise<StorageEquipment> {
     const existing = await EquipmentService.getEquipmentBySlug(equipment.equipmentSlug)
 
     if (!existing) {
@@ -316,9 +327,8 @@ export const EquipmentService = {
       throw new Error(`Cannot delete equipment "${equipment.equipmentSlug}" because it still contains child inventory.`)
     }
 
-    assertNoBlockingStructuralGuard(existing)
-
     await couchDB.deleteDocument(existing._id, existing._rev)
+    await invalidateStepsAfterDelete(existing._id, firnUser ?? null)
     return existing
   },
 
@@ -334,8 +344,6 @@ export const EquipmentService = {
     if (!targetRoom) {
       throw new Error(`Target room with identifier "${input.newRoomSlug}" not found.`)
     }
-
-    assertNoBlockingStructuralGuard(equipment)
 
     const now = new Date().toISOString()
     const movedEquipment: StorageEquipment = {
@@ -362,7 +370,8 @@ export const EquipmentService = {
   async adjustStoredCount(
     equipmentDocumentId: string,
     category: ContainerType,
-    delta: number
+    delta: number,
+    holdOptions: HoldEnforcementOptions = {}
   ): Promise<{ equipment: StorageEquipment, atCapacity: boolean }> {
     const equipment = await EquipmentService.getEquipment(equipmentDocumentId)
 
@@ -393,7 +402,7 @@ export const EquipmentService = {
 
     // Reject occupying container capacity that a planned task hold already reserves.
     if (delta > 0) {
-      assertCountCapacityNotOverHeld(equipment, category, 'container', newStored)
+      assertCountCapacityNotOverHeld(equipment, category, 'container', newStored, holdOptions)
     }
 
     const updatedEquipment: StorageEquipment = {
@@ -413,7 +422,8 @@ export const EquipmentService = {
   async adjustItemStoredCount(
     equipmentDocumentId: string,
     category: ItemType,
-    delta: number
+    delta: number,
+    holdOptions: HoldEnforcementOptions = {}
   ): Promise<StorageEquipment> {
     const equipment = await EquipmentService.getEquipment(equipmentDocumentId)
     if (!equipment) throw new Error(`Equipment with ID "${equipmentDocumentId}" not found.`)
@@ -425,7 +435,7 @@ export const EquipmentService = {
     }
     // Reject occupying item capacity that a planned task hold already reserves.
     if (delta > 0) {
-      assertCountCapacityNotOverHeld(equipment, category, 'item', stored)
+      assertCountCapacityNotOverHeld(equipment, category, 'item', stored, holdOptions)
     }
     const updated: StorageEquipment = {
       ...equipment,

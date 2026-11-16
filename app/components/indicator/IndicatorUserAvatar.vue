@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SerializedUserRef } from '~~/types/inventory'
+import type { SerializedUserRef } from '~~/types/auth'
 
 const props = withDefaults(defineProps<{
   user: SerializedUserRef

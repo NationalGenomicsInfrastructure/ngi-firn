@@ -14,7 +14,7 @@
  */
 import { couchDB } from '../../database/couchdb'
 import type { FirnUser } from '../../../types/auth'
-import type { Container, InventoryItem } from '../../../types/inventory'
+import type { Container, InventoryItem, StorageEquipment } from '../../../types/inventory'
 import type { TypedDocumentReference } from '../../../types/references'
 import type {
   DisplayTaskBatchResult,
@@ -29,25 +29,25 @@ import type {
   TaskStepResult
 } from '../../../types/productivity'
 import { assertCanExecuteTask } from '../../auth/taskPolicy'
-import {
-  type InventoryExecutionContext,
-  consumeTargetHold,
-  releaseParentClaimsForStep,
-  releaseTargetHold
-} from '../inventory/reservations.server'
+import { type InventoryExecutionContext, consumeTargetHold } from '../inventory/reservations.server'
 import { ItemService } from '../inventory/items.server'
 import { ContainerService } from '../inventory/containers.server'
 import { toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { TaskStepService } from './steps.server'
 import { findActivation, toDisplayActivation } from './activation.server'
-import {
-  TaskConflictError,
-  TaskNotFoundError,
-  TaskValidationError,
-  isCouchConflict
-} from './common'
+import { TaskNotFoundError, TaskValidationError } from './common'
 import { runOperation } from './operations.server'
+import { invalidateStepsForDeletedResource } from './invalidation.server'
+import {
+  executablePayload,
+  refreshActivationState,
+  releaseStepHolds,
+  writeStepOutcome
+} from './stepState.server'
+
+// Re-exported for the recovery service, which shares these primitives.
+export { executablePayload, refreshActivationState, releaseStepHolds, writeStepOutcome }
 
 /** Shared confirm/skip request fields. */
 interface StepExecutionInputBase {
@@ -147,7 +147,9 @@ export const TaskExecutionService = {
     assertCanExecuteTask(task, actor)
     const activation = await findActivation(task._id, input.activationId)
     if (!activation) throw new TaskNotFoundError()
-    if (activation.state !== 'active') {
+    // `finished` is accepted so a retried batch whose first response was lost (and which finished the
+    // activation) still reaches runOperation's replay; resolved steps are never executed again.
+    if (activation.state !== 'active' && activation.state !== 'finished') {
       throw new TaskValidationError(`Activation is ${activation.state}; only an active activation can be executed.`)
     }
     if (activation.executor.id !== actor._id) {
@@ -167,7 +169,9 @@ export const TaskExecutionService = {
       task: taskRef,
       activation: activationRef,
       payload: { taskId: task._id, activationId: activation.activationId, stepIds: requested, batch: true },
-      execute: () => confirmBatch(actor, task, activation.activationId, input)
+      execute: () => confirmBatch(actor, task, activation.activationId, input),
+      // A batch in which a step failed is not done: the same operationId must run again, not replay.
+      isComplete: result => result.results.every(step => step.status !== 'failed')
     })
   }
 }
@@ -224,17 +228,26 @@ async function confirm(
   if (step.state !== 'held' && step.state !== 'executing') {
     throw new TaskValidationError(`Step ${step.stepId} is ${step.state} and cannot be confirmed.`)
   }
-  assertDependenciesResolved(step, activation)
+  await assertDependenciesResolved(step, activation)
 
   const now = new Date().toISOString()
-  const payload = step.payload
+  // Execute the definition frozen at activation, never a later edit of the step document.
+  const payload = executablePayload(activation, step)
 
   if (payload.kind === 'text') {
     // A free-text ToDo has no physical target or hold; confirming simply records completion.
     const outcome = buildOutcome('completed', actor, input, now, null, null)
     const updatedStep = await writeStepOutcome(step, 'completed', outcome)
-    await finishActivationEntry(activation, step.stepId, 'completed')
+    await refreshActivationState(activation._id)
     return TaskStepService.toDisplayStep(updatedStep)
+  }
+
+  // Safety net: inventory deleted since activation cancels the step instead of failing its execution.
+  const missingId = await firstMissingResource(payload)
+  if (missingId) {
+    await invalidateStepsForDeletedResource(missingId, actor)
+    const cancelled = await couchDB.getDocument<TaskStepDocument>(step._id)
+    return TaskStepService.toDisplayStep(cancelled ?? step)
   }
 
   const execution: InventoryExecutionContext = {
@@ -247,9 +260,11 @@ async function confirm(
   }
 
   const targetId = payload.target.ref.id
-  // Receipt-based recovery: if this operation already stamped the target, the physical action
-  // committed on an earlier attempt and must not be applied again (the services are not idempotent).
-  const alreadyApplied = await targetHasReceipt(targetId, input.operationId)
+  // Receipt-based recovery: if this step of this activation already stamped the target, the physical
+  // action committed on an earlier attempt and must not be applied again (the services are not
+  // idempotent). The receipt is matched by activation and step, not by operation id, so a retry
+  // under a NEW operation id cannot re-apply it either.
+  const alreadyApplied = await targetHasReceipt(targetId, activation.activationId, step.stepId)
   if (!alreadyApplied) {
     await applyInventoryAction(payload, actor, execution)
   }
@@ -260,15 +275,16 @@ async function confirm(
     generation: activation.activationVersion,
     operationId: input.operationId
   }
-  // Consume then release the target hold (both idempotent). The destination claim was already
-  // released just before placement inside applyInventoryAction for move/locate.
+  // The physical change is committed: only now give up the step's reservations. Consume the target
+  // hold, then release the destination claim and this step's share of the target hold (all
+  // idempotent). Had the action thrown above, every reservation would still be in place for a retry.
   await consumeTargetHold(targetId, holdCtx)
-  await releaseTargetHold(targetId, holdCtx)
+  await releaseStepHolds(payload, holdCtx.activationId, holdCtx.stepId, holdCtx.generation, holdCtx.operationId)
 
   const receiptRef: TypedDocumentReference = { db: 'firn', id: targetId, type: payload.target.ref.type }
   const outcome = buildOutcome('completed', actor, input, now, receiptRef, null)
   const updatedStep = await writeStepOutcome(step, 'completed', outcome)
-  await finishActivationEntry(activation, step.stepId, 'completed')
+  await refreshActivationState(activation._id)
   return TaskStepService.toDisplayStep(updatedStep)
 }
 
@@ -287,13 +303,14 @@ async function skip(
   }
 
   const now = new Date().toISOString()
-  if (step.payload.kind === 'inventory') {
-    await releaseStepHolds(step.payload, activation.activationId, step.stepId, activation.activationVersion, input.operationId)
+  const payload = executablePayload(activation, step)
+  if (payload.kind === 'inventory') {
+    await releaseStepHolds(payload, activation.activationId, step.stepId, activation.activationVersion, input.operationId)
   }
 
   const outcome = buildOutcome('skipped', actor, input, now, null, null)
   const updatedStep = await writeStepOutcome(step, 'skipped', outcome)
-  await finishActivationEntry(activation, step.stepId, 'skipped')
+  await refreshActivationState(activation._id)
   return TaskStepService.toDisplayStep(updatedStep)
 }
 
@@ -331,7 +348,7 @@ async function confirmBatch(
       results.push({ stepId, status: 'already_resolved', message: null })
       continue
     }
-    const blockedBy = firstUnresolvedDependency(step, activation, manifestIds)
+    const blockedBy = firstUnresolvedDependency(step, manifestIds, stepById)
     if (blockedBy) {
       results.push({ stepId, status: 'blocked', message: `Waiting on prerequisite ${blockedBy}.` })
       continue
@@ -347,8 +364,14 @@ async function confirmBatch(
       notes: null
     }
     try {
-      await confirm(actor, task, activation, step, stepInput)
-      results.push({ stepId, status: 'completed', message: null })
+      const confirmed = await confirm(actor, task, activation, step, stepInput)
+      if (confirmed.state === 'completed') {
+        results.push({ stepId, status: 'completed', message: null })
+      }
+      else {
+        // The safety net cancelled the step because its target or destination no longer exists.
+        results.push({ stepId, status: 'failed', message: confirmed.outcome?.notes ?? `Step is ${confirmed.state}.` })
+      }
     }
     catch (error) {
       results.push({ stepId, status: 'failed', message: error instanceof Error ? error.message : String(error) })
@@ -365,16 +388,18 @@ async function confirmBatch(
   return { activationId, taskSlug: task.slug, results, activation: activationDisplay }
 }
 
-/* The first prerequisite (within this activation) that has not completed, or null when all are met. */
+/*
+ * The first prerequisite (within this activation) that has not completed, or null when all are met.
+ * Step documents are the only source of step state; the activation manifest carries none.
+ */
 function firstUnresolvedDependency(
   step: TaskStepDocument,
-  activation: TaskActivationDocument,
-  manifestIds: Set<string>
+  manifestIds: Set<string>,
+  stepById: Map<string, TaskStepDocument>
 ): string | null {
   for (const depId of step.dependsOn) {
     if (!manifestIds.has(depId)) continue
-    const entry = activation.manifest.find(e => e.stepId === depId)
-    if (entry && entry.state !== 'completed') return depId
+    if (stepById.get(depId)?.state !== 'completed') return depId
   }
   return null
 }
@@ -410,17 +435,40 @@ function orderStepsByDependency(stepIds: string[], stepById: Map<string, TaskSte
  * A confirmation requires every prerequisite to have genuinely completed. A skipped prerequisite is
  * not treated as physically performed, so downstream confirmation is blocked for replan or skip.
  */
-function assertDependenciesResolved(step: TaskStepDocument, activation: TaskActivationDocument): void {
-  for (const depId of step.dependsOn) {
-    const entry = activation.manifest.find(e => e.stepId === depId)
-    // Prerequisites outside this activation were already completed at activation time (closure rule).
-    if (!entry) continue
-    if (entry.state !== 'completed') {
+async function assertDependenciesResolved(step: TaskStepDocument, activation: TaskActivationDocument): Promise<void> {
+  // Prerequisites outside this activation were already completed at activation time (closure rule).
+  const inActivation = step.dependsOn.filter(depId => activation.manifest.some(e => e.stepId === depId))
+  if (inActivation.length === 0) return
+  const steps = await TaskService.getStepsForTask(activation.task.id)
+  const stateById = new Map(steps.map(s => [s.stepId, s.state]))
+  for (const depId of inActivation) {
+    const state = stateById.get(depId)
+    if (state !== 'completed') {
       throw new TaskValidationError(
-        `Prerequisite ${depId} is ${entry.state}; complete it before confirming ${step.stepId}.`
+        `Prerequisite ${depId} is ${state ?? 'missing'}; complete it before confirming ${step.stepId}.`
       )
     }
   }
+}
+
+/*
+ * The current slug of an inventory document addressed by its stable id. Steps store a display slug
+ * captured at planning time; a rename since then must not break execution, so the id is authoritative.
+ */
+async function currentSlug(id: string, label: string): Promise<string> {
+  const doc = await couchDB.getDocument<Container | InventoryItem | StorageEquipment>(id)
+  if (!doc) throw new TaskValidationError(`The ${label} of this step no longer exists in the inventory.`)
+  return doc.slug
+}
+
+/* The id of the first inventory document (target, then destination) a payload refers to that is gone. */
+async function firstMissingResource(payload: TaskInventoryStepPayload): Promise<string | null> {
+  const ids = [payload.target.ref.id]
+  if (payload.action === 'move' || payload.action === 'locate') ids.push(payload.destination.parent.ref.id)
+  for (const id of ids) {
+    if (!(await couchDB.getDocument(id))) return id
+  }
+  return null
 }
 
 /* Dispatch the stored inventory action to the matching item/container service with execution context. */
@@ -429,17 +477,14 @@ async function applyInventoryAction(
   actor: FirnUser,
   execution: InventoryExecutionContext
 ): Promise<void> {
-  const targetSlug = payload.target.slug
+  const targetSlug = await currentSlug(payload.target.ref.id, 'target')
   const note = payload.notes ?? null
 
   if (payload.action === 'move' || payload.action === 'locate') {
-    // Release this step's own destination claim just before placement so the ordinary parent
-    // capacity/grid guards see no competing hold when the child is written into its reserved slot.
-    await releaseParentClaimsForStep(payload.destination.parent.ref.id, {
-      activationId: execution.activationId,
-      stepId: execution.stepId
-    })
-    const parentSlug = payload.destination.parent.slug
+    // The destination claim stays in place while the child is written: the inventory services let
+    // this step (and only this step) pass its own reservation via the execution context. It is
+    // released by the caller after the move has committed, so a failed move keeps its reservation.
+    const parentSlug = await currentSlug(payload.destination.parent.ref.id, 'destination')
     const parentKind = destinationParentKind(payload.destination.parent.ref.type)
     const position = payload.destination.position ?? null
     if (payload.targetKind === 'item') {
@@ -477,25 +522,13 @@ function destinationParentKind(type: string | undefined): 'equipment' | 'contain
   throw new TaskValidationError('A move destination must be a storage equipment or a container.')
 }
 
-/* Idempotently release a skipped inventory step's target hold and any destination claim it held. */
-export async function releaseStepHolds(
-  payload: TaskInventoryStepPayload,
-  activationId: string,
-  stepId: string,
-  generation: number,
-  operationId: string
-): Promise<void> {
-  if (payload.action === 'move' || payload.action === 'locate') {
-    await releaseParentClaimsForStep(payload.destination.parent.ref.id, { activationId, stepId })
-  }
-  await releaseTargetHold(payload.target.ref.id, { activationId, stepId, generation, operationId })
-}
-
-/* True when the target document already carries an action-log receipt for this operation. */
-async function targetHasReceipt(targetId: string, operationId: string): Promise<boolean> {
+/* True when the target document already carries an action-log receipt for this activation's step. */
+async function targetHasReceipt(targetId: string, activationId: string, stepId: string): Promise<boolean> {
   const doc = await couchDB.getDocument<Container | InventoryItem>(targetId)
   if (!doc) return false
-  return (doc.actionLog ?? []).some(entry => entry.operationId === operationId)
+  return (doc.actionLog ?? []).some(
+    entry => entry.linkedActivationId === activationId && entry.linkedStepId === stepId
+  )
 }
 
 function buildOutcome(
@@ -517,73 +550,4 @@ function buildOutcome(
     receiptLogRef,
     failureReason
   }
-}
-
-/* Persist a step's terminal state and outcome, retrying once on a concurrent edit. */
-export async function writeStepOutcome(
-  step: TaskStepDocument,
-  state: TaskStepDocument['state'],
-  outcome: TaskStepOutcome
-): Promise<TaskStepDocument> {
-  let current = step
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const updated: TaskStepDocument = { ...current, state, outcome, updatedAt: new Date().toISOString() }
-    try {
-      const result = await couchDB.updateDocument(current._id, updated, current._rev!)
-      return { ...updated, _id: result.id, _rev: result.rev }
-    }
-    catch (error) {
-      if (!isCouchConflict(error)) throw error
-      const fresh = await couchDB.getDocument<TaskStepDocument>(current._id)
-      if (!fresh) throw new TaskConflictError('The step was removed during execution.')
-      current = fresh
-    }
-  }
-  throw new TaskConflictError('The step was modified concurrently during execution.')
-}
-
-/*
- * Record a step's terminal state in its activation manifest and mark the step's reservation claims
- * released. When every manifest entry is terminal the activation is finished. Best-effort with a
- * short CAS retry; the authoritative step state already persisted above.
- */
-export async function finishActivationEntry(
-  activation: TaskActivationDocument,
-  stepId: string,
-  state: 'completed' | 'skipped'
-): Promise<void> {
-  let current = activation
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const manifest = current.manifest.map(entry =>
-      entry.stepId === stepId ? { ...entry, state } : entry
-    )
-    const reservationManifest = current.reservationManifest.map(claim =>
-      claim.stepId === stepId ? { ...claim, state: 'released' as const } : claim
-    )
-    const allTerminal = manifest.every(entry => isTerminalState(entry.state))
-    const now = new Date().toISOString()
-    const updated: TaskActivationDocument = {
-      ...current,
-      manifest,
-      reservationManifest,
-      state: allTerminal ? 'finished' : current.state,
-      finishedAt: allTerminal ? (current.finishedAt ?? now) : current.finishedAt,
-      updatedAt: now
-    }
-    try {
-      const result = await couchDB.updateDocument(current._id, updated, current._rev!)
-      current._rev = result.rev
-      return
-    }
-    catch (error) {
-      if (!isCouchConflict(error)) throw error
-      const fresh = await couchDB.getDocument<TaskActivationDocument>(current._id)
-      if (!fresh) return
-      current = fresh
-    }
-  }
-}
-
-function isTerminalState(state: string): boolean {
-  return state === 'completed' || state === 'skipped' || state === 'cancelled'
 }

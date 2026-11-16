@@ -14,7 +14,7 @@
  */
 import { createHash } from 'node:crypto'
 
-import { couchDB, generateCouchDocId } from '../../database/couchdb'
+import { couchDB } from '../../database/couchdb'
 import type { TypedDocumentReference } from '../../../types/references'
 import type {
   TaskActivationDocument,
@@ -30,13 +30,25 @@ export function fingerprintPayload(payload: unknown): string {
   return createHash('sha1').update(JSON.stringify(payload ?? null)).digest('hex')
 }
 
+/*
+ * An in-progress operation older than this is treated as abandoned (its process died mid-way) and
+ * may be taken over by a retry. Every workflow body finishes well within it.
+ */
+const STALE_IN_PROGRESS_MS = 2 * 60 * 1000
+
+const STILL_RUNNING = 'This operation is still running. Wait a moment and retry.'
+
+/*
+ * The operation document id is derived from the caller's operationId, so CouchDB itself guarantees
+ * at most one operation document per operationId: a second create is a 409, never a duplicate.
+ */
+export function operationDocId(operationId: string): string {
+  return `task-op:${operationId}`
+}
+
 async function findOperation(operationId: string): Promise<TaskOperationDocument | null> {
-  const rows = (await couchDB.queryView<string, null, TaskOperationDocument>('firn-tasks', 'operations_by_key', {
-    key: operationId,
-    include_docs: true
-  })).rows
-  const doc = rows.map(r => r.doc).find((d): d is TaskOperationDocument => !!d && d.type === 'taskOperation')
-  return doc ?? null
+  const doc = await couchDB.getDocument<TaskOperationDocument>(operationDocId(operationId))
+  return doc && doc.type === 'taskOperation' ? doc : null
 }
 
 export interface RunOperationParams<T> {
@@ -48,12 +60,23 @@ export interface RunOperationParams<T> {
   payload: unknown
   /* The side-effecting body. Must be safe to resume: it only runs when no completed result exists. */
   execute: (op: TaskOperationDocument) => Promise<T>
+  /*
+   * Optional: whether a returned result means the work is fully done. When it returns false (e.g. a
+   * batch in which one step failed) the result is still returned to the caller, but the operation is
+   * stored as failed, so retrying the same operationId runs the body again instead of replaying a
+   * partial result forever.
+   */
+  isComplete?: (result: T) => boolean
 }
 
 /*
- * Run a workflow body exactly once per operationId. Returns the stored result on an idempotent
- * replay. The body itself must be resume-safe (it re-runs on a prior in-progress/failed attempt),
- * which it is because the hold and step primitives it calls are individually idempotent.
+ * Run a workflow body at most once at a time per operationId, and at most once to completion.
+ *  - A completed operation replays its stored result.
+ *  - An operation another request is currently running is refused (retry shortly), never run twice
+ *    in parallel.
+ *  - A failed operation, or one abandoned in progress, is taken over and its body runs again. The
+ *    body must therefore be resume-safe, which it is because the hold and step primitives it calls
+ *    are individually idempotent and physical actions are guarded by their inventory receipt.
  */
 export async function runOperation<T>(params: RunOperationParams<T>): Promise<T> {
   const fingerprint = fingerprintPayload(params.payload)
@@ -68,15 +91,39 @@ export async function runOperation<T>(params: RunOperationParams<T>): Promise<T>
     }
   }
 
-  const op = existing ?? await createOperation(params, fingerprint)
+  const op = existing ? await takeOver(existing) : await createOperation(params, fingerprint)
 
+  let result: T
   try {
-    const result = await execute(op, params.execute)
-    await completeOperation(op, result)
-    return result
+    result = await params.execute(op)
   }
   catch (error) {
     await markFailed(op, error instanceof Error ? error.message : String(error))
+    throw error
+  }
+  if (params.isComplete && !params.isComplete(result)) {
+    await persistState(op, 'failed', JSON.stringify(result ?? null))
+  }
+  else {
+    await persistState(op, 'completed', JSON.stringify(result ?? null))
+  }
+  return result
+}
+
+/* Claim an existing, not-completed operation for this request, or refuse while another one runs it. */
+async function takeOver(existing: TaskOperationDocument): Promise<TaskOperationDocument> {
+  const age = Date.now() - new Date(existing.updatedAt).getTime()
+  if (existing.state === 'in_progress' && age < STALE_IN_PROGRESS_MS) {
+    throw new TaskConflictError(STILL_RUNNING)
+  }
+  const claimed: TaskOperationDocument = { ...existing, state: 'in_progress', updatedAt: new Date().toISOString() }
+  try {
+    const written = await couchDB.updateDocument(existing._id, claimed, existing._rev!)
+    return { ...claimed, _rev: written.rev }
+  }
+  catch (error) {
+    // Another retry claimed it first.
+    if (isCouchConflict(error)) throw new TaskConflictError(STILL_RUNNING)
     throw error
   }
 }
@@ -87,7 +134,7 @@ async function createOperation<T>(
 ): Promise<TaskOperationDocument> {
   const now = new Date().toISOString()
   const doc: Omit<TaskOperationDocument, '_rev'> = {
-    _id: generateCouchDocId('task-op'),
+    _id: operationDocId(params.operationId),
     type: 'taskOperation',
     schema: 1,
     operationId: params.operationId,
@@ -106,42 +153,10 @@ async function createOperation<T>(
     return { ...doc, _rev: result.rev }
   }
   catch (error) {
-    // A concurrent request created the same operation first; adopt it rather than double-running.
-    if (isCouchConflict(error)) {
-      const adopted = await findOperation(params.operationId)
-      if (adopted) return adopted
-    }
+    // A concurrent request with the same operationId created the document first and is running it.
+    if (isCouchConflict(error)) throw new TaskConflictError(STILL_RUNNING)
     throw error
   }
-}
-
-async function execute<T>(
-  op: TaskOperationDocument,
-  body: (op: TaskOperationDocument) => Promise<T>
-): Promise<T> {
-  return body(op)
-}
-
-/* Append a recovery milestone to an operation (best-effort, never blocks the workflow). */
-export async function recordMarker(op: TaskOperationDocument, marker: string): Promise<void> {
-  const updated: TaskOperationDocument = {
-    ...op,
-    progress: [...op.progress, { marker, recordedAt: new Date().toISOString() }],
-    updatedAt: new Date().toISOString()
-  }
-  try {
-    const result = await couchDB.updateDocument(op._id, updated, op._rev!)
-    op._rev = result.rev
-    op.progress = updated.progress
-    op.updatedAt = updated.updatedAt
-  }
-  catch {
-    // Progress markers are advisory; a lost marker does not affect correctness.
-  }
-}
-
-async function completeOperation<T>(op: TaskOperationDocument, result: T): Promise<void> {
-  await persistState(op, 'completed', JSON.stringify(result ?? null))
 }
 
 async function markFailed(op: TaskOperationDocument, reason: string): Promise<void> {

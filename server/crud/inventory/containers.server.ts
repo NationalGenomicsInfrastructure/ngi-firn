@@ -44,7 +44,7 @@
  */
 
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
-import { deriveGridLabel, findFirstFreeGridSlot, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
+import { deriveGridLabel, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
 import {
   hasDirectChildren,
   resolveActionLogUsers,
@@ -53,14 +53,20 @@ import {
   toUserRef
 } from './relations.server'
 import { EquipmentService } from './equipment.server'
+import { invalidateStepsAfterDelete } from '../tasks/invalidation.server'
 import {
   type InventoryExecutionContext,
+  type HoldEnforcementOptions,
+  allocatableCount,
+  allocatableGridSlots,
+  allowedClaimOwner,
+  assertCapacityEditKeepsClaims,
   assertCountCapacityNotOverHeld,
   assertGridCellUnheld,
-  assertNoBlockingStructuralGuard,
   assertTargetWritable,
   executionAllowance,
-  executionReceiptFields
+  executionReceiptFields,
+  findFirstFreeUnheldGridSlot
 } from './reservations.server'
 import { BarcodeService } from './barcodes.server'
 import {
@@ -520,7 +526,8 @@ export const ContainerService = {
   async adjustStoredCount(
     containerDocumentId: string,
     category: string,
-    delta: number
+    delta: number,
+    holdOptions: HoldEnforcementOptions = {}
   ): Promise<{ container: Container, atCapacity: boolean }> {
     const container = await ContainerService.getContainer(containerDocumentId)
     if (!container) {
@@ -549,8 +556,9 @@ export const ContainerService = {
     }
 
     // Reject occupying capacity that a planned task hold already reserves (physical + held ≤ capacity).
+    // A task step executing its own placement passes `holdOptions` so its own claim is not counted.
     if (delta > 0) {
-      assertCountCapacityNotOverHeld(container, category, 'container', newStored)
+      assertCountCapacityNotOverHeld(container, category, 'container', newStored, holdOptions)
     }
 
     return {
@@ -573,7 +581,8 @@ export const ContainerService = {
   async adjustOccupancy(
     containerDocumentId: string,
     position: { row: number, column: number, level?: number },
-    delta: number
+    delta: number,
+    holdOptions: HoldEnforcementOptions = {}
   ): Promise<{ container: Container, atCapacity: boolean }> {
     const container = await ContainerService.getContainer(containerDocumentId)
     if (!container) {
@@ -597,9 +606,10 @@ export const ContainerService = {
       )
     }
 
-    // Reject occupying a grid cell reserved for planned task work.
+    // Reject occupying a grid cell reserved for planned task work, unless the caller is the task
+    // step that owns the reservation and is now placing into it.
     if (delta > 0) {
-      assertGridCellUnheld(container, position)
+      assertGridCellUnheld(container, position, holdOptions)
     }
 
     const total = totalSlots(entry)
@@ -720,9 +730,8 @@ export const ContainerService = {
     if (!existing) {
       throw new Error(`Container with identifier "${updates.containerSlug}" not found.`)
     }
-    // Refuse to edit a container that planned task work has reserved or structurally guarded.
+    // Refuse to edit a container that is itself the held target of planned task work.
     assertTargetWritable(existing)
-    assertNoBlockingStructuralGuard(existing)
     const nextContainerType = updates.containerType ?? existing.containerType
     const containerTypeChanged = nextContainerType !== existing.containerType
     const parent = containerTypeChanged && existing.parent
@@ -789,6 +798,19 @@ export const ContainerService = {
       updatedAt: new Date().toISOString()
     }
 
+    // A capacity/grid edit may not take away a cell or capacity that planned task work has reserved.
+    if (updates.capacity) {
+      try {
+        assertCapacityEditKeepsClaims(existing, updatedContainer)
+      }
+      catch (error) {
+        if (parent && reservedNewCategory) {
+          await adjustParentOccupancy(parent, nextContainerType, null, -1).catch(() => {})
+        }
+        throw error
+      }
+    }
+
     const changelogEntry = createChangelogEntry(existing, updatedContainer, firnUser, updates.logComment ?? undefined)
     updatedContainer.actionLog = changelogEntry
       ? [...existing.actionLog, changelogEntry]
@@ -848,7 +870,7 @@ export const ContainerService = {
    * is corrupted by a failure because the parent occupancy/stored count is only
    * decremented after the document was successfully deleted.
    */
-  async deleteContainer(input: DeleteContainerSchemaInput): Promise<DeleteContainerResult> {
+  async deleteContainer(input: DeleteContainerSchemaInput, firnUser?: FirnUser): Promise<DeleteContainerResult> {
     const deleted: Container[] = []
     const failures: { slug: string, error: string }[] = []
 
@@ -863,11 +885,11 @@ export const ContainerService = {
           throw new Error(`Cannot delete container "${slug}" because it still contains child inventory.`)
         }
 
-        // A container held or structurally guarded by planned task work cannot be deleted directly.
-        assertTargetWritable(existing)
-        assertNoBlockingStructuralGuard(existing)
-
+        // Deleting inventory always wins over planned task work: task holds never block a delete.
         await couchDB.deleteDocument(existing._id, existing._rev)
+
+        // Cancel the open task steps that referred to this container (as target or destination).
+        await invalidateStepsAfterDelete(existing._id, firnUser ?? null)
 
         // Free the slot/count this container held on its parent.
         await adjustParentRefOccupancy(existing.parent, existing.positionParent, existing.containerType, -1)
@@ -923,16 +945,16 @@ export const ContainerService = {
         }
       }
 
-      // A container held or guarded by planned task work cannot be moved by ordinary operations.
+      // A container that is the held target of planned task work cannot be moved by ordinary
+      // operations. Destination claims do not block a move: they live on the container and travel with it.
       assertTargetWritable(existing, executionAllowance(execution))
-      assertNoBlockingStructuralGuard(existing, executionAllowance(execution))
 
       containers.push(existing)
     }
 
     // Aggregate capacity check against the parent's currently committed occupancy, so a
     // batch that cannot fit is rejected before any single move is written.
-    assertBatchCapacityAvailable(newParent, containers)
+    assertBatchCapacityAvailable(newParent, containers, executionAllowance(execution))
 
     // ---- Phase 2: execute, rolling back committed moves if a later step fails ----
     const requestedPosition = containers.length === 1 ? input.position ?? null : null
@@ -1018,7 +1040,7 @@ export const ContainerService = {
       }
     }
 
-    assertBatchCapacityAvailable(newParent, containers)
+    assertBatchCapacityAvailable(newParent, containers, executionAllowance(execution))
 
     // ---- Phase 2: execute, rolling back committed placements if a later step fails ----
     const requestedPosition = containers.length === 1 ? input.position ?? null : null
@@ -1106,7 +1128,6 @@ export const ContainerService = {
       }
       // Planned task work holds this container: ordinary lifecycle actions must go through the task.
       assertTargetWritable(existing, executionAllowance(execution))
-      assertNoBlockingStructuralGuard(existing, executionAllowance(execution))
       existingContainers.push(existing)
     }
 
@@ -1367,7 +1388,8 @@ export const ContainerService = {
 async function resolvePlacement(
   parent: ResolvedParent,
   proposedPosition: GridPosition | null | undefined,
-  containerType: ContainerType
+  containerType: ContainerType,
+  holdOptions: HoldEnforcementOptions = {}
 ): Promise<GridPosition | null> {
   if (parent.kind === 'equipment') {
     const entry = parent.doc.capacity?.find(capacityEntry => capacityEntry.type === containerType)
@@ -1401,6 +1423,8 @@ async function resolvePlacement(
         `Slot (row ${proposedPosition.row}, column ${proposedPosition.column}, level ${proposedPosition.level ?? 1}) in "${parent.doc.slug}" is already occupied.`
       )
     }
+    // An explicitly requested slot that planned task work has reserved is refused up front.
+    assertGridCellUnheld(parent.doc, proposedPosition, holdOptions)
     return {
       row: proposedPosition.row,
       column: proposedPosition.column,
@@ -1409,10 +1433,10 @@ async function resolvePlacement(
     }
   }
 
-  // No slot requested: auto-pick the first free slot, row-major, and place the child
-  // immediately. This is ordinary immediate placement, not a planned task: the task
-  // workflow (types/productivity.d.ts) only reserves slots when a task step is activated.
-  const chosenPosition = await findFirstFreeGridSlot(parent.doc._id, entry)
+  // No slot requested: auto-pick the first slot, row-major, that is neither occupied nor reserved
+  // for planned task work, and place the child immediately. Skipping reserved cells here is what
+  // keeps ordinary placement working while a task holds a cell in the same grid.
+  const chosenPosition = await findFirstFreeUnheldGridSlot(parent.doc, entry, allowedClaimOwner(holdOptions))
   if (!chosenPosition) {
     throw new Error(`Grid container "${parent.doc.slug}" is full; no free slot for a "${containerType}".`)
   }
@@ -1428,17 +1452,18 @@ async function adjustParentOccupancy(
   parent: ResolvedParent,
   childType: ContainerType,
   position: GridPosition | null,
-  delta: number
+  delta: number,
+  holdOptions: HoldEnforcementOptions = {}
 ): Promise<void> {
   if (parent.kind === 'equipment') {
-    await EquipmentService.adjustStoredCount(parent.doc._id, childType, delta)
+    await EquipmentService.adjustStoredCount(parent.doc._id, childType, delta, holdOptions)
   }
 
   else if (position) {
-    await ContainerService.adjustOccupancy(parent.doc._id, position, delta)
+    await ContainerService.adjustOccupancy(parent.doc._id, position, delta, holdOptions)
   }
   else {
-    await ContainerService.adjustStoredCount(parent.doc._id, childType, delta)
+    await ContainerService.adjustStoredCount(parent.doc._id, childType, delta, holdOptions)
   }
 }
 
@@ -1523,7 +1548,13 @@ async function reserveParentCategoryForTypeChange(
  * committed occupancy, before any move is written. Groups the batch by container type
  * and checks that every type is accepted and has enough free capacity/slots.
  */
-function assertBatchCapacityAvailable(parent: ResolvedParent, containers: Container[]): void {
+function assertBatchCapacityAvailable(
+  parent: ResolvedParent,
+  containers: Container[],
+  holdOptions: HoldEnforcementOptions = {}
+): void {
+  // Capacity reserved by planned task work is not available to a batch (except to the step that owns it).
+  const own = allowedClaimOwner(holdOptions)
   const neededByType = new Map<string, number>()
   for (const container of containers) {
     neededByType.set(container.containerType, (neededByType.get(container.containerType) ?? 0) + 1)
@@ -1534,7 +1565,7 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, containers: Contai
     const gridEntry = capacity.find(entry => entry.layout === 'grid')
 
     if (gridEntry && gridEntry.layout === 'grid') {
-      const available = totalSlots(gridEntry) - gridEntry.stored
+      const available = allocatableGridSlots(parent.doc, gridEntry, own)
       let totalNeeded = 0
       for (const [type, count] of neededByType) {
         if (gridEntry.childKind !== 'container' || gridEntry.type !== type) {
@@ -1555,7 +1586,7 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, containers: Contai
       if (!entry || entry.layout !== 'count') {
         throw new Error(`Container "${parent.doc.slug}" does not accept child containers of type "${type}".`)
       }
-      const available = entry.capacity - entry.stored
+      const available = allocatableCount(parent.doc, type, 'container', own) ?? entry.capacity - entry.stored
       if (available < count) {
         throw new Error(`Container "${parent.doc.slug}" has room for ${available} more "${type}"; ${count} requested.`)
       }
@@ -1570,7 +1601,7 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, containers: Contai
     if (!entry) {
       throw new Error(`Storage equipment "${parent.doc.slug}" does not accept containers of type "${type}".`)
     }
-    const available = entry.capacity - entry.stored
+    const available = allocatableCount(parent.doc, type, 'container', own) ?? entry.capacity - entry.stored
     if (available < count) {
       throw new Error(`Storage equipment "${parent.doc.slug}" has room for ${available} more "${type}"; ${count} requested.`)
     }
@@ -1612,9 +1643,12 @@ async function moveContainerOne(
   }
   const actionType = options.actionType ?? 'move'
   assertContainerTemperatureCompatible({ category: existing.temperatureCategory, celsius: existing.temperatureCelsius }, newParent)
-  const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType)
+  // A task step executing this move passes through its own destination reservation; everyone else
+  // is held to the reservations on the destination.
+  const holdOptions = executionAllowance(options.execution)
+  const positionParent = await resolvePlacement(newParent, requestedPosition, existing.containerType, holdOptions)
 
-  await adjustParentOccupancy(newParent, existing.containerType, positionParent, 1)
+  await adjustParentOccupancy(newParent, existing.containerType, positionParent, 1, holdOptions)
   const now = new Date().toISOString()
 
   const movedContainer: Container = {

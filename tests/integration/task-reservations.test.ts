@@ -15,7 +15,6 @@ import { ItemService } from '../../server/crud/inventory/items.server'
 import {
   acquireCapacityClaim,
   acquireGridCellClaim,
-  acquireStructuralGuard,
   acquireTargetHold,
   allocatableCount,
   consumeTargetHold,
@@ -27,6 +26,7 @@ import {
 } from '../../server/crud/inventory/reservations.server'
 import type { Container, InventoryItem, StorageEquipment } from '../../types/inventory'
 import type { FirnUser } from '../../types/auth'
+import { toUserRef } from '../../server/crud/users.server'
 import { cleanupFixture, setupBaseFixture } from './fixtures'
 
 const createdIds: string[] = []
@@ -39,7 +39,7 @@ const ACT = 'ACT-RES'
 let roomSlug: string
 
 function targetCtx(over: Partial<TargetHoldContext> = {}): TargetHoldContext {
-  return { activationId: ACT, stepId: 'STEP-1', generation: 1, operationId: 'OP-1', executorFirnId: user._id, ...over }
+  return { activationId: ACT, stepId: 'STEP-1', generation: 1, operationId: 'OP-1', executor: toUserRef(user), ...over }
 }
 
 function claimCtx(over: Partial<HoldClaimContext> = {}): HoldClaimContext {
@@ -82,7 +82,8 @@ afterAll(async () => {
 })
 
 describe('target holds', () => {
-  it('block ordinary checkout, move, update and delete while held, and are inert once released', async () => {
+  // Delete is deliberately absent: deleting inventory always wins over a hold (see task-holds.test.ts).
+  it('block ordinary checkout, move and update while held, and are inert once released', async () => {
     await acquireTargetHold(tube._id, targetCtx())
 
     await expect(ItemService.alterItem({
@@ -97,10 +98,6 @@ describe('target holds', () => {
     await expect(ItemService.updateItem({
       itemSlug: tube.slug, name: 'RESTEST Tube renamed'
     } as Parameters<typeof ItemService.updateItem>[0], user)).rejects.toThrow(/reserved/i)
-
-    const delResult = await ItemService.deleteItem({ itemSlug: [tube.slug] } as Parameters<typeof ItemService.deleteItem>[0])
-    expect(delResult.deleted).toHaveLength(0)
-    expect(delResult.failures[0]?.error).toMatch(/reserved/i)
 
     // Releasing the hold restores ordinary writability.
     await releaseTargetHold(tube._id, claimCtx())
@@ -191,8 +188,50 @@ describe('grid cell claims', () => {
     expect(slot).toMatchObject({ row: 1, column: 2 })
 
     // When the claiming activation itself allocates, its own cell is available.
-    const ownSlot = await findFirstFreeUnheldGridSlot(fresh, gridEntry, ACT)
+    // When the claiming step itself allocates, its own cell is available...
+    const ownSlot = await findFirstFreeUnheldGridSlot(fresh, gridEntry, { activationId: ACT, stepId: 'STEP-ALLOC' })
     expect(ownSlot).toMatchObject({ row: 1, column: 1 })
+    // ...but a sibling step of the same activation sees it as taken.
+    const siblingSlot = await findFirstFreeUnheldGridSlot(fresh, gridEntry, { activationId: ACT, stepId: 'STEP-SIBLING' })
+    expect(siblingSlot).toMatchObject({ row: 1, column: 2 })
+
+    // A sibling step cannot claim the same cell either.
+    await expect(
+      acquireGridCellClaim(strip._id, { row: 1, column: 1, level: 1 }, claimCtx({ stepId: 'STEP-SIBLING' }))
+    ).rejects.toThrow(/reserved/i)
+
+    // Ordinary auto-placement (no position requested) skips the held cell instead of failing on it.
+    const auto = await ItemService.createItem({
+      category: 'cryovial', name: 'RESTEST Auto placed', classification: 'Sample',
+      parentSlug: strip.slug, parentKind: 'container'
+    } as Parameters<typeof ItemService.createItem>[0], user)
+    createdIds.push(auto._id)
+    expect(auto.position).toMatchObject({ row: 1, column: 2 })
+  })
+
+  it('refuse a cell that is occupied or outside the grid', async () => {
+    const strip = await ContainerService.createContainer({
+      containerType: 'Compartment', classification: 'Sample', name: 'RESTEST Strip 2',
+      parentSlug: equip.slug, parentKind: 'equipment',
+      capacity: [{ layout: 'grid', childKind: 'item', type: 'cryovial', rows: 1, columns: 2, levels: 1 }]
+    }, user)
+    createdIds.push(strip._id)
+    const occupant = await ItemService.createItem({
+      category: 'cryovial', name: 'RESTEST Occupant', classification: 'Sample',
+      parentSlug: strip.slug, parentKind: 'container', position: { row: 1, column: 1, level: 1 }
+    } as Parameters<typeof ItemService.createItem>[0], user)
+    createdIds.push(occupant._id)
+
+    await expect(
+      acquireGridCellClaim(strip._id, { row: 1, column: 1, level: 1 }, claimCtx({ stepId: 'STEP-OCC' }))
+    ).rejects.toThrow(/occupied/i)
+    await expect(
+      acquireGridCellClaim(strip._id, { row: 4, column: 4, level: 1 }, claimCtx({ stepId: 'STEP-OUT' }))
+    ).rejects.toThrow(/outside/i)
+    // A count parent has no cells to reserve.
+    await expect(
+      acquireGridCellClaim(equip._id, { row: 1, column: 1, level: 1 }, claimCtx({ stepId: 'STEP-NOGRID' }))
+    ).rejects.toThrow(/no grid/i)
   })
 })
 
@@ -225,7 +264,12 @@ describe('capacity claims', () => {
     // allocatableCount reflects the held unit, but excludes the claiming activation on request.
     const fresh = (await EquipmentService.getEquipmentBySlug(smallEquip.slug))!
     expect(allocatableCount(fresh, 'cryovial', 'item')).toBe(0)
-    expect(allocatableCount(fresh, 'cryovial', 'item', ACT)).toBe(1)
+    expect(allocatableCount(fresh, 'cryovial', 'item', { activationId: ACT, stepId: 'STEP-CAP' })).toBe(1)
+    // A sibling step of the same activation cannot take the unit that is already reserved.
+    expect(allocatableCount(fresh, 'cryovial', 'item', { activationId: ACT, stepId: 'STEP-SIBLING' })).toBe(0)
+    await expect(
+      acquireCapacityClaim(smallEquip._id, 'cryovial', 'item', 1, claimCtx({ stepId: 'STEP-SIBLING' }))
+    ).rejects.toThrow(/capacity/i)
 
     await releaseParentClaimsForStep(smallEquip._id, { activationId: ACT, stepId: 'STEP-CAP' })
     const second = await ItemService.createItem({
@@ -237,49 +281,88 @@ describe('capacity claims', () => {
   })
 })
 
-describe('structural guards', () => {
-  it('block incompatible equipment edits until released', async () => {
-    const guarded = await EquipmentService.createEquipment({
+describe('target holds shared by several steps of one activation', () => {
+  it('hold the object once and release it with the last step', async () => {
+    await acquireTargetHold(tube._id, targetCtx({ stepId: 'STEP-A' }))
+    await acquireTargetHold(tube._id, targetCtx({ stepId: 'STEP-B' }))
+    expect((await ItemService.getItemBySlug(tube.slug))?.reservations?.targetHold?.stepIds).toEqual(['STEP-A', 'STEP-B'])
+
+    await consumeTargetHold(tube._id, claimCtx({ stepId: 'STEP-A' }))
+    await releaseTargetHold(tube._id, claimCtx({ stepId: 'STEP-A' }))
+    // Still held for the remaining step: an ordinary write is refused.
+    const partly = await ItemService.getItemBySlug(tube.slug)
+    expect(partly?.reservations?.targetHold).toMatchObject({ stepIds: ['STEP-B'], state: 'held' })
+    await expect(ItemService.alterItem({
+      itemSlug: [tube.slug], performedAction: 'checkout'
+    } as Parameters<typeof ItemService.alterItem>[0], user)).rejects.toThrow(/reserved/i)
+
+    await releaseTargetHold(tube._id, claimCtx({ stepId: 'STEP-B' }))
+    expect((await ItemService.getItemBySlug(tube.slug))?.reservations ?? null).toBeNull()
+  })
+})
+
+describe('edits of a parent that carries claims', () => {
+  it('refuse only a capacity change that drops below stored plus reserved', async () => {
+    const claimed = await EquipmentService.createEquipment({
       equipmentType: 'Freezer',
-      name: 'RESTEST Guarded Freezer',
-      capacity: [{ type: 'Compartment', capacity: 2 }],
+      name: 'RESTEST Claimed Freezer',
+      capacity: [{ type: 'Compartment', capacity: 3 }],
       itemCapacity: [{ category: 'cryovial', capacity: 5 }],
       temperatureCategory: 'deep_freezer',
       parentSlug: roomSlug
     } as Parameters<typeof EquipmentService.createEquipment>[0])
-    createdIds.push(guarded._id)
+    createdIds.push(claimed._id)
 
-    await acquireStructuralGuard(guarded._id, 'subtree', claimCtx({ stepId: 'STEP-GUARD' }))
+    await acquireCapacityClaim(claimed._id, 'Compartment', 'container', 2, claimCtx({ stepId: 'STEP-EDIT' }))
 
+    // Growing, and shrinking down to exactly what is reserved, are both fine.
+    await EquipmentService.updateEquipment({
+      equipmentSlug: claimed.slug, capacity: [{ type: 'Compartment', capacity: 4 }]
+    } as Parameters<typeof EquipmentService.updateEquipment>[0])
+    await EquipmentService.updateEquipment({
+      equipmentSlug: claimed.slug, capacity: [{ type: 'Compartment', capacity: 2 }]
+    } as Parameters<typeof EquipmentService.updateEquipment>[0])
+
+    // Dropping below the reserved amount is refused.
     await expect(EquipmentService.updateEquipment({
-      equipmentSlug: guarded.slug, capacity: [{ type: 'Compartment', capacity: 3 }]
+      equipmentSlug: claimed.slug, capacity: [{ type: 'Compartment', capacity: 1 }]
     } as Parameters<typeof EquipmentService.updateEquipment>[0])).rejects.toThrow(/reserved/i)
 
-    await releaseParentClaimsForStep(guarded._id, { activationId: ACT, stepId: 'STEP-GUARD' })
+    await releaseParentClaimsForStep(claimed._id, { activationId: ACT, stepId: 'STEP-EDIT' })
     const updated = await EquipmentService.updateEquipment({
-      equipmentSlug: guarded.slug, capacity: [{ type: 'Compartment', capacity: 3 }]
+      equipmentSlug: claimed.slug, capacity: [{ type: 'Compartment', capacity: 1 }]
     } as Parameters<typeof EquipmentService.updateEquipment>[0])
-    expect(updated.capacity?.find(e => e.type === 'Compartment')?.capacity).toBe(3)
+    expect(updated.capacity?.find(e => e.type === 'Compartment')?.capacity).toBe(1)
   })
 
-  it('block incompatible container edits until released', async () => {
-    const guardedBox = await ContainerService.createContainer({
-      containerType: 'Compartment', classification: 'Sample', name: 'RESTEST Guarded Box',
+  it('refuse removing a claimed grid cell but allow renaming and moving the box', async () => {
+    const box = await ContainerService.createContainer({
+      containerType: 'Compartment', classification: 'Sample', name: 'RESTEST Claimed Grid',
       parentSlug: equip.slug, parentKind: 'equipment',
-      capacity: [{ layout: 'count', childKind: 'item', type: 'cryovial', capacity: 5 }]
+      capacity: [{ layout: 'grid', childKind: 'item', type: 'cryovial', rows: 2, columns: 2, levels: 1 }]
     }, user)
-    createdIds.push(guardedBox._id)
+    createdIds.push(box._id)
+    await acquireGridCellClaim(box._id, { row: 2, column: 2, level: 1 }, claimCtx({ stepId: 'STEP-GRID-EDIT' }))
 
-    await acquireStructuralGuard(guardedBox._id, 'subtree', claimCtx({ stepId: 'STEP-GUARD-C' }))
+    // A claim only blocks occupying the cell: the box itself can still be renamed.
+    const renamed = await ContainerService.updateContainer({
+      containerSlug: box.slug, name: 'RESTEST Claimed Grid renamed'
+    } as Parameters<typeof ContainerService.updateContainer>[0], user)
+    expect(renamed.name).toBe('RESTEST Claimed Grid renamed')
 
+    // Shrinking the grid so that the claimed cell disappears is refused.
     await expect(ContainerService.updateContainer({
-      containerSlug: guardedBox.slug, name: 'RESTEST Guarded Box renamed'
+      containerSlug: renamed.slug,
+      capacity: [{ layout: 'grid', childKind: 'item', type: 'cryovial', rows: 1, columns: 2, levels: 1 }]
     } as Parameters<typeof ContainerService.updateContainer>[0], user)).rejects.toThrow(/reserved/i)
 
-    await releaseParentClaimsForStep(guardedBox._id, { activationId: ACT, stepId: 'STEP-GUARD-C' })
-    const updated = await ContainerService.updateContainer({
-      containerSlug: guardedBox.slug, name: 'RESTEST Guarded Box renamed'
+    // Shrinking around the claim (keeping row 2, column 2) is fine once... the cell still exists.
+    const grown = await ContainerService.updateContainer({
+      containerSlug: renamed.slug,
+      capacity: [{ layout: 'grid', childKind: 'item', type: 'cryovial', rows: 2, columns: 3, levels: 1 }]
     } as Parameters<typeof ContainerService.updateContainer>[0], user)
-    expect(updated.name).toBe('RESTEST Guarded Box renamed')
+    expect(grown.reservations?.gridCells).toHaveLength(1)
+
+    await releaseParentClaimsForStep(box._id, { activationId: ACT, stepId: 'STEP-GRID-EDIT' })
   })
 })

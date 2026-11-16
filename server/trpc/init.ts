@@ -152,4 +152,5 @@ const hasValidToken = t.middleware(async ({ ctx, next }) => {
 export const authedProcedure = baseProcedure.use(isAuthed) // For endpoints that require authentication
 export const adminProcedure = baseProcedure.use(isAdmin) // For endpoints that require admin permissions
 export const firnUserProcedure = baseProcedure.use(getFirnUser) // For endpoints that need the full user object from the database
+export const adminFirnUserProcedure = baseProcedure.use(isAdmin).use(getFirnUser) // Admin-only endpoints that also record who acted
 export const tokenProcedure = baseProcedure.use(hasValidToken) // For endpoints that allow token authentication

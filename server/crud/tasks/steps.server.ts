@@ -59,6 +59,10 @@ function validatePayload(payload: TaskStepPayload): void {
       if (!payload.destination?.parent?.ref?.id) {
         throw new TaskValidationError(`A "${payload.action}" step requires a destination.`)
       }
+      const destinationType: string | undefined = payload.destination.parent.ref.type
+      if (destinationType !== 'storageEquipment' && destinationType !== 'container') {
+        throw new TaskValidationError('A move destination must be a storage equipment or a container, not a room.')
+      }
     }
     return
   }
@@ -264,7 +268,10 @@ export const TaskStepService = {
   // -------------------------------------------------------------------------
 
   async toDisplayStep(step: TaskStepDocument): Promise<DisplayTaskStep> {
-    const payload = projectPayload(step.payload)
+    // While a step is still open its objects may be renamed or moved (a reservation never blocks
+    // that), so names and paths are resolved live. A resolved step keeps what was recorded.
+    const open = step.state !== 'completed' && step.state !== 'skipped' && step.state !== 'cancelled'
+    const payload = projectPayload(open ? await withLiveRefs(step.payload) : step.payload)
     let outcome: DisplayTaskStep['outcome'] = null
     if (step.outcome) {
       const performedBy = step.outcome.performedBy
@@ -295,6 +302,48 @@ export const TaskStepService = {
 
   // Re-exported for callers that already hold a task document.
   _internal: { validateDependencyGraph, validatePayload }
+}
+
+const PATH_SEPARATOR = ' › '
+const MAX_PATH_DEPTH = 12
+
+interface LocatedDoc {
+  _id: string
+  type: string
+  slug: string
+  name: string
+  parent?: { id?: string } | null
+}
+
+/*
+ * Refresh an object reference's display fields from the current inventory: slug, name and the path
+ * of its ancestors (rooms excluded, as in the stored labels). `includeSelf` appends the object itself,
+ * which is how a destination is labelled. An object that no longer exists keeps its stored snapshot.
+ */
+async function liveObjectRef<T extends TaskInventoryObjectRef>(ref: T, includeSelf: boolean): Promise<T> {
+  const doc = await couchDB.getDocument<LocatedDoc>(ref.ref.id)
+  if (!doc) return ref
+  const names: string[] = []
+  let parentId = doc.parent?.id
+  for (let depth = 0; parentId && depth < MAX_PATH_DEPTH; depth++) {
+    const parent = await couchDB.getDocument<LocatedDoc>(parentId)
+    if (!parent || parent.type === 'room') break
+    names.unshift(parent.name)
+    parentId = parent.parent?.id
+  }
+  if (includeSelf) names.push(doc.name)
+  return { ...ref, slug: doc.slug, name: doc.name, pathLabel: names.length > 0 ? names.join(PATH_SEPARATOR) : ref.pathLabel }
+}
+
+/* A step payload with its inventory references refreshed from the current inventory. */
+async function withLiveRefs(payload: TaskStepPayload): Promise<TaskStepPayload> {
+  if (payload.kind !== 'inventory') return payload
+  const target = await liveObjectRef(payload.target, false)
+  if (payload.action === 'move' || payload.action === 'locate') {
+    const parent = await liveObjectRef(payload.destination.parent, true)
+    return { ...payload, target, destination: { ...payload.destination, parent } } as TaskStepPayload
+  }
+  return { ...payload, target } as TaskStepPayload
 }
 
 function objectRefToStub(ref: TaskInventoryObjectRef, kind: SerializedEntityRef['kind']): DisplayTaskInventoryObjectRef {

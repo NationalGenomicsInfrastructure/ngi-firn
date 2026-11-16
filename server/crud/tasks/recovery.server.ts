@@ -32,15 +32,16 @@ import {
   consumeTargetHold,
   releaseTargetHold
 } from '../inventory/reservations.server'
-import { isActiveApprovedUser, toUserRef } from '../users.server'
+import { toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { findActivation, toDisplayActivation } from './activation.server'
 import {
-  finishActivationEntry,
+  executablePayload,
+  refreshActivationState,
   releaseStepHolds,
   writeStepOutcome
 } from './execution.server'
-import { TaskConflictError, TaskNotFoundError, TaskValidationError, isCouchConflict } from './common'
+import { TaskConflictError, TaskNotFoundError, TaskValidationError, isCouchConflict, resolveUsersByFirnIds } from './common'
 import { runOperation } from './operations.server'
 
 /* Per-step declaration of what physically happened, required to cancel an activation. */
@@ -60,8 +61,8 @@ export interface CancelActivationInput {
 export interface HandoverInput {
   activationId: string
   operationId: string
-  /* Document id (_id) of the colleague who will take over; must be responsible on the task. */
-  toExecutorId: string
+  /* Public firnId of the colleague who will take over; must be responsible on the task. */
+  toExecutorFirnId: string
   /* The current executor's explicit acknowledgement that physical progress is reconciled. */
   acknowledged: boolean
 }
@@ -116,7 +117,7 @@ export const TaskRecoveryService = {
       kind: 'handover',
       task: taskRef,
       activation: activationRef,
-      payload: { taskId: task._id, activationId: activation.activationId, toExecutorId: input.toExecutorId },
+      payload: { taskId: task._id, activationId: activation.activationId, toExecutorFirnId: input.toExecutorFirnId },
       execute: () => handover(task, activation.activationId, input)
     })
   },
@@ -195,6 +196,11 @@ async function cancelActivation(
 ): Promise<DisplayTaskActivation> {
   const activation = await findActivation(task._id, activationId)
   if (!activation) throw new TaskNotFoundError()
+  // A finished or already-cancelled activation has nothing left to abandon; refusing here keeps a
+  // completed record from being rewritten as cancelled.
+  if (activation.state !== 'active' && activation.state !== 'needs_reconciliation') {
+    throw new TaskValidationError(`An activation that is ${activation.state} cannot be cancelled.`)
+  }
 
   const steps = await TaskService.getStepsForTask(task._id)
   const stepById = new Map(steps.map(s => [s.stepId, s]))
@@ -211,11 +217,9 @@ async function cancelActivation(
     }
   }
 
-  let anyPerformed = false
   for (const step of liveSteps) {
     const performed = declByStep.get(step.stepId) === true
     if (performed) {
-      anyPerformed = true
       // The physical world changed outside the confirm flow: keep the hold, flag for reconciliation.
       await writeStepOutcome(step, 'needs_reconciliation', {
         result: 'failed',
@@ -231,8 +235,9 @@ async function cancelActivation(
     }
     else {
       // Nothing was done: release the step's holds and cancel it cleanly.
-      if (step.payload.kind === 'inventory') {
-        await releaseStepHolds(step.payload, activationId, step.stepId, activation.activationVersion, input.operationId)
+      const payload = executablePayload(activation, step)
+      if (payload.kind === 'inventory') {
+        await releaseStepHolds(payload, activationId, step.stepId, activation.activationVersion, input.operationId)
       }
       await writeStepOutcome(step, 'cancelled', {
         result: 'cancelled',
@@ -248,9 +253,9 @@ async function cancelActivation(
     }
   }
 
-  const nextState = anyPerformed ? 'needs_reconciliation' : 'cancelled'
-  await setActivationState(activation, nextState, !anyPerformed)
-  const refreshed = await findActivation(task._id, activationId)
+  // Derive the activation state from the step documents just written: needs_reconciliation while any
+  // step awaits it, otherwise cancelled (this is an explicit abandonment of the whole activation).
+  const refreshed = await refreshActivationState(activation._id, { abandon: true })
   return toDisplayActivation(refreshed ?? activation, task.slug)
 }
 
@@ -262,10 +267,8 @@ async function handover(
   const activation = await findActivation(task._id, activationId)
   if (!activation) throw new TaskNotFoundError()
 
-  const newExecutor = await couchDB.getDocument<FirnUser>(input.toExecutorId)
-  if (!newExecutor || newExecutor.type !== 'firnUser' || !isActiveApprovedUser(newExecutor)) {
-    throw new TaskValidationError('The new executor must be an active, approved user.')
-  }
+  const [newExecutor] = await resolveUsersByFirnIds([input.toExecutorFirnId])
+  if (!newExecutor) throw new TaskValidationError('The new executor could not be resolved.')
   const isResponsible = task.responsibleUsers.some(r => r.id === newExecutor._id) || isTaskOwner(task, newExecutor)
   if (!isResponsible) {
     throw new TaskValidationError('The new executor must be a responsible colleague on this task.')
@@ -284,7 +287,7 @@ async function handover(
         stepId: claim.stepId,
         generation: nextGeneration,
         operationId: input.operationId,
-        executorFirnId: newExecutor._id
+        executor: newExecutorRef
       })
     }
     catch {
@@ -330,7 +333,8 @@ async function reconcile(
     if (step.state !== 'needs_reconciliation') continue
 
     const result: TaskStepResult = resolution.result === 'completed' ? 'completed' : 'skipped'
-    if (step.payload.kind === 'inventory') {
+    const payload = executablePayload(activation, step)
+    if (payload.kind === 'inventory') {
       // Release the retained holds now that the true disposition is recorded. For a completed step
       // the physical change already exists; reconciliation does not re-apply it.
       const holdCtx = {
@@ -340,10 +344,10 @@ async function reconcile(
         operationId: input.operationId
       }
       if (resolution.result === 'completed') {
-        await consumeTargetHold(step.payload.target.ref.id, holdCtx)
-        await releaseTargetHold(step.payload.target.ref.id, holdCtx)
+        await consumeTargetHold(payload.target.ref.id, holdCtx)
+        await releaseTargetHold(payload.target.ref.id, holdCtx)
       }
-      await releaseStepHolds(step.payload, activationId, step.stepId, activation.activationVersion, input.operationId)
+      await releaseStepHolds(payload, activationId, step.stepId, activation.activationVersion, input.operationId)
     }
 
     await writeStepOutcome(step, resolution.result, {
@@ -357,24 +361,10 @@ async function reconcile(
       receiptLogRef: null,
       failureReason: null
     })
-    await finishActivationEntry(activation, step.stepId, resolution.result)
   }
 
-  const refreshed = await findActivation(task._id, activationId)
+  const refreshed = await refreshActivationState(activation._id)
   return toDisplayActivation(refreshed ?? activation, task.slug)
-}
-
-/* Set an activation's terminal/recovery state, retrying once on a concurrent edit. */
-async function setActivationState(
-  activation: TaskActivationDocument,
-  state: TaskActivationDocument['state'],
-  finished: boolean
-): Promise<void> {
-  await mutateActivation(activation, (doc) => {
-    doc.state = state
-    if (finished && !doc.finishedAt) doc.finishedAt = new Date().toISOString()
-    return true
-  })
 }
 
 /* Apply a mutation to an activation document under CAS with a short retry. */

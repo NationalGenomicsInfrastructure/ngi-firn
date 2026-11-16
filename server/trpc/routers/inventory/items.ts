@@ -21,7 +21,7 @@
  */
 
 import { z } from 'zod'
-import { createTRPCRouter, adminProcedure, authedProcedure, firnUserProcedure } from '../../init'
+import { createTRPCRouter, authedProcedure, firnUserProcedure, adminFirnUserProcedure } from '../../init'
 import {
   alterItemSchema,
   createItemSchema,
@@ -195,11 +195,11 @@ export const itemsRouter = createTRPCRouter({
 
   // Item mutations — adminProcedure
 
-  deleteItem: adminProcedure
+  deleteItem: adminFirnUserProcedure
     .input(deleteItemSchema)
-    .mutation(async ({ input }): Promise<{ deleted: DisplayInventoryItem[], failures: { slug: string, error: string }[] }> => {
+    .mutation(async ({ input, ctx }): Promise<{ deleted: DisplayInventoryItem[], failures: { slug: string, error: string }[] }> => {
       const { ItemService } = await import('../../../crud/inventory/items.server')
-      const { deleted, failures } = await ItemService.deleteItem(input)
+      const { deleted, failures } = await ItemService.deleteItem(input, ctx.firnUser)
       return {
         deleted: await ItemService.convertMultipleToDisplayItems(deleted),
         failures

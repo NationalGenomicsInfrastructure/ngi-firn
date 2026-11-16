@@ -117,11 +117,13 @@ export interface TaskInventoryObjectRef<TDoc extends BaseDocument = BaseDocument
 }
 
 /*
- * Destination for a move/locate step. `position` carries the exact grid cell fixed at activation
- * for grid-layout parents, and is null for count-based (equipment) destinations.
+ * Destination for a move/locate step: a storage equipment or a container, never a room (rooms hold
+ * equipment, not inventory, and carry no capacity to reserve). `position` is the exact grid cell for
+ * grid-layout parents. It may be left null when planning, in which case a free cell is picked and
+ * reserved at activation and recorded here; it stays null for count-based destinations.
  */
 export interface TaskInventoryDestination {
-  parent: TaskInventoryObjectRef<StorageEquipment | Container | Room>
+  parent: TaskInventoryObjectRef<StorageEquipment | Container>
   position: GridPosition | null
 }
 
@@ -305,7 +307,7 @@ export type TaskActivationState
     | 'needs_reconciliation'
 
 /* Kind of task-owned reservation claim recorded against an inventory resource document. */
-export type TaskReservationKind = 'target' | 'capacity' | 'gridCell' | 'structural'
+export type TaskReservationKind = 'target' | 'capacity' | 'gridCell'
 
 /* Durable lifecycle of a single reservation claim; supports idempotent consume/release. */
 export type TaskReservationState = 'pending' | 'held' | 'consumed' | 'released'
@@ -329,13 +331,13 @@ export interface TaskReservationClaim {
 
 /*
  * A step frozen into an activation. `snapshot` is the immutable executable payload at activation
- * time; `definitionVersion` pins which step definition it was taken from.
+ * time; `definitionVersion` pins which step definition it was taken from. The entry is never
+ * rewritten and deliberately carries no state: the step document is the only source of step state.
  */
 export interface TaskActivationManifestEntry {
   stepId: string
   definitionVersion: number
   snapshot: TaskStepPayload
-  state: TaskStepState
 }
 
 /* Provenance of a generated paper export; possession of paper is not electronic authorization. */

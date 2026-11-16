@@ -41,11 +41,10 @@ import { DateTime } from 'luxon'
 import { couchDB, generateCouchDocId } from '../database/couchdb'
 import { ProductivityService } from './productivity.server'
 import { ProjectService, PROJECTS_DB_NAME } from './projects.server'
-import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers } from '../../types/auth'
+import type { FirnUser, FirnUserQuery, GoogleUser, GoogleUserQuery, GitHubUser, SessionUser, SessionUserSecure, DisplayUserToAdmin, DisplayUserToUsers, SerializedUserRef } from '../../types/auth'
 import type { FirnProjectBookmark } from '../../types/projects-firn'
 import type { TodoDocument } from '../../types/productivity'
 import type { TypedDocumentReference } from '../../types/references'
-import type { SerializedUserRef } from '../../types/inventory'
 import type { CreateUserByAdminInput, SetUserAccessByAdminInput, DeleteUserByAdminInput } from '../../schemas/users'
 
 // =============================================================================================
@@ -85,7 +84,7 @@ export function isActiveApprovedUser(user: FirnUser): boolean {
  */
 export async function resolveUserRefs(refs: TypedDocumentReference<FirnUser>[]): Promise<SerializedUserRef[]> {
   const ids = [...new Set(refs.map(r => r.id).filter((id): id is string => typeof id === 'string'))]
-  if (ids.length === 0) return []
+  if (ids.length === 0) return refs.map(() => UNKNOWN_USER_REF)
   const docs = await couchDB.getDocumentsByIds<FirnUser>(ids)
   const map = new Map<string, SerializedUserRef>()
   for (const doc of docs) {

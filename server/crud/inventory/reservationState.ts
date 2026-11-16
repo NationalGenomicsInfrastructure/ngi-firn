@@ -20,7 +20,6 @@ import type {
   InventoryGridCellClaim,
   InventoryItem,
   InventoryReservationState,
-  InventoryStructuralGuard,
   InventoryTargetHold,
   StorageEquipment
 } from '../../../types/inventory'
@@ -34,7 +33,7 @@ export type HoldableResource = Container | InventoryItem | StorageEquipment
 
 /* An explicit empty reservation ledger used when initializing a brand-new document. */
 export function emptyReservationState(): InventoryReservationState {
-  return { targetHold: null, gridCells: [], capacityClaims: [], structuralGuards: [] }
+  return { targetHold: null, gridCells: [], capacityClaims: [] }
 }
 
 /*
@@ -46,8 +45,7 @@ export function normalizeReservations(state: InventoryReservationState | null | 
   return {
     targetHold: state.targetHold ?? null,
     gridCells: Array.isArray(state.gridCells) ? state.gridCells : [],
-    capacityClaims: Array.isArray(state.capacityClaims) ? state.capacityClaims : [],
-    structuralGuards: Array.isArray(state.structuralGuards) ? state.structuralGuards : []
+    capacityClaims: Array.isArray(state.capacityClaims) ? state.capacityClaims : []
   }
 }
 
@@ -68,17 +66,10 @@ export function compactReservations(state: InventoryReservationState): Inventory
   const targetHold = state.targetHold && isLiveState(state.targetHold.state) ? state.targetHold : null
   const gridCells = state.gridCells.filter(claim => isLiveState(claim.state))
   const capacityClaims = state.capacityClaims.filter(claim => isLiveState(claim.state))
-  const structuralGuards = state.structuralGuards.filter(guard => isLiveState(guard.state))
-  if (!targetHold && gridCells.length === 0 && capacityClaims.length === 0 && structuralGuards.length === 0) {
+  if (!targetHold && gridCells.length === 0 && capacityClaims.length === 0) {
     return null
   }
-  return { targetHold, gridCells, capacityClaims, structuralGuards }
-}
-
-/* Whether this resource currently carries a live object-level target hold. */
-export function hasLiveTargetHold(resource: Pick<HoldableResource, 'reservations'>): boolean {
-  const hold = resource.reservations?.targetHold
-  return !!hold && isLiveState(hold.state)
+  return { targetHold, gridCells, capacityClaims }
 }
 
 /* The live object-level target hold, or null. */
@@ -97,36 +88,50 @@ export function liveCapacityClaims(resource: Pick<HoldableResource, 'reservation
   return (resource.reservations?.capacityClaims ?? []).filter(claim => isLiveState(claim.state))
 }
 
-/* Live structural guards recorded on a resource/subtree. */
-export function liveStructuralGuards(resource: Pick<HoldableResource, 'reservations'>): InventoryStructuralGuard[] {
-  return (resource.reservations?.structuralGuards ?? []).filter(guard => isLiveState(guard.state))
+/*
+ * Identity of one claim's owner. A parent-side claim belongs to exactly one step of one activation,
+ * so exclusions ("ignore my own claim") are always per (activation, step): two steps of the same
+ * activation compete for a cell or a capacity unit like any two strangers would.
+ */
+export interface ClaimOwner {
+  activationId: string
+  stepId: string
 }
 
-/* Whether a specific grid cell is held by any live claim (optionally excluding one activation). */
+function ownedBy(claim: ClaimOwner, owner: ClaimOwner | undefined): boolean {
+  return !!owner && claim.activationId === owner.activationId && claim.stepId === owner.stepId
+}
+
+/* Whether a specific grid cell is held by any live claim (optionally excluding one step's own claim). */
 export function isGridCellHeld(
   resource: Pick<HoldableResource, 'reservations'>,
   position: { row: number, column: number, level?: number },
-  exceptActivationId?: string
+  except?: ClaimOwner
 ): boolean {
   const level = position.level ?? 1
   return liveGridCellClaims(resource).some(claim =>
-    claim.activationId !== exceptActivationId
+    !ownedBy(claim, except)
     && claim.position.row === position.row
     && claim.position.column === position.column
     && (claim.position.level ?? 1) === level
   )
 }
 
+/* Number of grid cells held by live claims (optionally excluding one step's own claim). */
+export function heldGridCellCount(resource: Pick<HoldableResource, 'reservations'>, except?: ClaimOwner): number {
+  return liveGridCellClaims(resource).filter(claim => !ownedBy(claim, except)).length
+}
+
 /*
- * Total count of live capacity claims for a category (optionally excluding one activation). Used by
- * the hold-aware allocator to subtract independently held capacity from a parent's free slots.
+ * Total count of live capacity claims for a category (optionally excluding one step's own claim).
+ * Used by the hold-aware allocator to subtract independently held capacity from a parent's free slots.
  */
 export function heldCapacityCount(
   resource: Pick<HoldableResource, 'reservations'>,
   category: string,
-  exceptActivationId?: string
+  except?: ClaimOwner
 ): number {
   return liveCapacityClaims(resource)
-    .filter(claim => claim.category === category && claim.activationId !== exceptActivationId)
+    .filter(claim => claim.category === category && !ownedBy(claim, except))
     .reduce((sum, claim) => sum + claim.count, 0)
 }

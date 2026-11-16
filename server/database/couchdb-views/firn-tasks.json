@@ -38,14 +38,14 @@
     "steps_by_target": {
       "map": "function (doc) { if (doc.type === 'taskStep' && doc.payload && doc.payload.kind === 'inventory' && doc.payload.target && doc.payload.target.ref && doc.payload.target.ref.id) { emit(doc.payload.target.ref.id, null); } }"
     },
+    "steps_by_destination": {
+      "map": "function (doc) { if (doc.type === 'taskStep' && doc.payload && doc.payload.kind === 'inventory' && doc.payload.destination && doc.payload.destination.parent && doc.payload.destination.parent.ref && doc.payload.destination.parent.ref.id) { emit(doc.payload.destination.parent.ref.id, null); } }"
+    },
     "steps_by_state": {
       "map": "function (doc) { if (doc.type === 'taskStep') { emit([doc.task.id, doc.state], null); } }"
     },
     "activations_by_task": {
       "map": "function (doc) { if (doc.type === 'taskActivation' && doc.task && doc.task.id) { emit([doc.task.id, doc.state], null); } }"
-    },
-    "operations_by_key": {
-      "map": "function (doc) { if (doc.type === 'taskOperation' && doc.operationId) { emit(doc.operationId, null); } }"
     },
     "reminders_by_item": {
       "map": "function (doc) { if (doc.type === 'expiryReminder' && doc.item && doc.item.id) { emit(doc.item.id, null); } }"

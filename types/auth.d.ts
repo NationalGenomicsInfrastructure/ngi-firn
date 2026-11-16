@@ -8,6 +8,21 @@ import type { FirnUserToken } from './tokens'
 // Types for authentication and authorization used in Firn
 // =============================================================================================
 
+/*
+ * Client-safe user stub for audit log entries. Replaces the stored
+ * TypedDocumentReference<FirnUser> (which holds a CouchDB _id) with an enriched,
+ * display-only projection — resolved server-side, analogous to SerializedEntityRef.
+ * Never exposes the CouchDB _id to the client.
+ */
+export interface SerializedUserRef {
+  /* Stable public user identifier (never the CouchDB _id). */
+  firnId: string
+  /* Display name (Google name, or given + family name). */
+  name: string
+  /* Avatar image URL, or null when unavailable (client falls back to initials). */
+  avatar: string | null
+}
+
 // Full user object as it is stored in the database
 export interface FirnUser extends BaseDocument {
   type: 'firnUser'

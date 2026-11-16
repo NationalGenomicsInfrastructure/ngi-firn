@@ -1,5 +1,5 @@
 import type { BaseDocument } from '../server/database/couchdb'
-import type { FirnUser } from './auth'
+import type { FirnUser, SerializedUserRef } from './auth'
 import type { DocumentReferenceMap, TypedDocumentReference } from './references'
 import type { ContainerCapacityEntry, ContainerChildKindType, ContainerType } from '../schemas/inventory/container'
 import type { EquipmentCapacityEntry, EquipmentItemCapacityEntry, EquipmentType } from '../schemas/inventory/equipment'
@@ -120,21 +120,6 @@ export interface InventoryActionLogEntry {
 }
 
 /*
- * Client-safe user stub for audit log entries. Replaces the stored
- * TypedDocumentReference<FirnUser> (which holds a CouchDB _id) with an enriched,
- * display-only projection — resolved server-side, analogous to SerializedEntityRef.
- * Never exposes the CouchDB _id to the client.
- */
-export interface SerializedUserRef {
-  /* Stable public user identifier (never the CouchDB _id). */
-  firnId: string
-  /* Display name (Google name, or given + family name). */
-  name: string
-  /* Avatar image URL, or null when unavailable (client falls back to initials). */
-  avatar: string | null
-}
-
-/*
  * Client-safe projection of InventoryActionLogEntry. Identical to the stored entry
  * except firnUser is enriched into a SerializedUserRef instead of a raw document reference.
  */
@@ -181,8 +166,10 @@ export type SerializedEntityRef = { slug: string, name: string, kind: 'container
  *
  * Three claim shapes live here:
  *  - a single object-level target hold (the held item/container is a step's target),
- *  - parent-side allocation claims (exact grid cells and category/count capacity),
- *  - structural guards that stabilize a held subtree/path against incompatible edits.
+ *  - parent-side allocation claims (exact grid cells and category/count capacity).
+ *
+ * Claims only block OCCUPYING the reserved slot. They never block deleting or moving the resource:
+ * deleting an inventory object cancels the task steps that refer to it instead.
  *
  * Each claim carries a durable `state` and the `operationId` that last transitioned it, so a retried
  * consume/release is idempotent, and a fencing `generation` so a stale recovery worker cannot
@@ -199,9 +186,13 @@ export type InventoryHoldState = 'pending' | 'held' | 'consumed' | 'released'
  */
 export interface InventoryTargetHold {
   activationId: string
-  stepId: string
-  /* Public firnId of the sole executor permitted to act on the held object. */
-  executorFirnId: string
+  /*
+   * Every step of the activation that targets this object. One activation holds an object once for
+   * all of its steps (e.g. "checkout X" then "return X"); the hold is released with the last of them.
+   */
+  stepIds: string[]
+  /* Stored CouchDB document reference of the sole executor permitted to act on the held object; display goes through resolveUserRefs. */
+  executor: TypedDocumentReference<FirnUser>
   /* Fencing generation; advances on handover so a stale worker cannot overwrite a newer one. */
   generation: number
   state: InventoryHoldState
@@ -233,23 +224,6 @@ export interface InventoryCapacityClaim {
 }
 
 /*
- * Scope of a structural guard: 'subtree' stabilizes the resource and everything under it against
- * moves/deletes/deactivation; 'definition' stabilizes capacity/grid/type/temperature/acceptance edits
- * that could invalidate held work. A guard protects only the held path, never unrelated siblings.
- */
-export type InventoryStructuralGuardScope = 'subtree' | 'definition'
-
-/* A task-owned structural guard protecting held work that depends on this resource/subtree. */
-export interface InventoryStructuralGuard {
-  activationId: string
-  stepId: string
-  scope: InventoryStructuralGuardScope
-  generation: number
-  state: InventoryHoldState
-  operationId: string | null
-}
-
-/*
  * Aggregated server-owned reservation state embedded on an inventory resource document (a container,
  * storage-equipment or item — never a room). `null` means no task holds (the common case). New
  * documents initialize this explicitly (emptyReservationState); legacy documents without the field
@@ -262,8 +236,6 @@ export interface InventoryReservationState {
   gridCells: InventoryGridCellClaim[]
   /* Parent-side category/count capacity claims (containers and equipment). */
   capacityClaims: InventoryCapacityClaim[]
-  /* Structural guards protecting held work on this resource/subtree. */
-  structuralGuards: InventoryStructuralGuard[]
 }
 
 /* Top-level physical location. Rooms are hierarchy roots for storage equipment. */

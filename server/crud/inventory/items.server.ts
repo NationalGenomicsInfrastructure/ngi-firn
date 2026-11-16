@@ -1,7 +1,8 @@
 import { couchDB, generateCouchDocId, generateSlug } from '../../database/couchdb'
 import { ContainerService, type ResolvedParent } from './containers.server'
 import { EquipmentService } from './equipment.server'
-import { deriveGridLabel, findFirstFreeGridSlot, isSlotOccupied, isWithinGrid, totalSlots } from './grid.server'
+import { deriveGridLabel, isSlotOccupied, isWithinGrid } from './grid.server'
+import { invalidateStepsAfterDelete } from '../tasks/invalidation.server'
 import {
   buildAlterActionNotes,
   createInventoryChangeRecords,
@@ -16,9 +17,15 @@ import { BarcodeService } from './barcodes.server'
 import { resolveActionLogUsers, resolveUserDisplayName, toParentRef, toUserRef } from './relations.server'
 import {
   type InventoryExecutionContext,
+  type HoldEnforcementOptions,
+  allocatableCount,
+  allocatableGridSlots,
+  allowedClaimOwner,
+  assertGridCellUnheld,
   assertTargetWritable,
   executionAllowance,
-  executionReceiptFields
+  executionReceiptFields,
+  findFirstFreeUnheldGridSlot
 } from './reservations.server'
 import type {
   Container,
@@ -127,7 +134,8 @@ async function resolveItemParent(parentSlug: string, parentKind: ItemParentKind)
 async function resolveItemPlacement(
   parent: ResolvedParent,
   proposedPosition: GridPosition | null | undefined,
-  category: ItemType
+  category: ItemType,
+  holdOptions: HoldEnforcementOptions = {}
 ): Promise<GridPosition | null> {
   if (parent.kind === 'equipment') {
     return null
@@ -155,6 +163,8 @@ async function resolveItemPlacement(
         `Slot (row ${proposedPosition.row}, column ${proposedPosition.column}, level ${proposedPosition.level ?? 1}) in "${parent.doc.slug}" is already occupied.`
       )
     }
+    // An explicitly requested slot that planned task work has reserved is refused up front.
+    assertGridCellUnheld(parent.doc, proposedPosition, holdOptions)
     return {
       row: proposedPosition.row,
       column: proposedPosition.column,
@@ -163,7 +173,8 @@ async function resolveItemPlacement(
     }
   }
 
-  const position = await findFirstFreeGridSlot(parent.doc._id, entry)
+  // Auto-placement skips cells reserved for planned task work, so it keeps working around them.
+  const position = await findFirstFreeUnheldGridSlot(parent.doc, entry, allowedClaimOwner(holdOptions))
   if (!position) {
     throw new Error(`Grid container "${parent.doc.slug}" is full; no free slot for an item of type "${category}".`)
   }
@@ -193,17 +204,18 @@ async function adjustParentOccupancy(
   parent: ResolvedParent,
   category: ItemType,
   position: GridPosition | null,
-  delta: number
+  delta: number,
+  holdOptions: HoldEnforcementOptions = {}
 ): Promise<void> {
   if (parent.kind === 'equipment') {
-    await EquipmentService.adjustItemStoredCount(parent.doc._id, category, delta)
+    await EquipmentService.adjustItemStoredCount(parent.doc._id, category, delta, holdOptions)
     return
   }
   if (position) {
-    await ContainerService.adjustOccupancy(parent.doc._id, position, delta)
+    await ContainerService.adjustOccupancy(parent.doc._id, position, delta, holdOptions)
     return
   }
-  await ContainerService.adjustStoredCount(parent.doc._id, category, delta)
+  await ContainerService.adjustStoredCount(parent.doc._id, category, delta, holdOptions)
 }
 
 /* Apply capacity changes when only a stored item parent reference is available. */
@@ -228,10 +240,16 @@ async function adjustParentRefOccupancy(
 }
 
 /* Ensure a shared container destination can accept every item before a batch move begins. */
-function assertBatchCapacityAvailable(parent: ResolvedParent, items: InventoryItem[]): void {
+function assertBatchCapacityAvailable(
+  parent: ResolvedParent,
+  items: InventoryItem[],
+  holdOptions: HoldEnforcementOptions = {}
+): void {
   if (parent.kind === 'equipment') {
     return
   }
+  // Capacity reserved by planned task work is not available to a batch (except to the step that owns it).
+  const own = allowedClaimOwner(holdOptions)
 
   const neededByType = new Map<string, number>()
   for (const item of items) {
@@ -248,7 +266,7 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, items: InventoryIt
       }
       totalNeeded += count
     }
-    const available = totalSlots(gridEntry) - gridEntry.stored
+    const available = allocatableGridSlots(parent.doc, gridEntry, own)
     if (available < totalNeeded) {
       throw new Error(`Grid container "${parent.doc.slug}" has only ${available} free slot(s); ${totalNeeded} requested.`)
     }
@@ -264,7 +282,7 @@ function assertBatchCapacityAvailable(parent: ResolvedParent, items: InventoryIt
     if (!entry || entry.layout !== 'count') {
       throw new Error(`Container "${parent.doc.slug}" does not accept items of type "${type}".`)
     }
-    const available = entry.capacity - entry.stored
+    const available = allocatableCount(parent.doc, type, 'item', own) ?? entry.capacity - entry.stored
     if (available < count) {
       throw new Error(`Container "${parent.doc.slug}" has room for ${available} more items of type "${type}"; ${count} requested.`)
     }
@@ -287,9 +305,12 @@ async function moveItemOne(
   if (existing.parent && !formerParent) {
     throw new Error(`Parent for item "${existing.slug}" (ID: ${existing.parent.id}) could not be resolved.`)
   }
-  const position = await resolveItemPlacement(newParent, requestedPosition, existing.category)
+  // A task step executing this move passes through its own destination reservation; everyone else
+  // is held to the reservations on the destination.
+  const holdOptions = executionAllowance(options.execution)
+  const position = await resolveItemPlacement(newParent, requestedPosition, existing.category, holdOptions)
   assertTemperatureCompatible({ category: existing.temperatureCategory, celsius: existing.temperatureCelsius }, newParent)
-  await adjustParentOccupancy(newParent, existing.category, position, 1)
+  await adjustParentOccupancy(newParent, existing.category, position, 1, holdOptions)
 
   const now = new Date().toISOString()
   const actionType = options.actionType ?? 'move'
@@ -740,7 +761,7 @@ export const ItemService = {
   },
 
   /* Delete items independently and free their former parent capacity afterward. */
-  async deleteItem(input: DeleteItemSchemaInput): Promise<DeleteItemResult> {
+  async deleteItem(input: DeleteItemSchemaInput, firnUser?: FirnUser): Promise<DeleteItemResult> {
     const deleted: InventoryItem[] = []
     const failures: { slug: string, error: string }[] = []
     for (const slug of input.itemSlug) {
@@ -749,8 +770,10 @@ export const ItemService = {
         if (!existing) {
           throw new Error(`Item with identifier "${slug}" not found.`)
         }
-        assertTargetWritable(existing)
+        // Deleting inventory always wins over planned task work: a task hold never blocks a delete.
         await couchDB.deleteDocument(existing._id, existing._rev)
+        // Cancel the open task steps that targeted this item.
+        await invalidateStepsAfterDelete(existing._id, firnUser ?? null)
         await adjustParentRefOccupancy(existing.parent, existing.position, existing.category, -1)
         deleted.push(existing)
       }
@@ -787,7 +810,7 @@ export const ItemService = {
       }
       items.push(item)
     }
-    assertBatchCapacityAvailable(newParent, items)
+    assertBatchCapacityAvailable(newParent, items, executionAllowance(execution))
 
     const moved: { before: InventoryItem, after: InventoryItem }[] = []
     try {
@@ -825,7 +848,7 @@ export const ItemService = {
       assertTargetWritable(item, executionAllowance(execution))
       items.push(item)
     }
-    assertBatchCapacityAvailable(newParent, items)
+    assertBatchCapacityAvailable(newParent, items, executionAllowance(execution))
 
     const placed: { before: InventoryItem, after: InventoryItem }[] = []
     try {

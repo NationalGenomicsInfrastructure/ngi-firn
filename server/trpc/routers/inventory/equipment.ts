@@ -16,7 +16,7 @@
  * deleteEquipment - Delete equipment when it is empty
  */
 
-import { createTRPCRouter, authedProcedure, adminProcedure } from '../../init'
+import { createTRPCRouter, authedProcedure, adminFirnUserProcedure } from '../../init'
 import { z } from 'zod'
 import {
   createEquipmentSchema,
@@ -100,11 +100,11 @@ export const equipmentRouter = createTRPCRouter({
       return display[0]
     }),
 
-  deleteEquipment: adminProcedure
+  deleteEquipment: adminFirnUserProcedure
     .input(deleteEquipmentSchema)
-    .mutation(async ({ input }): Promise<DisplayStorageEquipment> => {
+    .mutation(async ({ input, ctx }): Promise<DisplayStorageEquipment> => {
       const { EquipmentService } = await import('../../../crud/inventory/equipment.server')
-      const equipment = await EquipmentService.deleteEquipment(input)
+      const equipment = await EquipmentService.deleteEquipment(input, ctx.firnUser)
       const display = await EquipmentService.convertMultipleToDisplayStorageEquipment([equipment])
       if (!display[0]) {
         throw new Error('Failed to convert deleted equipment to display type.')

@@ -27,13 +27,16 @@ import type {
 import { assertCanExecuteTask } from '../../auth/taskPolicy'
 import {
   type CapacityChildKind,
+  ReservationConflictError,
   acquireCapacityClaim,
   acquireGridCellClaim,
   acquireTargetHold,
+  findFirstFreeUnheldGridSlot,
   isReservationConflict,
   releaseParentClaimsForStep,
   releaseTargetHold
 } from '../inventory/reservations.server'
+import { invalidateStepsForDeletedResource } from './invalidation.server'
 import { resolveUserRefs, toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { TaskStepService } from './steps.server'
@@ -51,8 +54,11 @@ export interface ActivateStepsInput {
 /* A hold to acquire for the activation, resolved before any resource is written. */
 interface PlannedClaim {
   stepId: string
+  /* Checklist order of the step, so earlier steps are served first (e.g. get the first free cell). */
+  order: number
   resource: TypedDocumentReference<Container | InventoryItem | StorageEquipment>
   claimKind: TaskReservationKind
+  /* Grid-cell claims: the requested cell, or null until one is picked while acquiring the claim. */
   position: GridPosition | null
   /* Capacity claims only. */
   category: string | null
@@ -118,7 +124,18 @@ async function activate(
   const toActivate = selectActivationSet(requestedStepIds, byId)
 
   const targetDocs = await loadInventoryTargets(toActivate)
-  const plannedClaims = planClaims(toActivate, targetDocs)
+  const parentDocs = await loadDestinationParents(toActivate)
+
+  // Safety net: a step whose target or destination was deleted is cancelled rather than activated.
+  const missing = missingResourceIds(toActivate, targetDocs, parentDocs)
+  if (missing.length > 0) {
+    for (const resourceId of missing) await invalidateStepsForDeletedResource(resourceId, actor)
+    throw new TaskValidationError(
+      'Some of the selected steps referred to inventory that no longer exists and were cancelled. Review the task and activate the remaining steps again.'
+    )
+  }
+
+  const plannedClaims = planClaims(toActivate, targetDocs, parentDocs)
 
   const activationId = generateCouchDocId('actv')
   const generation = 1
@@ -127,7 +144,7 @@ async function activate(
   const acquired: PlannedClaim[] = []
   try {
     for (const claim of orderClaims(plannedClaims)) {
-      await acquireOne(claim, activationId, operationId, generation, actor._id)
+      await acquireOne(claim, activationId, operationId, generation, toUserRef(actor))
       acquired.push(claim)
     }
   }
@@ -139,11 +156,13 @@ async function activate(
     throw error
   }
 
+  // Freeze the executable definition, including the grid cell picked for a destination that was
+  // planned without one, so execution places into exactly the reserved cell.
+  const snapshots = new Map(toActivate.map(step => [step.stepId, withReservedCell(step, plannedClaims)]))
   const manifest: TaskActivationManifestEntry[] = toActivate.map(step => ({
     stepId: step.stepId,
     definitionVersion: step.definitionVersion,
-    snapshot: step.payload,
-    state: 'held'
+    snapshot: snapshots.get(step.stepId)!
   }))
   const reservationManifest: TaskReservationClaim[] = plannedClaims.map(claim => ({
     stepId: claim.stepId,
@@ -182,12 +201,23 @@ async function activate(
     activationDoc = readBack
 
     for (const step of toActivate) {
-      heldSteps.push(await setStepState(step, 'held'))
+      // The step shows the reserved cell too, so the executor knows where the object goes.
+      heldSteps.push(await setStepState(step, 'held', snapshots.get(step.stepId)))
     }
   }
   catch (error) {
-    // Preparation failed after holds were acquired: release this attempt's protections and mark the
-    // half-built activation cancelled so it is never presented as executable.
+    // Preparation failed after holds were acquired: return the steps already marked held to planned
+    // (so they can be activated again), release this attempt's protections and mark the half-built
+    // activation cancelled so it is never presented as executable.
+    for (const step of heldSteps) {
+      try {
+        const original = toActivate.find(candidate => candidate.stepId === step.stepId)
+        await setStepState(step, 'planned', original?.payload)
+      }
+      catch {
+        // Best-effort: a step that cannot be reverted now is surfaced by the failed operation record.
+      }
+    }
     await releaseClaims(plannedClaims, activationId, operationId)
     if (activationDoc) {
       await cancelActivationDoc(activationDoc)
@@ -289,10 +319,62 @@ async function loadInventoryTargets(
   return byId
 }
 
+/* Fetch every move/locate destination parent in the activation set, keyed by its document id. */
+async function loadDestinationParents(
+  steps: TaskStepDocument[]
+): Promise<Map<string, Container | StorageEquipment>> {
+  const parentIds = steps.flatMap((step) => {
+    const payload = step.payload
+    return payload.kind === 'inventory' && (payload.action === 'move' || payload.action === 'locate')
+      ? [payload.destination.parent.ref.id]
+      : []
+  })
+  const unique = [...new Set(parentIds)]
+  const docs = await couchDB.getDocumentsByIds<Container | StorageEquipment | { type: string }>(unique)
+  const byId = new Map<string, Container | StorageEquipment>()
+  unique.forEach((id, index) => {
+    const doc = docs[index]
+    if (!doc) return
+    if (doc.type !== 'container' && doc.type !== 'storageEquipment') {
+      throw new TaskValidationError('A move destination must be a storage equipment or a container.')
+    }
+    byId.set(id, doc as Container | StorageEquipment)
+  })
+  return byId
+}
+
+/* Ids of the targets and destinations the activation set refers to that no longer exist. */
+function missingResourceIds(
+  steps: TaskStepDocument[],
+  targetDocs: Map<string, Container | InventoryItem>,
+  parentDocs: Map<string, Container | StorageEquipment>
+): string[] {
+  const missing = new Set<string>()
+  for (const step of steps) {
+    const payload = step.payload
+    if (payload.kind !== 'inventory') continue
+    if (!targetDocs.has(payload.target.ref.id)) missing.add(payload.target.ref.id)
+    if ((payload.action === 'move' || payload.action === 'locate') && !parentDocs.has(payload.destination.parent.ref.id)) {
+      missing.add(payload.destination.parent.ref.id)
+    }
+  }
+  return [...missing]
+}
+
+/* The step's payload with the grid cell reserved for its destination filled in, when one was picked. */
+function withReservedCell(step: TaskStepDocument, claims: PlannedClaim[]): TaskStepDocument['payload'] {
+  const payload = step.payload
+  if (payload.kind !== 'inventory' || (payload.action !== 'move' && payload.action !== 'locate')) return payload
+  const cell = claims.find(claim => claim.stepId === step.stepId && claim.claimKind === 'gridCell')?.position
+  if (!cell) return payload
+  return { ...payload, destination: { ...payload.destination, position: cell } }
+}
+
 /* Resolve the concrete holds required by each inventory step in the activation set. */
 function planClaims(
   steps: TaskStepDocument[],
-  targetDocs: Map<string, Container | InventoryItem>
+  targetDocs: Map<string, Container | InventoryItem>,
+  parentDocs: Map<string, Container | StorageEquipment>
 ): PlannedClaim[] {
   const claims: PlannedClaim[] = []
   for (const step of steps) {
@@ -310,6 +392,7 @@ function planClaims(
 
     claims.push({
       stepId: step.stepId,
+      order: step.order,
       resource: payload.target.ref as TypedDocumentReference<Container | InventoryItem>,
       claimKind: 'target',
       position: null,
@@ -318,49 +401,66 @@ function planClaims(
     })
 
     if (payload.action === 'move' || payload.action === 'locate') {
-      claims.push(planDestinationClaim(step.stepId, payload, target))
+      const parent = parentDocs.get(payload.destination.parent.ref.id)
+      if (!parent) {
+        throw new TaskValidationError(`Destination of step ${step.stepId} no longer exists in the inventory.`)
+      }
+      claims.push(planDestinationClaim(step, payload, target, parent))
     }
   }
   return claims
 }
 
-/* A move/locate destination reserves either an exact grid cell or one unit of count capacity. */
+/*
+ * A move/locate destination reserves either an exact grid cell or one unit of count capacity, decided
+ * by how the destination actually stores this kind of object. A destination that cannot take the
+ * object at all is refused here, at activation, rather than surfacing when the step is confirmed.
+ */
 function planDestinationClaim(
-  stepId: string,
+  step: TaskStepDocument,
   payload: Extract<TaskInventoryStepPayload, { action: 'move' | 'locate' }>,
-  target: Container | InventoryItem
+  target: Container | InventoryItem,
+  parent: Container | StorageEquipment
 ): PlannedClaim {
-  const parentRef = payload.destination.parent.ref as TypedDocumentReference<
-    Container | StorageEquipment
-  >
-  if (payload.destination.position) {
-    return {
-      stepId,
-      resource: parentRef,
-      claimKind: 'gridCell',
-      position: payload.destination.position,
-      category: null,
-      childKind: null
-    }
-  }
+  const { stepId, order } = step
+  const parentRef = payload.destination.parent.ref as TypedDocumentReference<Container | StorageEquipment>
   const childKind: CapacityChildKind = payload.targetKind === 'item' ? 'item' : 'container'
   const category = target.type === INVENTORY_ITEM_TYPE ? target.category : target.containerType
-  return {
-    stepId,
-    resource: parentRef,
-    claimKind: 'capacity',
-    position: null,
-    category,
-    childKind
+  const requested = payload.destination.position
+  const capacityClaim: PlannedClaim = {
+    stepId, order, resource: parentRef, claimKind: 'capacity', position: null, category, childKind
   }
+
+  if (parent.type === 'storageEquipment') {
+    if (requested) {
+      throw new TaskValidationError(`Step ${stepId} names a grid cell, but "${parent.name}" is storage equipment without a grid.`)
+    }
+    if (childKind === 'container' && !parent.capacity?.some(entry => entry.type === category)) {
+      throw new TaskValidationError(`"${parent.name}" does not accept containers of type "${category}" (step ${stepId}).`)
+    }
+    return capacityClaim
+  }
+
+  const entry = parent.capacity?.find(candidate => candidate.childKind === childKind && candidate.type === category)
+  if (!entry) {
+    throw new TaskValidationError(`"${parent.name}" does not accept ${childKind}s of type "${category}" (step ${stepId}).`)
+  }
+  if (entry.layout === 'grid') {
+    // With no cell requested, one is picked and reserved while the claim is acquired.
+    return { stepId, order, resource: parentRef, claimKind: 'gridCell', position: requested ?? null, category: null, childKind: null }
+  }
+  if (requested) {
+    throw new TaskValidationError(`Step ${stepId} names a grid cell, but "${parent.name}" stores "${category}" by count.`)
+  }
+  return capacityClaim
 }
 
-/* Deterministic acquisition order (resource id, then kind) to avoid lock-ordering surprises. */
+/* Deterministic acquisition order (resource id, then kind, then checklist order of the step). */
 function orderClaims(claims: PlannedClaim[]): PlannedClaim[] {
   return [...claims].sort((a, b) => {
     if (a.resource.id !== b.resource.id) return a.resource.id < b.resource.id ? -1 : 1
     if (a.claimKind !== b.claimKind) return a.claimKind < b.claimKind ? -1 : 1
-    return a.stepId < b.stepId ? -1 : 1
+    return a.order - b.order
   })
 }
 
@@ -369,7 +469,7 @@ async function acquireOne(
   activationId: string,
   operationId: string,
   generation: number,
-  executorFirnId: string
+  executor: TypedDocumentReference<FirnUser>
 ): Promise<void> {
   if (claim.claimKind === 'target') {
     await acquireTargetHold(claim.resource.id, {
@@ -377,12 +477,26 @@ async function acquireOne(
       stepId: claim.stepId,
       generation,
       operationId,
-      executorFirnId
+      executor
     })
     return
   }
   if (claim.claimKind === 'gridCell') {
-    await acquireGridCellClaim(claim.resource.id, claim.position as GridPosition, {
+    if (!claim.position) {
+      // No cell was planned: reserve the first one that is neither occupied nor already reserved
+      // (including by an earlier step of this same activation).
+      const parent = await couchDB.getDocument<Container>(claim.resource.id)
+      const grid = parent?.type === 'container' ? parent.capacity?.find(entry => entry.layout === 'grid') : undefined
+      if (!parent || !grid || grid.layout !== 'grid') {
+        throw new ReservationConflictError('The destination has no grid in which a cell could be reserved.')
+      }
+      const free = await findFirstFreeUnheldGridSlot(parent, grid)
+      if (!free) {
+        throw new ReservationConflictError(`"${parent.name}" has no free cell left to reserve.`)
+      }
+      claim.position = free
+    }
+    await acquireGridCellClaim(claim.resource.id, claim.position, {
       activationId,
       stepId: claim.stepId,
       generation,
@@ -428,11 +542,23 @@ async function releaseClaims(
   }
 }
 
-/* Persist a new step lifecycle state, retrying once on a concurrent edit. */
-async function setStepState(step: TaskStepDocument, state: TaskStepDocument['state']): Promise<TaskStepDocument> {
+/*
+ * Persist a new step lifecycle state (and, when given, the payload that goes with it), retrying once
+ * on a concurrent edit.
+ */
+async function setStepState(
+  step: TaskStepDocument,
+  state: TaskStepDocument['state'],
+  payload?: TaskStepDocument['payload']
+): Promise<TaskStepDocument> {
   let current = step
   for (let attempt = 0; attempt < 2; attempt++) {
-    const updated: TaskStepDocument = { ...current, state, updatedAt: new Date().toISOString() }
+    const updated: TaskStepDocument = {
+      ...current,
+      state,
+      ...(payload ? { payload } : {}),
+      updatedAt: new Date().toISOString()
+    }
     try {
       const result = await couchDB.updateDocument(current._id, updated, current._rev!)
       return { ...updated, _id: result.id, _rev: result.rev }

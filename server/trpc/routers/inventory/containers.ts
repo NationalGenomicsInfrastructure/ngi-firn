@@ -23,7 +23,7 @@
  * deleteContainer - Delete one or more empty containers, freeing each one's slot on its parent (best-effort batch)
  */
 
-import { createTRPCRouter, authedProcedure, adminProcedure, firnUserProcedure } from '../../init'
+import { createTRPCRouter, authedProcedure, firnUserProcedure, adminFirnUserProcedure } from '../../init'
 import { z } from 'zod'
 import {
   createContainerSchema,
@@ -207,11 +207,11 @@ export const containersRouter = createTRPCRouter({
 
   // Container mutations — adminProcedure
 
-  deleteContainer: adminProcedure
+  deleteContainer: adminFirnUserProcedure
     .input(deleteContainerSchema)
-    .mutation(async ({ input }): Promise<{ deleted: DisplayContainer[], failures: { slug: string, error: string }[] }> => {
+    .mutation(async ({ input, ctx }): Promise<{ deleted: DisplayContainer[], failures: { slug: string, error: string }[] }> => {
       const { ContainerService } = await import('../../../crud/inventory/containers.server')
-      const { deleted, failures } = await ContainerService.deleteContainer(input)
+      const { deleted, failures } = await ContainerService.deleteContainer(input, ctx.firnUser)
       return {
         deleted: await ContainerService.convertMultipleToDisplayContainers(deleted),
         failures
