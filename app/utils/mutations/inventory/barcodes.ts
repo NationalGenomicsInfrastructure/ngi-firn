@@ -1,5 +1,5 @@
 import { defineMutation, useMutation, useQueryCache } from '@pinia/colada'
-import type { BarcodeScanResult } from '~~/types/inventory'
+import type { BarcodeScanResult } from '~~/types/barcode'
 import type { ApplyBarcodeScanInput, AssignBarcodeInput } from '~~/schemas/inventory/barcode'
 import { INVENTORY_BARCODE_QUERY_KEYS } from '~/utils/queries/inventory/barcodes'
 import { INVENTORY_ITEMS_QUERY_KEYS } from '~/utils/queries/inventory/items'

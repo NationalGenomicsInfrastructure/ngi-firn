@@ -10,7 +10,9 @@ import type {
   BarcodeScanRejection,
   BarcodeScanResult,
   BarcodeScanTarget,
-  BarcodeScanWarning,
+  BarcodeScanWarning
+} from '../../../types/barcode'
+import type {
   Container,
   InventoryItem,
   SerializedEntityRef,

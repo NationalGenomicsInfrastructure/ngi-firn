@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BarcodeScanResult } from '~~/types/inventory'
+import type { BarcodeScanResult } from '~~/types/barcode'
 import type { ScanBasket } from '~/composables/useScanBasket'
 import { applyBarcodeScan } from '~/utils/mutations/inventory/barcodes'
 import { getActionTypeMeta } from '~/utils/inventory/actionLog'

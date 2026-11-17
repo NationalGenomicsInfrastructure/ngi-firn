@@ -1,5 +1,5 @@
 import { useQuery as useQueryColada } from '@pinia/colada'
-import type { BarcodeScanPlan, BarcodeScanRejection, BarcodeScanTarget } from '~~/types/inventory'
+import type { BarcodeScanPlan, BarcodeScanRejection, BarcodeScanTarget } from '~~/types/barcode'
 import type { InventoryActionType } from '~~/schemas/inventory/metadata'
 import { BARCODE_FOR_ACTION, MAX_SCAN_BATCH, normalizeBarcode, parseBarcode } from '~~/schemas/inventory/barcode'
 import { barcodeScanPlanQuery } from '~/utils/queries/inventory/barcodes'

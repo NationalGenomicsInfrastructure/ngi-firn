@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BarcodeScanWarning } from '~~/types/inventory'
+import type { BarcodeScanWarning } from '~~/types/barcode'
 import type { ScanBasketRole } from '~/composables/useScanBasket'
 import { getActionTypeMeta } from '~/utils/inventory/actionLog'
 import { getContainerStatusMeta } from '~/utils/inventory/container'

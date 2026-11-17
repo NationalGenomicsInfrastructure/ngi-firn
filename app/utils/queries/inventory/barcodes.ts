@@ -1,5 +1,5 @@
 import { defineQueryOptions } from '@pinia/colada'
-import type { BarcodeScanPlan } from '~~/types/inventory'
+import type { BarcodeScanPlan } from '~~/types/barcode'
 import type { BarcodeEntityKind } from '~~/schemas/inventory/barcode'
 
 /*

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BarcodeScanPlan } from '~~/types/inventory'
+import type { BarcodeScanPlan } from '~~/types/barcode'
 import type { InventoryActionType } from '~~/schemas/inventory/metadata'
 import { getActionTypeMeta } from '~/utils/inventory/actionLog'
 

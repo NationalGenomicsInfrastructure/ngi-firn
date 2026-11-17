@@ -25,7 +25,7 @@ import {
   parseBarcode
 } from '~~/schemas/inventory/barcode'
 import type { BarcodeEntityKind } from '~~/schemas/inventory/barcode'
-import type { BarcodeScanPlan, BarcodeScanResult } from '~~/types/inventory'
+import type { BarcodeScanPlan, BarcodeScanResult } from '~~/types/barcode'
 
 export const barcodesRouter = createTRPCRouter({
 
