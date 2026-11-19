@@ -378,29 +378,25 @@ export type TaskOperationKind
   = | 'activation'
     | 'confirm'
     | 'skip'
-    | 'release'
     | 'handover'
     | 'cancel'
     | 'reconcile'
 
-/* Durable operation state used to make retries idempotent and recovery resumable. */
-export type TaskOperationState
-  = | 'claimed'
-    | 'in_progress'
-    | 'completed'
-    | 'failed'
-    | 'needs_reconciliation'
-
-/* One recorded recovery milestone within an operation (e.g. "receipt-appended"). */
-export interface TaskOperationProgressMarker {
-  marker: string
-  recordedAt: string
-}
+/*
+ * Durable operation state, mapping one-to-one onto what a retry does: `completed` replays the
+ * stored result, `failed` runs the body again, `in_progress` is refused (or taken over once stale).
+ * Reconciliation is never an operation state; it lives on the activation and its steps.
+ */
+export type TaskOperationState = 'in_progress' | 'completed' | 'failed'
 
 /*
  * Durable record for a single multi-document workflow invocation. `operationId` is the caller's
  * stable idempotency key; `payloadFingerprint` binds that key to a specific request so a replay
  * with a different payload is rejected rather than silently reusing a prior result.
+ *
+ * It deliberately records no progress markers. A resumed body derives how far it got from the
+ * documents it changes (inventory action receipt, hold ledger, step state), each written atomically
+ * with its change. A marker written separately could lag behind reality after a crash.
  */
 export interface TaskOperationDocument extends BaseDocument {
   type: 'taskOperation'
@@ -411,7 +407,6 @@ export interface TaskOperationDocument extends BaseDocument {
   activation: TypedDocumentReference<TaskActivationDocument> | null
   payloadFingerprint: string
   state: TaskOperationState
-  progress: TaskOperationProgressMarker[]
   /* Opaque serialized result returned to idempotent replays; null until the operation resolves. */
   result: string | null
   createdAt: string

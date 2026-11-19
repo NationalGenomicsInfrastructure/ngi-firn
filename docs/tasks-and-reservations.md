@@ -22,6 +22,8 @@ Deleting inventory is not refused because a task refers to it. Every delete path
 
 Operation documents have the deterministic id `task-op:<operationId>`, which makes a retried request find the earlier run. A workflow body therefore has to be resume-safe: it can be entered again after a partial failure and must not repeat completed work. Physical actions are deduplicated by the inventory action receipt (activation + step), not by operation id.
 
+An operation document has only three states: `completed` (a retry replays the stored result), `failed` (a retry runs the body again) and `in_progress` (a retry is refused until the run goes stale). It does not record progress markers. A resumed body works out how far it got from the documents it changes (receipt, hold ledger, step state), because each of those is written together with its change. A marker written in a separate step can fall behind after a crash. Reconciliation belongs to the activation and its steps, not to the operation.
+
 ## Module boundaries
 
 Server modules under `server/crud/inventory` must not import the task services (`tasks.server.ts`, `steps.server.ts`, `execution.server.ts`, and so on). They may import `server/crud/tasks/invalidation.server.ts`. That module and `stepState.server.ts` deliberately avoid importing the inventory services, which is what keeps the dependency graph free of cycles. Keep it that way when adding imports to either.

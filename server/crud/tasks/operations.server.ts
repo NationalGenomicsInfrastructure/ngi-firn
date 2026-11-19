@@ -143,7 +143,6 @@ async function createOperation<T>(
     activation: params.activation,
     payloadFingerprint: fingerprint,
     state: 'in_progress',
-    progress: [],
     result: null,
     createdAt: now,
     updatedAt: now
