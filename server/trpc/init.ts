@@ -51,15 +51,17 @@ const t = initTRPC.context<Context>().create({
 
 // Export base router and procedure helpers
 export const createTRPCRouter = t.router
+export const mergeTRPCRouters = t.mergeRouters
 export const createCallerFactory = t.createCallerFactory
 export const baseProcedure = t.procedure
+export const createMiddleware = t.middleware
 
 /*
   * Middleware
   */
 
 // Middleware to check if user is authenticated
-const isAuthed = t.middleware(async ({ ctx, next }) => {
+export const isAuthed = t.middleware(async ({ ctx, next }) => {
   // We use the private session user secure object for authorization
   if (!ctx.secure) {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
@@ -83,7 +85,7 @@ const isAdmin = t.middleware(async ({ ctx, next }) => {
 })
 
 // Middleware to get the full user object from the database
-const getFirnUser = t.middleware(async ({ ctx, next }) => {
+export const getFirnUser = t.middleware(async ({ ctx, next }) => {
   if (!ctx.secure) {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
   }

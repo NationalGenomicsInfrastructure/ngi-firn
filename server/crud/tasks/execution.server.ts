@@ -28,6 +28,11 @@ import type {
   TaskStepOutcome,
   TaskStepResult
 } from '../../../types/productivity'
+import type {
+  ConfirmBatchSchemaInput,
+  ConfirmStepSchemaInput,
+  SkipStepSchemaInput
+} from '../../../schemas/tasks/execution'
 import { assertCanExecuteTask, assertIsActivationExecutor } from '../../auth/taskPolicy'
 import { type InventoryExecutionContext, consumeTargetHold } from '../inventory/reservations.server'
 import { ItemService } from '../inventory/items.server'
@@ -49,40 +54,15 @@ import {
 // Re-exported for the recovery service, which shares these primitives.
 export { executablePayload, refreshActivationState, releaseStepHolds, writeStepOutcome }
 
-/** Shared confirm/skip request fields. */
-interface StepExecutionInputBase {
-  /* Public step identifier within the task. */
-  stepId: string
-  /* Public activation identity that holds the step. */
-  activationId: string
-  /* Stable idempotency key for this attempt. */
-  operationId: string
-  /* How the confirmation reached the system (interactive scanner, paper transcription, online). */
-  source: TaskExecutionSource
-  /* Executor-reported occurrence time; defaults to server recording time when omitted. */
-  reportedAt?: string | null
-  notes?: string | null
-}
-
-export type ConfirmStepInput = StepExecutionInputBase
-export type SkipStepInput = StepExecutionInputBase
-
-/** Confirm several held steps of one activation in dependency order. */
-export interface ConfirmBatchInput {
-  activationId: string
-  operationId: string
-  source: TaskExecutionSource
-  reportedAt?: string | null
-  /* Explicit steps to confirm; omit to confirm every still-held step of the activation. */
-  stepIds?: string[]
-}
+/* Confirm and skip share their request fields (schemas/tasks/execution.ts). */
+type StepExecutionInputBase = ConfirmStepSchemaInput | SkipStepSchemaInput
 
 export const TaskExecutionService = {
   /*
    * Confirm that a held step's physical work was carried out: apply the stored inventory action
    * through the executor's own holds, consume and release those holds, and record the outcome.
    */
-  async confirmStep(actor: FirnUser, taskSlug: string, input: ConfirmStepInput): Promise<DisplayTaskStep> {
+  async confirmStep(actor: FirnUser, taskSlug: string, input: ConfirmStepSchemaInput): Promise<DisplayTaskStep> {
     const { task, activation, step } = await loadExecutionContext(actor, taskSlug, input)
 
     const taskRef: TypedDocumentReference<TaskDocument> = { db: 'firn', id: task._id, type: 'task' }
@@ -111,7 +91,7 @@ export const TaskExecutionService = {
    * Record that a held step was deliberately not carried out. The inventory stays unchanged; the
    * step's holds are released. Skipping never moves, places or changes the lifecycle of any object.
    */
-  async skipStep(actor: FirnUser, taskSlug: string, input: SkipStepInput): Promise<DisplayTaskStep> {
+  async skipStep(actor: FirnUser, taskSlug: string, input: SkipStepSchemaInput): Promise<DisplayTaskStep> {
     const { task, activation, step } = await loadExecutionContext(actor, taskSlug, input)
 
     const taskRef: TypedDocumentReference<TaskDocument> = { db: 'firn', id: task._id, type: 'task' }
@@ -142,7 +122,7 @@ export const TaskExecutionService = {
    * completed here. Each step is confirmed under a derived per-step operation id, so the physical
    * work is independently idempotent and a retried batch never double-applies it.
    */
-  async confirmBatch(actor: FirnUser, taskSlug: string, input: ConfirmBatchInput): Promise<DisplayTaskBatchResult> {
+  async confirmBatch(actor: FirnUser, taskSlug: string, input: ConfirmBatchSchemaInput): Promise<DisplayTaskBatchResult> {
     const task = await TaskService.requireReadableTask(actor, taskSlug)
     assertCanExecuteTask(task, actor)
     assertTaskExecutable(task)
@@ -225,7 +205,7 @@ async function confirm(
   task: TaskDocument,
   activation: TaskActivationDocument,
   step: TaskStepDocument,
-  input: ConfirmStepInput
+  input: ConfirmStepSchemaInput
 ): Promise<DisplayTaskStep> {
   if (step.state === 'completed' && step.outcome?.operationId === input.operationId) {
     return TaskStepService.toDisplayStep(step)
@@ -311,7 +291,7 @@ async function skip(
   actor: FirnUser,
   activation: TaskActivationDocument,
   step: TaskStepDocument,
-  input: SkipStepInput
+  input: SkipStepSchemaInput
 ): Promise<DisplayTaskStep> {
   if (step.state === 'skipped' && step.outcome?.operationId === input.operationId) {
     return TaskStepService.toDisplayStep(step)
@@ -337,7 +317,7 @@ async function confirmBatch(
   actor: FirnUser,
   task: TaskDocument,
   activationId: string,
-  input: ConfirmBatchInput
+  input: ConfirmBatchSchemaInput
 ): Promise<DisplayTaskBatchResult> {
   const results: DisplayTaskBatchStepResult[] = []
   const requested = input.stepIds ? new Set(input.stepIds) : null
@@ -372,7 +352,7 @@ async function confirmBatch(
       continue
     }
 
-    const stepInput: ConfirmStepInput = {
+    const stepInput: ConfirmStepSchemaInput = {
       stepId,
       activationId,
       // Derived, deterministic per-step id: idempotent across batch retries via the action receipt.

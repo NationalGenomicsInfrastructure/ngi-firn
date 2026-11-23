@@ -17,7 +17,6 @@ import { itemsRouter } from './items'
 import { barcodesRouter } from './barcodes'
 import { projectLinksRouter } from './projectLinks'
 import { searchRouter } from './search'
-// import { tasksRouter } from './tasks'
 // import { templatesRouter } from './templates'
 import { couchDB } from '../../../database/couchdb'
 import { ensureViews } from '../../../crud/views'
@@ -30,7 +29,6 @@ export const inventoryRouter = createTRPCRouter({
   barcodes: barcodesRouter,
   projectLinks: projectLinksRouter,
   search: searchRouter,
-  // tasks: tasksRouter,
   // templates: templatesRouter,
 
   getCounts: authedProcedure

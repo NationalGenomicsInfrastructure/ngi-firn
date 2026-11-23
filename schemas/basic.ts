@@ -27,3 +27,11 @@ export const documentReferenceMapSchema = z.record(
   z.string(),
   z.union([documentReferenceSchema, z.array(documentReferenceSchema)])
 )
+
+// ---------------------------------------------------------------------------
+// Kinds of entity a client-safe SerializedEntityRef (types/inventory.d.ts) can point at.
+// ---------------------------------------------------------------------------
+
+export const entityKindSchema = z.enum(['container', 'equipment', 'item', 'project', 'room', 'task', 'template'])
+
+export type EntityKind = z.infer<typeof entityKindSchema>

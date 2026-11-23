@@ -11,6 +11,8 @@
  */
 import { DateTime } from 'luxon'
 
+import { TASK_MAX_PAGE_SIZE, TASK_PAGE_SIZE } from '../../../schemas/tasks/common'
+
 import {
   resolveUserRefs,
   resolveUsersByFirnIds as resolveUsersByFirnIdsRaw,
@@ -32,9 +34,8 @@ import type {
 /* Timezone used for all due-date/urgency boundary math. */
 export const TASK_TIMEZONE = 'Europe/Stockholm'
 
-/* Bounded page size for task/step listings. */
-export const TASK_PAGE_SIZE = 50
-export const TASK_MAX_PAGE_SIZE = 200
+/* Bounded page size for task/step listings (defined with the listing schema it bounds). */
+export { TASK_MAX_PAGE_SIZE, TASK_PAGE_SIZE }
 
 /* Error thrown when a task/step cannot be found. */
 export class TaskNotFoundError extends Error {

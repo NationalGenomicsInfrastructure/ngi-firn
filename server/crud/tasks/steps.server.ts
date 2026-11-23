@@ -18,10 +18,12 @@ import type {
   DisplayTaskInventoryObjectRef,
   DisplayTaskStep,
   DisplayTaskStepPayload,
+  TaskDocument,
   TaskInventoryObjectRef,
   TaskStepDocument,
   TaskStepPayload
 } from '../../../types/productivity'
+import type { StepDefinitionSchemaInput, StepPayloadInput } from '../../../schemas/tasks/steps'
 import { ForbiddenError } from '../../auth/errors'
 import { assertCanManageTask } from '../../auth/taskPolicy'
 import { resolveUserRefs } from '../users.server'
@@ -29,9 +31,14 @@ import {
   TaskNotFoundError,
   TaskValidationError
 } from './common'
+import { liveObjectRef, resolveStepPayload } from './references.server'
 import { TaskService, inventoryKind, refToEntityStub } from './tasks.server'
 
-/** A step definition as supplied by a caller (server assigns id/order/state/version). */
+/*
+ * A step definition in its stored form, after the submitted references were resolved (server
+ * assigns id/order/state/version). Internal: clients submit StepDefinitionSchemaInput instead, and
+ * system callers that already hold the inventory documents (e.g. expiry reminders) insert this.
+ */
 export interface StepDefinitionInput {
   payload: TaskStepPayload
   dependsOn?: string[]
@@ -46,34 +53,6 @@ function assertTaskAcceptsStepEdits(task: { status: string }): void {
   if (task.status === 'cancelled' || task.status === 'completed') {
     throw new TaskValidationError(`Steps of a ${task.status} task can no longer be added or changed.`)
   }
-}
-
-/* Validate a single step payload's runtime shape (the compiler enforces it for typed callers). */
-function validatePayload(payload: TaskStepPayload): void {
-  if (!payload || typeof payload !== 'object') {
-    throw new TaskValidationError('A step payload is required.')
-  }
-  if (payload.kind === 'text') {
-    if (!payload.title?.trim()) throw new TaskValidationError('A text step requires a title.')
-    return
-  }
-  if (payload.kind === 'inventory') {
-    if (!payload.target?.ref?.id) throw new TaskValidationError('An inventory step requires a target reference.')
-    if (payload.action === 'dispose' && payload.targetKind !== 'item') {
-      throw new TaskValidationError('Only items can be disposed.')
-    }
-    if ((payload.action === 'move' || payload.action === 'locate')) {
-      if (!payload.destination?.parent?.ref?.id) {
-        throw new TaskValidationError(`A "${payload.action}" step requires a destination.`)
-      }
-      const destinationType: string | undefined = payload.destination.parent.ref.type
-      if (destinationType !== 'storageEquipment' && destinationType !== 'container') {
-        throw new TaskValidationError('A move destination must be a storage equipment or a container, not a room.')
-      }
-    }
-    return
-  }
-  throw new TaskValidationError('Unknown step payload kind.')
 }
 
 /*
@@ -143,12 +122,26 @@ export const TaskStepService = {
   // Structural edits (owner-only; planned steps only)
   // -------------------------------------------------------------------------
 
-  async addSteps(actor: FirnUser, slug: string, definitions: StepDefinitionInput[]): Promise<TaskStepDocument[]> {
+  /* Append steps submitted by a client: resolve their references, then insert them. */
+  async addSteps(actor: FirnUser, slug: string, definitions: StepDefinitionSchemaInput[]): Promise<TaskStepDocument[]> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
     assertTaskAcceptsStepEdits(task)
     if (definitions.length === 0) return []
 
+    const resolved: StepDefinitionInput[] = []
+    for (const def of definitions) {
+      resolved.push({ payload: await resolveStepPayload(def.payload), dependsOn: def.dependsOn })
+    }
+    return TaskStepService.insertSteps(task, resolved)
+  },
+
+  /*
+   * Insert steps in their stored form at the end of the checklist. Internal: performs no
+   * authorization, so callers must have checked it (addSteps) or act as the system.
+   */
+  async insertSteps(task: TaskDocument, definitions: StepDefinitionInput[]): Promise<TaskStepDocument[]> {
+    if (definitions.length === 0) return []
     const existing = await TaskService.getStepsForTask(task._id)
     const adjacency = new Map<string, string[]>()
     for (const step of existing) adjacency.set(step.stepId, step.dependsOn)
@@ -157,7 +150,6 @@ export const TaskStepService = {
     let order = existing.reduce((max, s) => Math.max(max, s.order), -1)
     const prepared: Array<Omit<TaskStepDocument, '_id' | '_rev'>> = []
     for (const def of definitions) {
-      validatePayload(def.payload)
       const stepId = generateStepId()
       order += 1
       const dependsOn = [...new Set(def.dependsOn ?? [])]
@@ -193,7 +185,7 @@ export const TaskStepService = {
     actor: FirnUser,
     slug: string,
     stepId: string,
-    patch: { payload?: TaskStepPayload, dependsOn?: string[] }
+    patch: { payload?: StepPayloadInput, dependsOn?: string[] }
   ): Promise<TaskStepDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
@@ -206,7 +198,7 @@ export const TaskStepService = {
     }
 
     const nextDependsOn = patch.dependsOn !== undefined ? [...new Set(patch.dependsOn)] : step.dependsOn
-    if (patch.payload) validatePayload(patch.payload)
+    const nextPayload = patch.payload ? await resolveStepPayload(patch.payload) : step.payload
 
     const adjacency = new Map<string, string[]>()
     for (const s of steps) adjacency.set(s.stepId, s.stepId === stepId ? nextDependsOn : s.dependsOn)
@@ -214,7 +206,7 @@ export const TaskStepService = {
 
     const updated: TaskStepDocument = {
       ...step,
-      payload: patch.payload ?? step.payload,
+      payload: nextPayload,
       dependsOn: nextDependsOn,
       definitionVersion: step.definitionVersion + 1,
       updatedAt: DateTime.now().toISO()
@@ -310,38 +302,7 @@ export const TaskStepService = {
   },
 
   // Re-exported for callers that already hold a task document.
-  _internal: { validateDependencyGraph, validatePayload }
-}
-
-const PATH_SEPARATOR = ' › '
-const MAX_PATH_DEPTH = 12
-
-interface LocatedDoc {
-  _id: string
-  type: string
-  slug: string
-  name: string
-  parent?: { id?: string } | null
-}
-
-/*
- * Refresh an object reference's display fields from the current inventory: slug, name and the path
- * of its ancestors (rooms excluded, as in the stored labels). `includeSelf` appends the object itself,
- * which is how a destination is labelled. An object that no longer exists keeps its stored snapshot.
- */
-async function liveObjectRef<T extends TaskInventoryObjectRef>(ref: T, includeSelf: boolean): Promise<T> {
-  const doc = await couchDB.getDocument<LocatedDoc>(ref.ref.id)
-  if (!doc) return ref
-  const names: string[] = []
-  let parentId = doc.parent?.id
-  for (let depth = 0; parentId && depth < MAX_PATH_DEPTH; depth++) {
-    const parent = await couchDB.getDocument<LocatedDoc>(parentId)
-    if (!parent || parent.type === 'room') break
-    names.unshift(parent.name)
-    parentId = parent.parent?.id
-  }
-  if (includeSelf) names.push(doc.name)
-  return { ...ref, slug: doc.slug, name: doc.name, pathLabel: names.length > 0 ? names.join(PATH_SEPARATOR) : ref.pathLabel }
+  _internal: { validateDependencyGraph }
 }
 
 /* A step payload with its inventory references refreshed from the current inventory. */

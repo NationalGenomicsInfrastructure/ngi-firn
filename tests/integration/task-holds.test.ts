@@ -21,7 +21,8 @@ import { TaskValidationError } from '../../server/crud/tasks/common'
 import { operationDocId } from '../../server/crud/tasks/operations.server'
 import type { Container, GridPosition, InventoryItem, StorageEquipment } from '../../types/inventory'
 import type { FirnUser } from '../../types/auth'
-import type { TaskStepDocument, TaskStepPayload } from '../../types/productivity'
+import type { TaskStepDocument } from '../../types/productivity'
+import { type StepPayloadInput, stepPayloadInputSchema } from '../../schemas/tasks/steps'
 import { cleanupFixture, setupBaseFixture } from './fixtures'
 
 const createdIds: string[] = []
@@ -71,36 +72,16 @@ async function makeGridBox(name: string, rows: number, columns: number): Promise
   return box
 }
 
-function targetRef(item: InventoryItem) {
-  return {
-    ref: { db: 'firn', id: item._id, type: 'inventoryItem' } as const,
-    slug: item.slug,
-    name: item.name,
-    pathLabel: 'HOLDTEST Freezer › HOLDTEST Source'
-  }
+function alterStep(item: InventoryItem, action: 'checkout' | 'return'): StepPayloadInput {
+  return { kind: 'inventory', action, target: { kind: 'item', slug: item.slug } }
 }
 
-function alterStep(item: InventoryItem, action: 'checkout' | 'return'): TaskStepPayload {
-  return { kind: 'inventory', action, targetKind: 'item', target: targetRef(item), expectedStatus: null, notes: null }
-}
-
-function moveStep(item: InventoryItem, dest: Container, position: GridPosition | null = null): TaskStepPayload {
+function moveStep(item: InventoryItem, dest: Container, position: GridPosition | null = null): StepPayloadInput {
   return {
     kind: 'inventory',
     action: 'move',
-    targetKind: 'item',
-    target: targetRef(item),
-    destination: {
-      parent: {
-        ref: { db: 'firn', id: dest._id, type: 'container' },
-        slug: dest.slug,
-        name: dest.name,
-        pathLabel: `HOLDTEST Freezer › ${dest.name}`
-      },
-      position
-    },
-    expectedStatus: null,
-    notes: null
+    target: { kind: 'item', slug: item.slug },
+    destination: { kind: 'container', slug: dest.slug, position }
   }
 }
 
@@ -113,7 +94,7 @@ interface PlannedTask {
 /* Create and publish an owner-owned task with the given steps, without activating anything. */
 async function makePlannedTask(
   title: string,
-  payloads: TaskStepPayload[],
+  payloads: StepPayloadInput[],
   dependencies: [number, number][] = []
 ): Promise<PlannedTask> {
   const task = await TaskService.createTask(owner, { title })
@@ -287,12 +268,14 @@ describe('destinations are validated at activation', () => {
     const task = await TaskService.createTask(owner, { title: 'HOLDTEST room destination' })
     createdIds.push(task._id)
     createdTaskIds.push(task._id)
-    const toRoom = moveStep(vial, grid) as Extract<TaskStepPayload, { action: 'move' }>
+    const room = await couchDB.getDocument<{ slug: string }>(roomId)
     const roomPayload = {
-      ...toRoom,
-      destination: { ...toRoom.destination, parent: { ...toRoom.destination.parent, ref: { db: 'firn', id: roomId, type: 'room' } } }
-    } as unknown as TaskStepPayload
-    await expect(TaskStepService.addSteps(owner, task.slug, [{ payload: roomPayload }]))
+      ...moveStep(vial, grid),
+      destination: { kind: 'room', slug: room!.slug, position: null }
+    }
+    // The wire schema refuses it, and the service refuses a typed caller that bypasses the schema.
+    expect(stepPayloadInputSchema.safeParse(roomPayload).success).toBe(false)
+    await expect(TaskStepService.addSteps(owner, task.slug, [{ payload: roomPayload as unknown as StepPayloadInput }]))
       .rejects.toBeInstanceOf(TaskValidationError)
   })
 })

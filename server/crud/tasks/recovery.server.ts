@@ -26,6 +26,11 @@ import type {
   TaskStepDocument,
   TaskStepResult
 } from '../../../types/productivity'
+import type {
+  CancelActivationSchemaInput,
+  HandoverSchemaInput,
+  ReconcileSchemaInput
+} from '../../../schemas/tasks/execution'
 import { assertCanRecoverActivation, assertIsActivationExecutor, canBeExecutor } from '../../auth/taskPolicy'
 import { acquireTargetHold, consumeTargetHold } from '../inventory/reservations.server'
 import { toUserRef } from '../users.server'
@@ -43,45 +48,9 @@ import { invalidateStepsForDeletedResource } from './invalidation.server'
 import { TaskConflictError, TaskNotFoundError, TaskValidationError, resolveUsersByFirnIds } from './common'
 import { runOperation } from './operations.server'
 
-/* Per-step declaration of what physically happened, required to cancel an activation. */
-export interface CancelStepDeclaration {
-  stepId: string
-  /* True when the physical work was already carried out outside the confirm flow. */
-  physicallyPerformed: boolean
-}
-
-export interface CancelActivationInput {
-  activationId: string
-  operationId: string
-  reason: string
-  declarations: CancelStepDeclaration[]
-}
-
-export interface HandoverInput {
-  activationId: string
-  operationId: string
-  /* Public firnId of the colleague who will take over; must be responsible on the task. */
-  toExecutorFirnId: string
-  /* The current executor's explicit acknowledgement that physical progress is reconciled. */
-  acknowledged: boolean
-}
-
-/* Per-step reconciliation decision for a needs_reconciliation activation. */
-export interface ReconcileStepResolution {
-  stepId: string
-  /* The true terminal outcome: the work was completed (already done) or was not done (skipped). */
-  result: 'completed' | 'skipped'
-}
-
-export interface ReconcileInput {
-  activationId: string
-  operationId: string
-  resolutions: ReconcileStepResolution[]
-}
-
 export const TaskRecoveryService = {
   /* Abandon an activation with an explicit per-step declaration of what physically happened. */
-  async cancelActivation(actor: FirnUser, taskSlug: string, input: CancelActivationInput): Promise<DisplayTaskActivation> {
+  async cancelActivation(actor: FirnUser, taskSlug: string, input: CancelActivationSchemaInput): Promise<DisplayTaskActivation> {
     const { task, activation } = await loadRecoveryContext(actor, taskSlug, input.activationId, { executorOrOwner: true })
     if (!input.reason?.trim()) throw new TaskValidationError('A cancellation reason is required.')
 
@@ -101,7 +70,7 @@ export const TaskRecoveryService = {
   },
 
   /* Transfer an active activation to another responsible colleague. Only the current executor may. */
-  async handover(actor: FirnUser, taskSlug: string, input: HandoverInput): Promise<DisplayTaskActivation> {
+  async handover(actor: FirnUser, taskSlug: string, input: HandoverSchemaInput): Promise<DisplayTaskActivation> {
     const { task, activation } = await loadRecoveryContext(actor, taskSlug, input.activationId, { executorOnly: true })
     if (!input.acknowledged) {
       throw new TaskValidationError('Handover requires the current executor to acknowledge that progress is reconciled.')
@@ -122,7 +91,7 @@ export const TaskRecoveryService = {
   },
 
   /* Resolve a needs_reconciliation activation step by step, releasing its retained holds. */
-  async reconcile(actor: FirnUser, taskSlug: string, input: ReconcileInput): Promise<DisplayTaskActivation> {
+  async reconcile(actor: FirnUser, taskSlug: string, input: ReconcileSchemaInput): Promise<DisplayTaskActivation> {
     const { task, activation } = await loadRecoveryContext(actor, taskSlug, input.activationId, { executorOrOwner: true })
 
     const { taskRef, activationRef } = buildRefs(task, activation)
@@ -186,7 +155,7 @@ async function cancelActivation(
   actor: FirnUser,
   task: TaskDocument,
   activationId: string,
-  input: CancelActivationInput
+  input: CancelActivationSchemaInput
 ): Promise<DisplayTaskActivation> {
   const activation = await findActivation(task._id, activationId)
   if (!activation) throw new TaskNotFoundError()
@@ -256,7 +225,7 @@ async function cancelActivation(
 async function handover(
   task: TaskDocument,
   activationId: string,
-  input: HandoverInput
+  input: HandoverSchemaInput
 ): Promise<DisplayTaskActivation> {
   const activation = await findActivation(task._id, activationId)
   if (!activation) throw new TaskNotFoundError()
@@ -309,7 +278,7 @@ async function reconcile(
   actor: FirnUser,
   task: TaskDocument,
   activationId: string,
-  input: ReconcileInput
+  input: ReconcileSchemaInput
 ): Promise<DisplayTaskActivation> {
   const activation = await findActivation(task._id, activationId)
   if (!activation) throw new TaskNotFoundError()

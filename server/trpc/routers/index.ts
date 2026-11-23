@@ -4,6 +4,7 @@ import { usersRouter } from './users'
 import { tokensRouter } from './tokens'
 import { projectsRouter } from './projects'
 import { inventoryRouter } from './inventory'
+import { tasksRouter } from './tasks'
 
 export const firnRouter = createTRPCRouter({
   // test endpoint for tRPC
@@ -21,7 +22,8 @@ export const firnRouter = createTRPCRouter({
   users: usersRouter,
   tokens: tokensRouter,
   projects: projectsRouter,
-  inventory: inventoryRouter
+  inventory: inventoryRouter,
+  tasks: tasksRouter
 })
 
 // export type definition of API

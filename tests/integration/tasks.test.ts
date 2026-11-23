@@ -23,7 +23,7 @@ import { TaskService } from '../../server/crud/tasks/tasks.server'
 import { TaskStepService } from '../../server/crud/tasks/steps.server'
 import { TaskConflictError, TaskValidationError } from '../../server/crud/tasks/common'
 import { AuthorizationError, ForbiddenError } from '../../server/auth/errors'
-import type { TaskStepPayload } from '../../types/productivity'
+import type { StepPayloadInput } from '../../schemas/tasks/steps'
 import type { FirnUser } from '../../types/auth'
 import type { Container, InventoryItem } from '../../types/inventory'
 import { cleanupFixture, setupBaseFixture } from './fixtures'
@@ -65,24 +65,12 @@ async function addSteps(actor: FirnUser, slug: string, definitions: Parameters<t
   return steps
 }
 
-function textStep(title: string): TaskStepPayload {
-  return { kind: 'text', title, body: null, contextRefs: null }
+function textStep(title: string): StepPayloadInput {
+  return { kind: 'text', title }
 }
 
-function checkoutStep(target: InventoryItem): TaskStepPayload {
-  return {
-    kind: 'inventory',
-    action: 'checkout',
-    targetKind: 'item',
-    target: {
-      ref: { db: 'firn', id: target._id, type: 'inventoryItem' },
-      slug: target.slug,
-      name: target.name,
-      pathLabel: 'BCTEST Freezer › BCTEST Box'
-    },
-    expectedStatus: null,
-    notes: null
-  }
+function checkoutStep(target: InventoryItem): StepPayloadInput {
+  return { kind: 'inventory', action: 'checkout', target: { kind: 'item', slug: target.slug } }
 }
 
 beforeAll(async () => {

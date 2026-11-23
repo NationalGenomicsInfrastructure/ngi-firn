@@ -30,7 +30,7 @@ import { AuthorizationError, ForbiddenError } from '../../server/auth/errors'
 import { operationDocId } from '../../server/crud/tasks/operations.server'
 import type { Container, InventoryItem, StorageEquipment } from '../../types/inventory'
 import type { FirnUser } from '../../types/auth'
-import type { TaskStepPayload } from '../../types/productivity'
+import type { StepPayloadInput } from '../../schemas/tasks/steps'
 import { cleanupFixture, setupBaseFixture } from './fixtures'
 
 const createdIds: string[] = []
@@ -75,44 +75,16 @@ async function makeVial(name: string): Promise<InventoryItem> {
   return vial
 }
 
-function checkoutStep(item: InventoryItem): TaskStepPayload {
-  return {
-    kind: 'inventory',
-    action: 'checkout',
-    targetKind: 'item',
-    target: {
-      ref: { db: 'firn', id: item._id, type: 'inventoryItem' },
-      slug: item.slug,
-      name: item.name,
-      pathLabel: 'BCTEST Freezer › BCTEST Box A'
-    },
-    expectedStatus: null,
-    notes: null
-  }
+function checkoutStep(item: InventoryItem): StepPayloadInput {
+  return { kind: 'inventory', action: 'checkout', target: { kind: 'item', slug: item.slug } }
 }
 
-function moveStep(item: InventoryItem, dest: Container): TaskStepPayload {
+function moveStep(item: InventoryItem, dest: Container): StepPayloadInput {
   return {
     kind: 'inventory',
     action: 'move',
-    targetKind: 'item',
-    target: {
-      ref: { db: 'firn', id: item._id, type: 'inventoryItem' },
-      slug: item.slug,
-      name: item.name,
-      pathLabel: 'BCTEST Freezer › BCTEST Box A'
-    },
-    destination: {
-      parent: {
-        ref: { db: 'firn', id: dest._id, type: 'container' },
-        slug: dest.slug,
-        name: dest.name,
-        pathLabel: 'BCTEST Freezer › BCTEST Box B'
-      },
-      position: null
-    },
-    expectedStatus: null,
-    notes: null
+    target: { kind: 'item', slug: item.slug },
+    destination: { kind: 'container', slug: dest.slug, position: null }
   }
 }
 
@@ -130,7 +102,7 @@ interface ActiveTask {
  */
 async function makeActiveTask(
   title: string,
-  payloads: TaskStepPayload[],
+  payloads: StepPayloadInput[],
   configure?: (slug: string, steps: ActiveTask['steps']) => Promise<void>
 ): Promise<ActiveTask> {
   const task = await TaskService.createTask(owner, { title })

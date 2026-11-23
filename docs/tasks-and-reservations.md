@@ -24,9 +24,27 @@ Operation documents have the deterministic id `task-op:<operationId>`, which mak
 
 An operation document has only three states: `completed` (a retry replays the stored result), `failed` (a retry runs the body again) and `in_progress` (a retry is refused until the run goes stale). It does not record progress markers. A resumed body works out how far it got from the documents it changes (receipt, hold ledger, step state), because each of those is written together with its change. A marker written in a separate step can fall behind after a crash. Reconciliation belongs to the activation and its steps, not to the operation.
 
+## Schemas, wire format and the router
+
+Task enums and procedure inputs are defined once, as Zod schemas in `schemas/tasks/`. TypeScript types are derived with `z.infer` and re-exported from `types/productivity.d.ts`, so never add a parallel union or input interface there. Stored documents, the `Display*` projections and enums the client never sees (operation, reservation and reminder states) remain static types, because nothing validates them.
+
+The wire format uses public identifiers only: inventory by kind + slug, projects by LIMS project id, tasks by slug. `server/crud/tasks/references.server.ts` is the one place that resolves them to stored references and captures the display snapshot (name, path) of a planned step. Services take the inferred schema types. System callers that already hold stored payloads use `TaskStepService.insertSteps`.
+
+The `tasks` tRPC router (`server/trpc/routers/tasks/`) builds on `taskProcedure`. It requires a signed-in Firn user and maps domain errors to tRPC codes by their `name`:
+
+| Error | Code |
+|---|---|
+| `TaskNotFoundError` | `NOT_FOUND` |
+| `AuthorizationError` | `NOT_FOUND`, so a private task never reveals that it exists |
+| `ForbiddenError` | `FORBIDDEN` |
+| `TaskValidationError` | `BAD_REQUEST` |
+| `TaskConflictError`, `ReservationConflictError` | `CONFLICT` |
+
+A new domain error class needs a `name` and an entry in that map, or it reaches the client as a 500.
+
 ## Module boundaries
 
-Server modules under `server/crud/inventory` must not import the task services (`tasks.server.ts`, `steps.server.ts`, `execution.server.ts`, and so on). They may import `server/crud/tasks/invalidation.server.ts`. That module and `stepState.server.ts` deliberately avoid importing the inventory services, which is what keeps the dependency graph free of cycles. Keep it that way when adding imports to either.
+Server modules under `server/crud/inventory` must not import the task services (`tasks.server.ts`, `steps.server.ts`, `execution.server.ts`, and so on). They may import `server/crud/tasks/invalidation.server.ts`. That module and `stepState.server.ts` deliberately avoid importing the inventory services, which is what keeps the dependency graph free of cycles. Keep it that way when adding imports to either, and never import `references.server.ts` from them, because it reads the inventory services.
 
 ## Authorization
 

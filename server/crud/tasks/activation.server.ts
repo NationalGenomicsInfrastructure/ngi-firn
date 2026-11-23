@@ -24,6 +24,7 @@ import type {
   TaskReservationKind,
   TaskStepDocument
 } from '../../../types/productivity'
+import type { ActivateStepsSchemaInput } from '../../../schemas/tasks/execution'
 import { assertCanExecuteTask } from '../../auth/taskPolicy'
 import {
   type CapacityChildKind,
@@ -40,16 +41,9 @@ import { invalidateStepsForDeletedResource } from './invalidation.server'
 import { resolveUserRefs, toUserRef } from '../users.server'
 import { TaskService } from './tasks.server'
 import { TaskStepService } from './steps.server'
-import { TaskConflictError, TaskValidationError } from './common'
+import { TaskConflictError, TaskNotFoundError, TaskValidationError } from './common'
+import { loadActivationsForTask } from './stepState.server'
 import { runOperation } from './operations.server'
-
-/** Input to activate a selected subset of a task's steps. */
-export interface ActivateStepsInput {
-  /* Public stepIds to activate; their unresolved prerequisite closure is included automatically. */
-  stepIds: string[]
-  /* Stable idempotency key for this activation attempt. */
-  operationId: string
-}
 
 /* A hold to acquire for the activation, resolved before any resource is written. */
 interface PlannedClaim {
@@ -91,7 +85,7 @@ export const TaskActivationService = {
   async activateSteps(
     actor: FirnUser,
     taskSlug: string,
-    input: ActivateStepsInput
+    input: ActivateStepsSchemaInput
   ): Promise<DisplayTaskActivation> {
     const task = await TaskService.requireReadableTask(actor, taskSlug)
     assertCanExecuteTask(task, actor)
@@ -107,6 +101,22 @@ export const TaskActivationService = {
       payload: { taskId: task._id, stepIds: [...input.stepIds].sort(), editVersion: task.editVersion },
       execute: () => activate(task, actor, input.stepIds, input.operationId, taskRef)
     })
+  },
+
+  /* Every activation of a readable task, oldest first. */
+  async listActivations(actor: FirnUser, taskSlug: string): Promise<DisplayTaskActivation[]> {
+    const task = await TaskService.requireReadableTask(actor, taskSlug)
+    const activations = (await loadActivationsForTask(task._id))
+      .sort((a, b) => a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0)
+    return Promise.all(activations.map(activation => toDisplayActivation(activation, task.slug)))
+  },
+
+  /* One activation of a readable task, addressed by its public activationId. */
+  async getActivation(actor: FirnUser, taskSlug: string, activationId: string): Promise<DisplayTaskActivation> {
+    const task = await TaskService.requireReadableTask(actor, taskSlug)
+    const activation = await findActivation(task._id, activationId)
+    if (!activation) throw new TaskNotFoundError('Activation not found.')
+    return toDisplayActivation(activation, task.slug)
   }
 }
 

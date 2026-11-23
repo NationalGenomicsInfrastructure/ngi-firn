@@ -309,6 +309,9 @@ Task steps, activations and inventory holds interact; see `docs/tasks-and-reserv
 - Operation documents have the id `task-op:<operationId>`, so a workflow body must be resume-safe. Physical actions are deduplicated by the inventory action receipt (activation + step), not by operation id.
 - `server/crud/inventory` must not import the task services. It may import `server/crud/tasks/invalidation.server.ts`, which (with `stepState.server.ts`) avoids importing the inventory services; this prevents import cycles.
 - Permission checks for tasks belong in `server/auth/taskPolicy.ts`, not inline in services.
+- Task enums and procedure inputs are defined once, as Zod schemas in `schemas/tasks/`. Their types are `z.infer` (re-exported from `types/productivity.d.ts`); never add a parallel union or input interface. Only stored documents, `Display*` projections and backend-internal enums stay static.
+- The task wire format addresses inventory by kind + slug and projects by LIMS project id. Only `server/crud/tasks/references.server.ts` turns them into stored references; services take the inferred schema types.
+- Task procedures use `taskProcedure` (`server/trpc/routers/tasks/procedure.ts`), which maps domain errors to tRPC codes by error `name`. A new domain error class needs a `name` and an entry there, or it surfaces as a 500.
 
 ### Project search pitfalls (Meilisearch)
 

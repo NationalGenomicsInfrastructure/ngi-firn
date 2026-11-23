@@ -1,7 +1,22 @@
 import type { BaseDocument } from '../server/database/couchdb'
 import type { FirnUser } from './auth'
 import type { DocumentReference, TypedDocumentReference } from './references'
-import type { InventoryActionType, InventoryStatusType } from '../schemas/inventory/metadata'
+import type { InventoryStatusType } from '../schemas/inventory/metadata'
+import type {
+  DisplayTaskViewerRole,
+  TaskActivationState,
+  TaskBatchStepStatus,
+  TaskExecutionSource,
+  TaskImportance,
+  TaskInventoryAction,
+  TaskQuadrant,
+  TaskReconcileResult,
+  TaskStatus,
+  TaskStepResult,
+  TaskStepState,
+  TaskUrgency,
+  TaskVisibility
+} from '../schemas/tasks/enums'
 import type {
   Container,
   GridPosition,
@@ -51,57 +66,33 @@ export type DisplayTaskActor
   = | { kind: 'user', user: SerializedUserRef }
     | { kind: 'system', source: string }
 
-/* How the executor reported a step outcome. */
-export type TaskExecutionSource = 'scanner' | 'paper' | 'online'
+// ---------------------------------------------------------------------------------------------
+// Client-facing enums
+// ---------------------------------------------------------------------------------------------
+//
+// Defined once as Zod enums in schemas/tasks/enums.ts (the client needs their value lists at
+// runtime) and re-exported here so type-only importers keep a single import site. Never add a
+// parallel union to this file.
+
+export type {
+  DisplayTaskViewerRole,
+  TaskActivationState,
+  TaskBatchStepStatus,
+  TaskExecutionSource,
+  TaskImportance,
+  TaskInventoryAction,
+  TaskQuadrant,
+  TaskReconcileResult,
+  TaskStatus,
+  TaskStepResult,
+  TaskStepState,
+  TaskUrgency,
+  TaskVisibility
+}
 
 // ---------------------------------------------------------------------------------------------
-// Task-level enums
+// Step payloads
 // ---------------------------------------------------------------------------------------------
-
-/* Who may read a task. `public` means every approved application user, not anonymous internet. */
-export type TaskVisibility = 'private' | 'public'
-
-/*
- * Aggregate task lifecycle. `open` covers preliminary, partly activated and partly resolved work;
- * per-step and per-activation state is tracked on the respective documents, never inferred from
- * this field. `archivedAt` is an independent axis, not a status.
- */
-export type TaskStatus = 'draft' | 'open' | 'completed' | 'cancelled'
-
-/* Task-level importance axis of the two-dimensional priority model. */
-export type TaskImportance = 'important' | 'ordinary'
-
-/* Computed urgency axis: a task is urgent when due today or overdue in Europe/Stockholm. */
-export type TaskUrgency = 'urgent' | 'not_urgent'
-
-/* The four priority quadrants derived from importance × urgency. */
-export type TaskQuadrant
-  = | 'important_urgent'
-    | 'important_not_urgent'
-    | 'ordinary_urgent'
-    | 'ordinary_not_urgent'
-
-// ---------------------------------------------------------------------------------------------
-// Step lifecycle and payloads
-// ---------------------------------------------------------------------------------------------
-
-/*
- * Per-step lifecycle. A step is `planned` until an activation acquires its holds (`held`), is
- * `executing` while a confirmation operation runs, then reaches a terminal `completed`/`skipped`/
- * `cancelled`. A failed or ambiguous operation enters `needs_reconciliation` and keeps its
- * protective holds until a human resolves it.
- */
-export type TaskStepState
-  = | 'planned'
-    | 'held'
-    | 'executing'
-    | 'completed'
-    | 'skipped'
-    | 'cancelled'
-    | 'needs_reconciliation'
-
-/* Terminal result recorded for a resolved step. */
-export type TaskStepResult = 'completed' | 'skipped' | 'cancelled' | 'failed'
 
 /*
  * A frozen human-readable reference to an inventory object. `ref` is the authoritative internal
@@ -297,15 +288,6 @@ export interface TaskStepDocument extends BaseDocument {
   updatedAt: string
 }
 
-/* Lifecycle of an activation (a frozen, held unit of selected executable work). */
-export type TaskActivationState
-  = | 'preparing'
-    | 'active'
-    | 'finished'
-    | 'cancelling'
-    | 'cancelled'
-    | 'needs_reconciliation'
-
 /* Kind of task-owned reservation claim recorded against an inventory resource document. */
 export type TaskReservationKind = 'target' | 'capacity' | 'gridCell'
 
@@ -474,7 +456,7 @@ export interface DisplayTaskInventoryDestination {
 /* Client-safe inventory step payload (references enriched to SerializedEntityRef). */
 export type DisplayTaskInventoryStepPayload = {
   kind: 'inventory'
-  action: InventoryActionType
+  action: TaskInventoryAction
   targetKind: 'container' | 'item'
   target: DisplayTaskInventoryObjectRef
   destination: DisplayTaskInventoryDestination | null
@@ -515,9 +497,6 @@ export interface DisplayTaskStep {
   createdAt: string
   updatedAt: string
 }
-
-/* Role of the requesting user relative to a task, used to drive client affordances. */
-export type DisplayTaskViewerRole = 'owner' | 'responsible' | 'viewer' | 'public'
 
 /* Client-safe projection of a task aggregate (no CouchDB _id, no raw user refs). */
 export interface DisplayTask {
@@ -560,19 +539,6 @@ export interface DisplayTaskActivation {
   updatedAt: string
   finishedAt: string | null
 }
-
-/*
- * Per-step disposition returned by a batch confirmation. `already_resolved` covers a step that was
- * terminal before the batch ran; `blocked` covers an unmet dependency; `failed`/`needs_reconciliation`
- * surface execution errors without aborting the remaining steps.
- */
-export type TaskBatchStepStatus
-  = | 'completed'
-    | 'skipped'
-    | 'already_resolved'
-    | 'blocked'
-    | 'failed'
-    | 'needs_reconciliation'
 
 export interface DisplayTaskBatchStepResult {
   stepId: string

@@ -14,13 +14,19 @@ import { couchDB, generateCouchDocId, generateSlug, isCouchConflict } from '../.
 import type { FirnUser } from '../../../types/auth'
 import type { DocumentReference, TypedDocumentReference } from '../../../types/references'
 import type { Container, InventoryItem, Room, SerializedEntityRef, StorageEquipment } from '../../../types/inventory'
+import type { DisplayTask, TaskDocument, TaskStepDocument } from '../../../types/productivity'
+import type { TaskInventoryContextKind, TaskListOptions } from '../../../schemas/tasks/common'
 import type {
-  DisplayTask,
-  TaskDocument,
-  TaskImportance,
-  TaskStepDocument,
-  TaskVisibility
-} from '../../../types/productivity'
+  CreateTaskSchemaInput,
+  SetSharingSchemaInput,
+  UpdateTaskMetadataSchemaInput
+} from '../../../schemas/tasks/tasks'
+import {
+  resolveInventoryContextRefs,
+  resolveInventoryDocId,
+  resolveProjectDocId,
+  resolveProjectRefs
+} from './references.server'
 import { ForbiddenError } from '../../auth/errors'
 import { loadActivationsForTask } from './stepState.server'
 import {
@@ -51,43 +57,6 @@ import {
 
 /* Inventory reference shape accepted for task-level context links. */
 type TaskInventoryRef = TypedDocumentReference<Container | InventoryItem | StorageEquipment | Room>
-
-/** Input to create a task. The creator becomes the managing owner; status starts as 'draft'. */
-export interface CreateTaskInput {
-  title: string
-  description?: string | null
-  visibility?: TaskVisibility
-  importance?: TaskImportance
-  dueDate?: string | null
-  responsibleFirnIds?: string[]
-  viewerFirnIds?: string[]
-  projectRefs?: DocumentReference[] | null
-  inventoryRefs?: TaskInventoryRef[] | null
-}
-
-/** Patch for task metadata; only provided fields change. */
-export interface UpdateTaskMetadataInput {
-  title?: string
-  description?: string | null
-  importance?: TaskImportance
-  dueDate?: string | null
-  /** When provided, the update fails with a conflict if the stored editVersion differs. */
-  expectedEditVersion?: number
-}
-
-/** Sharing patch; omitted fields are left unchanged. */
-export interface SetSharingInput {
-  visibility?: TaskVisibility
-  responsibleFirnIds?: string[]
-  viewerFirnIds?: string[]
-}
-
-/** Options for list/pool/by-link queries. */
-export interface TaskListOptions {
-  limit?: number
-  offset?: number
-  includeArchived?: boolean
-}
 
 export interface TaskListResult {
   tasks: DisplayTask[]
@@ -167,7 +136,7 @@ export const TaskService = {
   // Creation and retrieval
   // -------------------------------------------------------------------------
 
-  async createTask(actor: FirnUser, input: CreateTaskInput): Promise<TaskDocument> {
+  async createTask(actor: FirnUser, input: CreateTaskSchemaInput): Promise<TaskDocument> {
     if (!isActiveApprovedUser(actor)) {
       throw new ForbiddenError('Only approved, active users can create tasks.')
     }
@@ -176,6 +145,8 @@ export const TaskService = {
 
     const responsibleUsers = (await resolveUsersByFirnIds(input.responsibleFirnIds ?? [])).map(toUserRef)
     const viewers = (await resolveUsersByFirnIds(input.viewerFirnIds ?? [])).map(toUserRef)
+    const projectRefs = await resolveProjectRefs(input.projectIds ?? [])
+    const inventoryRefs = await resolveInventoryContextRefs(input.inventoryRefs ?? [])
 
     const now = DateTime.now().toISO()
     const doc: Omit<TaskDocument, '_id' | '_rev'> = {
@@ -192,8 +163,8 @@ export const TaskService = {
       status: 'draft',
       importance: input.importance ?? 'ordinary',
       dueDate: input.dueDate ?? null,
-      projectRefs: dedupeProjectRefs(input.projectRefs),
-      inventoryRefs: dedupeInventoryRefs(input.inventoryRefs),
+      projectRefs: dedupeProjectRefs(projectRefs),
+      inventoryRefs: dedupeInventoryRefs(inventoryRefs),
       cleanupScope: null,
       editVersion: 1,
       createdAt: now,
@@ -252,7 +223,7 @@ export const TaskService = {
   // Metadata, sharing, lifecycle
   // -------------------------------------------------------------------------
 
-  async updateMetadata(actor: FirnUser, slug: string, patch: UpdateTaskMetadataInput): Promise<TaskDocument> {
+  async updateMetadata(actor: FirnUser, slug: string, patch: UpdateTaskMetadataSchemaInput): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
     if (patch.expectedEditVersion !== undefined && patch.expectedEditVersion !== task.editVersion) {
@@ -273,7 +244,7 @@ export const TaskService = {
     return TaskService.writeWithCas(task, updated)
   },
 
-  async setSharing(actor: FirnUser, slug: string, input: SetSharingInput): Promise<TaskDocument> {
+  async setSharing(actor: FirnUser, slug: string, input: SetSharingSchemaInput): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
 
@@ -462,12 +433,19 @@ export const TaskService = {
     return TaskService.paginateAndProject(actor, docs, options)
   },
 
-  async listByProject(actor: FirnUser, projectDocId: string, options: TaskListOptions = {}): Promise<TaskListResult> {
-    return TaskService.listByLinkView(actor, 'by_project', projectDocId, options)
+  /* Tasks linked to a project, addressed by its LIMS project id. */
+  async listByProject(actor: FirnUser, projectId: string, options: TaskListOptions = {}): Promise<TaskListResult> {
+    return TaskService.listByLinkView(actor, 'by_project', await resolveProjectDocId(projectId), options)
   },
 
-  async listByInventory(actor: FirnUser, inventoryDocId: string, options: TaskListOptions = {}): Promise<TaskListResult> {
-    return TaskService.listByLinkView(actor, 'by_inventory', inventoryDocId, options)
+  /* Tasks linked to an inventory object, addressed by its kind and slug. */
+  async listByInventory(
+    actor: FirnUser,
+    kind: TaskInventoryContextKind,
+    slug: string,
+    options: TaskListOptions = {}
+  ): Promise<TaskListResult> {
+    return TaskService.listByLinkView(actor, 'by_inventory', await resolveInventoryDocId(kind, slug), options)
   },
 
   async listByLinkView(

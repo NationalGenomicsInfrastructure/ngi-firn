@@ -7,6 +7,7 @@ import type { ItemType } from '../schemas/inventory/items'
 import type { TemperatureCategory } from '../schemas/inventory/temperature'
 import type { InventoryActionType, InventoryClassificationType, InventoryFlagType, InventoryStatusType } from '../schemas/inventory/metadata'
 import type { RoomType, SciLifeLabBuilding } from '../schemas/inventory/rooms'
+import type { EntityKind } from '../schemas/basic'
 
 /*
  * Inventory Types - Table of Contents
@@ -151,7 +152,7 @@ export interface InventoryTrackedField {
 /*
  *  Human-readable parent reference — replaces the TypedDocumentReference that held a CouchDB _id.
  */
-export type SerializedEntityRef = { slug: string, name: string, kind: 'container' | 'equipment' | 'item' | 'project' | 'room' | 'task' | 'template' }
+export type SerializedEntityRef = { slug: string, name: string, kind: EntityKind }
 
 /*
  * PHYSICAL HOLDS (task reservation state)
@@ -564,4 +565,3 @@ export interface DisplayInventoryItem {
   createdAt: string
   updatedAt: string
 }
-
