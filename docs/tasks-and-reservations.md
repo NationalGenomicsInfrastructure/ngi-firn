@@ -42,6 +42,20 @@ The `tasks` tRPC router (`server/trpc/routers/tasks/`) builds on `taskProcedure`
 
 A new domain error class needs a `name` and an entry in that map, or it reaches the client as a 500.
 
+## Client cache (Pinia Colada)
+
+Task queries live in `app/utils/queries/tasks/` and task mutations in `app/utils/mutations/tasks/`. They mirror the router split and share one key factory, `TASKS_QUERY_KEYS`. All listings sit under `['tasks', 'list']`, and a task's steps and activations sit under its `detail(slug)` key. Invalidating a key refreshes the keys below it, but not the keys above it. A step or activation mutation must therefore invalidate `detail(slug)` and `lists()` itself (`invalidateTaskWork`), because a task's progress and status are derived from its steps.
+
+Task work changes the inventory, so the workflow mutations refresh inventory caches through the helpers in `app/utils/mutations/tasks/cache.ts`:
+
+- **Activate and skip** change holds only. `invalidateHoldSensitive` refreshes capacity, grid occupancy, move targets and accepted children, all of which subtract held claims. Inventory details stay as they are, because the inventory `Display*` types do not show holds.
+- **Confirm, batch confirm, cancel and reconcile** record physical work. `invalidatePhysical` also refreshes item and container lists, details, action logs and the counts. A move's source parent is not in the step payload, so the item and container roots are refreshed whole.
+- **Inventory deletes** go the other way. They cancel task steps on the server (`invalidateStepsAfterDelete`), so the item, container and equipment delete mutations invalidate `TASKS_QUERY_KEYS.root`.
+
+Workflow mutations are not optimistic, unlike the general mutation rule. Showing a step as done before the server confirms it would mislead the person at the bench if the call then fails, for example with a reservation conflict. The cache is written from the response, and every workflow mutation refreshes in `onSettled`, even after an error, because a failed run may have completed part of its work. Only cheap planning edits are optimistic: task metadata, removing a planned step and reordering.
+
+The mutation wrapper generates the `operationId` before calling `mutate`, so the id is part of the mutation `variables`. To retry after a network failure, resend the same variables with the same id. The server then replays the stored result instead of doing the work twice. Generating a new id on retry turns the retry into a new operation.
+
 ## Module boundaries
 
 Server modules under `server/crud/inventory` must not import the task services (`tasks.server.ts`, `steps.server.ts`, `execution.server.ts`, and so on). They may import `server/crud/tasks/invalidation.server.ts`. That module and `stepState.server.ts` deliberately avoid importing the inventory services, which is what keeps the dependency graph free of cycles. Keep it that way when adding imports to either, and never import `references.server.ts` from them, because it reads the inventory services.

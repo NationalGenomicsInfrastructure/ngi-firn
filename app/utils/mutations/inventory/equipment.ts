@@ -8,6 +8,7 @@ import type {
 } from '~~/schemas/inventory/equipment'
 import { INVENTORY_EQUIPMENT_QUERY_KEYS } from '~/utils/queries/inventory/equipment'
 import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
+import { TASKS_QUERY_KEYS } from '~/utils/queries/tasks/tasks'
 
 type EquipmentListContext = { equipment: DisplayStorageEquipment[] }
 type EquipmentDetailContext = { equipment: DisplayStorageEquipment | undefined }
@@ -155,6 +156,8 @@ export const deleteEquipment = defineMutation(() => {
     },
     onSettled(_data, _error, input) {
       const queryCache = useQueryCache()
+      // The server cancels task steps that referred to the deleted objects (invalidateStepsAfterDelete).
+      queryCache.invalidateQueries({ key: TASKS_QUERY_KEYS.root })
       if (input.roomSlug) {
         queryCache.invalidateQueries({
           key: INVENTORY_EQUIPMENT_QUERY_KEYS.byRoom(input.roomSlug),

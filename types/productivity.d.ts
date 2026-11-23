@@ -1,5 +1,5 @@
 import type { BaseDocument } from '../server/database/couchdb'
-import type { FirnUser } from './auth'
+import type { FirnUser, SerializedUserRef } from './auth'
 import type { DocumentReference, TypedDocumentReference } from './references'
 import type { InventoryStatusType } from '../schemas/inventory/metadata'
 import type {
@@ -23,7 +23,6 @@ import type {
   InventoryItem,
   Room,
   SerializedEntityRef,
-  SerializedUserRef,
   StorageEquipment
 } from './inventory'
 

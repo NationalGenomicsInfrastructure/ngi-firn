@@ -13,6 +13,7 @@ import type {
 import { INVENTORY_CONTAINERS_QUERY_KEYS } from '~/utils/queries/inventory/containers'
 import { INVENTORY_ITEMS_QUERY_KEYS } from '~/utils/queries/inventory/items'
 import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
+import { TASKS_QUERY_KEYS } from '~/utils/queries/tasks/tasks'
 
 const { showSuccess, showError } = useFirnToast()
 
@@ -417,6 +418,8 @@ export const deleteItem = defineMutation(() => {
     },
     onSettled(_data, _error, _input, context) {
       const queryCache = useQueryCache()
+      // The server cancels task steps that referred to the deleted objects (invalidateStepsAfterDelete).
+      queryCache.invalidateQueries({ key: TASKS_QUERY_KEYS.root })
       queryCache.invalidateQueries({ key: INVENTORY_ITEMS_QUERY_KEYS.root })
       queryCache.invalidateQueries({ key: INVENTORY_QUERY_KEYS.counts(), exact: true })
       for (const parentSlug of context?.parentContainerSlugs ?? []) {

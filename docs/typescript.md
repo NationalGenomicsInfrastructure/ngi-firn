@@ -138,3 +138,11 @@ Key differences from Python:
 - Universal: Works with arrays too: `[...array1, ...array2]`
 
 This pattern is very common in Vue applications for state updates, as it ensures immutability while making targeted changes.
+
+## Pitfall: unresolved imports in `types/*.d.ts` become `any` without an error
+
+The project compiles with `skipLibCheck`, which also skips the hand-written declaration files in `types/`. If such a file imports a name that its source module does not export, TypeScript reports nothing and the name silently becomes `any`. For example, `productivity.d.ts` once imported `SerializedUserRef` from `./inventory`, which only imports it from `./auth` and does not re-export it.
+
+The server code still compiles, because everything is assignable to `any`. On the client, tRPC's output inference turns the `any` fields into odd shapes: a field disappears, or an object becomes `{ [x: string]: any }`. The only symptom is a type error where a client consumer annotates the expected `Display*` type.
+
+Always import a type from the module that defines or explicitly exports it. To check the declaration files, run `npx vue-tsc --noEmit -p .nuxt/tsconfig.server.json --skipLibCheck false` and look only at errors under `types/`. Errors under `.nuxt/types` are noise from the generated files.

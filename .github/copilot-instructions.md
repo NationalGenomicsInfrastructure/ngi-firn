@@ -79,6 +79,8 @@ CouchDB  (server/database/couchdb.ts → CouchDBConnector)
 
 **tRPC is preferred** for all client-server communication. REST API routes (`server/api/`) exist only for OAuth callbacks and a few special cases.
 
+> ⚠️ **Unresolved imports in `types/*.d.ts` silently become `any`**, because `skipLibCheck` skips those files. Server code still compiles, but tRPC output inference then drops fields or turns objects into `{ [x: string]: any }` on the client. Import types from the module that defines them. Details: `docs/typescript.md`, last section.
+
 ### tRPC Procedures
 
 Defined in `server/trpc/init.ts`. Use the appropriate procedure type:
@@ -312,6 +314,9 @@ Task steps, activations and inventory holds interact; see `docs/tasks-and-reserv
 - Task enums and procedure inputs are defined once, as Zod schemas in `schemas/tasks/`. Their types are `z.infer` (re-exported from `types/productivity.d.ts`); never add a parallel union or input interface. Only stored documents, `Display*` projections and backend-internal enums stay static.
 - The task wire format addresses inventory by kind + slug and projects by LIMS project id. Only `server/crud/tasks/references.server.ts` turns them into stored references; services take the inferred schema types.
 - Task procedures use `taskProcedure` (`server/trpc/routers/tasks/procedure.ts`), which maps domain errors to tRPC codes by error `name`. A new domain error class needs a `name` and an entry there, or it surfaces as a 500.
+- Client cache: task queries and mutations live in `app/utils/queries/tasks/` and `app/utils/mutations/tasks/` and share one key factory, `TASKS_QUERY_KEYS`. Step and activation mutations must invalidate `detail(slug)` and `lists()` themselves, because a task's progress and status come from its steps and key invalidation only cascades downward.
+- Task workflow mutations must refresh inventory caches through the helpers in `app/utils/mutations/tasks/cache.ts`: `invalidateHoldSensitive` after activate or skip, and `invalidatePhysical` after confirm, batch confirm, cancel or reconcile. In the other direction, inventory delete mutations must invalidate `TASKS_QUERY_KEYS.root`.
+- Workflow mutations are deliberately not optimistic, unlike the general rule. The wrapper generates the `operationId` before `mutate`, so a retry after a network failure must resend the same variables, `operationId` included.
 
 ### Project search pitfalls (Meilisearch)
 
