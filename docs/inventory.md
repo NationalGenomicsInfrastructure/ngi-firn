@@ -162,7 +162,7 @@ The project prefers MapReduce views over Mango indexes for inventory queries. Vi
 
 ### 4. Typed `parent` references
 
-The codebase uses `TypedDocumentReference` (from `types/references.d.ts`) for inventory hierarchy edges. It stores the parent’s database, document ID, and document type in one compact shape:
+The codebase uses `TypedDocumentReference` (from `types/references.ts`) for inventory hierarchy edges. It stores the parent’s database, document ID, and document type in one compact shape:
 
 ```ts
 parent: { db: 'firn', id: parent._id, type: parent.type }
@@ -223,7 +223,7 @@ This approach is efficient because both queries hit B-tree indexes (O(log n) per
 
 ### 10. Project references
 
-Containers and items can be associated with projects from the read-only projects database via a `projectRefs` field of type `DocumentReferenceMap` (defined in `types/references.d.ts`). This is a `Record<string, DocumentReference | DocumentReference[]>` that allows named, typed cross-database links:
+Containers and items can be associated with projects from the read-only projects database via a `projectRefs` field of type `DocumentReferenceMap` (defined in `types/references.ts`). This is a `Record<string, DocumentReference | DocumentReference[]>` that allows named, typed cross-database links:
 
 ```ts
 projectRefs: {

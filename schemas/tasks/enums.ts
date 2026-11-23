@@ -3,7 +3,7 @@ import { inventoryActionSchema } from '../inventory/metadata'
 
 /*
  * Task enums that reach the client, as procedure input or as output the UI renders or filters on.
- * They are defined once here; types/productivity.d.ts derives its types from them via z.infer and
+ * They are defined once here; types/productivity.ts derives its types from them via z.infer and
  * re-exports them. Backend-internal enums (operation, reservation and reminder states) stay static.
  */
 

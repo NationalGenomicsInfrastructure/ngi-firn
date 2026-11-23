@@ -34,7 +34,7 @@ import type { EntityKind } from '../schemas/basic'
  * InventoryTargetHold / InventoryGridCellClaim / InventoryCapacityClaim / InventoryStructuralGuard
  *   - the four task-owned claim shapes, each with a durable state, operationId and fencing generation
  *
- * (The planned-task domain lives in types/productivity.d.ts — see TaskDocument et al.)
+ * (The planned-task domain lives in types/productivity.ts — see TaskDocument et al.)
  *
  * CLIENT-SAFE PROJECTIONS:
  * DisplayRoom - Strips CouchDB-internal fields from a Room before sending to the client

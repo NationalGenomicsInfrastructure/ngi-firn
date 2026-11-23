@@ -1,6 +1,6 @@
 import type { SessionUser, SessionUserSecure, FirnUser } from './auth'
 
-interface Context {
+export interface Context {
   user?: SessionUser
   secure?: SessionUserSecure
   token?: string

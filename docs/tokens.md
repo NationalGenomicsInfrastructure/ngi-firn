@@ -177,7 +177,7 @@ derivation](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication80
 
 For each token, Firn stores a record in the user's document holding some metadata. This record may also persist the encrypted token itself, if a 1D barcode representation was chosen and the key is ephemeral.
 
-```11:20:types/tokens.d.ts
+```11:20:types/tokens.ts
 export interface FirnUserToken {
   type: 'firn-token'
   schema: 1

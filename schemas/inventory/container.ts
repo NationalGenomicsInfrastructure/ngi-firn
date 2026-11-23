@@ -29,7 +29,7 @@ export const containerTypeSchema = z.enum([
 export type ContainerType = z.infer<typeof containerTypeSchema>
 
 // Purpose/domain classification — mirrors the InventoryClassification union in
-// types/inventory.d.ts. Kept as a zod enum so container CRUD input can validate it.
+// types/inventory.ts. Kept as a zod enum so container CRUD input can validate it.
 export const containerClassificationSchema = z.enum([
   'Sample',
   'Reagent',
@@ -54,7 +54,7 @@ export type ContainerParentKindType = z.infer<typeof parentKindSchema>
 export type ContainerChildKindType = z.infer<typeof childKindSchema>
 
 // ---------------------------------------------------------------------------
-// Grid position — zod counterpart of the GridPosition interface (types/inventory.d.ts)
+// Grid position — zod counterpart of the GridPosition interface (types/inventory.ts)
 // ---------------------------------------------------------------------------
 
 // Slot position of a child within its parent's grid layout. `label` is a

@@ -11,7 +11,7 @@ export const StringOrUndefined = z.string().optional().transform(s => (s?.trim()
 
 // ---------------------------------------------------------------------------
 // Cross-database reference (zod counterpart of DocumentReference / DocumentReferenceMap
-// in types/references.d.ts).
+// in types/references.ts).
 // ---------------------------------------------------------------------------
 
 export const documentReferenceSchema = z.object({
@@ -29,7 +29,7 @@ export const documentReferenceMapSchema = z.record(
 )
 
 // ---------------------------------------------------------------------------
-// Kinds of entity a client-safe SerializedEntityRef (types/inventory.d.ts) can point at.
+// Kinds of entity a client-safe SerializedEntityRef (types/inventory.ts) can point at.
 // ---------------------------------------------------------------------------
 
 export const entityKindSchema = z.enum(['container', 'equipment', 'item', 'project', 'room', 'task', 'template'])

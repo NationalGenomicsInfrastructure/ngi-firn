@@ -139,10 +139,11 @@ Key differences from Python:
 
 This pattern is very common in Vue applications for state updates, as it ensures immutability while making targeted changes.
 
-## Pitfall: unresolved imports in `types/*.d.ts` become `any` without an error
+## Shared types are `.ts` files, not `.d.ts`
 
-The project compiles with `skipLibCheck`, which also skips the hand-written declaration files in `types/`. If such a file imports a name that its source module does not export, TypeScript reports nothing and the name silently becomes `any`. For example, `productivity.d.ts` once imported `SerializedUserRef` from `./inventory`, which only imports it from `./auth` and does not re-export it.
+The shared types in `types/` are ordinary `.ts` files. Do not rename them to `.d.ts`. Nuxt generates its tsconfigs with `skipLibCheck: true`, which skips every `.d.ts` file, including your own. In a declaration file, an import of a name that the source module does not export is never reported and silently becomes `any`. tRPC's output inference then drops fields on the client or turns objects into `{ [x: string]: any }`. This happened once with `SerializedUserRef`.
 
-The server code still compiles, because everything is assignable to `any`. On the client, tRPC's output inference turns the `any` fields into odd shapes: a field disappears, or an object becomes `{ [x: string]: any }`. The only symptom is a type error where a client consumer annotates the expected `Display*` type.
+As `.ts` files they are fully type-checked, and nothing from them reaches the bundle: they contain only types, and every consumer imports them with `import type`, so the imports are erased at build time. Two differences from `.d.ts`:
 
-Always import a type from the module that defines or explicitly exports it. To check the declaration files, run `npx vue-tsc --noEmit -p .nuxt/tsconfig.server.json --skipLibCheck false` and look only at errors under `types/`. Errors under `.nuxt/types` are noise from the generated files.
+- A declaration is only visible to other files if it carries `export`. In a `.d.ts` module, every top-level declaration counts as exported.
+- Module augmentations such as `declare module '#auth-utils'` in `types/auth.ts` still work, because the file is a module (it has imports and exports) and is part of the program through those imports.

@@ -79,7 +79,7 @@ CouchDB  (server/database/couchdb.ts → CouchDBConnector)
 
 **tRPC is preferred** for all client-server communication. REST API routes (`server/api/`) exist only for OAuth callbacks and a few special cases.
 
-> ⚠️ **Unresolved imports in `types/*.d.ts` silently become `any`**, because `skipLibCheck` skips those files. Server code still compiles, but tRPC output inference then drops fields or turns objects into `{ [x: string]: any }` on the client. Import types from the module that defines them. Details: `docs/typescript.md`, last section.
+> ⚠️ **Keep `types/*.ts` as `.ts`, never `.d.ts`.** Nuxt's generated tsconfigs set `skipLibCheck`, which skips every `.d.ts`. A broken import there silently becomes `any`, and tRPC output inference then mangles the client types. Type-only files add nothing to the bundle, because their imports are `import type`. In a `.ts` file, a type must be `export`ed to be importable. Details: `docs/typescript.md`, last section.
 
 ### tRPC Procedures
 
@@ -121,7 +121,7 @@ This is mandatory to implement optimistic updates correctly. If you forget to `a
 
 #### API input shape ≠ stored document shape
 
-Zod schemas in `schemas/` define the **wire/form shape** of data; the document interfaces in `types/inventory.d.ts` define the **stored CouchDB shape**. When the two differ, the conversion belongs in the `server/crud/*` service — never pass validated input straight into a document field of a different shape.
+Zod schemas in `schemas/` define the **wire/form shape** of data; the document interfaces in `types/inventory.ts` define the **stored CouchDB shape**. When the two differ, the conversion belongs in the `server/crud/*` service — never pass validated input straight into a document field of a different shape.
 
 Design stored shapes so the compiler enforces the conversion: give them **at least one required, server-owned field** that the wire shape lacks. Example: equipment capacity is `{ type, capacity }[]` on the wire but `EquipmentCapacityEntry[]` (`{ type, stored, capacity }[]`) in the document — the required `stored` counter means unconverted input fails typechecking (see `validateAndJoinEquipmentCapacity` for convert-on-write and `displayCapacityToFormCapacity` for flatten-on-read). Avoid all-optional shapes like `Partial<Record<…>>` for stored fields: almost any object is structurally assignable to them, and a bug that stored raw form rows this way compiled cleanly and crashed the frontend at render time.
 
@@ -311,7 +311,7 @@ Task steps, activations and inventory holds interact; see `docs/tasks-and-reserv
 - Operation documents have the id `task-op:<operationId>`, so a workflow body must be resume-safe. Physical actions are deduplicated by the inventory action receipt (activation + step), not by operation id.
 - `server/crud/inventory` must not import the task services. It may import `server/crud/tasks/invalidation.server.ts`, which (with `stepState.server.ts`) avoids importing the inventory services; this prevents import cycles.
 - Permission checks for tasks belong in `server/auth/taskPolicy.ts`, not inline in services.
-- Task enums and procedure inputs are defined once, as Zod schemas in `schemas/tasks/`. Their types are `z.infer` (re-exported from `types/productivity.d.ts`); never add a parallel union or input interface. Only stored documents, `Display*` projections and backend-internal enums stay static.
+- Task enums and procedure inputs are defined once, as Zod schemas in `schemas/tasks/`. Their types are `z.infer` (re-exported from `types/productivity.ts`); never add a parallel union or input interface. Only stored documents, `Display*` projections and backend-internal enums stay static.
 - The task wire format addresses inventory by kind + slug and projects by LIMS project id. Only `server/crud/tasks/references.server.ts` turns them into stored references; services take the inferred schema types.
 - Task procedures use `taskProcedure` (`server/trpc/routers/tasks/procedure.ts`), which maps domain errors to tRPC codes by error `name`. A new domain error class needs a `name` and an entry there, or it surfaces as a 500.
 - Client cache: task queries and mutations live in `app/utils/queries/tasks/` and `app/utils/mutations/tasks/` and share one key factory, `TASKS_QUERY_KEYS`. Step and activation mutations must invalidate `detail(slug)` and `lists()` themselves, because a task's progress and status come from its steps and key invalidation only cascades downward.
