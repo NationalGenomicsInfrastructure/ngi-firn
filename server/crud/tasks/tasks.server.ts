@@ -493,8 +493,8 @@ export const TaskService = {
       ordinary_not_urgent: 3
     }
     const sorted = [...docs].sort((a, b) => {
-      const qa = quadrantRank[computeQuadrant(a.importance, computeUrgency(a.dueDate, now))] ?? 99
-      const qb = quadrantRank[computeQuadrant(b.importance, computeUrgency(b.dueDate, now))] ?? 99
+      const qa = quadrantRank[computeQuadrant(a.importance, computeUrgency(a, now).urgency)] ?? 99
+      const qb = quadrantRank[computeQuadrant(b.importance, computeUrgency(b, now).urgency)] ?? 99
       if (qa !== qb) return qa - qb
       const da = a.dueDate ?? '\uffff'
       const db = b.dueDate ?? '\uffff'
@@ -516,7 +516,7 @@ export const TaskService = {
   /* Build the client-safe projection of a task (no CouchDB _id, resolved display refs). */
   async toDisplayTask(task: TaskDocument, actor: FirnUser, steps: TaskStepDocument[]): Promise<DisplayTask> {
     const now = DateTime.now()
-    const urgency = computeUrgency(task.dueDate, now)
+    const { urgency, reason: urgencyReason } = computeUrgency(task, now)
     const [creator, managingOwner, responsibleUsers, viewers] = await Promise.all([
       toDisplayActor(task.creator),
       toDisplayActor(task.managingOwner),
@@ -535,6 +535,7 @@ export const TaskService = {
       status: task.status,
       importance: task.importance,
       urgency,
+      urgencyReason,
       quadrant: computeQuadrant(task.importance, urgency),
       dueDate: task.dueDate,
       projectRefs: task.projectRefs ? task.projectRefs.map(r => refToEntityStub(r, 'project')) : null,

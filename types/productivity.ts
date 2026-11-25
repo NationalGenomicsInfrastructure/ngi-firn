@@ -511,6 +511,8 @@ export interface DisplayTask {
   importance: TaskImportance
   /* Computed, not stored: avoids a flag going stale overnight. */
   urgency: TaskUrgency
+  /* Why the task is urgent: a near or missed due date, or an important task left undated for too long. */
+  urgencyReason: 'deadline' | 'aged' | null
   quadrant: TaskQuadrant
   dueDate: string | null
   projectRefs: SerializedEntityRef[] | null

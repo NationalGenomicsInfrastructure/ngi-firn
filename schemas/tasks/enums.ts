@@ -20,7 +20,7 @@ export const taskStatusSchema = z.enum(['draft', 'open', 'completed', 'cancelled
 /* Task-level importance axis of the two-dimensional priority model. */
 export const taskImportanceSchema = z.enum(['important', 'ordinary'])
 
-/* Computed urgency axis: a task is urgent when due today or overdue in Europe/Stockholm. */
+/* Computed urgency axis: a due date within the working-day horizon (or overdue), or an aged important task. */
 export const taskUrgencySchema = z.enum(['urgent', 'not_urgent'])
 
 /* The four priority quadrants derived from importance × urgency. */

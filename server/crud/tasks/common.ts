@@ -95,13 +95,49 @@ export async function toDisplayActor(actor: TaskActor): Promise<DisplayTaskActor
 // Priority (importance x urgency)
 // ---------------------------------------------------------------------------------------------
 
-/* A task is urgent when it has a due date that falls on or before today in Europe/Stockholm. */
-export function computeUrgency(dueDate: string | null, now: DateTime = DateTime.now()): TaskUrgency {
-  if (!dueDate) return 'not_urgent'
-  const due = DateTime.fromISO(dueDate, { zone: TASK_TIMEZONE })
-  if (!due.isValid) return 'not_urgent'
+/* A task is urgent when its due date is overdue or at most this many working days away. */
+export const TASK_URGENCY_HORIZON_WORKDAYS = 3
+
+/* An important task becomes urgent after this many days untouched without a due date, so it is not overlooked. */
+export const TASK_AGING_DAYS = 14
+
+export type TaskUrgencyReason = 'deadline' | 'aged' | null
+
+/* Add working days (Monday to Friday) to a day; weekends are skipped. */
+function addWorkingDays(day: DateTime, count: number): DateTime {
+  let result = day
+  for (let added = 0; added < count;) {
+    result = result.plus({ days: 1 })
+    if (result.weekday <= 5) added++
+  }
+  return result
+}
+
+/*
+ * Urgency is time pressure, computed on read and never stored:
+ *  - `deadline`: the due date is overdue or within the working-day horizon;
+ *  - `aged`: an important task without a due date has not been updated for TASK_AGING_DAYS.
+ * Everything else, including far-off deadlines and ordinary undated tasks, is not urgent.
+ */
+export function computeUrgency(
+  task: { dueDate: string | null, importance: TaskImportance, updatedAt: string },
+  now: DateTime = DateTime.now()
+): { urgency: TaskUrgency, reason: TaskUrgencyReason } {
   const today = now.setZone(TASK_TIMEZONE).startOf('day')
-  return due.startOf('day') <= today ? 'urgent' : 'not_urgent'
+  if (task.dueDate) {
+    const due = DateTime.fromISO(task.dueDate, { zone: TASK_TIMEZONE })
+    if (due.isValid && due.startOf('day') <= addWorkingDays(today, TASK_URGENCY_HORIZON_WORKDAYS)) {
+      return { urgency: 'urgent', reason: 'deadline' }
+    }
+    return { urgency: 'not_urgent', reason: null }
+  }
+  if (task.importance === 'important') {
+    const touched = DateTime.fromISO(task.updatedAt, { zone: TASK_TIMEZONE })
+    if (touched.isValid && today.diff(touched.startOf('day'), 'days').days >= TASK_AGING_DAYS) {
+      return { urgency: 'urgent', reason: 'aged' }
+    }
+  }
+  return { urgency: 'not_urgent', reason: null }
 }
 
 /* Derive the priority quadrant from importance and computed urgency. */

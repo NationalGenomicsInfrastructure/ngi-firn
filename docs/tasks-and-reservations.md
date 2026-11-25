@@ -56,6 +56,10 @@ Workflow mutations are not optimistic, unlike the general mutation rule. Showing
 
 The mutation wrapper generates the `operationId` before calling `mutate`, so the id is part of the mutation `variables`. To retry after a network failure, resend the same variables with the same id. The server then replays the stored result instead of doing the work twice. Generating a new id on retry turns the retry into a new operation.
 
+## Priority is computed, never stored
+
+Importance is stored; urgency and the quadrant are derived on every read by `computeUrgency` / `computeQuadrant` in `server/crud/tasks/common.ts`. A task is urgent when its due date is overdue or within `TASK_URGENCY_HORIZON_WORKDAYS` (3, weekends skipped), or when an important task without a due date has gone `TASK_AGING_DAYS` (14) without an update (`updatedAt`, so touching a task resets the clock), so it cannot be overlooked (`urgencyReason: 'aged'`). Do not use step count as effort: one physical move is one step, so a 40-step cleanup can take minutes. The viewer role never changes the quadrant; it decides which list a task appears in.
+
 ## Module boundaries
 
 Server modules under `server/crud/inventory` must not import the task services (`tasks.server.ts`, `steps.server.ts`, `execution.server.ts`, and so on). They may import `server/crud/tasks/invalidation.server.ts`. That module and `stepState.server.ts` deliberately avoid importing the inventory services, which is what keeps the dependency graph free of cycles. Keep it that way when adding imports to either, and never import `references.server.ts` from them, because it reads the inventory services.
