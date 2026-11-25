@@ -70,28 +70,6 @@ const { handleSubmit, validate, errors, resetForm, values, setFieldValue } = use
 // Use field for audience to ensure proper reactivity
 const { value: audienceValue, setValue: setAudienceValue } = useField<string>('audience')
 
-// Custom handlers that update both the related fields
-const onDateUpdate = (value: string | undefined) => {
-  if (!value) return
-  const days = Math.floor(DateTime.fromFormat(value, 'yyyy-MM-dd').diff(DateTime.now(), 'days').days)
-  if (days < 1 || days > 365) {
-    validate()
-    const defaultDate = DateTime.now().plus({ days: 7 }).toFormat('yyyy-MM-dd')
-    setFieldValue('expiresAt', defaultDate)
-    setFieldValue('period', [7])
-    return
-  }
-  setFieldValue('expiresAt', value)
-  setFieldValue('period', [days])
-}
-
-const onPeriodUpdate = (value: number[] | undefined) => {
-  if (!value) return
-  const newDate = DateTime.now().plus({ days: value[0] }).toFormat('yyyy-MM-dd')
-  setFieldValue('period', value)
-  setFieldValue('expiresAt', newDate)
-}
-
 /*
  * Token generation form: validation and submit handlers
  */
@@ -188,36 +166,14 @@ const { user: sessionUser } = useUserSession()
                 cardDescription: CARD_DESC_STYLE
               }"
             >
-              <NFormField
-                name="expiresAt"
-                label="Pick a date"
-                :una="{ formLabel: FORM_LABEL_STYLE }"
-              >
-                <!-- The v-model shorthand is not used on this input because a custom update handler is required. See https://vuejs.org/guide/components/v-model.html#under-the-hood -->
-                <NInput
+              <NFormField name="expiresAt">
+                <FormFieldDatePeriod
+                  name="expiresAt"
                   :model-value="values.expiresAt"
-                  type="date"
-                  @update:model-value="onDateUpdate"
+                  @update:model-value="setFieldValue('expiresAt', $event)"
+                  @update:period="setFieldValue('period', [$event])"
                 />
               </NFormField>
-              <NSeparator
-                label="OR"
-                class="mx-2 my-4"
-              />
-              <NFormGroup
-                name="period"
-                label="Choose a period"
-                :message="`${values.period?.toString()} days`"
-                :una="{ formGroupLabel: FORM_LABEL_STYLE }"
-              >
-                <NSlider
-                  :model-value="values.period"
-                  :min="1"
-                  :max="365"
-                  :step="1"
-                  @update:model-value="onPeriodUpdate"
-                />
-              </NFormGroup>
             </NCard>
             <NCard
               title="Token audience"

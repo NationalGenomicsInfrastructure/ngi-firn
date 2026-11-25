@@ -62,11 +62,6 @@ function addUser(list: DisplayUserToUsers[], user: DisplayUserToUsers | undefine
   return [...list, user]
 }
 
-// A cleared date input yields '', which the calendar-date schema would reject.
-function onDueDateUpdate(value: unknown) {
-  setDueDateValue(typeof value === 'string' && value ? value : undefined)
-}
-
 const visibilityLabel = computed(() => taskOptionLabel(TASK_VISIBILITY_OPTIONS, visibilityValue.value))
 const importanceLabel = computed(() => taskOptionLabel(TASK_IMPORTANCE_OPTIONS, importanceValue.value))
 
@@ -171,13 +166,15 @@ const onSubmit = handleSubmit(async (formValues) => {
             <NFormField
               name="dueDate"
               label="Due date"
-              class="md:max-w-xs"
               :una="{ formLabel: FORM_LABEL_STYLE }"
             >
-              <NInput
-                type="date"
-                :model-value="dueDateValue ?? ''"
-                @update:model-value="onDueDateUpdate"
+              <FormFieldDatePeriod
+                name="dueDate"
+                :model-value="dueDateValue"
+                :min-days="0"
+                clearable
+                empty-text="No due date"
+                @update:model-value="setDueDateValue"
               />
             </NFormField>
           </NCard>
