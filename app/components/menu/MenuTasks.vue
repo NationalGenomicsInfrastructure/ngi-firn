@@ -16,7 +16,7 @@ const data = {
           url: '/tasks/unclaimed'
         },
         {
-          title: 'View own',
+          title: 'View your own',
           url: '/tasks/own'
         },
       ]
