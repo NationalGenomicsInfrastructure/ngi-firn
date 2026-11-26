@@ -1,5 +1,6 @@
 /*
- * Task resource policy — the single source of truth for "who may read / manage a task".
+ * Task resource policy — the single source of truth for "who may read / manage a task" and for what
+ * a task's state still allows.
  *
  * Access to a task is relationship-based (ReBAC), not a static role: it derives from the task
  * document's own fields (managing owner, responsible colleagues, explicit viewers and public
@@ -115,7 +116,32 @@ export function assertCanClaimTask(task: TaskDocument, actor: FirnUser): void {
   if (isTaskOwner(task, actor)) throw new ForbiddenError('You already own this task.')
 }
 
+/* A completed or cancelled task is closed: its work is over. Archival is a separate axis. */
+export function isTaskClosed(task: Pick<TaskDocument, 'status'>): boolean {
+  return task.status === 'completed' || task.status === 'cancelled'
+}
+
 /* Throw unless the actor is a responsible colleague who may give that responsibility up. */
 export function assertCanReleaseResponsibility(task: TaskDocument, actor: FirnUser): void {
   if (!isTaskResponsible(task, actor)) throw new ForbiddenError('You are not responsible for this task.')
+  if (task.archivedAt || isTaskClosed(task)) {
+    throw new ForbiddenError('Responsibility for a finished or archived task can no longer be released.')
+  }
+}
+
+/*
+ * State guards of the owner's lifecycle transitions; who may ask is assertCanManageTask's job.
+ * Services return early when the task already is in the requested state, so retries stay harmless.
+ */
+
+/* Throw unless the task is a draft that can still be published. */
+export function assertTaskCanBePublished(task: Pick<TaskDocument, 'status' | 'archivedAt'>): void {
+  if (task.archivedAt) throw new ForbiddenError('An archived task can no longer be published.')
+  if (task.status !== 'draft') throw new ForbiddenError(`A ${task.status} task cannot be published.`)
+}
+
+/* Throw unless the task is unfinished and can still be cancelled. */
+export function assertTaskCanBeCancelled(task: Pick<TaskDocument, 'status' | 'archivedAt'>): void {
+  if (task.archivedAt) throw new ForbiddenError('An archived task can no longer be cancelled.')
+  if (isTaskClosed(task)) throw new ForbiddenError(`A ${task.status} task cannot be cancelled.`)
 }

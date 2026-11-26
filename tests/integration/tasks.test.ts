@@ -249,6 +249,68 @@ describe('Pool and claiming', () => {
   })
 })
 
+describe('Lifecycle rules', () => {
+  it('publishes a draft once and treats a repeat as harmless', async () => {
+    const task = await makeTask(owner, { title: 'BCTEST Lifecycle publish' })
+
+    const published = await TaskService.publishTask(owner, task.slug)
+    const repeated = await TaskService.publishTask(owner, task.slug)
+
+    expect(published.status).toBe('open')
+    expect(repeated.editVersion).toBe(published.editVersion)
+  })
+
+  it('refuses to publish a cancelled task', async () => {
+    const task = await makeTask(owner, { title: 'BCTEST Lifecycle publish cancelled' })
+    await TaskService.cancelTask(owner, task.slug)
+
+    await expect(TaskService.publishTask(owner, task.slug)).rejects.toThrow(/cancelled task cannot be published/i)
+  })
+
+  it('refuses to publish or cancel an archived task', async () => {
+    const task = await makeTask(owner, { title: 'BCTEST Lifecycle archived' })
+    await TaskService.archiveTask(owner, task.slug)
+
+    await expect(TaskService.publishTask(owner, task.slug)).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(TaskService.cancelTask(owner, task.slug)).rejects.toBeInstanceOf(ForbiddenError)
+    expect((await TaskService.getDisplayTask(owner, task.slug)).status).toBe('draft')
+  })
+
+  it('treats a repeated cancel as harmless, even after archiving', async () => {
+    const task = await makeTask(owner, { title: 'BCTEST Lifecycle cancel twice' })
+    const cancelled = await TaskService.cancelTask(owner, task.slug)
+    const archived = await TaskService.archiveTask(owner, task.slug)
+
+    const repeated = await TaskService.cancelTask(owner, task.slug)
+
+    expect(repeated.cancelledAt).toBe(cancelled.cancelledAt)
+    expect(repeated.editVersion).toBe(archived.editVersion)
+  })
+
+  it.each(['cancelTask', 'archiveTask'] as const)('refuses to release responsibility after %s', async (close) => {
+    const task = await makeTask(owner, {
+      title: `BCTEST Lifecycle release ${close}`,
+      responsibleFirnIds: [colleagueA.firnId]
+    })
+    await TaskService[close](owner, task.slug)
+
+    await expect(TaskService.releaseResponsibility(colleagueA, task.slug)).rejects.toBeInstanceOf(ForbiddenError)
+    expect((await TaskService.getDisplayTask(owner, task.slug)).responsibleUsers).toHaveLength(1)
+  })
+
+  it('releases responsibility on an unfinished task', async () => {
+    const task = await makeTask(owner, {
+      title: 'BCTEST Lifecycle release open',
+      responsibleFirnIds: [colleagueA.firnId]
+    })
+    await TaskService.publishTask(owner, task.slug)
+
+    const released = await TaskService.releaseResponsibility(colleagueA, task.slug)
+
+    expect(released.responsibleUsers).toHaveLength(0)
+  })
+})
+
 describe('Listings', () => {
   it('excludes archived tasks by default and paginates stably', async () => {
     const t1 = await makeTask(owner, { title: 'BCTEST Listing one' })

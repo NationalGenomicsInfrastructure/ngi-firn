@@ -25,7 +25,7 @@ import type {
 } from '../../../types/productivity'
 import type { StepDefinitionSchemaInput, StepPayloadInput } from '../../../schemas/tasks/steps'
 import { ForbiddenError } from '../../auth/errors'
-import { assertCanManageTask } from '../../auth/taskPolicy'
+import { assertCanManageTask, isTaskClosed } from '../../auth/taskPolicy'
 import { resolveUserRefs } from '../users.server'
 import {
   TaskNotFoundError,
@@ -49,8 +49,8 @@ function generateStepId(): string {
 }
 
 /* A cancelled or completed task is closed: no steps are added to it or changed on it. */
-function assertTaskAcceptsStepEdits(task: { status: string }): void {
-  if (task.status === 'cancelled' || task.status === 'completed') {
+function assertTaskAcceptsStepEdits(task: Pick<TaskDocument, 'status'>): void {
+  if (isTaskClosed(task)) {
     throw new TaskValidationError(`Steps of a ${task.status} task can no longer be added or changed.`)
   }
 }

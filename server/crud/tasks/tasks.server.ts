@@ -34,6 +34,8 @@ import {
   assertCanManageTask,
   assertCanReadTask,
   assertCanReleaseResponsibility,
+  assertTaskCanBeCancelled,
+  assertTaskCanBePublished,
   resolveTaskRole
 } from '../../auth/taskPolicy'
 import {
@@ -62,8 +64,6 @@ export interface TaskListResult {
   tasks: DisplayTask[]
   total: number
 }
-
-const TERMINAL_STATUSES = new Set(['completed', 'cancelled'])
 
 function dedupeProjectRefs(refs: DocumentReference[] | null | undefined): DocumentReference[] | null {
   if (!refs || refs.length === 0) return null
@@ -283,7 +283,8 @@ export const TaskService = {
   async publishTask(actor: FirnUser, slug: string): Promise<TaskDocument> {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
-    if (task.status !== 'draft') return task
+    if (task.status === 'open') return task
+    assertTaskCanBePublished(task)
     const updated: TaskDocument = {
       ...task,
       status: 'open',
@@ -335,6 +336,7 @@ export const TaskService = {
     const task = await TaskService.requireReadableTask(actor, slug)
     assertCanManageTask(task, actor)
     if (task.status === 'cancelled') return task
+    assertTaskCanBeCancelled(task)
     await assertNoLiveActivation(task, 'cancelled')
     const now = DateTime.now().toISO()
     const updated: TaskDocument = {
@@ -564,5 +566,3 @@ export function inventoryKind(type: string | undefined): SerializedEntityRef['ki
     default: return 'container'
   }
 }
-
-export { TERMINAL_STATUSES }
