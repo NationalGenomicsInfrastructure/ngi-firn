@@ -6,6 +6,8 @@ import { displayUserName as displayName } from '~/utils/users/display'
 
 const props = defineProps<{
   modelValue?: DisplayUserToUsers | null
+  /* Users not to offer, e.g. those already picked. */
+  excludeFirnIds?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -19,7 +21,7 @@ const selectedUser = computed({
   set: (value: DisplayUserToUsers | undefined) => emit('update:modelValue', value)
 })
 
-const items = computed(() => users.value ?? [])
+const items = computed(() => (users.value ?? []).filter(user => !props.excludeFirnIds?.includes(user.firnId)))
 </script>
 
 <template>

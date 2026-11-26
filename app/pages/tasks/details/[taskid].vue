@@ -48,7 +48,7 @@ useHead(() => ({
     />
     <PageTitle
       title="Task details"
-      description="The plan, the people involved and the progress so far."
+      description="View the task metadata, the people involved and the progress so far."
     />
 
     <!-- A task that is gone must not linger on screen, even when it is still cached. -->

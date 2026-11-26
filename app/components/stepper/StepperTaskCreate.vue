@@ -12,7 +12,6 @@ const emit = defineEmits<{
   created: [taskSlug: string]
 }>()
 
-const FORM_LABEL_STYLE = 'text-xs uppercase tracking-wide text-primary-400 dark:text-primary-600 font-medium'
 const STEP1_FIELDS = ['title', 'description', 'visibility', 'importance', 'dueDate'] as const
 
 const items = [
@@ -56,11 +55,6 @@ const { value: dueDateValue, setValue: setDueDateValue } = useField<string | und
 // Users are kept as full objects for display; only the firnIds are sent to the server.
 const responsibleUsers = ref<DisplayUserToUsers[]>([])
 const viewerUsers = ref<DisplayUserToUsers[]>([])
-
-function addUser(list: DisplayUserToUsers[], user: DisplayUserToUsers | undefined): DisplayUserToUsers[] {
-  if (!user || list.some(entry => entry.firnId === user.firnId)) return list
-  return [...list, user]
-}
 
 const visibilityLabel = computed(() => taskOptionLabel(TASK_VISIBILITY_OPTIONS, visibilityValue.value))
 const importanceLabel = computed(() => taskOptionLabel(TASK_IMPORTANCE_OPTIONS, importanceValue.value))
@@ -124,7 +118,7 @@ const onSubmit = handleSubmit(async (formValues) => {
             <NFormField
               name="title"
               label="Title"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
+              :una="{ formLabel: UI_LABEL_STYLE }"
             >
               <NInput placeholder="e.g. Aliquot the new antibody batch" />
             </NFormField>
@@ -132,7 +126,7 @@ const onSubmit = handleSubmit(async (formValues) => {
             <NFormField
               name="description"
               label="Description"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
+              :una="{ formLabel: UI_LABEL_STYLE }"
             >
               <NInput
                 type="textarea"
@@ -144,7 +138,7 @@ const onSubmit = handleSubmit(async (formValues) => {
             <NFormField
               name="importance"
               label="Importance"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
+              :una="{ formLabel: UI_LABEL_STYLE }"
             >
               <FormFieldTaskImportance
                 :model-value="importanceValue"
@@ -155,7 +149,7 @@ const onSubmit = handleSubmit(async (formValues) => {
             <NFormField
               name="visibility"
               label="Visibility"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
+              :una="{ formLabel: UI_LABEL_STYLE }"
             >
               <FormFieldTaskVisibility
                 :model-value="visibilityValue"
@@ -166,7 +160,7 @@ const onSubmit = handleSubmit(async (formValues) => {
             <NFormField
               name="dueDate"
               label="Due date"
-              :una="{ formLabel: FORM_LABEL_STYLE }"
+              :una="{ formLabel: UI_LABEL_STYLE }"
             >
               <FormFieldDatePeriod
                 name="dueDate"
@@ -267,31 +261,13 @@ const onSubmit = handleSubmit(async (formValues) => {
             title="People"
             description="You become the managing owner. Optionally assign others to do or follow the work."
             card="outline-gray"
-            :una="{ cardContent: 'space-y-6', cardDescription: 'text-muted' }"
+            :una="{ cardDescription: 'text-muted' }"
           >
-            <div class="space-y-2">
-              <p :class="FORM_LABEL_STYLE">
-                Responsible users
-              </p>
-              <SelectFirnUsers @update:model-value="responsibleUsers = addUser(responsibleUsers, $event)" />
-              <ListFirnUsers
-                v-model="responsibleUsers"
-                empty-text="Nobody assigned yet. Colleagues can claim the task later."
-                noun="responsible users"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <p :class="FORM_LABEL_STYLE">
-                Viewers
-              </p>
-              <SelectFirnUsers @update:model-value="viewerUsers = addUser(viewerUsers, $event)" />
-              <ListFirnUsers
-                v-model="viewerUsers"
-                empty-text="No additional viewers."
-                noun="viewers"
-              />
-            </div>
+            <FormFieldTaskPeople
+              v-model:responsible="responsibleUsers"
+              v-model:viewers="viewerUsers"
+              responsible-empty-text="Nobody assigned yet. Colleagues can claim the task later."
+            />
           </NCard>
 
           <div class="flex justify-between">
@@ -325,7 +301,7 @@ const onSubmit = handleSubmit(async (formValues) => {
           >
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 text-sm">
               <div>
-                <p :class="[FORM_LABEL_STYLE, 'mb-0.5']">
+                <p :class="[UI_LABEL_STYLE, 'mb-0.5']">
                   Title
                 </p>
                 <p class="font-medium">
@@ -333,7 +309,7 @@ const onSubmit = handleSubmit(async (formValues) => {
                 </p>
               </div>
               <div>
-                <p :class="[FORM_LABEL_STYLE, 'mb-0.5']">
+                <p :class="[UI_LABEL_STYLE, 'mb-0.5']">
                   Importance
                 </p>
                 <p class="font-medium">
@@ -341,7 +317,7 @@ const onSubmit = handleSubmit(async (formValues) => {
                 </p>
               </div>
               <div>
-                <p :class="[FORM_LABEL_STYLE, 'mb-0.5']">
+                <p :class="[UI_LABEL_STYLE, 'mb-0.5']">
                   Due date
                 </p>
                 <p class="font-medium">
@@ -349,7 +325,7 @@ const onSubmit = handleSubmit(async (formValues) => {
                 </p>
               </div>
               <div>
-                <p :class="[FORM_LABEL_STYLE, 'mb-0.5']">
+                <p :class="[UI_LABEL_STYLE, 'mb-0.5']">
                   Visibility
                 </p>
                 <p class="font-medium">
@@ -357,7 +333,7 @@ const onSubmit = handleSubmit(async (formValues) => {
                 </p>
               </div>
               <div>
-                <p :class="[FORM_LABEL_STYLE, 'mb-0.5']">
+                <p :class="[UI_LABEL_STYLE, 'mb-0.5']">
                   Responsible
                 </p>
                 <p class="font-medium">
@@ -365,7 +341,7 @@ const onSubmit = handleSubmit(async (formValues) => {
                 </p>
               </div>
               <div>
-                <p :class="[FORM_LABEL_STYLE, 'mb-0.5']">
+                <p :class="[UI_LABEL_STYLE, 'mb-0.5']">
                   Viewers
                 </p>
                 <p class="font-medium">
