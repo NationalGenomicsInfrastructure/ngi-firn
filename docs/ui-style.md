@@ -24,6 +24,8 @@ For general UI mechanics (slots, Una pitfalls) see [ui.md](ui.md).
 | Card without header that carries the accent edge | `<CardAccent>` (`edge="sm"` for small cards in a grid) | `app/components/card/CardAccent.vue` |
 | Project numbers (`P.Name_45_11` → 45, 11) | `<ProjectNumberCircles :project-name :status>` | `app/components/project/ProjectNumberCircles.vue` |
 | Single clickable result | follow `InventorySearchHitCard` | `app/components/inventory/search/SearchHitCard.vue` |
+| Actions on what a detail page shows | `<PageToolbar label="…">` under the page title, closing actions in `#end` | `app/components/page/PageToolbar.vue`, see `TaskToolbar` |
+| Confirm before a consequential action | `<DialogConfirmAction :action>` | `app/components/dialog/DialogConfirmAction.vue` |
 | Raw class strings | `UI_LABEL_STYLE`, `UI_ACCENT_EDGE`, `UI_ACCENT_EDGE_SM` | `app/utils/ui.ts` (auto-imported) |
 
 ### FilterBar

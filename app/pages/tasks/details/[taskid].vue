@@ -76,32 +76,36 @@ useHead(() => ({
 
     <div
       v-else
-      class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6 items-start"
+      class="space-y-6"
     >
-      <CardTask :task="task" />
+      <TaskToolbar :task="task" />
 
-      <section class="min-w-0 space-y-4">
-        <PageSectionHeading
-          title="Steps"
-          :meta="steps ? `${steps.length} ${steps.length === 1 ? 'step' : 'steps'}` : undefined"
-        />
-        <NAlert
-          v-if="stepsState.status === 'error'"
-          alert="border-error"
-          title="Could not load the steps"
-          :description="stepsState.error.message || 'Something went wrong. Please try again.'"
-          icon="i-lucide-alert-circle"
-        />
-        <TaskStepsSummary
-          v-if="steps?.length"
-          :steps="steps"
-        />
-        <TableTaskSteps
-          v-if="steps || stepsStatus === 'loading'"
-          :steps="steps ?? []"
-          :loading="!steps"
-        />
-      </section>
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6 items-start">
+        <CardTask :task="task" />
+
+        <section class="min-w-0 space-y-4">
+          <PageSectionHeading
+            title="Steps"
+            :meta="steps ? `${steps.length} ${steps.length === 1 ? 'step' : 'steps'}` : undefined"
+          />
+          <NAlert
+            v-if="stepsState.status === 'error'"
+            alert="border-error"
+            title="Could not load the steps"
+            :description="stepsState.error.message || 'Something went wrong. Please try again.'"
+            icon="i-lucide-alert-circle"
+          />
+          <TaskStepsSummary
+            v-if="steps?.length"
+            :steps="steps"
+          />
+          <TableTaskSteps
+            v-if="steps || stepsStatus === 'loading'"
+            :steps="steps ?? []"
+            :loading="!steps"
+          />
+        </section>
+      </div>
     </div>
   </main>
 </template>

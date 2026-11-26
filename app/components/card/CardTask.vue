@@ -174,14 +174,6 @@ const timestamps = computed(() => [
       </div>
     </div>
 
-    <!-- Next to what it edits; only the managing owner may change who is involved. -->
-    <div
-      v-if="task.viewerRole === 'owner'"
-      class="flex justify-end"
-    >
-      <DialogTaskPeople :task="task" />
-    </div>
-
     <NSeparator />
 
     <div class="space-y-1.5">

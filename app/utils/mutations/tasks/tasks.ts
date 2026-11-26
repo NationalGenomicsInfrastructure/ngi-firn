@@ -141,8 +141,11 @@ function defineTaskTransition(
       applyTask(task)
       showSuccess(messages.success(task), messages.successTitle)
     },
-    onSettled(_task, _error, input) {
-      if (refreshSteps) useQueryCache().invalidateQueries({ key: TASKS_QUERY_KEYS.steps(input.taskSlug), exact: true })
+    onSettled(_task, error, input) {
+      const queryCache = useQueryCache()
+      // A refused transition (e.g. claimed by someone else first) means the shown task is outdated.
+      if (error) queryCache.invalidateQueries({ key: TASKS_QUERY_KEYS.detail(input.taskSlug), exact: true })
+      if (refreshSteps) queryCache.invalidateQueries({ key: TASKS_QUERY_KEYS.steps(input.taskSlug), exact: true })
     }
   })
 }

@@ -497,6 +497,7 @@ Full guide: `docs/ui-style.md`. Short version for new or reworked pages:
 
 - **Search/filter areas** use `<FilterBar>` (`#primary` slot for a search input, or `title`/`description`/`#actions` header for form-style filters). Do not wrap them in an `NCard`.
 - **Headings**: `<PageSectionHeading>` (`variant="rule"` for "Results" lines, `variant="section"` for categories). The display font (`font-display`, Alkatra) is only for page titles and section headings, never for names or data.
+- **Page actions**: actions on what a detail page shows go in `<PageToolbar>` under the page title (closing actions in `#end`), not in a card footer (existing inventory pages are not migrated). Ask for confirmation with `<DialogConfirmAction>`.
 - **Cards without a header** that carry the signature left edge use `<CardAccent>`. Do **not** put `border-l-8` on a bare `NCard`: Una drops the content's top padding when it expects a header, so the content touches the top edge.
 - **Project numbers** (`P.Name_45_11`) are rendered with `<ProjectNumberCircles>`. Project/entity names are regular font, `font-semibold text-primary-700 dark:text-primary-300`.
 - **Colour**: `primary-700` only for structure and state (left edge, active chips, main action, links). Open = blue, closed = gray. Always pair state colour with text or an icon.
