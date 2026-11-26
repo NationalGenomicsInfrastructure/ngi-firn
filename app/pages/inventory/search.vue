@@ -182,7 +182,7 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
       >
         <!-- Projects whose metadata matched, each with their linked inventory -->
         <section v-if="hasProjectGroups">
-          <SectionHeading
+          <PageSectionHeading
             title="Matching projects"
             variant="section"
             icon="i-lucide-folder-git-2"
@@ -195,7 +195,7 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
                 size="xs"
               />
             </template>
-          </SectionHeading>
+          </PageSectionHeading>
           <div class="space-y-4">
             <InventorySearchProjectGroupCard
               v-for="group in projectGroups?.groups"
@@ -222,7 +222,7 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
 
         <!-- Inventory whose own text matched, grouped by project -->
         <section v-if="hasDirectMatches">
-          <SectionHeading
+          <PageSectionHeading
             title="Matching inventory"
             variant="section"
             icon="i-lucide-package-search"
@@ -235,7 +235,7 @@ const showEmptyState = computed(() => hasQuery.value && !isLoading.value && !isE
                 size="xs"
               />
             </template>
-          </SectionHeading>
+          </PageSectionHeading>
           <InventorySearchDirectMatches
             v-if="directMatches"
             :page="directMatches"

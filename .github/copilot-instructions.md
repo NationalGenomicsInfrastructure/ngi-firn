@@ -184,6 +184,8 @@ const { state, asyncStatus } = useQueryColada(approvedUsersQuery)
 
 > **Naming collision**: Both `@pinia/colada` and `trpc-nuxt` export `useQuery`. Always import Pinia Colada's version under an alias. Missing this alias causes a silent bug where tRPC's hook is called instead, which will break on page reload with a `Cannot stringify a function` serialization error.
 
+> ⚠️ **A query that can throw must not run during server rendering.** `useQuery` fetches in `onServerPrefetch` and rethrows, so a rejected tRPC call (e.g. `NOT_FOUND` for a bad or private task slug) turns a direct page load into a 500. `ssrCatchError: true` does not help: the stored `TRPCClientError` instance cannot be serialised into the payload (`Cannot stringify arbitrary non-POJOs`). Gate such queries with `useQuery(() => ({ ...taskQuery(slug.value), enabled: import.meta.client }))`, as in `app/pages/tasks/details/[taskid].vue`. Details: `docs/trpc.md` → "Pitfall: failing queries during server rendering".
+
 #### Defining reusable mutations
 
 Put all mutations in `app/utils/mutations/`, wrapped in `defineMutation()`. This makes them reusable across components without re-creating the mutation state each time.
@@ -383,6 +385,8 @@ For **toggle controls and sliders**, use `NFormGroup` instead of `NFormField`:
 > ⚠️ **`NDialog` open state uses `:open` / `@update:open`, NOT `v-model` / `:model-value` / `@update:model-value`.** `NDialog` wraps reka-ui `DialogRoot`, whose controlled prop is `open` (emit `update:open`); it also sets `inheritAttrs: false`, so a stray `:model-value` attr is silently dropped and `@update:model-value` is **never** emitted. Binding `:model-value="isOpen"` / `@update:model-value="onDialogOpenChange"` therefore leaves your local `isOpen` ref stuck at its initial value: the dialog still opens via its `#trigger`, but any logic that reads `isOpen` breaks — a Pinia Colada query gated on `enabled: isOpen.value` never fetches (renders an empty "nothing available" state), and a programmatic `isOpen.value = false` never closes the dialog. Correct usage: `<NDialog :open="isOpen" @update:open="onDialogOpenChange">` with `function onDialogOpenChange(open: boolean) { isOpen.value = open }`. Note the inner `NSelect`/input `@update:model-value` handlers are unrelated and correct — this rule is only about the `NDialog` root.
 
 > ⚠️ **Move-target listings must not be stricter than the move mutation.** The move dialogs list candidates via `getMoveTargets*` while the barcode scanner calls `moveItem`/`moveContainer` directly with no listing. Any rule that exists only in the listing (e.g. the former classification filter in `ItemService.getMoveTargetsForItems`) makes valid destinations unreachable from the UI while the scanner still succeeds. Put a rule in the mutation first; the listing may only mirror it or *sort* by preference, never exclude on it.
+
+> ⚠️ **`NTable` shows only ten rows unless it gets a `pagination` prop.** Its default is `{ pageIndex: 0, pageSize: 10 }` and no pager appears on its own, so further rows vanish silently. Either render `NPagination` (see `TableItemActionLog.vue`) or pass a page size covering all rows (see `TableTaskSteps.vue`). Also set `row-id` when rows have no `id` field.
 
 **Table headers** share a single constant:
 

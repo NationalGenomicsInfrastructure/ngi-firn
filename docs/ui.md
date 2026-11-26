@@ -375,6 +375,16 @@ Prefer explicit `v-if`/`v-else` branches with static class strings:
 
 This keeps the same UI behavior while avoiding the extractor edge case.
 
+#### Pitfall: `NTable` shows only ten rows by default
+
+`NTable` defaults its `pagination` model to `{ pageIndex: 0, pageSize: 10 }` but does not render a pager by itself, so the eleventh row onwards disappears without any hint. Either add `NPagination` (see `app/components/table/TableItemActionLog.vue`) or pass a page size that covers every row:
+
+```ts
+const pagination = computed(() => ({ pageIndex: 0, pageSize: Math.max(rows.value.length, 1) }))
+```
+
+`NTable` also identifies rows by `row.id`; set `row-id` (e.g. `row-id="stepId"`) when the data has no such field.
+
 #### Best Practices for Page-Specific Components
 
 ##### 1. Create Dedicated Components

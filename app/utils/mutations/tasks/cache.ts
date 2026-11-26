@@ -1,5 +1,4 @@
 import { useQueryCache } from '@pinia/colada'
-import { TRPCClientError } from '@trpc/client'
 import type { SerializedEntityRef } from '~~/types/inventory'
 import type { DisplayTask, DisplayTaskActivation, DisplayTaskStep } from '~~/types/productivity'
 import { INVENTORY_QUERY_KEYS } from '~/utils/queries/inventory'
@@ -7,6 +6,7 @@ import { INVENTORY_CONTAINERS_QUERY_KEYS } from '~/utils/queries/inventory/conta
 import { INVENTORY_EQUIPMENT_QUERY_KEYS } from '~/utils/queries/inventory/equipment'
 import { INVENTORY_ITEMS_QUERY_KEYS } from '~/utils/queries/inventory/items'
 import { TASKS_QUERY_KEYS } from '~/utils/queries/tasks/tasks'
+import { hasTrpcErrorCode } from '~/utils/errors'
 
 /*
  * Cache helpers shared by the task, step and activation mutations.
@@ -32,7 +32,7 @@ export function withOperationId<T extends { operationId: string }>(input: WithOp
 
 /* True for a tRPC CONFLICT (TaskConflictError / ReservationConflictError), e.g. a colleague's concurrent edit. */
 export function isConflictError(error: unknown): boolean {
-  return error instanceof TRPCClientError && (error.data as { code?: string } | undefined)?.code === 'CONFLICT'
+  return hasTrpcErrorCode(error, 'CONFLICT')
 }
 
 /* Write a task returned by a mutation to its detail cache and refresh every listing. */

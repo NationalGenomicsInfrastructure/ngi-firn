@@ -18,7 +18,7 @@ const data = {
         {
           title: 'View your own',
           url: '/tasks/own'
-        },
+        }
       ]
     }
   ]

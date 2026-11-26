@@ -87,6 +87,7 @@ export default defaultConfig({
     '[badge~="solid-yellow"]',
     '[badge~="solid-gray"]',
     'bg-base',
+    'border-l-primary-700',
     // Toast icons - need to be available immediately for composables.
     // Keep dynamic i-lucide-* names from utility maps/functions in this safelist,
     // or UnoCSS may miss them during extraction.
@@ -175,6 +176,19 @@ export default defaultConfig({
     // Inventory container status icons (CONTAINER_STATUS_META in app/utils/inventory/container.ts)
     'i-lucide-circle-help',
     'i-lucide-play',
+    // Entity kind icons (ENTITY_KIND_ICONS in app/utils/inventory/entity.ts)
+    'i-lucide-clipboard-list',
+    // Task and step state icons (app/utils/tasks/meta.ts)
+    'i-lucide-circle-dot',
+    'i-lucide-skip-forward',
+    'i-lucide-lock',
+    'i-lucide-circle-dashed',
+    // Task panel and option icons (app/utils/tasks/panels.ts, options.ts)
+    'i-lucide-flame',
+    'i-lucide-calendar-clock',
+    'i-lucide-inbox',
+    'i-lucide-circle',
+    'i-lucide-globe',
     // NProgress colour variants bound dynamically in InventoryContainerCapacityBars.vue
     // (the `progress` prop maps to a `progress-<color>` shortcut UnoCSS can't extract from a binding)
     'progress-success',

@@ -3,6 +3,7 @@ import type { BarcodeScanWarning } from '~~/types/barcode'
 import type { ScanBasketRole } from '~/composables/useScanBasket'
 import { getActionTypeMeta } from '~/utils/inventory/actionLog'
 import { getContainerStatusMeta } from '~/utils/inventory/container'
+import { entityKindIcon } from '~/utils/inventory/entity'
 
 /*
  * One scanned code in the basket, styled by the part it plays in the resolved plan:
@@ -41,9 +42,7 @@ const tone = computed(() => {
 })
 
 const icon = computed(() => {
-  if (props.role.kind === 'target') {
-    return props.role.target.kind === 'item' ? 'i-lucide-test-tube' : 'i-lucide-package'
-  }
+  if (props.role.kind === 'target') return entityKindIcon(props.role.target.kind)
   if (props.role.kind === 'location' || props.role.kind === 'ignored-location') return 'i-lucide-map-pin'
   if (props.role.kind === 'rejected') return 'i-lucide-circle-x'
   if (props.role.kind === 'unassigned') return 'i-lucide-circle-dashed'
@@ -51,12 +50,7 @@ const icon = computed(() => {
 })
 
 const parent = computed(() => target.value?.parentRef ?? null)
-const parentIcon = computed(() => {
-  const kind = parent.value?.kind
-  if (kind === 'room') return 'i-lucide-door-open'
-  if (kind === 'equipment') return 'i-lucide-refrigerator'
-  return 'i-lucide-package'
-})
+const parentIcon = computed(() => parent.value ? entityKindIcon(parent.value.kind) : 'i-lucide-map-pin-off')
 
 const title = computed(() => target.value?.name ?? props.code)
 </script>
@@ -112,7 +106,7 @@ const title = computed(() => target.value?.name ?? props.code)
         class="flex items-center gap-1.5 text-sm text-muted"
       >
         <NIcon
-          :name="parent ? parentIcon : 'i-lucide-map-pin-off'"
+          :name="parentIcon"
           class="shrink-0"
         />
         <span

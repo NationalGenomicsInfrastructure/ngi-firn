@@ -141,6 +141,23 @@ const {
 
 ```
 
+#### Pitfall: failing queries during server rendering
+
+Pinia Colada's `useQuery()` also fetches on the server (`onServerPrefetch`) and rethrows a failure there. A tRPC procedure that answers with an error, such as `NOT_FOUND` for a mistyped or private task slug, therefore turns a direct page load or reload into a 500, and the in-page error alert is never shown. Navigating within the app is unaffected, which makes this easy to miss.
+
+Setting `ssrCatchError: true` only moves the failure: the error is then stored in the query cache, and the `TRPCClientError` instance cannot be serialised into the Nuxt payload (`DevalueError: Cannot stringify arbitrary non-POJOs`).
+
+Fetch queries that can legitimately fail in the browser only. The server renders the loading state:
+
+```ts
+const { state } = useQueryColada(() => ({
+  ...taskQuery(taskSlug.value),
+  enabled: import.meta.client
+}))
+```
+
+See `app/pages/tasks/details/[taskid].vue`. An application-wide alternative, not implemented, would be a Nuxt payload reducer and reviver for `TRPCClientError`.
+
 #### Mutations in components
 
 Mutations that wrap tRPC procedures are defined once in `app/utils/mutations/` with Pinia Colada's `defineMutation()` (see [data.md](./data.md#optimistic-updates-with-pinia-colada) for the full lifecycle). What `defineMutation()` returns is a **composable**: calling it sets up reactive mutation state (`isLoading`, `error`, …) inside an effect scope, just like `useQuery()` does for queries.

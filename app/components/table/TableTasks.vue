@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table'
 import type { DisplayTask } from '~~/types/productivity'
-import { formatDate } from '~/utils/dates/formatting'
+import { entityRoute } from '~/utils/inventory/entity'
+import { taskProgress } from '~/utils/tasks/progress'
 
 const props = withDefaults(defineProps<{
   title: string
@@ -31,16 +32,6 @@ const columns = computed((): ColumnDef<DisplayTask>[] => [
 function responsibleNames(task: DisplayTask) {
   return task.responsibleUsers.map(user => user.name).join(', ')
 }
-
-function taskUrl(slug: string) {
-  return `/tasks/details/${slug}`
-}
-
-/* Steps still relevant for progress: cancelled steps drop out of the denominator. */
-function progressOf(task: DisplayTask) {
-  const { total, cancelled, completed, skipped } = task.progress
-  return { done: completed + skipped, of: total - cancelled }
-}
 </script>
 
 <template>
@@ -54,16 +45,16 @@ function progressOf(task: DisplayTask) {
       :empty-icon="icon"
     >
       <template #title-header="{ column }">
-        <div class="flex items-center gap-2 py-1">
+        <div class="flex items-baseline gap-2 py-1">
           <NIcon
             v-if="icon"
             :name="icon"
           />
-          <span class="font-semibold">{{ column.columnDef.header }}</span>
+          <span class="font-semibold text-md text-primary">{{ column.columnDef.header }}</span>
           <span
             v-if="description"
-            class="font-normal hidden sm:inline"
-          >· {{ description }}</span>
+            class="font-normal hidden sm:inline text-primary-400 dark:text-primary-600"
+          >{{ description }}</span>
           <NBadge
             badge="soft-gray"
             :label="String(tasks.length)"
@@ -74,7 +65,7 @@ function progressOf(task: DisplayTask) {
 
       <template #title-cell="{ cell }">
         <NLink
-          :to="taskUrl(cell.row.original.slug)"
+          :to="entityRoute({ kind: 'task', slug: cell.row.original.slug })"
           class="block py-1 w-full rounded-md transition-colors hover:bg-muted/30"
         >
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -87,28 +78,13 @@ function progressOf(task: DisplayTask) {
           </div>
 
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted">
+            <TaskDueIndicators :task="cell.row.original" />
             <span
-              v-if="cell.row.original.dueDate"
-              class="inline-flex items-center gap-1"
-              :class="cell.row.original.urgency === 'urgent' ? 'text-error font-medium' : ''"
-            >
-              <NIcon name="i-lucide-calendar" />
-              {{ formatDate(cell.row.original.dueDate, { includeWeekday: true }) }}
-              ({{ formatDate(cell.row.original.dueDate, { relative: true }) }})
-            </span>
-            <span
-              v-if="cell.row.original.urgencyReason === 'aged'"
-              class="inline-flex items-center gap-1 text-warning font-medium"
-            >
-              <NIcon name="i-lucide-hourglass" />
-              Waiting for a while
-            </span>
-            <span
-              v-if="progressOf(cell.row.original).of > 0"
+              v-if="taskProgress(cell.row.original.progress).of > 0"
               class="inline-flex items-center gap-1"
             >
               <NIcon name="i-lucide-list-checks" />
-              {{ progressOf(cell.row.original).done }} / {{ progressOf(cell.row.original).of }} steps
+              {{ taskProgress(cell.row.original.progress).done }} / {{ taskProgress(cell.row.original.progress).of }} steps
             </span>
             <span
               v-if="cell.row.original.responsibleUsers.length"

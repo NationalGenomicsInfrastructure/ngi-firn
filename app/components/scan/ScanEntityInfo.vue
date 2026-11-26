@@ -8,6 +8,7 @@ import { itemBySlugQuery } from '~/utils/queries/inventory/items'
 import { containerBySlugQuery } from '~/utils/queries/inventory/containers'
 import { equipmentBySlugQuery } from '~/utils/queries/inventory/equipment'
 import { getContainerStatusMeta } from '~/utils/inventory/container'
+import { entityKindIcon, entityRoute } from '~/utils/inventory/entity'
 import { formatDate, getExpirationStatus } from '~/utils/dates/formatting'
 
 /*
@@ -74,10 +75,10 @@ const info = computed<EntityInfo | null>(() => {
     const item = itemState.value.data
     return {
       kindLabel: 'Item',
-      kindIcon: 'i-lucide-test-tube',
+      kindIcon: entityKindIcon('item'),
       name: item.name,
       label: item.label,
-      detailsRoute: `/inventory/items/${encodeURIComponent(item.slug)}/details`,
+      detailsRoute: entityRoute({ kind: 'item', slug: item.slug }),
       status: item.status,
       activeFlags: item.activeFlags,
       location: item.parentRef,
@@ -92,10 +93,10 @@ const info = computed<EntityInfo | null>(() => {
     const container = containerState.value.data
     return {
       kindLabel: 'Container',
-      kindIcon: 'i-lucide-package',
+      kindIcon: entityKindIcon('container'),
       name: container.name,
       label: container.label,
-      detailsRoute: `/inventory/containers/${encodeURIComponent(container.slug)}/details`,
+      detailsRoute: entityRoute({ kind: 'container', slug: container.slug }),
       status: container.status,
       activeFlags: container.activeFlags,
       location: container.parentRef,
@@ -110,10 +111,10 @@ const info = computed<EntityInfo | null>(() => {
     const equipment = equipmentState.value.data
     return {
       kindLabel: 'Storage equipment',
-      kindIcon: 'i-lucide-refrigerator',
+      kindIcon: entityKindIcon('equipment'),
       name: equipment.name,
       label: equipment.label,
-      detailsRoute: `/inventory/equipment/${encodeURIComponent(equipment.slug)}/details`,
+      detailsRoute: entityRoute({ kind: 'equipment', slug: equipment.slug }),
       status: null,
       activeFlags: null,
       location: equipment.parentRoom,
@@ -145,21 +146,9 @@ const notFound = computed(() =>
 
 const statusMeta = computed(() => info.value?.status ? getContainerStatusMeta(info.value.status) : null)
 
-const locationRoute = computed(() => {
-  const location = info.value?.location
-  if (!location) return null
-  const slug = encodeURIComponent(location.slug)
-  if (location.kind === 'room') return `/inventory/rooms/${slug}`
-  if (location.kind === 'equipment') return `/inventory/equipment/${slug}/details`
-  return `/inventory/containers/${slug}/details`
-})
+const locationRoute = computed(() => info.value?.location ? entityRoute(info.value.location) : null)
 
-const locationIcon = computed(() => {
-  const kind = info.value?.location?.kind
-  if (kind === 'room') return 'i-lucide-door-open'
-  if (kind === 'equipment') return 'i-lucide-refrigerator'
-  return 'i-lucide-package'
-})
+const locationIcon = computed(() => entityKindIcon(info.value?.location?.kind ?? 'container'))
 
 const expiryStatus = computed(() => info.value?.expiryDate
   ? getExpirationStatus(info.value.expiryDate, EXPIRY_WARNING_DAYS)
