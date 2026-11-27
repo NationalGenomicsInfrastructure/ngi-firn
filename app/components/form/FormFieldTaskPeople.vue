@@ -2,9 +2,9 @@
 import type { DisplayUserToUsers } from '~~/types/auth'
 
 /*
- * Pickers for the people of a task: responsible users and viewers. Mirrors the server's sharing
- * rules, so that what is shown is what gets stored: nobody is listed twice (responsibility wins
- * over viewing) and excluded users, i.e. the managing owner, cannot be picked.
+ * Pickers for the people of a task: responsible users and viewers. Mirrors the server's membership
+ * rules (normalizeMembers), so that what is shown is what gets stored: nobody is listed twice
+ * (responsibility wins over viewing) and excluded users, i.e. the managing owner, cannot be picked.
  */
 const props = withDefaults(defineProps<{
   responsible: DisplayUserToUsers[]

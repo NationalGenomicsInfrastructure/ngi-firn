@@ -711,6 +711,36 @@ describe('Task authorization', () => {
     expect(updated.responsibleUsers).toHaveLength(0)
   })
 
+  it('reports actions as blocked exactly while the activation is live', async () => {
+    const vial = await makeVial('BCTEST Authz Blocked Actions')
+    const task = await TaskService.createTask(owner, { title: 'BCTEST Authz blocked actions', responsibleFirnIds: [colleague.firnId] })
+    createdIds.push(task._id)
+    createdTaskIds.push(task._id)
+    const steps = await TaskStepService.addSteps(owner, task.slug, [{ payload: checkoutStep(vial) }])
+    for (const step of steps) createdIds.push(step._id)
+    await TaskService.publishTask(owner, task.slug)
+    const activation = await TaskActivationService.activateSteps(colleague, task.slug, {
+      stepIds: steps.map(s => s.stepId),
+      operationId: opId('act')
+    })
+
+    const forOwner = await TaskService.getDisplayTask(owner, task.slug)
+    const forExecutor = await TaskService.getDisplayTask(colleague, task.slug)
+    expect(forOwner.actions.cancel?.blockedReason).toMatch(/in progress/i)
+    expect(forOwner.actions.archive?.blockedReason).toMatch(/in progress/i)
+    expect(forExecutor.actions.releaseResponsibility?.blockedReason).toBeTruthy()
+
+    await TaskRecoveryService.cancelActivation(colleague, task.slug, {
+      activationId: activation.activationId,
+      operationId: opId('cancel'),
+      reason: 'Blocked actions test',
+      declarations: steps.map(s => ({ stepId: s.stepId, physicallyPerformed: false }))
+    })
+
+    expect((await TaskService.getDisplayTask(owner, task.slug)).actions.cancel?.blockedReason).toBeNull()
+    expect((await TaskService.getDisplayTask(colleague, task.slug)).actions.releaseResponsibility?.blockedReason).toBeNull()
+  })
+
   it('lets an inactive or unapproved account read nothing', async () => {
     const task = await TaskService.createTask(owner, { title: 'BCTEST Authz inactive', visibility: 'public' })
     createdIds.push(task._id)

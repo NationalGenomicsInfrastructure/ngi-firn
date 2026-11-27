@@ -30,6 +30,7 @@ import type {
   TaskStepState,
   TaskUrgency
 } from '../../../types/productivity'
+import type { TypedDocumentReference } from '../../../types/references'
 
 /* Timezone used for all due-date/urgency boundary math. */
 export const TASK_TIMEZONE = 'Europe/Stockholm'
@@ -82,6 +83,25 @@ export async function resolveUsersByFirnIds(firnIds: string[]): Promise<FirnUser
   if (missing.length > 0) throw new TaskValidationError(`Unknown user(s): ${missing.join(', ')}`)
   if (inactive.length > 0) throw new TaskValidationError(`Inactive or unapproved user(s): ${inactive.join(', ')}`)
   return users
+}
+
+/*
+ * The membership rules of a task, applied wherever members are set: the managing owner is never
+ * also listed, nobody is listed twice, and responsibility wins over viewing.
+ */
+export function normalizeMembers(
+  ownerId: string | null,
+  responsibleUsers: TypedDocumentReference<FirnUser>[],
+  viewers: TypedDocumentReference<FirnUser>[]
+) {
+  const listed = new Set(ownerId ? [ownerId] : [])
+  const listOnce = (ref: TypedDocumentReference<FirnUser>) => {
+    if (listed.has(ref.id)) return false
+    listed.add(ref.id)
+    return true
+  }
+  // Order matters: whoever is listed as responsible is skipped among the viewers.
+  return { responsibleUsers: responsibleUsers.filter(listOnce), viewers: viewers.filter(listOnce) }
 }
 
 /* Project a stored TaskActor into a client-safe actor (resolving a user ref when present). */

@@ -83,6 +83,12 @@ export const taskBatchStepStatusSchema = z.enum([
   'needs_reconciliation'
 ])
 
+/*
+ * What a user can do with a task as a whole, named after the procedures. The server tells each user
+ * which of these it offers them (DisplayTask.actions).
+ */
+export const taskActionSchema = z.enum(['setSharing', 'publish', 'claim', 'releaseResponsibility', 'cancel', 'archive'])
+
 /* The inventory actions a task step can plan (dispose is item-only, enforced by the step schema). */
 export const taskInventoryActionSchema = inventoryActionSchema.extract(['checkout', 'return', 'move', 'locate', 'dispose'])
 
@@ -99,3 +105,4 @@ export type TaskActivationState = z.infer<typeof taskActivationStateSchema>
 export type DisplayTaskViewerRole = z.infer<typeof taskViewerRoleSchema>
 export type TaskBatchStepStatus = z.infer<typeof taskBatchStepStatusSchema>
 export type TaskInventoryAction = z.infer<typeof taskInventoryActionSchema>
+export type TaskAction = z.infer<typeof taskActionSchema>

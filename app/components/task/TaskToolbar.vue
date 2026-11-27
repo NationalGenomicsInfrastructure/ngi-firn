@@ -7,15 +7,22 @@ import {
   publishTask,
   releaseTaskResponsibility
 } from '~/utils/mutations/tasks/tasks'
-import { hasTaskActions, taskActions } from '~/utils/tasks/actions'
 
-/* The actions the current user may take on a task, as the toolbar of its page. */
+/*
+ * The toolbar of a task's page. It shows what the server offers the current user (task.actions) and
+ * holds no rules of its own: new restrictions belong in server/auth/taskPolicy.ts.
+ */
 
 const props = defineProps<{
   task: DisplayTask
 }>()
 
-const actions = computed(() => taskActions(props.task))
+const actions = computed(() => props.task.actions)
+const hasActions = computed(() => Object.keys(actions.value).length > 0)
+/* Why offered actions are refused for now; several may share a reason. */
+const blockedReasons = computed(() =>
+  [...new Set(Object.values(actions.value).flatMap(action => action.blockedReason ?? []))]
+)
 
 const { mutateAsync: publishAsync, isLoading: isPublishing } = publishTask()
 const { mutateAsync: claimAsync, isLoading: isClaiming } = claimTask()
@@ -41,7 +48,7 @@ async function release() {
 
 <template>
   <PageToolbar
-    v-if="hasTaskActions(actions)"
+    v-if="hasActions"
     label="Task actions"
   >
     <NButton
@@ -65,18 +72,19 @@ async function release() {
       @click="run(() => claimAsync(input))"
     />
     <DialogTaskPeople
-      v-if="actions.editPeople"
+      v-if="actions.setSharing"
       :task="task"
     />
-    <template v-if="actions.release">
+    <template v-if="actions.releaseResponsibility">
       <DialogConfirmAction
         v-if="task.visibility === 'private'"
         title="Release responsibility"
-        description="This task is private. Unless you are also one of its viewers, you will not be able to open it afterwards."
+        description="This task is private: giving up responsibility also gives up your access to it."
         trigger-label="Release responsibility"
         confirm-label="Release"
         icon="i-lucide-user-round-minus"
         :loading="isReleasing"
+        :disabled="!!actions.releaseResponsibility.blockedReason"
         :action="release"
       />
       <NButton
@@ -86,7 +94,7 @@ async function release() {
         leading="i-lucide-user-round-minus"
         label="Release responsibility"
         :loading="isReleasing"
-        :disabled="isReleasing"
+        :disabled="isReleasing || !!actions.releaseResponsibility.blockedReason"
         @click="run(release)"
       />
     </template>
@@ -95,12 +103,6 @@ async function release() {
       v-if="actions.cancel || actions.archive"
       #end
     >
-      <p
-        v-if="actions.closingBlocked"
-        class="text-xs text-muted"
-      >
-        Work is activated: finish or cancel it before closing the task.
-      </p>
       <DialogConfirmAction
         v-if="actions.cancel"
         title="Cancel task"
@@ -111,7 +113,7 @@ async function release() {
         trigger-btn="soft-error hover:outline-error"
         confirm-btn="soft-error hover:outline-error"
         :loading="isCancelling"
-        :disabled="actions.closingBlocked"
+        :disabled="!!actions.cancel.blockedReason"
         :action="() => cancelAsync(input)"
       />
       <DialogConfirmAction
@@ -122,9 +124,16 @@ async function release() {
         confirm-label="Archive task"
         icon="i-lucide-archive"
         :loading="isArchiving"
-        :disabled="actions.closingBlocked"
+        :disabled="!!actions.archive.blockedReason"
         :action="() => archiveAsync(input)"
       />
     </template>
+    <p
+      v-for="reason in blockedReasons"
+      :key="reason"
+      class="order-last basis-full text-xs text-muted"
+    >
+      {{ reason }}
+    </p>
   </PageToolbar>
 </template>

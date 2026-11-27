@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useQuery } from '@pinia/colada'
 import { toTypedSchema } from '@vee-validate/zod'
 import { createTaskSchema } from '~~/schemas/tasks/tasks'
 import type { TaskImportance, TaskVisibility } from '~~/schemas/tasks/enums'
@@ -6,6 +7,7 @@ import type { DisplayUserToUsers } from '~~/types/auth'
 import { createTask } from '~/utils/mutations/tasks/tasks'
 import { focusFirstFormFieldError } from '~/utils/inventory/room'
 import { displayUserName } from '~/utils/users/display'
+import { selfUserQuery } from '~/utils/queries/users'
 import { TASK_IMPORTANCE_OPTIONS, TASK_VISIBILITY_OPTIONS, taskOptionLabel } from '~/utils/tasks/options'
 
 const emit = defineEmits<{
@@ -55,6 +57,10 @@ const { value: dueDateValue, setValue: setDueDateValue } = useField<string | und
 // Users are kept as full objects for display; only the firnIds are sent to the server.
 const responsibleUsers = ref<DisplayUserToUsers[]>([])
 const viewerUsers = ref<DisplayUserToUsers[]>([])
+
+// The creator becomes the managing owner, who is never listed among the people as well.
+const { data: self } = useQuery(() => ({ ...selfUserQuery, enabled: import.meta.client }))
+const ownFirnIds = computed(() => self.value ? [self.value.firnId] : [])
 
 const visibilityLabel = computed(() => taskOptionLabel(TASK_VISIBILITY_OPTIONS, visibilityValue.value))
 const importanceLabel = computed(() => taskOptionLabel(TASK_IMPORTANCE_OPTIONS, importanceValue.value))
@@ -266,6 +272,7 @@ const onSubmit = handleSubmit(async (formValues) => {
             <FormFieldTaskPeople
               v-model:responsible="responsibleUsers"
               v-model:viewers="viewerUsers"
+              :exclude-firn-ids="ownFirnIds"
               responsible-empty-text="Nobody assigned yet. Colleagues can claim the task later."
             />
           </NCard>

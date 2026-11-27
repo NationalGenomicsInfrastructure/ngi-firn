@@ -4,6 +4,7 @@ import type { DocumentReference, TypedDocumentReference } from './references'
 import type { InventoryStatusType } from '../schemas/inventory/metadata'
 import type {
   DisplayTaskViewerRole,
+  TaskAction,
   TaskActivationState,
   TaskBatchStepStatus,
   TaskExecutionSource,
@@ -75,6 +76,7 @@ export type DisplayTaskActor
 
 export type {
   DisplayTaskViewerRole,
+  TaskAction,
   TaskActivationState,
   TaskBatchStepStatus,
   TaskExecutionSource,
@@ -497,6 +499,15 @@ export interface DisplayTaskStep {
   updatedAt: string
 }
 
+/* An action the requesting user is offered on a task. */
+export interface TaskActionState {
+  /* Why the action is refused for the time being; null when it would be accepted now. */
+  blockedReason: string | null
+}
+
+/* Only the offered actions are present. Decided by the server (server/auth/taskPolicy.ts). */
+export type TaskAllowedActions = Partial<Record<TaskAction, TaskActionState>>
+
 /* Client-safe projection of a task aggregate (no CouchDB _id, no raw user refs). */
 export interface DisplayTask {
   slug: string
@@ -520,6 +531,8 @@ export interface DisplayTask {
   progress: TaskProgressSummary
   /* The requesting user's role, resolved server-side. */
   viewerRole: DisplayTaskViewerRole
+  /* What the requesting user may do with the task. */
+  actions: TaskAllowedActions
   editVersion: number
   createdAt: string
   updatedAt: string

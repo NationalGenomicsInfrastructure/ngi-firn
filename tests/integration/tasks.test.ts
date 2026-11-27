@@ -249,6 +249,46 @@ describe('Pool and claiming', () => {
   })
 })
 
+describe('Membership rules', () => {
+  const ids = (refs: { id: string }[]) => refs.map(r => r.id)
+
+  it('never lists the creator, and lets responsibility win over viewing', async () => {
+    const task = await makeTask(owner, {
+      title: 'BCTEST Members create',
+      responsibleFirnIds: [owner.firnId, colleagueA.firnId],
+      viewerFirnIds: [owner.firnId, colleagueA.firnId, colleagueB.firnId]
+    })
+
+    expect(ids(task.responsibleUsers)).toEqual([colleagueA._id])
+    expect(ids(task.viewers)).toEqual([colleagueB._id])
+  })
+
+  it('moves a viewer who claims the task over to the responsible users', async () => {
+    const task = await makeTask(owner, {
+      title: 'BCTEST Members claim',
+      visibility: 'public',
+      viewerFirnIds: [colleagueA.firnId, colleagueB.firnId]
+    })
+    await TaskService.publishTask(owner, task.slug)
+
+    const claimed = await TaskService.claimTask(colleagueA, task.slug)
+
+    expect(ids(claimed.responsibleUsers)).toEqual([colleagueA._id])
+    expect(ids(claimed.viewers)).toEqual([colleagueB._id])
+  })
+
+  it('tells each user which actions the task offers them', async () => {
+    const task = await makeTask(owner, { title: 'BCTEST Members actions', visibility: 'public' })
+    await TaskService.publishTask(owner, task.slug)
+
+    const forOwner = await TaskService.getDisplayTask(owner, task.slug)
+    const forStranger = await TaskService.getDisplayTask(stranger, task.slug)
+
+    expect(Object.keys(forOwner.actions).sort()).toEqual(['archive', 'cancel', 'setSharing'])
+    expect(Object.keys(forStranger.actions)).toEqual(['claim'])
+  })
+})
+
 describe('Lifecycle rules', () => {
   it('publishes a draft once and treats a repeat as harmless', async () => {
     const task = await makeTask(owner, { title: 'BCTEST Lifecycle publish' })

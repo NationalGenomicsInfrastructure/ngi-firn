@@ -12,6 +12,7 @@
 import { couchDB } from '../../database/couchdb'
 import type { FirnUser } from '../../../types/auth'
 import type { TaskActivationDocument, TaskStepDocument } from '../../../types/productivity'
+import { isLiveActivation } from '../../auth/taskPolicy'
 import { toUserRef } from '../users.server'
 import {
   isOpenStepState,
@@ -70,7 +71,7 @@ export async function invalidateStepsForDeletedResource(
     }
 
     const activations = (await loadActivationsForTask(taskId))
-      .filter(activation => activation.state === 'active' || activation.state === 'needs_reconciliation')
+      .filter(isLiveActivation)
     const touched = new Map<string, TaskActivationDocument>()
 
     for (const step of steps) {

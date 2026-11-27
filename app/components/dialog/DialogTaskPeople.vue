@@ -7,8 +7,8 @@ import { setTaskSharing } from '~/utils/mutations/tasks/tasks'
 import { allUsersQuery } from '~/utils/queries/users'
 
 /*
- * Edit who is responsible for a task and who may view it. Only the managing owner may do this, so
- * render it for them only.
+ * Edit who is responsible for a task and who may view it. Render it only when the server offers the
+ * user that (task.actions.setSharing).
  *
  * Only a list that was actually changed is sent. That keeps e.g. a colleague's claim made while the
  * dialog was open, as long as the responsible users were not edited here.

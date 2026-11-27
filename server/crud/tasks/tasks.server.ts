@@ -36,6 +36,12 @@ import {
   assertCanReleaseResponsibility,
   assertTaskCanBeCancelled,
   assertTaskCanBePublished,
+  canExecuteTask,
+  executorsLosingTheirRight,
+  isTaskClaimed,
+  liveWorkRefusal,
+  ownerIdOf,
+  taskActionsFor,
   resolveTaskRole
 } from '../../auth/taskPolicy'
 import {
@@ -51,6 +57,7 @@ import {
   clampPageSize,
   computeQuadrant,
   computeUrgency,
+  normalizeMembers,
   resolveUsersByFirnIds,
   summarizeProgress,
   toDisplayActor,
@@ -95,17 +102,8 @@ export function refToEntityStub(ref: DocumentReference, kind: SerializedEntityRe
  * holds are never released blindly.
  */
 async function assertNoLiveActivation(task: TaskDocument, verb: 'cancelled' | 'archived'): Promise<void> {
-  const live = (await loadActivationsForTask(task._id))
-    .some(activation => activation.state === 'active' || activation.state === 'needs_reconciliation')
-  if (live) {
-    throw new TaskValidationError(
-      `This task has activated work in progress and cannot be ${verb}. Cancel or finish the activation first.`
-    )
-  }
-}
-
-function ownerIdOf(task: TaskDocument): string | null {
-  return task.managingOwner.kind === 'user' ? task.managingOwner.user.id : null
+  const refusal = liveWorkRefusal(await loadActivationsForTask(task._id), verb)
+  if (refusal) throw new TaskValidationError(refusal)
 }
 
 /*
@@ -118,17 +116,13 @@ async function assertExecutorsKeepTheirRight(
   nextResponsible: { id: string }[],
   nextOwnerId: string | null
 ): Promise<void> {
-  const live = (await loadActivationsForTask(task._id))
-    .filter(activation => activation.state === 'active' || activation.state === 'needs_reconciliation')
-  for (const activation of live) {
-    const id = activation.executor.id
-    if (id === nextOwnerId || nextResponsible.some(r => r.id === id)) continue
-    const [ref] = await resolveUserRefs([activation.executor])
-    const who = ref && ref.name !== UNKNOWN_USER_REF.name ? ref.name : 'This colleague'
-    throw new TaskValidationError(
-      `${who} is currently executing activated work on this task. Hand the activation over or cancel it first.`
-    )
-  }
+  const [stranded] = executorsLosingTheirRight(await loadActivationsForTask(task._id), nextResponsible, nextOwnerId)
+  if (!stranded) return
+  const [ref] = await resolveUserRefs([stranded])
+  const who = ref && ref.name !== UNKNOWN_USER_REF.name ? ref.name : 'This colleague'
+  throw new TaskValidationError(
+    `${who} is currently executing activated work on this task. Hand the activation over or cancel it first.`
+  )
 }
 
 export const TaskService = {
@@ -143,8 +137,11 @@ export const TaskService = {
     const title = input.title?.trim()
     if (!title) throw new TaskValidationError('A task title is required.')
 
-    const responsibleUsers = (await resolveUsersByFirnIds(input.responsibleFirnIds ?? [])).map(toUserRef)
-    const viewers = (await resolveUsersByFirnIds(input.viewerFirnIds ?? [])).map(toUserRef)
+    const members = normalizeMembers(
+      actor._id,
+      (await resolveUsersByFirnIds(input.responsibleFirnIds ?? [])).map(toUserRef),
+      (await resolveUsersByFirnIds(input.viewerFirnIds ?? [])).map(toUserRef)
+    )
     const projectRefs = await resolveProjectRefs(input.projectIds ?? [])
     const inventoryRefs = await resolveInventoryContextRefs(input.inventoryRefs ?? [])
 
@@ -157,8 +154,7 @@ export const TaskService = {
       description: input.description?.trim() || null,
       creator: userActor(actor),
       managingOwner: userActor(actor),
-      responsibleUsers,
-      viewers,
+      ...members,
       visibility: input.visibility ?? 'private',
       status: 'draft',
       importance: input.importance ?? 'ordinary',
@@ -257,22 +253,14 @@ export const TaskService = {
     if (input.viewerFirnIds !== undefined) {
       viewers = (await resolveUsersByFirnIds(input.viewerFirnIds)).map(toUserRef)
     }
-    // The owner is implicitly the manager and must never appear as responsible/viewer.
-    if (ownerId) {
-      responsibleUsers = responsibleUsers.filter(r => r.id !== ownerId)
-      viewers = viewers.filter(v => v.id !== ownerId)
-    }
-    // A user cannot be both responsible and a read-only viewer; responsibility wins.
-    const responsibleIds = new Set(responsibleUsers.map(r => r.id))
-    viewers = viewers.filter(v => !responsibleIds.has(v.id))
+    const members = normalizeMembers(ownerId, responsibleUsers, viewers)
 
-    await assertExecutorsKeepTheirRight(task, responsibleUsers, ownerId)
+    await assertExecutorsKeepTheirRight(task, members.responsibleUsers, ownerId)
 
     const updated: TaskDocument = {
       ...task,
       visibility: input.visibility ?? task.visibility,
-      responsibleUsers,
-      viewers,
+      ...members,
       editVersion: task.editVersion + 1,
       updatedAt: DateTime.now().toISO()
     }
@@ -301,17 +289,13 @@ export const TaskService = {
     if (!newOwner) throw new TaskValidationError('The new owner could not be resolved.')
 
     const newOwnerRef = toUserRef(newOwner)
-    await assertExecutorsKeepTheirRight(
-      task,
-      task.responsibleUsers.filter(r => r.id !== newOwnerRef.id),
-      newOwnerRef.id
-    )
+    // The new owner cannot simultaneously be a responsible/viewer member.
+    const members = normalizeMembers(newOwnerRef.id, task.responsibleUsers, task.viewers)
+    await assertExecutorsKeepTheirRight(task, members.responsibleUsers, newOwnerRef.id)
     const updated: TaskDocument = {
       ...task,
       managingOwner: userActor(newOwner),
-      // The new owner cannot simultaneously be a responsible/viewer member.
-      responsibleUsers: task.responsibleUsers.filter(r => r.id !== newOwnerRef.id),
-      viewers: task.viewers.filter(v => v.id !== newOwnerRef.id),
+      ...members,
       editVersion: task.editVersion + 1,
       updatedAt: DateTime.now().toISO()
     }
@@ -361,13 +345,14 @@ export const TaskService = {
     const task = await TaskService.getTaskDocBySlug(slug)
     if (!task) throw new TaskNotFoundError()
     assertCanClaimTask(task, actor)
-    if (task.responsibleUsers.length > 0) {
+    if (isTaskClaimed(task)) {
       throw new TaskConflictError('This task has already been claimed.')
     }
 
     const updated: TaskDocument = {
       ...task,
-      responsibleUsers: [toUserRef(actor)],
+      // A viewer who claims the task moves over to the responsible users.
+      ...normalizeMembers(ownerIdOf(task), [toUserRef(actor)], task.viewers),
       editVersion: task.editVersion + 1,
       updatedAt: DateTime.now().toISO()
     }
@@ -519,11 +504,14 @@ export const TaskService = {
   async toDisplayTask(task: TaskDocument, actor: FirnUser, steps: TaskStepDocument[]): Promise<DisplayTask> {
     const now = DateTime.now()
     const { urgency, reason: urgencyReason } = computeUrgency(task, now)
-    const [creator, managingOwner, responsibleUsers, viewers] = await Promise.all([
+    // Activations only matter where they can block an action: to members of an unarchived task.
+    const mayBeBlocked = !task.archivedAt && canExecuteTask(task, actor)
+    const [creator, managingOwner, responsibleUsers, viewers, activations] = await Promise.all([
       toDisplayActor(task.creator),
       toDisplayActor(task.managingOwner),
       resolveUserRefs(task.responsibleUsers),
-      resolveUserRefs(task.viewers)
+      resolveUserRefs(task.viewers),
+      mayBeBlocked ? loadActivationsForTask(task._id) : []
     ])
     return {
       slug: task.slug,
@@ -546,6 +534,7 @@ export const TaskService = {
         : null,
       progress: summarizeProgress(steps),
       viewerRole: resolveTaskRole(task, actor) ?? 'public',
+      actions: taskActionsFor(task, actor, activations),
       editVersion: task.editVersion,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,

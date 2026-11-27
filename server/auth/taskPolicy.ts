@@ -9,7 +9,12 @@
  * API layer. The coarse account gate (logged in / admin / token) stays in the tRPC middleware.
  */
 import type { FirnUser } from '../../types/auth'
-import type { DisplayTaskViewerRole, TaskActivationDocument, TaskDocument } from '../../types/productivity'
+import type {
+  DisplayTaskViewerRole,
+  TaskActivationDocument,
+  TaskAllowedActions,
+  TaskDocument
+} from '../../types/productivity'
 import { AuthorizationError, ForbiddenError } from './errors'
 
 /* True when the actor is the task's managing owner (system-owned tasks have no user owner). */
@@ -108,25 +113,71 @@ export function canBeExecutor(task: TaskDocument, user: FirnUser): boolean {
   return isActiveAccount(user) && canExecuteTask(task, user)
 }
 
-/* Throw unless the actor may claim the task from the pool (the "already claimed" check is the caller's CAS). */
-export function assertCanClaimTask(task: TaskDocument, actor: FirnUser): void {
-  if (!isActiveAccount(actor)) throw new ForbiddenError('Only approved, active users can claim tasks.')
-  if (task.visibility !== 'public') throw new ForbiddenError('Only public tasks can be claimed.')
-  if (task.status !== 'open' || task.archivedAt) throw new ForbiddenError('This task is not available to claim.')
-  if (isTaskOwner(task, actor)) throw new ForbiddenError('You already own this task.')
-}
-
 /* A completed or cancelled task is closed: its work is over. Archival is a separate axis. */
 export function isTaskClosed(task: Pick<TaskDocument, 'status'>): boolean {
   return task.status === 'completed' || task.status === 'cancelled'
 }
 
+/* Somebody is already responsible, so the task is not up for grabs. */
+export function isTaskClaimed(task: Pick<TaskDocument, 'responsibleUsers'>): boolean {
+  return task.responsibleUsers.length > 0
+}
+
+/* The managing owner's user id; null for system-owned tasks. */
+export function ownerIdOf(task: Pick<TaskDocument, 'managingOwner'>): string | null {
+  return task.managingOwner.kind === 'user' ? task.managingOwner.user.id : null
+}
+
+// ---------------------------------------------------------------------------------------------
+// State rules
+//
+// Each rule is written once, as the reason for refusing (null when allowed). The assert* guards
+// throw it and taskActionsFor reads it, so what a user is offered cannot drift from what is
+// accepted.
+// ---------------------------------------------------------------------------------------------
+
+type Refusal = string | null
+
+function throwIfRefused(refusal: Refusal): void {
+  if (refusal) throw new ForbiddenError(refusal)
+}
+
+function claimRefusal(task: TaskDocument, actor: FirnUser): Refusal {
+  if (!isActiveAccount(actor)) return 'Only approved, active users can claim tasks.'
+  if (task.visibility !== 'public') return 'Only public tasks can be claimed.'
+  if (task.status !== 'open' || task.archivedAt) return 'This task is not available to claim.'
+  if (isTaskOwner(task, actor)) return 'You already own this task.'
+  return null
+}
+
+function releaseRefusal(task: TaskDocument, actor: FirnUser): Refusal {
+  if (!isTaskResponsible(task, actor)) return 'You are not responsible for this task.'
+  if (task.archivedAt || isTaskClosed(task)) {
+    return 'Responsibility for a finished or archived task can no longer be released.'
+  }
+  return null
+}
+
+function publishRefusal(task: Pick<TaskDocument, 'status' | 'archivedAt'>): Refusal {
+  if (task.archivedAt) return 'An archived task can no longer be published.'
+  if (task.status !== 'draft') return `A ${task.status} task cannot be published.`
+  return null
+}
+
+function cancelRefusal(task: Pick<TaskDocument, 'status' | 'archivedAt'>): Refusal {
+  if (task.archivedAt) return 'An archived task can no longer be cancelled.'
+  if (isTaskClosed(task)) return `A ${task.status} task cannot be cancelled.`
+  return null
+}
+
+/* Throw unless the actor may claim the task from the pool (the "already claimed" check is the caller's CAS). */
+export function assertCanClaimTask(task: TaskDocument, actor: FirnUser): void {
+  throwIfRefused(claimRefusal(task, actor))
+}
+
 /* Throw unless the actor is a responsible colleague who may give that responsibility up. */
 export function assertCanReleaseResponsibility(task: TaskDocument, actor: FirnUser): void {
-  if (!isTaskResponsible(task, actor)) throw new ForbiddenError('You are not responsible for this task.')
-  if (task.archivedAt || isTaskClosed(task)) {
-    throw new ForbiddenError('Responsibility for a finished or archived task can no longer be released.')
-  }
+  throwIfRefused(releaseRefusal(task, actor))
 }
 
 /*
@@ -136,12 +187,79 @@ export function assertCanReleaseResponsibility(task: TaskDocument, actor: FirnUs
 
 /* Throw unless the task is a draft that can still be published. */
 export function assertTaskCanBePublished(task: Pick<TaskDocument, 'status' | 'archivedAt'>): void {
-  if (task.archivedAt) throw new ForbiddenError('An archived task can no longer be published.')
-  if (task.status !== 'draft') throw new ForbiddenError(`A ${task.status} task cannot be published.`)
+  throwIfRefused(publishRefusal(task))
 }
 
 /* Throw unless the task is unfinished and can still be cancelled. */
 export function assertTaskCanBeCancelled(task: Pick<TaskDocument, 'status' | 'archivedAt'>): void {
-  if (task.archivedAt) throw new ForbiddenError('An archived task can no longer be cancelled.')
-  if (isTaskClosed(task)) throw new ForbiddenError(`A ${task.status} task cannot be cancelled.`)
+  throwIfRefused(cancelRefusal(task))
+}
+
+// ---------------------------------------------------------------------------------------------
+// Live work
+// ---------------------------------------------------------------------------------------------
+
+/* An activation whose work is neither finished nor cancelled, so its holds are still in place. */
+export function isLiveActivation(activation: Pick<TaskActivationDocument, 'state'>): boolean {
+  return activation.state === 'active' || activation.state === 'needs_reconciliation'
+}
+
+/* Why live work forbids closing the task (cancelling or archiving it); null when there is none. */
+export function liveWorkRefusal(activations: Pick<TaskActivationDocument, 'state'>[], verb: string): Refusal {
+  if (!activations.some(isLiveActivation)) return null
+  return `This task has activated work in progress and cannot be ${verb}. Cancel or finish the activation first.`
+}
+
+/* Executors of live work who would be neither owner nor responsible with the given membership. */
+export function executorsLosingTheirRight(
+  activations: Pick<TaskActivationDocument, 'state' | 'executor'>[],
+  nextResponsible: { id: string }[],
+  nextOwnerId: string | null
+): TaskActivationDocument['executor'][] {
+  return activations
+    .filter(isLiveActivation)
+    .map(activation => activation.executor)
+    .filter(executor => executor.id !== nextOwnerId && !nextResponsible.some(r => r.id === executor.id))
+}
+
+// ---------------------------------------------------------------------------------------------
+// Allowed actions
+// ---------------------------------------------------------------------------------------------
+
+/*
+ * The actions to offer the actor on this task. An action is absent when the actor or the task's
+ * state rules it out, and carries a `blockedReason` when only live work stands in its way. Pass the
+ * task's activations.
+ */
+export function taskActionsFor(
+  task: TaskDocument,
+  actor: FirnUser,
+  activations: Pick<TaskActivationDocument, 'state' | 'executor'>[]
+): TaskAllowedActions {
+  if (!canReadTask(task, actor)) return {}
+
+  const actions: TaskAllowedActions = {}
+  const ready = { blockedReason: null }
+
+  if (claimRefusal(task, actor) === null && !isTaskClaimed(task)) actions.claim = ready
+
+  if (releaseRefusal(task, actor) === null) {
+    const remaining = task.responsibleUsers.filter(r => r.id !== actor._id)
+    const stranded = executorsLosingTheirRight(activations, remaining, ownerIdOf(task))
+    actions.releaseResponsibility = {
+      blockedReason: stranded.length
+        ? 'Activated work is still being executed. Hand the activation over or cancel it first.'
+        : null
+    }
+  }
+
+  if (isTaskOwner(task, actor)) {
+    actions.setSharing = ready
+    if (publishRefusal(task) === null) actions.publish = ready
+    const closing = { blockedReason: liveWorkRefusal(activations, 'cancelled or archived') }
+    if (cancelRefusal(task) === null) actions.cancel = closing
+    if (!task.archivedAt) actions.archive = closing
+  }
+
+  return actions
 }
